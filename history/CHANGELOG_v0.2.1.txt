@@ -1,0 +1,8 @@
+Genreactrix v0.2.1 — Batch Operations & Review Queue
+
+- Added batch targeting for current search results, all loaded images, unreviewed images, favorites, and the review queue.
+- Added bulk review-queue, favorite, confidence, and genre operations.
+- Added explicit preview and confirmation before applying a batch.
+- Added one-level full batch undo that restores annotations, confidence, favorites, and queue membership.
+- Added a sortable review-queue manager with confidence display, source availability, direct navigation, and per-record removal.
+- Updated application identity, cache version, documentation, and release packaging.

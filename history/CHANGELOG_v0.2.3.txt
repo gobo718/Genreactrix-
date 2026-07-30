@@ -1,0 +1,8 @@
+Genreactrix v0.2.3 — Recovery & History
+
+- Added persistent manual and automatic recovery checkpoints.
+- Checkpoints preserve workspace annotations, review queue, favorites, confidence, taxonomy, and automation rules.
+- Added automatic safety captures before imports, resets, repairs, and batch operations.
+- Added checkpoint restore with an automatic pre-restore fallback.
+- Added per-checkpoint JSON downloads, deletion, and bounded 12-entry history.
+- Updated application identity, cache version, manifest, documentation, and release packaging.

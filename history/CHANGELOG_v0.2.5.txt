@@ -1,0 +1,2 @@
+Genreactrix v0.2.5
+- Prepared baseline for Workspace Profiles.

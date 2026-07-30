@@ -1,1 +1,14 @@
+Genreactrix v0.1.9 — Search & Relationship Engine
 
+ADDED
+- Workspace-wide annotation search.
+- Scope, confidence, favorite, and review filters.
+- Clickable search results tied to loaded files.
+- Related-annotation ranking.
+- Reaction-pair co-occurrence insights.
+
+PRESERVED
+- Local-first operation.
+- Editable taxonomy.
+- Stable reaction indexes.
+- JSON and CSV import/export workflow.

@@ -1,0 +1,4 @@
+Genreactrix v0.2.6
+
+- Prepared Workspace Profiles implementation scaffold.
+- Added placeholder roadmap entry.
