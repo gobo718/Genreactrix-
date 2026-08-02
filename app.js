@@ -256,8 +256,23 @@ function applyClassification(data){
   state.retention=data?.retention||"keep";
 }
 function persistRecords(){
-  localStorage.setItem("genreactrix-v0.9.2g-records",JSON.stringify(state.records));
-  localStorage.setItem("genreactrix-v0.9.2g-ai-runs",JSON.stringify(state.aiRuns));
+  try{
+    const recordsJson=JSON.stringify(state.records);
+    const aiRunsJson=JSON.stringify(state.aiRuns);
+    localStorage.setItem("genreactrix-v0.9.2h-records",recordsJson);
+    localStorage.setItem("genreactrix-v0.9.2h-ai-runs",aiRunsJson);
+    // Verify the classification write immediately. A failed or blocked write must
+    // not masquerade as a successful save in the UI.
+    if(localStorage.getItem("genreactrix-v0.9.2h-records")!==recordsJson){
+      throw new Error("Classification storage verification failed");
+    }
+    return true;
+  }catch(error){
+    console.error("Genreactrix could not persist classification data",error);
+    const status=$("directorStatus");
+    if(status) status.textContent="Save failed. Classification data was not stored.";
+    return false;
+  }
 }
 function restoreSnapshot(s){
   state.records=JSON.parse(JSON.stringify(s.records||{}));
@@ -269,16 +284,23 @@ function restoreSnapshot(s){
   state.visitBaseline=classificationState();
   renderAll();
 }
+function writeClassificationForKey(key, data){
+  state.records[key]=JSON.parse(JSON.stringify(data));
+  return persistRecords();
+}
+function readClassificationForKey(key){
+  const record=state.records[key];
+  return record ? JSON.parse(JSON.stringify(record)) : emptyClassification();
+}
 function saveCurrent(){
-  state.records[currentKey()] = classificationState();
-  persistRecords();
+  return writeClassificationForKey(currentKey(),classificationState());
 }
 function emptyClassification(){
   return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
 }
 function loadCurrent(){
-  const rec=state.records[currentKey()];
-  applyClassification(rec ? JSON.parse(JSON.stringify(rec)) : emptyClassification());
+  const key=currentKey();
+  applyClassification(readClassificationForKey(key));
   state.visitBaseline=classificationState();
   renderAll();
 }
@@ -286,25 +308,17 @@ function advanceImageIndex(){
   if(state.files.length) state.index=(state.index+1)%state.files.length;
   else state.demoIndex=(state.demoIndex+1)%DEMOS.length;
 }
-function commitAndAdvance(){
-  // Commit the source record before changing image identity. Then load the
-  // destination record explicitly, so no Theme slot can leak across images.
-  const sourceKey=currentKey();
-  state.records[sourceKey]=classificationState();
-  persistRecords();
-
+function commitAndAdvance(sourceKey){
+  // Theme 1 is one transaction: persist the source image under the key that
+  // was active when selection began, then switch identity and load a fresh
+  // destination record. No working Theme state is carried across the boundary.
+  if(!writeClassificationForKey(sourceKey,classificationState())) return;
   advanceImageIndex();
   const destinationKey=currentKey();
-  const destinationRecord=state.records[destinationKey];
-  applyClassification(destinationRecord ? JSON.parse(JSON.stringify(destinationRecord)) : emptyClassification());
+  applyClassification(readClassificationForKey(destinationKey));
   state.visitBaseline=classificationState();
-
-  // Close after state has switched, then render from the destination record.
   if($("themeWorkspace")?.open) $("themeWorkspace").close();
   renderAll();
-  // Some mobile browsers repaint dialog descendants one task late. Re-render
-  // once after close without changing state.
-  window.setTimeout(()=>renderAll(),0);
 }
 function nextImage(){
   advanceImageIndex();
@@ -559,8 +573,10 @@ function renderWriteIns(){
   });
 }
 function selectTheme(themeInput){
+  const sourceKey=currentKey();
+  const sourceSlot=state.targetSlot;
   const theme=normalizeTheme(themeInput);
-  const target=state.targetSlot-1;
+  const target=sourceSlot-1;
   const duplicate=state.themes.some((t,i)=>i!==target && normalizeTheme(t)?.id===theme.id);
   if(duplicate){
     const message=`“${theme.label}” is already selected in another Theme field. Choose a different Theme or clear the duplicate first.`;
@@ -570,13 +586,15 @@ function selectTheme(themeInput){
   }
   pushHistory();
   state.themes[target]=theme;
-  saveCurrent();
-  if(state.targetSlot===1){
-    commitAndAdvance();
+  if(sourceSlot===1){
+    commitAndAdvance(sourceKey);
     return;
   }
+  if(!writeClassificationForKey(sourceKey,classificationState())) return;
   renderThemes();
   renderComparison();
+  const status=$("directorStatus");
+  if(status) status.textContent=`Theme ${sourceSlot} saved for ${sourceKey}.`;
 }
 
 function matrixAutoFitEntries(root=document){
@@ -1003,12 +1021,12 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2g intentionally starts with a clean classification namespace.
+  // v0.9.2h intentionally starts with a clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
-  const currentRecords=localStorage.getItem("genreactrix-v0.9.2g-records");
+  const currentRecords=localStorage.getItem("genreactrix-v0.9.2h-records");
   state.records=currentRecords?JSON.parse(currentRecords):{};
-  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2g-ai-runs")||"{}");
+  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2h-ai-runs")||"{}");
   state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
 }catch(error){ console.warn("Genreactrix storage migration skipped",error); }
 renderAll();

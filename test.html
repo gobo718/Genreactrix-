@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.2h</title>
+  <title>Genreactrix v0.9.2g</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.2h</span>
+        <span>v0.9.2g</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" title="Previous image">←</button>
@@ -266,5 +266,18 @@
   </dialog>
 
   <script src="app.js"></script>
+<script>
+window.addEventListener("load",()=>{
+  state.targetSlot=2;
+  selectTheme({id:"cell:P01|P02",label:"TEST",kind:"matrix"});
+  const afterSelect={key:currentKey(),themes:state.themes,records:JSON.parse(JSON.stringify(state.records)),stored:localStorage.getItem("genreactrix-v0.9.2g-records")};
+  nextImage();
+  const afterNext={key:currentKey(),themes:state.themes,records:JSON.parse(JSON.stringify(state.records))};
+  prevImage();
+  const afterBack={key:currentKey(),themes:state.themes,records:JSON.parse(JSON.stringify(state.records))};
+  document.body.innerHTML='<pre id="result"></pre>';
+  document.getElementById('result').textContent=JSON.stringify({afterSelect,afterNext,afterBack},null,2);
+});
+</script>
 </body>
 </html>
