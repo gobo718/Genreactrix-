@@ -1,4 +1,4 @@
-# Genreactrix v0.9.1 — Canonical Desktop Mode
+# Genreactrix v0.9.2 — Portrait Repair Pass 1
 
 Built on the verified v0.8.3 Tablet baseline. Desktop Mode preserves the Portrait, Landscape, and Tablet workflows while adding the Director's docked laboratory workspace.
 
@@ -36,3 +36,14 @@ Floating or detachable windows remain intentionally out of scope.
 - Restores the visible combination-reaction words inside every 13×13 matrix cell.
 - Keeps the emoji/symbol shorthand above each label.
 - Runs dynamic 15% AutoFit against the actual visible combination labels, not the symbol glyphs.
+
+
+## v0.9.2 Portrait Repair Pass 1
+
+- Stabilizes the Galaxy Z Fold6 cover-display Portrait layout without changing Landscape, Tablet, or Desktop rules.
+- Keeps essential header controls visible and hides Layout Lock in Portrait.
+- Stacks the image above the AI description and preserves full-image `contain` scaling.
+- Restores the visible reaction selector.
+- Replaces developer combination strings with canonical MASHPEDITION matrix labels.
+- Repairs Theme 1 commit-and-advance, Reset to Original, Clear Current, Undo, and Redo persistence.
+- Constrains theme chips and matrix content to prevent portrait overflow.

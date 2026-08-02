@@ -21,6 +21,30 @@ const BASE_THEMES = [
   "Royalty","Sports","Music","Transportation","Weather","Horror","Mystery"
 ];
 
+// Canonical secondary-theme vocabulary from the MASHPEDITION 13×13 matrix.
+// Rows and columns follow PRIMITIVES order; lookup is symmetric.
+const SECONDARY_THEME_LABELS = [
+  ["Adorable","Cherubic","Goofy","Pitiful","Kawaii","Heartwarming","Precocious","Spirited","Haunted","Grimy","Whimsical","Camp","Bizarre"],
+  [null,"Beautiful","Charming","Melancholic","Horny","Radiant","Elegant","Majestic","Ethereal","Grotesque","Sublime","Irreverent","Surreal"],
+  [null,null,"Funny","Ironic","Blue Humor","Jubilant","Witty","Wild","Macabre","Grossout","Absurd","Satirical","Bonkers"],
+  [null,null,null,"Tragic","Impotent","Bittersweet","Poignant","Devastating","Lonesome","Horrific","Liminal","Dark","Nightmarish"],
+  [null,null,null,null,"Zazzly","Hedonism","Kinky","Lust","Carnal","Lewd","Limerence","Risqué","FreakyDeaky"],
+  [null,null,null,null,null,"Celebration","Triumphant","Exhilarating","Spiritual","Indulgent","Wonder","Snarky","Delirious"],
+  [null,null,null,null,null,null,"Smart","Brilliant","Mysterious","Clinical","Visionary","Parodic","Madcap"],
+  [null,null,null,null,null,null,null,"Intense","Foreboding","Brutal","Epic","Outrageous","Chaotic"],
+  [null,null,null,null,null,null,null,null,"Eerie","Morbid","Spectral","Unhinged","Uncanny"],
+  [null,null,null,null,null,null,null,null,null,"Disgusting","Putrid","Tasteless","Mutant"],
+  [null,null,null,null,null,null,null,null,null,null,"Dreamy","Surreal","Psychedelic"],
+  [null,null,null,null,null,null,null,null,null,null,null,"Ticket to Hell","Absurdist"],
+  [null,null,null,null,null,null,null,null,null,null,null,null,"Weird"]
+];
+
+function secondaryThemeLabel(rowIndex,columnIndex){
+  const low=Math.min(rowIndex,columnIndex);
+  const high=Math.max(rowIndex,columnIndex);
+  return SECONDARY_THEME_LABELS[low]?.[high] || PRIMITIVES[rowIndex].name;
+}
+
 const DEMOS = [
   {
     src: svgData("MUTOSIS","🦄","🦥"),
@@ -68,8 +92,11 @@ const state = {
   history: [],
   future: [],
   writeIns: ["Horror","Dreamcore"],
-  objectUrls: []
+  objectUrls: [],
+  originals: {}
 };
+
+const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
 
 const $ = id => document.getElementById(id);
 const currentKey = () => state.files.length ? state.files[state.index].name : `demo-${state.demoIndex}`;
@@ -102,25 +129,38 @@ function pushHistory(){
   state.future=[];
   updateUndoRedo();
 }
-function restoreSnapshot(s){
+function restoreSnapshot(s,{persist=true}={}){
   state.selectedReactions=[...s.selectedReactions];
   state.themes=[...s.themes];
   state.flagged=!!s.flagged;
   state.writeIn=s.writeIn||"";
   state.retention=s.retention||"keep";
+  if(persist) saveCurrent();
   renderAll();
 }
 function saveCurrent(){
   state.records[currentKey()] = snapshot();
   localStorage.setItem("genreactrix-v0.8.0-records", JSON.stringify(state.records));
 }
-function loadCurrent(){
+function rememberOriginalCurrent(){
+  const key=currentKey();
+  if(!state.originals[key]) state.originals[key]=snapshot();
+}
+function resetEditHistory(){
+  state.history=[];
+  state.future=[];
+  updateUndoRedo();
+}
+function loadCurrent({resetHistory=true}={}){
   const rec=state.records[currentKey()];
   state.selectedReactions=rec ? [...rec.selectedReactions] : [];
   state.themes=rec ? [...rec.themes] : [null,null,null];
   state.flagged=rec ? !!rec.flagged : false;
   state.writeIn=rec ? (rec.writeIn||"") : "";
   state.retention=rec ? (rec.retention||"keep") : "keep";
+  state.targetSlot=1;
+  rememberOriginalCurrent();
+  if(resetHistory) resetEditHistory();
   renderAll();
 }
 function commitAndAdvance(){
@@ -308,7 +348,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
 
       columnIndexes.forEach(ci=>{
         const col=PRIMITIVES[ci];
-        const combo = ri===ci ? row.name : `${row.name} + ${col.name}`;
+        const combo = secondaryThemeLabel(ri,ci);
         const cell=document.createElement("button");
         cell.type="button";
         cell.className="matrix-intersection";
@@ -375,6 +415,7 @@ function selectTheme(theme){
   saveCurrent(); renderThemes(); renderComparison();
   if(state.targetSlot===1){
     if($("themeWorkspace").open) $("themeWorkspace").close();
+    $("directorStatus").textContent=`Theme 1 set to ${theme}. Committed; advancing.`;
     commitAndAdvance();
   }else{
     const message=`Theme ${state.targetSlot} set to ${theme}. Choose Theme 1 when ready to commit and advance.`;
@@ -621,8 +662,25 @@ $("tabletThemeSearch").addEventListener("keydown",e=>{
   if(existing) selectTheme(existing); else createTabletTheme();
 });
 $("tabletCreateThemeBtn").addEventListener("click",createTabletTheme);
-$("resetOriginalBtn").addEventListener("click",()=>{pushHistory(); state.selectedReactions=[]; state.themes=[null,null,null]; state.flagged=false; saveCurrent(); renderAll();});
-$("clearCurrentBtn").addEventListener("click",()=>{pushHistory(); state.selectedReactions=[]; state.themes=[null,null,null]; saveCurrent(); renderAll();});
+$("resetOriginalBtn").addEventListener("click",()=>{
+  const original=state.originals[currentKey()];
+  if(!original) return;
+  pushHistory();
+  restoreSnapshot(original);
+  $("directorStatus").textContent="Restored the original state for this image.";
+});
+$("clearCurrentBtn").addEventListener("click",()=>{
+  pushHistory();
+  state.selectedReactions=[];
+  state.themes=[null,null,null];
+  state.flagged=false;
+  state.writeIn="";
+  state.retention="keep";
+  state.targetSlot=1;
+  saveCurrent();
+  renderAll();
+  $("directorStatus").textContent="Cleared the current classification.";
+});
 
 $("folderInput").addEventListener("change",e=>{
   state.objectUrls.forEach(URL.revokeObjectURL);
@@ -632,7 +690,7 @@ $("folderInput").addEventListener("change",e=>{
   });
   // Randomize once, then resume in this random queue.
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
-  state.index=0; loadCurrent();
+  state.index=0; state.originals={}; loadCurrent();
 });
 
 
@@ -812,12 +870,11 @@ try{
   state.records=JSON.parse(localStorage.getItem("genreactrix-v0.8.0-records")||localStorage.getItem("genreactrix-v0.7.0-records")||"{}");
   state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
 }catch{}
-renderAll();
+loadCurrent();
 
 
 
 // v0.9.1 Desktop Mode: image zoom/pan, keyboard workflow, and matrix navigation.
-const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
 function applyImageTransform(){
   const image=$("mainImage");
   image.style.transform=`translate(${imageTransform.x}px, ${imageTransform.y}px) scale(${imageTransform.scale})`;
