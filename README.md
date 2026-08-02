@@ -1,24 +1,31 @@
-# Genreactrix v0.3.13 — Picture/Data State Controls
+# Genreactrix v0.9.0 — Canonical Desktop Mode
 
-Genreactrix is a local-first browser workspace for reviewing image folders, assigning reactions and genres, managing review queues, validating records, running guarded batch operations, and exporting annotation data.
+Built on the verified v0.8.3 Tablet baseline. Desktop Mode preserves the Portrait, Landscape, and Tablet workflows while adding the Director's docked laboratory workspace.
+
+## Implemented
+
+- One canonical docked desktop workspace.
+- Image, Director, AI, and full 13×13 Matrix remain visible.
+- Responsive fallback to Tablet, Landscape, and Portrait layouts.
+- Mouse-resizable console dividers.
+- Double-click divider auto-fit.
+- Layout Lock and Reset View.
+- Per-Director-account saved layouts using a namespaced storage adapter.
+- Workspace Profiles: Classification, Image Study, AI Review, and Matrix Analysis.
+- Mouse-wheel image zoom, drag-to-pan, and double-click reset.
+- Desktop keyboard workflow: Alt+1–4 profiles, N/Right next, P/Left previous, F flag, Escape closes dialogs.
+- Arrow-key navigation through the full matrix.
+- Vertical page scrolling rather than forced matrix compression.
+- Dynamic visible-label 15% AutoFit repair preserved.
 
 ## Run
 
-Open `index.html` directly in a modern browser. Folder access, annotations, taxonomy, automation rules, flag vocabulary, and recovery checkpoints remain local to that browser profile. For offline installation/service-worker caching, serve this folder over HTTP(S).
+Open `index.html` in a modern browser or serve this folder with any static server.
 
-## Current capabilities
+## Verification target
 
-- Folder-based image review with previous/next and unreviewed navigation.
-- Editable 13×13 reaction taxonomy with stable numeric reaction indexes.
-- Genres, confidence, favorites, review queue, duplicate warnings, undo, and reusable flags.
-- Separate picture/data actions:
-  - **Clear Picture** saves the current annotation when necessary, removes the picture from the active workspace, and preserves its data for reports.
-  - **Reset Data** keeps the picture loaded and clears its saved research data for a fresh pass.
-  - **Delete Picture + Data** removes the picture from the active workspace and removes its saved research data.
-- Flag reasons use an open vocabulary: typing a new reason and flagging the image adds that reason to future choices.
-- Search, relationship ranking, validation, conflict detection, and guarded batch operations.
-- JSON/CSV export, JSON import, and named/automatic recovery checkpoints.
+Desktop Mode activates at 1200×650 CSS pixels or larger. Smaller windows fall back responsively instead of crushing the consoles.
 
-## Data compatibility
+## Deferred
 
-The existing local-storage key is intentionally unchanged. Workspace schema version 3 adds `flags` and `flagReasons`; older saved workspaces normalize forward automatically.
+Floating or detachable windows remain intentionally out of scope.

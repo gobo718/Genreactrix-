@@ -1,3 +1,0 @@
-v0.3.0
-- Verified extraction.
-- Added execution verification marker.

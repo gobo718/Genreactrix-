@@ -1,9 +1,0 @@
-Genreactrix v0.2.2 — Validation & Conflict Detection
-
-- Added a Conflict Center integrated with workspace validation.
-- Detects same-filename records with divergent annotation state.
-- Detects identical duplicate-source names, low-confidence records missing from review, duplicate reaction indexes, and duplicate taxonomy labels within a category.
-- Added direct navigation to loaded conflicting records.
-- Added safe one-click repair for missing review routing and duplicate reaction indexes.
-- Conflict scans now run alongside full workspace validation.
-- Updated application identity, cache version, manifest, documentation, and release packaging.

@@ -2,150 +2,226 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Genreactrix v0.3.13</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#222222">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#17141e">
+  <title>Genreactrix v0.9.0</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
-  <div><h1>Genreactrix</h1><small>v0.3.13 · Clear, reset, delete & flags</small></div>
-  <div id="progress">No folder loaded</div>
-</header>
-<div id="progressHud" class="progress-hud"></div>
-<div id="progressBreakdown" class="progress-breakdown"></div>
-<div id="dashboard" class="dashboard" aria-live="polite"></div>
-<div id="saveStateIndicator" data-state="saved" aria-live="polite">Saved</div>
-<div class="mode-bar">
-  <button id="reviewMode" type="button" aria-pressed="false">Review Mode: Off</button>
-  <button id="skipCompleted" type="button" aria-pressed="false">Skip Completed: Off</button>
-  <label>Status <select id="statusFilter"><option value="all">All</option><option value="unreviewed">Unreviewed</option><option value="completed">Completed</option><option value="favorites">Favorites</option><option value="duplicates">Duplicates</option><option value="flagged">Flagged</option></select></label>
-  <span id="modeStatus">All images</span>
-</div>
-<main data-annotation-workspace>
-  <section id="viewer">
-    <input id="folder" type="file" webkitdirectory multiple accept="image/*">
-    <div class="jump-row"><input id="fileSearch" type="search" placeholder="Find filename"><button id="jumpFile" type="button">Jump</button></div>
-    <img id="image" hidden alt="Image being reviewed">
-    <div id="empty">Choose a folder of images.</div>
-    <div id="duplicateWarning" class="duplicate-warning" hidden></div>
-    <div class="navigation"><button id="previous" type="button" disabled>← Previous</button><button id="next" type="button" disabled>Next →</button></div>
-  </section>
-  <aside>
-    <div class="annotation-state"><strong id="selectionCount">0 reactions selected</strong><span id="draftState">Current annotation saved</span></div>
-    <label for="genres">Genres</label>
-    <input id="genres" autocomplete="off">
-    <label for="flagReason">Flag reason</label>
-    <div class="flag-row"><input id="flagReason" list="flagReasonOptions" autocomplete="off" placeholder="Type or choose a reason"><datalist id="flagReasonOptions"></datalist><button id="flag" type="button" aria-pressed="false">⚐ Flag</button></div>
-    <div id="reactions"></div>
-    <label class="confidence-label" for="confidence">Confidence <output id="confidenceValue">—</output></label>
-    <input id="confidence" type="range" min="0" max="100" step="5" value="50">
-    <div class="annotation-actions">
-      <button id="clear" type="button">Clear Selections</button>
-      <button id="clearImage" type="button">Clear Picture</button>
-      <button id="favorite" type="button" aria-pressed="false">☆ Favorite</button>
-      <button id="review" type="button" aria-pressed="false">Review</button>
-      <button id="saveDraft" type="button">Save Draft</button>
-      <button id="saveStay" type="button">Save</button>
-      <button id="resetAnnotation" type="button">Reset Data</button>
-      <button id="deleteAnnotation" type="button" class="danger">Delete Picture + Data</button>
-      <button id="save" type="button" class="primary">Save & Next</button>
-      <button id="nextUnreviewed" type="button">Next Unreviewed</button>
-      <button id="finishReview" type="button">Finish Review</button>
-      <button id="export" type="button">Export JSON</button>
-      <button id="exportCsv" type="button">Export CSV</button>
-      <label class="import-button">Import JSON<input id="import" type="file" accept="application/json,.json"></label>
-      <button id="resetWorkspace" type="button" class="danger">Reset Workspace</button>
+  <main id="app" class="app-shell">
+    <nav class="console nav-console" aria-label="Image navigation">
+      <div class="brand">
+        <strong>Genreactrix</strong>
+        <span>v0.9.0</span>
+      </div>
+      <div class="nav-actions">
+        <button id="prevBtn" title="Previous image">←</button>
+        <button id="nextBtn" title="Next image">→</button>
+        <button id="undoBtn" title="Undo">↶</button>
+        <button id="redoBtn" title="Redo">↷</button>
+        <button id="resetViewBtn" title="Reset canonical layout">Reset View</button>
+        <button id="lockDividerBtn" aria-pressed="false" title="Lock console layout">🔓 Layout</button>
+        <select id="workspaceProfileSelect" class="tablet-layout-control desktop-profile-control" aria-label="Workspace profile" title="Switch workspace profile">
+          <option value="classification">Classification</option>
+          <option value="image-study">Image Study</option>
+          <option value="ai-review">AI Review</option>
+          <option value="matrix-analysis">Matrix Analysis</option>
+        </select>
+        <select id="savedLayoutSelect" class="tablet-layout-control" aria-label="Saved layouts" title="Load a saved workspace layout">
+          <option value="">Saved Layouts</option>
+        </select>
+        <button id="saveLayoutBtn" class="tablet-layout-control" title="Save current workspace layout">Save Layout</button>
+        <label class="folder-button" title="Load image folder">
+          ＋ Images
+          <input id="folderInput" type="file" webkitdirectory multiple accept="image/*">
+        </label>
+      </div>
+      <div id="progressText" class="progress-text">Demo image 1 / 3</div>
+    </nav>
+
+    <section class="base-layout">
+      <section class="console image-console" aria-label="Image and AI description">
+        <div class="console-window-actions">
+          <button id="collapseImageBtn" title="Collapse supporting image information">−</button>
+          <button class="expand-button" data-open="imageWorkspace" title="Maximize image inspection">↗</button>
+        </div>
+        <div class="image-description-row">
+          <div id="imageViewport" class="image-viewport">
+            <img id="mainImage" alt="Current image">
+            <div id="imageEmpty" class="image-empty">Load a folder or use the demo images.</div>
+          </div>
+          <article class="ai-description">
+            <div class="console-label">AI freeform description</div>
+            <p id="aiDescription">A surreal illustrated mashup with strong fantasy cues, an expressive face, and an intentionally improbable combination of familiar forms.</p>
+            <button id="openAiBtn" class="ai-corner-button">AI</button>
+          </article>
+        </div>
+      </section>
+
+      <div id="consoleDivider" class="console-divider" role="separator" aria-orientation="vertical" aria-label="Resize Image and Director consoles" tabindex="0"></div>
+
+      <section class="console director-console" aria-label="Director classification">
+        <button class="expand-button" data-open="directorWorkspace" title="Expand Director console">↗</button>
+        <div class="console-label">Director</div>
+
+        <div class="reaction-bar" id="reactionBar" aria-label="Primitive reactions"></div>
+
+        <div class="theme-fields">
+          <button class="theme-field" data-slot="1">
+            <span>Theme 1</span><strong id="themeValue1">Choose theme</strong>
+          </button>
+          <button class="theme-field" data-slot="2">
+            <span>Theme 2</span><strong id="themeValue2">Optional</strong>
+          </button>
+          <button class="theme-field" data-slot="3">
+            <span>Theme 3</span><strong id="themeValue3">Optional</strong>
+          </button>
+        </div>
+
+        <div class="director-secondary-fields">
+          <label class="director-field">Write-in
+            <input id="directorWriteIn" type="text" autocomplete="off" placeholder="Optional classification note">
+          </label>
+          <label class="director-field">Retention
+            <select id="retentionControl">
+              <option value="keep">Keep</option>
+              <option value="review">Review</option>
+              <option value="discard">Discard</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="director-action-row">
+          <button id="directorFlagBtn" class="flag" aria-pressed="false">⚑ Flag</button>
+          <button id="directorNextBtn" class="primary-action">Next image →</button>
+        </div>
+
+        <div id="directorStatus" class="status-line" aria-live="polite">Tap reactions, then choose Theme 1 to commit and advance.</div>
+      </section>
+
+      <div id="aiConsoleDivider" class="console-divider tablet-divider" role="separator" aria-orientation="vertical" aria-label="Resize Director and AI consoles" tabindex="0"></div>
+
+      <section class="console tablet-ai-console" aria-label="AI Console">
+        <div class="console-label">AI Console</div>
+        <section>
+          <h3>Primitive suggestions</h3>
+          <div id="tabletAiPrimitives" class="ai-list"></div>
+        </section>
+        <section>
+          <h3>Theme suggestions</h3>
+          <div id="tabletAiThemes" class="ai-list"></div>
+        </section>
+        <p class="read-only-note">AI output is read-only. Suggestions may be used as the current target selection without changing the AI record.</p>
+      </section>
+    </section>
+
+    <section class="console tablet-matrix-console" aria-label="13 by 13 Theme Matrix" data-workspace-module="matrix">
+      <header class="tablet-matrix-header">
+        <div>
+          <div class="console-label">13×13 Theme Matrix</div>
+          <strong>Choose a target and classify from the full matrix.</strong>
+        </div>
+        <div class="slot-buttons tablet-slot-buttons">
+          <button class="slot-button" data-tablet-target-slot="1">Theme 1</button>
+          <button class="slot-button" data-tablet-target-slot="2">Theme 2</button>
+          <button class="slot-button" data-tablet-target-slot="3">Theme 3</button>
+        </div>
+      </header>
+      <div class="theme-search-row tablet-theme-search-row">
+        <label for="tabletThemeSearch">Search or write in a Theme</label>
+        <input id="tabletThemeSearch" type="search" autocomplete="off" placeholder="Start typing…">
+        <button id="tabletCreateThemeBtn" class="create-theme" hidden></button>
+      </div>
+      <div id="tabletThemeMatrix" class="theme-matrix tablet-theme-matrix" aria-label="Full Theme matrix"></div>
+      <div id="tabletThemeError" class="error-message" aria-live="assertive"></div>
+    </section>
+  </main>
+
+  <dialog id="themeWorkspace" class="workspace theme-workspace">
+    <div class="workspace-shell">
+      <header class="theme-header">
+        <button class="back-button" data-close="themeWorkspace">← Back</button>
+        <div class="slot-buttons">
+          <button class="slot-button" data-target-slot="1">Theme 1</button>
+          <button class="slot-button" data-target-slot="2">Theme 2</button>
+          <button class="slot-button" data-target-slot="3">Theme 3</button>
+        </div>
+      </header>
+
+      <div class="theme-search-row">
+        <label for="themeSearch">Search or write in a Theme</label>
+        <input id="themeSearch" type="search" autocomplete="off" placeholder="Start typing…">
+        <div id="searchHint" class="search-hint">Select an existing result, or explicitly create a new Theme.</div>
+      </div>
+
+      <div id="themeMatrix" class="theme-matrix" aria-label="Theme matrix"></div>
+
+      <section class="writein-section">
+        <div class="writein-heading">Established write-ins</div>
+        <div id="writeinList" class="writein-list"></div>
+        <button id="createThemeBtn" class="create-theme" hidden></button>
+      </section>
+
+      <div id="themeError" class="error-message" aria-live="assertive"></div>
     </div>
+  </dialog>
 
-    <details id="searchWorkspace" class="search-workspace" open>
-      <summary>Search & Relationships</summary>
-      <div class="search-controls">
-        <input id="workspaceSearch" type="search" placeholder="Search filename, genre, category, or reaction">
-        <label>Scope <select id="searchScope"><option value="all">Everything</option><option value="filename">Filename</option><option value="genres">Genres</option><option value="reactions">Reactions</option><option value="flags">Flags</option></select></label>
-        <label>Minimum confidence <input id="searchConfidence" type="number" min="0" max="100" step="5" value="0"></label>
-        <label class="check-filter"><input id="searchFavorites" type="checkbox"> Favorites only</label>
-        <label class="check-filter"><input id="searchReview" type="checkbox"> Review queue only</label>
-        <button id="clearWorkspaceSearch" type="button">Clear Search</button>
+  <dialog id="aiWorkspace" class="workspace">
+    <div class="workspace-shell">
+      <header class="workspace-header">
+        <button class="back-button" data-close="aiWorkspace">← Back</button>
+        <h2>AI Console</h2>
+      </header>
+      <div class="ai-grid">
+        <section>
+          <h3>Primitive suggestions</h3>
+          <div id="aiPrimitives" class="ai-list"></div>
+        </section>
+        <section>
+          <h3>Theme suggestions</h3>
+          <div id="aiThemes" class="ai-list"></div>
+        </section>
       </div>
-      <div id="searchSummary" class="search-summary">No search applied.</div>
-      <div id="searchResults" class="search-results" aria-live="polite"></div>
-      <section class="relationship-panel">
-        <div>
-          <h3>Related annotations</h3>
-          <p>Ranked by shared reactions and genre terms.</p>
-          <div id="relatedResults" class="related-results"></div>
-        </div>
-        <div>
-          <h3>Strongest relationships</h3>
-          <p>Most frequent reaction pairs in saved annotations.</p>
-          <div id="relationshipInsights" class="relationship-insights"></div>
-        </div>
-      </section>
-    </details>
+      <p class="read-only-note">AI output is read-only. Tapping a suggestion uses it as your current target selection without changing the AI record.</p>
+    </div>
+  </dialog>
 
-    <details id="automationPanel" class="automation-panel" open>
-      <summary>Workflow Automation & Validation</summary>
-      <div class="automation-grid">
-        <label class="check-filter"><input id="requireReaction" type="checkbox"> Require at least one reaction before saving</label>
-        <label class="check-filter"><input id="requireGenre" type="checkbox"> Require a genre before saving</label>
-        <label>Auto-review below confidence <input id="autoReviewThreshold" type="number" min="0" max="100" step="5" value="60"></label>
-        <label class="check-filter"><input id="autoNextUnreviewed" type="checkbox" checked> Save & Next goes to next unreviewed image</label>
+  <dialog id="imageWorkspace" class="workspace">
+    <div class="workspace-shell">
+      <header class="workspace-header">
+        <button class="back-button" data-close="imageWorkspace">← Back</button>
+        <h2>Image Inspection</h2>
+      </header>
+      <div class="inspection-top">
+        <div class="inspection-image"><img id="inspectionImage" alt="Image under inspection"></div>
+        <article class="inspection-description">
+          <h3>AI freeform description</h3>
+          <p id="inspectionDescription"></p>
+        </article>
       </div>
-      <div class="automation-actions">
-        <button id="saveAutomation" type="button">Save Rules</button>
-        <button id="runValidation" type="button">Run Validation</button>
-        <button id="repairWorkspace" type="button">Repair Safe Issues</button>
-      </div>
-      <div id="automationStatus" class="automation-status" role="status"></div>
-      <div id="validationSummary" class="validation-summary">Validation has not been run.</div>
-      <div id="validationResults" class="validation-results" aria-live="polite"></div>
-      <section class="conflict-center">
-        <div class="conflict-heading"><div><h3>Conflict Center</h3><p id="conflictSummary">Conflict scan has not been run.</p></div><button id="runConflictScan" type="button">Scan Conflicts</button></div>
-        <div id="conflictResults" class="conflict-results" aria-live="polite"></div>
-      </section>
-    </details>
+      <div class="comparison-table" id="comparisonTable"></div>
+    </div>
+  </dialog>
 
-    <details id="batchPanel" class="batch-panel" open>
-      <summary>Batch Operations & Review Queue</summary>
-      <div class="batch-grid">
-        <label>Target set <select id="batchScope"><option value="search">Current search results</option><option value="loaded">All loaded images</option><option value="unreviewed">Unreviewed images</option><option value="review">Review queue</option><option value="favorites">Favorites</option></select></label>
-        <label>Operation <select id="batchOperation"><option value="add-review">Add to review queue</option><option value="remove-review">Remove from review queue</option><option value="favorite">Mark favorite</option><option value="unfavorite">Remove favorite</option><option value="confidence">Set confidence</option><option value="add-genre">Add genre</option><option value="remove-genre">Remove genre</option></select></label>
-        <label id="batchValueWrap">Value <input id="batchValue" type="text" placeholder="Genre or confidence 0–100"></label>
+  <dialog id="directorWorkspace" class="workspace">
+    <div class="workspace-shell">
+      <header class="workspace-header">
+        <button class="back-button" data-close="directorWorkspace">← Back</button>
+        <h2>Director Console</h2>
+      </header>
+      <div id="directorReactionGrid" class="director-reaction-grid"></div>
+      <div class="director-expanded-themes">
+        <button class="theme-field" data-slot="1"><span>Theme 1</span><strong id="expandedTheme1">Choose theme</strong></button>
+        <button class="theme-field" data-slot="2"><span>Theme 2</span><strong id="expandedTheme2">Optional</strong></button>
+        <button class="theme-field" data-slot="3"><span>Theme 3</span><strong id="expandedTheme3">Optional</strong></button>
       </div>
-      <div class="batch-actions"><button id="previewBatch" type="button">Preview Batch</button><button id="applyBatch" type="button" class="primary" disabled>Apply Batch</button><button id="undoBatch" type="button" disabled>Undo Last Batch</button></div>
-      <div id="batchStatus" class="batch-status">Choose a target set and preview the operation.</div>
-      <div id="batchPreview" class="batch-preview" aria-live="polite"></div>
-      <section class="queue-manager">
-        <div class="queue-heading"><div><h3>Review Queue</h3><p id="queueSummary">No queued records.</p></div><label>Sort <select id="queueSort"><option value="confidence">Lowest confidence</option><option value="filename">Filename</option><option value="recent">Recently queued</option></select></label></div>
-        <div id="queueResults" class="queue-results" aria-live="polite"></div>
-      </section>
-    </details>
-
-    <details id="recoveryPanel" class="recovery-panel" open>
-      <summary>Recovery & History</summary>
-      <p>Create named restore points before risky work. Genreactrix also captures automatic checkpoints before imports, resets, repairs, and batch changes.</p>
-      <div class="recovery-actions">
-        <input id="checkpointLabel" type="text" maxlength="80" placeholder="Checkpoint label (optional)">
-        <button id="createCheckpoint" type="button" class="primary">Create Checkpoint</button>
-        <button id="downloadCheckpoint" type="button">Download Latest</button>
-        <button id="clearCheckpoints" type="button" class="danger">Clear History</button>
+      <div class="director-tools">
+        <button id="resetOriginalBtn">Reset to Original</button>
+        <button id="clearCurrentBtn">Clear Current</button>
       </div>
-      <div id="recoveryStatus" class="recovery-status" role="status">No checkpoints created yet.</div>
-      <div id="checkpointList" class="checkpoint-list" aria-live="polite"></div>
-    </details>
+    </div>
+  </dialog>
 
-    <details id="taxonomyEditor" class="taxonomy-editor">
-      <summary>Taxonomy Editor</summary>
-      <p>Rename the 13 categories and their reaction terms. Saved annotations retain their numeric reaction indexes.</p>
-      <div id="taxonomyFields"></div>
-      <div class="taxonomy-actions"><button id="saveTaxonomy" type="button">Save Taxonomy</button><button id="resetTaxonomy" type="button">Restore Defaults</button></div>
-      <div id="taxonomyStatus" role="status"></div>
-    </details>
-    <div id="shortcutPanel"><button id="toggleShortcuts" type="button">Keyboard Help</button><div id="shortcutHelp" hidden>←/→ Navigate · ↑/↓ Categories · 1–9 Select · Enter Save & Next · Ctrl/Cmd+S Save · Shift+Enter Finish Review · Esc Clear · F Favorite · R Review · F2 Review Mode · Ctrl/Cmd+Z Undo</div></div>
-  </aside>
-</main>
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

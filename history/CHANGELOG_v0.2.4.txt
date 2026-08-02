@@ -1,4 +1,0 @@
-Genreactrix v0.2.4
-
-- Verified continuation from v0.2.3 baseline.
-- Documentation version update.

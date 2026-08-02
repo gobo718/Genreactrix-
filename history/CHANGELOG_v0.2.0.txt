@@ -1,9 +1,0 @@
-Genreactrix v0.2.0 — Workflow Automation & Validation
-
-- Added configurable save requirements for reactions and genres.
-- Added automatic review-queue routing based on confidence threshold.
-- Added optional Save & Next routing to the next unreviewed image.
-- Added full workspace validation for malformed annotations, invalid reaction indexes, confidence errors, duplicate flags, and orphan metadata.
-- Added one-click safe repairs with post-repair revalidation.
-- Added issue navigation back to loaded source images.
-- Updated application identity, cache version, documentation, and release packaging.
