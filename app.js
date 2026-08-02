@@ -1,18 +1,23 @@
 const PRIMITIVES = [
-  {name:"Celebration",symbol:"🎉"},
-  {name:"Smart",symbol:"🧠"},
-  {name:"Eerie",symbol:"👻"},
-  {name:"Disgusting",symbol:"🤢"},
-  {name:"Zazzly",symbol:"🌶️"},
-  {name:"Dreamy",symbol:"🌌"},
-  {name:"Hell",symbol:"🎟️"},
-  {name:"Funny",symbol:"🤣"},
-  {name:"Adorable",symbol:"🧸"},
-  {name:"Weird",symbol:"🌀"},
-  {name:"Intense",symbol:"💥"},
-  {name:"Beautiful",symbol:"✨"},
-  {name:"Tragic",symbol:"😭"}
+  {id:"P01",name:"Beautiful",symbol:"✨"},
+  {id:"P02",name:"Adorable",symbol:"🧸"},
+  {id:"P03",name:"Tragic",symbol:"😭"},
+  {id:"P04",name:"Funny",symbol:"🤣"},
+  {id:"P05",name:"Intense",symbol:"💥"},
+  {id:"P06",name:"Weird",symbol:"🌀"},
+  {id:"P07",name:"Hell",symbol:"🎟️"},
+  {id:"P08",name:"Dreamy",symbol:"🌌"},
+  {id:"P09",name:"Zazzly",symbol:"🌶️"},
+  {id:"P10",name:"Disgusting",symbol:"🤢"},
+  {id:"P11",name:"Eerie",symbol:"👻"},
+  {id:"P12",name:"Smart",symbol:"🧠"},
+  {id:"P13",name:"Celebration",symbol:"🎉"}
 ];
+const PRIMITIVE_BY_ID = Object.fromEntries(PRIMITIVES.map(p=>[p.id,p]));
+const PRIMITIVE_BY_NAME = Object.fromEntries(PRIMITIVES.map(p=>[p.name,p]));
+const primitivePairId=(a,b)=>[a,b].sort().join("|");
+const matrixCellId=(a,b)=>`CELL:${primitivePairId(a,b)}`;
+
 
 
 const CANONICAL_MATRIX_LABELS = {
@@ -126,19 +131,19 @@ const DEMOS = [
     src: svgData("MUTOSIS","🦄","🦥"),
     description:"A dreamy creature mashup combining a unicorn with a sloth. The composition is whimsical, gentle, and intentionally improbable.",
     aiThemes:[["Fantasy",96],["Cute",82],["Nature",59]],
-    aiPrimitives:[["Wonder",94],["Beauty",79],["Comfort",61]]
+    aiWeights:{P01:79,P02:72,P03:4,P04:18,P05:12,P06:42,P07:0,P08:88,P09:5,P10:0,P11:8,P12:34,P13:21}
   },
   {
     src: svgData("MUTOSIS","🐙","🫖"),
     description:"An octopus–teapot hybrid with domestic and aquatic visual cues. The humor comes from treating an object as a living creature.",
     aiThemes:[["Aquatic",93],["Comedy",77],["Domestic",65]],
-    aiPrimitives:[["Humor",91],["Surreal",85],["Curiosity",72]]
+    aiWeights:{P01:18,P02:12,P03:2,P04:91,P05:20,P06:85,P07:4,P08:27,P09:9,P10:5,P11:15,P12:72,P13:33}
   },
   {
     src: svgData("MUTOSIS","🐈","🌙"),
     description:"A cat merged with a crescent moon. The image reads as nocturnal fantasy with celestial and magical themes.",
     aiThemes:[["Celestial",94],["Magic",89],["Fantasy",86]],
-    aiPrimitives:[["Beauty",88],["Awe",76],["Comfort",64]]
+    aiWeights:{P01:88,P02:64,P03:3,P04:9,P05:17,P06:39,P07:0,P08:92,P09:4,P10:0,P11:31,P12:44,P13:16}
   }
 ];
 
@@ -168,7 +173,9 @@ const state = {
   history: [],
   future: [],
   writeIns: ["Horror","Dreamcore"],
-  objectUrls: []
+  objectUrls: [],
+  visitBaseline: null,
+  aiRuns: {}
 };
 
 const $ = id => document.getElementById(id);
@@ -183,17 +190,56 @@ function currentDescription(){
     ? "AI freeform description placeholder for this locally loaded image. Structured AI data can be connected later without changing the console modules."
     : currentDemo().description;
 }
-function currentAiThemes(){ return state.files.length ? [["Fantasy",91],["Nature",66],["Surreal",43]] : currentDemo().aiThemes; }
-function currentAiPrimitives(){ return state.files.length ? [["Wonder",86],["Curiosity",72],["Surreal",58]] : currentDemo().aiPrimitives; }
+function defaultAiRun(){
+  if(state.files.length){
+    return {
+      id:`${currentKey()}-placeholder`,
+      createdAt:new Date().toISOString(),
+      model:"unconnected-placeholder",
+      interpretationSystemVersion:"IS-1",
+      weights:Object.fromEntries(PRIMITIVES.map(p=>[p.id,0])),
+      themes:[],
+      description:currentDescription()
+    };
+  }
+  const demo=currentDemo();
+  return {
+    id:`demo-${state.demoIndex}-base`,
+    createdAt:new Date().toISOString(),
+    model:"demo-static",
+    interpretationSystemVersion:"IS-1",
+    weights:{...demo.aiWeights},
+    themes:demo.aiThemes.map(([label,weight])=>({id:`theme:${label.toLowerCase()}`,label,weight})),
+    description:demo.description
+  };
+}
+function currentAiRuns(){
+  const key=currentKey();
+  if(!state.aiRuns[key]?.length) state.aiRuns[key]=[defaultAiRun()];
+  return state.aiRuns[key];
+}
+function currentAiRun(){ return currentAiRuns().at(-1); }
+function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
+function currentAiWeights(){ return currentAiRun().weights || {}; }
 
+function classificationState(){
+  return {
+    selectedReactions:[...state.selectedReactions],
+    themes:JSON.parse(JSON.stringify(state.themes)),
+    flagged:!!state.flagged,
+    writeIn:state.writeIn||"",
+    retention:state.retention||"keep"
+  };
+}
 function snapshot(){
   return JSON.parse(JSON.stringify({
-    key: currentKey(),
-    selectedReactions: state.selectedReactions,
-    themes: state.themes,
-    flagged: state.flagged,
-    writeIn: state.writeIn,
-    retention: state.retention
+    sourceType:state.files.length?"files":"demo",
+    demoIndex:state.demoIndex,
+    index:state.index,
+    key:currentKey(),
+    working:classificationState(),
+    records:state.records,
+    aiRuns:state.aiRuns
   }));
 }
 function pushHistory(){
@@ -202,48 +248,55 @@ function pushHistory(){
   state.future=[];
   updateUndoRedo();
 }
+function applyClassification(data){
+  state.selectedReactions=[...(data?.selectedReactions||[])];
+  state.themes=normalizeThemes(data?.themes||[null,null,null]);
+  state.flagged=!!data?.flagged;
+  state.writeIn=data?.writeIn||"";
+  state.retention=data?.retention||"keep";
+}
+function persistRecords(){
+  localStorage.setItem("genreactrix-v0.9.2d-records",JSON.stringify(state.records));
+  localStorage.setItem("genreactrix-v0.9.2d-ai-runs",JSON.stringify(state.aiRuns));
+}
 function restoreSnapshot(s){
-  state.selectedReactions=[...s.selectedReactions];
-  state.themes=[...s.themes];
-  state.flagged=!!s.flagged;
-  state.writeIn=s.writeIn||"";
-  state.retention=s.retention||"keep";
+  state.records=JSON.parse(JSON.stringify(s.records||{}));
+  state.aiRuns=JSON.parse(JSON.stringify(s.aiRuns||{}));
+  state.demoIndex=s.demoIndex||0;
+  state.index=s.index||0;
+  applyClassification(s.working||state.records[s.key]);
+  persistRecords();
+  state.visitBaseline=classificationState();
   renderAll();
 }
 function saveCurrent(){
-  state.records[currentKey()] = snapshot();
-  localStorage.setItem("genreactrix-v0.8.0-records", JSON.stringify(state.records));
+  state.records[currentKey()] = classificationState();
+  persistRecords();
 }
 function loadCurrent(){
   const rec=state.records[currentKey()];
-  state.selectedReactions=rec ? [...rec.selectedReactions] : [];
-  state.themes=rec ? [...rec.themes] : [null,null,null];
-  state.flagged=rec ? !!rec.flagged : false;
-  state.writeIn=rec ? (rec.writeIn||"") : "";
-  state.retention=rec ? (rec.retention||"keep") : "keep";
+  applyClassification(rec||{});
+  state.visitBaseline=classificationState();
   renderAll();
 }
-function commitAndAdvance(){
-  saveCurrent();
-  nextImage();
-}
+function commitAndAdvance(){ saveCurrent(); nextImage(); }
 function nextImage(){
-  if(state.files.length){
-    state.index=(state.index+1)%state.files.length;
-  }else{
-    state.demoIndex=(state.demoIndex+1)%DEMOS.length;
-  }
+  if(state.files.length) state.index=(state.index+1)%state.files.length;
+  else state.demoIndex=(state.demoIndex+1)%DEMOS.length;
   loadCurrent();
 }
 function prevImage(){
-  if(state.files.length){
-    state.index=(state.index-1+state.files.length)%state.files.length;
-  }else{
-    state.demoIndex=(state.demoIndex-1+DEMOS.length)%DEMOS.length;
-  }
+  if(state.files.length) state.index=(state.index-1+state.files.length)%state.files.length;
+  else state.demoIndex=(state.demoIndex-1+DEMOS.length)%DEMOS.length;
   loadCurrent();
 }
-
+function normalizeTheme(value){
+  if(!value) return null;
+  if(typeof value==="object" && value.id) return value;
+  return {id:`legacy:${String(value).toLowerCase()}`,label:String(value),kind:"legacy"};
+}
+function normalizeThemes(values){ return [0,1,2].map(i=>normalizeTheme(values?.[i])); }
+function themeLabel(theme){ return normalizeTheme(theme)?.label || "—"; }
 function renderReactions(){
   const bar=$("reactionBar");
   const expanded=$("directorReactionGrid");
@@ -271,7 +324,7 @@ function renderReactions(){
 }
 function renderThemes(){
   for(let i=0;i<3;i++){
-    const value=state.themes[i] || "—";
+    const value=themeLabel(state.themes[i]);
     $(`themeValue${i+1}`).textContent=value;
     $(`expandedTheme${i+1}`).textContent=value;
     const summary=$(`themeSummary${i+1}`);
@@ -285,7 +338,7 @@ function renderImage(){
   if(typeof resetImageTransform==="function") resetImageTransform();
   $("imageEmpty").hidden=true;
   $("inspectionImage").src=src;
-  const description=currentDescription();
+  const description=currentAiRun().description || currentDescription();
   $("aiDescription").textContent=description;
   $("inspectionDescription").textContent=description;
   const total=state.files.length || DEMOS.length;
@@ -305,45 +358,44 @@ function renderDirectorFields(){
   $("directorWriteIn").value=state.writeIn;
   $("retentionControl").value=state.retention;
 }
-function renderAi(){
-  const targets=[
-    [$("aiPrimitives"),$("aiThemes")],
-    [$("tabletAiPrimitives"),$("tabletAiThemes")]
-  ];
-  targets.forEach(([prim,themes])=>{
-    if(!prim || !themes) return;
-    prim.innerHTML=""; themes.innerHTML="";
-    currentAiPrimitives().forEach(([label,confidence])=>prim.appendChild(aiSuggestion(label,confidence,false)));
-    currentAiThemes().forEach(([label,confidence])=>themes.appendChild(aiSuggestion(label,confidence,true)));
+function renderPrimitiveWeights(target, {showDirector=false}={}){
+  if(!target) return;
+  target.innerHTML="";
+  target.className="primitive-weight-grid";
+  const weights=currentAiWeights();
+  PRIMITIVES.forEach((p,index)=>{
+    const item=document.createElement("div");
+    item.className="primitive-weight-item"+(showDirector && state.selectedReactions.includes(index)?" director-selected":"");
+    item.innerHTML=`<span class="primitive-weight-symbol" title="${p.name}">${p.symbol}</span><small>${weights[p.id]>0?`${Math.round(weights[p.id])}%`:"-%"}</small>`;
+    target.appendChild(item);
   });
 }
-function aiSuggestion(label,confidence,isTheme){
+function renderAi(){
+  renderPrimitiveWeights($("homeAiPrimitives"));
+  renderPrimitiveWeights($("aiPrimitives"));
+  renderPrimitiveWeights($("tabletAiPrimitives"));
+  const themeTargets=[$("aiThemes"),$("tabletAiThemes")];
+  themeTargets.forEach(themes=>{
+    if(!themes) return;
+    themes.innerHTML="";
+    currentAiThemes().forEach(([label,weight])=>themes.appendChild(aiThemeSuggestion(label,weight)));
+  });
+}
+function aiThemeSuggestion(label,weight){
   const b=document.createElement("button");
   b.className="ai-suggestion";
-  b.innerHTML=`<span>${label}</span><strong>${confidence}%</strong>`;
-  if(isTheme) b.addEventListener("click",()=>selectTheme(label));
+  b.innerHTML=`<span>${label}</span><strong>${weight}%</strong>`;
+  b.addEventListener("click",()=>selectTheme({id:`theme:${label.toLowerCase()}`,label,kind:"established"}));
   return b;
 }
 function renderComparison(){
-  const directorReactionIndexes=[...state.selectedReactions];
-  const directorReactionHtml=directorReactionIndexes.length
-    ? directorReactionIndexes.map(i=>`<span class="comparison-reaction" title="${PRIMITIVES[i].name}">${PRIMITIVES[i].symbol}</span>`).join("")
-    : "—";
-  const directorThemes=state.themes.filter(Boolean);
-  const aiReactions=currentAiPrimitives();
+  renderPrimitiveWeights($("inspectionPrimitiveComparison"),{showDirector:true});
+  const directorThemes=state.themes.filter(Boolean).map(themeLabel);
   const aiThemes=currentAiThemes();
-
-  $("inspectionDirectorReactions").innerHTML=directorReactionHtml;
-  $("inspectionDirectorThemes").textContent=directorThemes.length ? directorThemes.join(", ") : "—";
-  $("inspectionAiReactions").textContent=aiReactions.length
-    ? aiReactions.map(([label,confidence])=>`${label} ${confidence}%`).join(", ")
-    : "—";
-  $("inspectionAiThemes").textContent=aiThemes.length
-    ? aiThemes.map(([label,confidence])=>`${label} ${confidence}%`).join(", ")
-    : "—";
-
+  $("inspectionDirectorThemes").textContent=directorThemes.length?directorThemes.join(", "):"—";
+  $("inspectionAiThemes").textContent=aiThemes.length?aiThemes.map(([label,weight])=>`${label} ${weight}%`).join(", "):"—";
   $("profileRetention").textContent=state.retention;
-  $("profileFlagged").textContent=state.flagged ? "Yes" : "No";
+  $("profileFlagged").textContent=state.flagged?"Yes":"No";
 }
 function renderAll(){
   renderImage(); renderReactions(); renderThemes(); renderFlag(); renderDirectorFields(); renderAi(); renderComparison(); updateUndoRedo();
@@ -413,7 +465,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
       head.type="button";
       head.innerHTML=`<span>${col.symbol}</span><small>${col.name}</small>`;
       head.title=`Select ${col.name}`;
-      head.addEventListener("click",()=>selectTheme(col.name));
+      head.addEventListener("click",()=>selectTheme({id:`primitive:${col.id}`,label:col.name,kind:"primitive",primitiveId:col.id}));
       grid.appendChild(head);
     });
 
@@ -423,7 +475,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
       rowHead.type="button";
       rowHead.innerHTML=`<span>${row.symbol}</span><small>${row.name}</small>`;
       rowHead.title=`Select ${row.name}`;
-      rowHead.addEventListener("click",()=>selectTheme(row.name));
+      rowHead.addEventListener("click",()=>selectTheme({id:`primitive:${row.id}`,label:row.name,kind:"primitive",primitiveId:row.id}));
       grid.appendChild(rowHead);
 
       columnIndexes.forEach(ci=>{
@@ -438,7 +490,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
         cell.title=combo;
         const visible=!q || combo.toLowerCase().includes(q);
         cell.hidden=!visible;
-        cell.addEventListener("click",()=>selectTheme(combo));
+        cell.addEventListener("click",()=>selectTheme({id:matrixCellId(row.id,col.id),label:combo,kind:"matrix",primitiveIds:[row.id,col.id].sort()}));
         grid.appendChild(cell);
       });
     });
@@ -465,7 +517,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
       const b=document.createElement("button");
       b.type="button";
       b.textContent=t;
-      b.addEventListener("click",()=>selectTheme(t));
+      b.addEventListener("click",()=>selectTheme({id:`theme:${t.toLowerCase()}`,label:t,kind:"established"}));
       wrap.appendChild(b);
     });
     quick.appendChild(wrap);
@@ -478,14 +530,15 @@ function renderWriteIns(){
   const list=$("writeinList"); list.innerHTML="";
   state.writeIns.forEach(t=>{
     const b=document.createElement("button"); b.textContent=t;
-    b.addEventListener("click",()=>selectTheme(t)); list.appendChild(b);
+    b.addEventListener("click",()=>selectTheme({id:`writein:${t.toLowerCase()}`,label:t,kind:"writein"})); list.appendChild(b);
   });
 }
-function selectTheme(theme){
+function selectTheme(themeInput){
+  const theme=normalizeTheme(themeInput);
   const target=state.targetSlot-1;
-  const duplicate=state.themes.some((t,i)=>i!==target && t===theme);
+  const duplicate=state.themes.some((t,i)=>i!==target && normalizeTheme(t)?.id===theme.id);
   if(duplicate){
-    const message=`“${theme}” is already selected in another Theme field. Choose a different Theme or clear the duplicate first.`;
+    const message=`“${theme.label}” is already selected in another Theme field. Choose a different Theme or clear the duplicate first.`;
     $("themeError").textContent=message;
     $("tabletThemeError").textContent=message;
     return;
@@ -496,19 +549,8 @@ function selectTheme(theme){
   if(state.targetSlot===1){
     if($("themeWorkspace").open) $("themeWorkspace").close();
     commitAndAdvance();
-  }else{
-    const message=`Theme ${state.targetSlot} set to ${theme}. Choose Theme 1 when ready to commit and advance.`;
-    $("themeError").textContent=message;
-    $("tabletThemeError").textContent=message;
   }
 }
-
-
-const MATRIX_LABEL_FIT = {
-  preferredPx: 9,
-  stepPx: 0.25,
-  allowedShrinkRatio: 0.15
-};
 
 function matrixAutoFitEntries(root=document){
   return [...root.querySelectorAll(".matrix-axis-header, .matrix-intersection")]
@@ -660,6 +702,8 @@ function redo(){
 function updateUndoRedo(){
   $("undoBtn").disabled=!state.history.length;
   $("redoBtn").disabled=!state.future.length;
+  if($("directorUndoBtn")) $("directorUndoBtn").disabled=!state.history.length;
+  if($("directorRedoBtn")) $("directorRedoBtn").disabled=!state.future.length;
 }
 
 document.addEventListener("click",e=>{
@@ -718,8 +762,34 @@ $("tabletThemeSearch").addEventListener("keydown",e=>{
   if(existing) selectTheme(existing); else createTabletTheme();
 });
 $("tabletCreateThemeBtn").addEventListener("click",createTabletTheme);
-$("resetOriginalBtn").addEventListener("click",()=>{pushHistory(); state.selectedReactions=[]; state.themes=[null,null,null]; state.flagged=false; saveCurrent(); renderAll();});
-$("clearCurrentBtn").addEventListener("click",()=>{pushHistory(); state.selectedReactions=[]; state.themes=[null,null,null]; saveCurrent(); renderAll();});
+$("resetOriginalBtn").addEventListener("click",()=>{
+  if(!confirm("Discard all classification changes made since you entered this image?")) return;
+  pushHistory();
+  const keepFlag=state.flagged;
+  const keepRetention=state.retention;
+  applyClassification(state.visitBaseline||{});
+  state.flagged=keepFlag;
+  state.retention=keepRetention;
+  saveCurrent(); renderAll();
+});
+$("clearCurrentBtn").addEventListener("click",()=>{
+  if(!confirm("Clear all classification data for this image? AI analysis and the flag will be kept.")) return;
+  if(!confirm("This will blank reactions, Theme 1/2/3, and classification write-in data. Continue?")) return;
+  pushHistory();
+  state.selectedReactions=[];
+  state.themes=[null,null,null];
+  state.writeIn="";
+  saveCurrent(); renderAll();
+});
+$("directorUndoBtn").addEventListener("click",undo);
+$("directorRedoBtn").addEventListener("click",redo);
+$("rerunAiBtn").addEventListener("click",()=>{
+  if(!confirm("Rerun AI analysis for this image? The existing AI run will be kept in history.")) return;
+  const previous=currentAiRun();
+  const next={...JSON.parse(JSON.stringify(previous)),id:`${currentKey()}-${Date.now()}`,createdAt:new Date().toISOString(),model:"demo-static-rerun"};
+  state.aiRuns[currentKey()].push(next);
+  persistRecords(); renderAll();
+});
 
 $("folderInput").addEventListener("change",e=>{
   state.objectUrls.forEach(URL.revokeObjectURL);
@@ -906,9 +976,29 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  state.records=JSON.parse(localStorage.getItem("genreactrix-v0.8.0-records")||localStorage.getItem("genreactrix-v0.7.0-records")||"{}");
+  const currentRecords=localStorage.getItem("genreactrix-v0.9.2d-records");
+  if(currentRecords){
+    state.records=JSON.parse(currentRecords);
+  }else{
+    const legacyRaw=localStorage.getItem("genreactrix-v0.8.0-records")||localStorage.getItem("genreactrix-v0.7.0-records")||"{}";
+    const legacyRecords=JSON.parse(legacyRaw);
+    const legacyOrder=["Celebration","Smart","Eerie","Disgusting","Zazzly","Dreamy","Hell","Funny","Adorable","Weird","Intense","Beautiful","Tragic"];
+    const newIndexByName=Object.fromEntries(PRIMITIVES.map((p,i)=>[p.name,i]));
+    Object.entries(legacyRecords).forEach(([key,record])=>{
+      const migrated={...record};
+      migrated.selectedReactions=(record.selectedReactions||[])
+        .map(oldIndex=>legacyOrder[oldIndex])
+        .filter(Boolean)
+        .map(name=>newIndexByName[name])
+        .filter(index=>Number.isInteger(index));
+      migrated.themes=normalizeThemes(record.themes||[null,null,null]);
+      state.records[key]=migrated;
+    });
+    persistRecords();
+  }
+  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2d-ai-runs")||"{}");
   state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
-}catch{}
+}catch(error){ console.warn("Genreactrix storage migration skipped",error); }
 renderAll();
 
 
