@@ -1,4 +1,4 @@
-# Genreactrix v0.9.2d — Portrait State and Primitive Foundation
+# Genreactrix v0.9.2e — Theme 1 Display Refresh
 
 This build implements the dependency-first Portrait corrections from the approved review.
 
@@ -26,3 +26,10 @@ This build implements the dependency-first Portrait corrections from the approve
 ## Acceptance focus
 
 Test the folded-phone Portrait layout first: primitive order, red selection circles, AI weights, Theme 1 advancement, image-aware Undo/Redo, Reset Current Changes, Clear Data, AI Console, and Image Inspection.
+
+
+## v0.9.2e
+
+- Ensures Theme 1 immediately refreshes to the destination image after commit-and-advance.
+- Removes the pre-advance Theme render that could leave the previous image label visible.
+- Keeps existing v0.9.2d browser storage keys for compatibility.

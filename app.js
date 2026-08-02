@@ -279,7 +279,18 @@ function loadCurrent(){
   state.visitBaseline=classificationState();
   renderAll();
 }
-function commitAndAdvance(){ saveCurrent(); nextImage(); }
+function refreshCurrentThemeDisplays(){
+  // Closing the Theme dialog and changing images can happen in the same event turn.
+  // Repaint the three Theme summaries after the destination image has loaded so
+  // Theme 1 cannot retain the previous image's visible label.
+  renderThemes();
+  renderComparison();
+}
+function commitAndAdvance(){
+  saveCurrent();
+  nextImage();
+  requestAnimationFrame(refreshCurrentThemeDisplays);
+}
 function nextImage(){
   if(state.files.length) state.index=(state.index+1)%state.files.length;
   else state.demoIndex=(state.demoIndex+1)%DEMOS.length;
@@ -545,11 +556,14 @@ function selectTheme(themeInput){
   }
   pushHistory();
   state.themes[target]=theme;
-  saveCurrent(); renderThemes(); renderComparison();
+  saveCurrent();
   if(state.targetSlot===1){
     if($("themeWorkspace").open) $("themeWorkspace").close();
     commitAndAdvance();
+    return;
   }
+  renderThemes();
+  renderComparison();
 }
 
 function matrixAutoFitEntries(root=document){
