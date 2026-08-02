@@ -273,27 +273,41 @@ function saveCurrent(){
   state.records[currentKey()] = classificationState();
   persistRecords();
 }
+function emptyClassification(){
+  return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
+}
 function loadCurrent(){
   const rec=state.records[currentKey()];
-  applyClassification(rec||{});
+  applyClassification(rec ? JSON.parse(JSON.stringify(rec)) : emptyClassification());
   state.visitBaseline=classificationState();
   renderAll();
 }
-function refreshCurrentThemeDisplays(){
-  // Closing the Theme dialog and changing images can happen in the same event turn.
-  // Repaint the three Theme summaries after the destination image has loaded so
-  // Theme 1 cannot retain the previous image's visible label.
-  renderThemes();
-  renderComparison();
-}
-function commitAndAdvance(){
-  saveCurrent();
-  nextImage();
-  requestAnimationFrame(refreshCurrentThemeDisplays);
-}
-function nextImage(){
+function advanceImageIndex(){
   if(state.files.length) state.index=(state.index+1)%state.files.length;
   else state.demoIndex=(state.demoIndex+1)%DEMOS.length;
+}
+function commitAndAdvance(){
+  // Commit the source record before changing image identity. Then load the
+  // destination record explicitly, so no Theme slot can leak across images.
+  const sourceKey=currentKey();
+  state.records[sourceKey]=classificationState();
+  persistRecords();
+
+  advanceImageIndex();
+  const destinationKey=currentKey();
+  const destinationRecord=state.records[destinationKey];
+  applyClassification(destinationRecord ? JSON.parse(JSON.stringify(destinationRecord)) : emptyClassification());
+  state.visitBaseline=classificationState();
+
+  // Close after state has switched, then render from the destination record.
+  if($("themeWorkspace")?.open) $("themeWorkspace").close();
+  renderAll();
+  // Some mobile browsers repaint dialog descendants one task late. Re-render
+  // once after close without changing state.
+  window.setTimeout(()=>renderAll(),0);
+}
+function nextImage(){
+  advanceImageIndex();
   loadCurrent();
 }
 function prevImage(){
@@ -558,7 +572,6 @@ function selectTheme(themeInput){
   state.themes[target]=theme;
   saveCurrent();
   if(state.targetSlot===1){
-    if($("themeWorkspace").open) $("themeWorkspace").close();
     commitAndAdvance();
     return;
   }

@@ -1,4 +1,4 @@
-# Genreactrix v0.9.2e — Theme 1 Display Refresh
+# Genreactrix v0.9.2f — Theme 1 State Transition Repair
 
 This build implements the dependency-first Portrait corrections from the approved review.
 
@@ -28,8 +28,16 @@ This build implements the dependency-first Portrait corrections from the approve
 Test the folded-phone Portrait layout first: primitive order, red selection circles, AI weights, Theme 1 advancement, image-aware Undo/Redo, Reset Current Changes, Clear Data, AI Console, and Image Inspection.
 
 
-## v0.9.2e
+## v0.9.2f
 
 - Ensures Theme 1 immediately refreshes to the destination image after commit-and-advance.
 - Removes the pre-advance Theme render that could leave the previous image label visible.
 - Keeps existing v0.9.2d browser storage keys for compatibility.
+
+
+## v0.9.2f
+
+- Reworked Theme 1 commit-and-advance as an explicit source-save / destination-load transition.
+- Prevents Theme 1 state from leaking into the next image.
+- Forces a post-dialog-close repaint for mobile browsers while preserving the same underlying state.
+- Keeps existing v0.9.2d storage keys for compatibility.
