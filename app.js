@@ -21,30 +21,6 @@ const BASE_THEMES = [
   "Royalty","Sports","Music","Transportation","Weather","Horror","Mystery"
 ];
 
-// Canonical secondary-theme vocabulary from the MASHPEDITION 13×13 matrix.
-// Rows and columns follow PRIMITIVES order; lookup is symmetric.
-const SECONDARY_THEME_LABELS = [
-  ["Adorable","Cherubic","Goofy","Pitiful","Kawaii","Heartwarming","Precocious","Spirited","Haunted","Grimy","Whimsical","Camp","Bizarre"],
-  [null,"Beautiful","Charming","Melancholic","Horny","Radiant","Elegant","Majestic","Ethereal","Grotesque","Sublime","Irreverent","Surreal"],
-  [null,null,"Funny","Ironic","Blue Humor","Jubilant","Witty","Wild","Macabre","Grossout","Absurd","Satirical","Bonkers"],
-  [null,null,null,"Tragic","Impotent","Bittersweet","Poignant","Devastating","Lonesome","Horrific","Liminal","Dark","Nightmarish"],
-  [null,null,null,null,"Zazzly","Hedonism","Kinky","Lust","Carnal","Lewd","Limerence","Risqué","FreakyDeaky"],
-  [null,null,null,null,null,"Celebration","Triumphant","Exhilarating","Spiritual","Indulgent","Wonder","Snarky","Delirious"],
-  [null,null,null,null,null,null,"Smart","Brilliant","Mysterious","Clinical","Visionary","Parodic","Madcap"],
-  [null,null,null,null,null,null,null,"Intense","Foreboding","Brutal","Epic","Outrageous","Chaotic"],
-  [null,null,null,null,null,null,null,null,"Eerie","Morbid","Spectral","Unhinged","Uncanny"],
-  [null,null,null,null,null,null,null,null,null,"Disgusting","Putrid","Tasteless","Mutant"],
-  [null,null,null,null,null,null,null,null,null,null,"Dreamy","Surreal","Psychedelic"],
-  [null,null,null,null,null,null,null,null,null,null,null,"Ticket to Hell","Absurdist"],
-  [null,null,null,null,null,null,null,null,null,null,null,null,"Weird"]
-];
-
-function secondaryThemeLabel(rowIndex,columnIndex){
-  const low=Math.min(rowIndex,columnIndex);
-  const high=Math.max(rowIndex,columnIndex);
-  return SECONDARY_THEME_LABELS[low]?.[high] || PRIMITIVES[rowIndex].name;
-}
-
 const DEMOS = [
   {
     src: svgData("MUTOSIS","🦄","🦥"),
@@ -92,11 +68,8 @@ const state = {
   history: [],
   future: [],
   writeIns: ["Horror","Dreamcore"],
-  objectUrls: [],
-  originals: {}
+  objectUrls: []
 };
-
-const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
 
 const $ = id => document.getElementById(id);
 const currentKey = () => state.files.length ? state.files[state.index].name : `demo-${state.demoIndex}`;
@@ -129,38 +102,25 @@ function pushHistory(){
   state.future=[];
   updateUndoRedo();
 }
-function restoreSnapshot(s,{persist=true}={}){
+function restoreSnapshot(s){
   state.selectedReactions=[...s.selectedReactions];
   state.themes=[...s.themes];
   state.flagged=!!s.flagged;
   state.writeIn=s.writeIn||"";
   state.retention=s.retention||"keep";
-  if(persist) saveCurrent();
   renderAll();
 }
 function saveCurrent(){
   state.records[currentKey()] = snapshot();
   localStorage.setItem("genreactrix-v0.8.0-records", JSON.stringify(state.records));
 }
-function rememberOriginalCurrent(){
-  const key=currentKey();
-  if(!state.originals[key]) state.originals[key]=snapshot();
-}
-function resetEditHistory(){
-  state.history=[];
-  state.future=[];
-  updateUndoRedo();
-}
-function loadCurrent({resetHistory=true}={}){
+function loadCurrent(){
   const rec=state.records[currentKey()];
   state.selectedReactions=rec ? [...rec.selectedReactions] : [];
   state.themes=rec ? [...rec.themes] : [null,null,null];
   state.flagged=rec ? !!rec.flagged : false;
   state.writeIn=rec ? (rec.writeIn||"") : "";
   state.retention=rec ? (rec.retention||"keep") : "keep";
-  state.targetSlot=1;
-  rememberOriginalCurrent();
-  if(resetHistory) resetEditHistory();
   renderAll();
 }
 function commitAndAdvance(){
@@ -193,7 +153,9 @@ function renderReactions(){
     const make=()=>{
       const b=document.createElement("button");
       b.className="reaction-button"+(state.selectedReactions.includes(i)?" selected":"");
-      b.textContent=`${p.symbol} ${p.name}`;
+      b.innerHTML=`<span class="reaction-symbol" aria-hidden="true">${p.symbol}</span>`;
+      b.setAttribute("aria-label",p.name);
+      b.title=p.name;
       b.setAttribute("aria-pressed",state.selectedReactions.includes(i));
       b.addEventListener("click",()=>{
         pushHistory();
@@ -209,9 +171,11 @@ function renderReactions(){
 }
 function renderThemes(){
   for(let i=0;i<3;i++){
-    const text=state.themes[i] || (i===0?"Choose theme":"Optional");
-    $(`themeValue${i+1}`).textContent=text;
-    $(`expandedTheme${i+1}`).textContent=text;
+    const value=state.themes[i] || "—";
+    $(`themeValue${i+1}`).textContent=value;
+    $(`expandedTheme${i+1}`).textContent=value;
+    const summary=$(`themeSummary${i+1}`);
+    if(summary) summary.textContent=value;
   }
 }
 function renderImage(){
@@ -221,8 +185,11 @@ function renderImage(){
   if(typeof resetImageTransform==="function") resetImageTransform();
   $("imageEmpty").hidden=true;
   $("inspectionImage").src=src;
-  $("aiDescription").textContent=currentDescription();
-  $("inspectionDescription").textContent=currentDescription();
+  const description=currentDescription();
+  $("aiDescription").textContent=description;
+  $("inspectionDescription").textContent=description;
+  if($("aiWorkspaceDescription")) $("aiWorkspaceDescription").textContent=description;
+  if($("tabletAiDescription")) $("tabletAiDescription").textContent=description;
   const total=state.files.length || DEMOS.length;
   const position=state.files.length ? state.index+1 : state.demoIndex+1;
   $("progressText").textContent=`${state.files.length?"Image":"Demo image"} ${position} / ${total}`;
@@ -348,7 +315,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
 
       columnIndexes.forEach(ci=>{
         const col=PRIMITIVES[ci];
-        const combo = secondaryThemeLabel(ri,ci);
+        const combo = ri===ci ? row.name : `${row.name} + ${col.name}`;
         const cell=document.createElement("button");
         cell.type="button";
         cell.className="matrix-intersection";
@@ -415,7 +382,6 @@ function selectTheme(theme){
   saveCurrent(); renderThemes(); renderComparison();
   if(state.targetSlot===1){
     if($("themeWorkspace").open) $("themeWorkspace").close();
-    $("directorStatus").textContent=`Theme 1 set to ${theme}. Committed; advancing.`;
     commitAndAdvance();
   }else{
     const message=`Theme ${state.targetSlot} set to ${theme}. Choose Theme 1 when ready to commit and advance.`;
@@ -427,25 +393,9 @@ function selectTheme(theme){
 
 const MATRIX_LABEL_FIT = {
   preferredPx: 9,
-  minimumPx: 7,
   stepPx: 0.25,
   allowedShrinkRatio: 0.15
 };
-
-function textOverflows(element){
-  return element.scrollWidth > element.clientWidth + 0.5;
-}
-
-function requiredSizeForFit(element, startPx, minimumPx, stepPx){
-  let size = startPx;
-  element.style.fontSize = `${size}px`;
-
-  while(size > minimumPx && textOverflows(element)){
-    size = Math.max(minimumPx, +(size - stepPx).toFixed(2));
-    element.style.fontSize = `${size}px`;
-  }
-  return size;
-}
 
 function matrixAutoFitEntries(root=document){
   return [...root.querySelectorAll(".matrix-axis-header, .matrix-intersection")]
@@ -463,74 +413,63 @@ function matrixAutoFitEntries(root=document){
     .filter(Boolean);
 }
 
-function matrixLabelOverflows(entry){
+function matrixAvailableWidth(entry){
   const squareStyle=getComputedStyle(entry.square);
-  const availableWidth=Math.max(
-    0,
-    entry.square.clientWidth
-      - parseFloat(squareStyle.paddingLeft||0)
-      - parseFloat(squareStyle.paddingRight||0)
-  );
-  return entry.label.scrollWidth > availableWidth + 0.5;
+  return Math.max(0, entry.square.clientWidth
+    - parseFloat(squareStyle.paddingLeft||0)
+    - parseFloat(squareStyle.paddingRight||0));
+}
+
+function matrixLabelOverflows(entry){
+  return entry.label.scrollWidth > matrixAvailableWidth(entry) + 0.5;
+}
+
+function fitMatrixLabelExactly(entry, startPx){
+  let size=startPx;
+  entry.label.style.fontSize=`${size}px`;
+  for(let attempt=0; attempt<8 && matrixLabelOverflows(entry); attempt+=1){
+    const available=matrixAvailableWidth(entry);
+    const measured=Math.max(entry.label.scrollWidth, 0.01);
+    size=+(size * (available/measured) * 0.985).toFixed(3);
+    entry.label.style.fontSize=`${size}px`;
+  }
+  return size;
 }
 
 function autoFitMatrixLabels(root=document){
   const entries=matrixAutoFitEntries(root);
   if(!entries.length) return;
 
-  const {
-    minimumPx,
-    stepPx,
-    allowedShrinkRatio
-  } = MATRIX_LABEL_FIT;
-
-  // Reset previous inline fitting before reading each label's CSS maximum.
+  const {stepPx,allowedShrinkRatio}=MATRIX_LABEL_FIT;
   entries.forEach(({label})=>{
     label.style.fontSize="";
     label.classList.remove("autofit-shrunk","autofit-ellipsized");
+    label.removeAttribute("title");
   });
-
   entries.forEach(entry=>{
     entry.preferredPx=parseFloat(getComputedStyle(entry.label).fontSize) || MATRIX_LABEL_FIT.preferredPx;
   });
 
-  // The allowance and the measured population are now the same live set:
-  // every currently visible header or intersection square in this matrix.
-  const allowedShrinkCount=Math.floor(entries.length * allowedShrinkRatio);
+  const allowedShrinkCount=Math.floor(entries.length*allowedShrinkRatio);
   let globalReductionPx=0;
-  const largestPreferred=Math.max(...entries.map(entry=>entry.preferredPx));
-  const maxReduction=Math.max(0, largestPreferred-minimumPx);
-
-  while(globalReductionPx <= maxReduction){
-    let shrinkCount=0;
-
+  for(let guard=0;guard<80;guard+=1){
+    let overflowCount=0;
     entries.forEach(entry=>{
-      const size=Math.max(minimumPx, entry.preferredPx-globalReductionPx);
+      const size=Math.max(0.1,entry.preferredPx-globalReductionPx);
       entry.label.style.fontSize=`${size}px`;
-      if(matrixLabelOverflows(entry)) shrinkCount+=1;
+      if(matrixLabelOverflows(entry)) overflowCount+=1;
     });
-
-    if(shrinkCount <= allowedShrinkCount) break;
+    if(overflowCount<=allowedShrinkCount) break;
     globalReductionPx=+(globalReductionPx+stepPx).toFixed(2);
   }
 
   entries.forEach(entry=>{
-    const sharedSize=Math.max(minimumPx, entry.preferredPx-globalReductionPx);
-    let finalSize=sharedSize;
-    entry.label.style.fontSize=`${finalSize}px`;
-
-    while(finalSize>minimumPx && matrixLabelOverflows(entry)){
-      finalSize=Math.max(minimumPx, +(finalSize-stepPx).toFixed(2));
-      entry.label.style.fontSize=`${finalSize}px`;
-    }
-
+    const sharedSize=Math.max(0.1,entry.preferredPx-globalReductionPx);
+    const finalSize=matrixLabelOverflows(entry)
+      ? fitMatrixLabelExactly(entry,sharedSize)
+      : sharedSize;
     entry.label.dataset.autofitSize=String(finalSize);
-    entry.label.classList.toggle("autofit-shrunk", finalSize<sharedSize);
-
-    if(matrixLabelOverflows(entry)){
-      entry.label.classList.add("autofit-ellipsized");
-      entry.label.title=entry.square.title || entry.label.textContent.trim();
-    }
+    entry.label.classList.toggle("autofit-shrunk",finalSize<sharedSize-0.01);
   });
 
   root.dataset.autofitVisibleCount=String(entries.length);
@@ -620,6 +559,10 @@ document.addEventListener("click",e=>{
 });
 
 $("openAiBtn").addEventListener("click",()=> $("aiWorkspace").showModal());
+$("directorMatrixBtn").addEventListener("click",()=>{
+  if($("directorWorkspace").open) $("directorWorkspace").close();
+  openThemeWorkspace(state.targetSlot || 1);
+});
 $("prevBtn").addEventListener("click",prevImage);
 $("nextBtn").addEventListener("click",nextImage);
 $("undoBtn").addEventListener("click",undo);
@@ -662,25 +605,8 @@ $("tabletThemeSearch").addEventListener("keydown",e=>{
   if(existing) selectTheme(existing); else createTabletTheme();
 });
 $("tabletCreateThemeBtn").addEventListener("click",createTabletTheme);
-$("resetOriginalBtn").addEventListener("click",()=>{
-  const original=state.originals[currentKey()];
-  if(!original) return;
-  pushHistory();
-  restoreSnapshot(original);
-  $("directorStatus").textContent="Restored the original state for this image.";
-});
-$("clearCurrentBtn").addEventListener("click",()=>{
-  pushHistory();
-  state.selectedReactions=[];
-  state.themes=[null,null,null];
-  state.flagged=false;
-  state.writeIn="";
-  state.retention="keep";
-  state.targetSlot=1;
-  saveCurrent();
-  renderAll();
-  $("directorStatus").textContent="Cleared the current classification.";
-});
+$("resetOriginalBtn").addEventListener("click",()=>{pushHistory(); state.selectedReactions=[]; state.themes=[null,null,null]; state.flagged=false; saveCurrent(); renderAll();});
+$("clearCurrentBtn").addEventListener("click",()=>{pushHistory(); state.selectedReactions=[]; state.themes=[null,null,null]; saveCurrent(); renderAll();});
 
 $("folderInput").addEventListener("change",e=>{
   state.objectUrls.forEach(URL.revokeObjectURL);
@@ -690,7 +616,7 @@ $("folderInput").addEventListener("change",e=>{
   });
   // Randomize once, then resume in this random queue.
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
-  state.index=0; state.originals={}; loadCurrent();
+  state.index=0; loadCurrent();
 });
 
 
@@ -870,11 +796,12 @@ try{
   state.records=JSON.parse(localStorage.getItem("genreactrix-v0.8.0-records")||localStorage.getItem("genreactrix-v0.7.0-records")||"{}");
   state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
 }catch{}
-loadCurrent();
+renderAll();
 
 
 
 // v0.9.1 Desktop Mode: image zoom/pan, keyboard workflow, and matrix navigation.
+const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
 function applyImageTransform(){
   const image=$("mainImage");
   image.style.transform=`translate(${imageTransform.x}px, ${imageTransform.y}px) scale(${imageTransform.scale})`;

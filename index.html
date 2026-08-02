@@ -68,13 +68,13 @@
 
         <div class="theme-fields">
           <button class="theme-field" data-slot="1">
-            <span>Theme 1</span><strong id="themeValue1">Choose theme</strong>
+            <span>Theme 1</span><strong id="themeValue1">—</strong>
           </button>
           <button class="theme-field" data-slot="2">
-            <span>Theme 2</span><strong id="themeValue2">Optional</strong>
+            <span>Theme 2</span><strong id="themeValue2">—</strong>
           </button>
           <button class="theme-field" data-slot="3">
-            <span>Theme 3</span><strong id="themeValue3">Optional</strong>
+            <span>Theme 3</span><strong id="themeValue3">—</strong>
           </button>
         </div>
 
@@ -110,6 +110,10 @@
         <section>
           <h3>Theme suggestions</h3>
           <div id="tabletAiThemes" class="ai-list"></div>
+        </section>
+        <section class="ai-freeform-panel">
+          <h3>AI freeform description</h3>
+          <p id="tabletAiDescription"></p>
         </section>
         <p class="read-only-note">AI output is read-only. Suggestions may be used as the current target selection without changing the AI record.</p>
       </section>
@@ -148,6 +152,12 @@
         </div>
       </header>
 
+      <div class="theme-summary-fields" aria-label="Current Theme selections">
+        <div class="theme-summary-field"><span>Theme 1</span><strong id="themeSummary1">—</strong></div>
+        <div class="theme-summary-field"><span>Theme 2</span><strong id="themeSummary2">—</strong></div>
+        <div class="theme-summary-field"><span>Theme 3</span><strong id="themeSummary3">—</strong></div>
+      </div>
+
       <div class="theme-search-row">
         <label for="themeSearch">Search or write in a Theme</label>
         <input id="themeSearch" type="search" autocomplete="off" placeholder="Start typing…">
@@ -182,6 +192,10 @@
           <div id="aiThemes" class="ai-list"></div>
         </section>
       </div>
+      <section class="ai-freeform-panel">
+        <h3>AI freeform description</h3>
+        <p id="aiWorkspaceDescription"></p>
+      </section>
       <p class="read-only-note">AI output is read-only. Tapping a suggestion uses it as your current target selection without changing the AI record.</p>
     </div>
   </dialog>
@@ -205,15 +219,16 @@
 
   <dialog id="directorWorkspace" class="workspace">
     <div class="workspace-shell">
-      <header class="workspace-header">
+      <header class="workspace-header director-workspace-header">
         <button class="back-button" data-close="directorWorkspace">← Back</button>
         <h2>Director Console</h2>
+        <button id="directorMatrixBtn" class="matrix-shortcut">13×13 Matrix</button>
       </header>
       <div id="directorReactionGrid" class="director-reaction-grid"></div>
       <div class="director-expanded-themes">
-        <button class="theme-field" data-slot="1"><span>Theme 1</span><strong id="expandedTheme1">Choose theme</strong></button>
-        <button class="theme-field" data-slot="2"><span>Theme 2</span><strong id="expandedTheme2">Optional</strong></button>
-        <button class="theme-field" data-slot="3"><span>Theme 3</span><strong id="expandedTheme3">Optional</strong></button>
+        <button class="theme-field" data-slot="1"><span>Theme 1</span><strong id="expandedTheme1">—</strong></button>
+        <button class="theme-field" data-slot="2"><span>Theme 2</span><strong id="expandedTheme2">—</strong></button>
+        <button class="theme-field" data-slot="3"><span>Theme 3</span><strong id="expandedTheme3">—</strong></button>
       </div>
       <div class="director-tools">
         <button id="resetOriginalBtn">Reset to Original</button>
