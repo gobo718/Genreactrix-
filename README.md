@@ -1,43 +1,18 @@
-# Genreactrix v0.9.2f — Theme 1 State Transition Repair
+# Genreactrix v0.9.2g — Clean Classification Storage
 
-This build implements the dependency-first Portrait corrections from the approved review.
+Portrait corrective build based on v0.9.2f.
 
-## Implemented
+## Change
 
-- Canonical 13-primitive registry with stable primitive IDs and matrix-order display.
-- Shared 7/6 primitive renderer used by Home, Director, AI, and Image Inspection.
-- Director selections use thick red circles.
-- AI primitive output shows all 13 weights with `-%` for no meaningful weight.
-- Image Inspection overlays Director circles and AI weights on one primitive layout.
-- Theme slots store stable identities rather than display text, preventing duplicate matrix-cell selection.
-- Image-aware Undo/Redo snapshots include records and image position.
-- Theme 1 commit-and-advance is reversible across images.
-- Reset Current Changes uses a visit-local classification baseline, preserves AI/flag data, warns once, and is undoable.
-- Clear Data clears classification only, preserves AI/flag/profile data, warns twice, and is undoable.
-- Director Console includes Undo and Redo controls.
-- AI reruns append a new run record; Portrait displays the latest run.
+- Uses a new `genreactrix-v0.9.2g-records` namespace for classification data.
+- Uses a new `genreactrix-v0.9.2g-ai-runs` namespace for AI run data.
+- Does not automatically migrate earlier classification records because prior faulty builds may have saved identical Theme values under multiple image keys.
+- Leaves all earlier browser-storage namespaces untouched as an archive.
+- Demo images therefore begin with independent clean classification records in this build.
 
-## Notes
+## Test target
 
-- The bundled AI analysis remains demo/static. The rerun action exercises AI Run History without claiming a live model connection.
-- Existing legacy browser records are read when possible and normalized into the current theme structure.
-- Full AI Run History browsing and Interpretation System history UI remain future work.
-
-## Acceptance focus
-
-Test the folded-phone Portrait layout first: primitive order, red selection circles, AI weights, Theme 1 advancement, image-aware Undo/Redo, Reset Current Changes, Clear Data, AI Console, and Image Inspection.
-
-
-## v0.9.2f
-
-- Ensures Theme 1 immediately refreshes to the destination image after commit-and-advance.
-- Removes the pre-advance Theme render that could leave the previous image label visible.
-- Keeps existing v0.9.2d browser storage keys for compatibility.
-
-
-## v0.9.2f
-
-- Reworked Theme 1 commit-and-advance as an explicit source-save / destination-load transition.
-- Prevents Theme 1 state from leaking into the next image.
-- Forces a post-dialog-close repaint for mobile browsers while preserving the same underlying state.
-- Keeps existing v0.9.2d storage keys for compatibility.
+1. Select Theme 1 on one demo image and allow the app to advance.
+2. Confirm the next demo image does not inherit Theme 1/2/3.
+3. Cycle through all demo images and confirm their classification states remain independent.
+4. Retest Undo/Redo only after independent state is confirmed.

@@ -256,8 +256,8 @@ function applyClassification(data){
   state.retention=data?.retention||"keep";
 }
 function persistRecords(){
-  localStorage.setItem("genreactrix-v0.9.2d-records",JSON.stringify(state.records));
-  localStorage.setItem("genreactrix-v0.9.2d-ai-runs",JSON.stringify(state.aiRuns));
+  localStorage.setItem("genreactrix-v0.9.2g-records",JSON.stringify(state.records));
+  localStorage.setItem("genreactrix-v0.9.2g-ai-runs",JSON.stringify(state.aiRuns));
 }
 function restoreSnapshot(s){
   state.records=JSON.parse(JSON.stringify(s.records||{}));
@@ -1003,27 +1003,12 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  const currentRecords=localStorage.getItem("genreactrix-v0.9.2d-records");
-  if(currentRecords){
-    state.records=JSON.parse(currentRecords);
-  }else{
-    const legacyRaw=localStorage.getItem("genreactrix-v0.8.0-records")||localStorage.getItem("genreactrix-v0.7.0-records")||"{}";
-    const legacyRecords=JSON.parse(legacyRaw);
-    const legacyOrder=["Celebration","Smart","Eerie","Disgusting","Zazzly","Dreamy","Hell","Funny","Adorable","Weird","Intense","Beautiful","Tragic"];
-    const newIndexByName=Object.fromEntries(PRIMITIVES.map((p,i)=>[p.name,i]));
-    Object.entries(legacyRecords).forEach(([key,record])=>{
-      const migrated={...record};
-      migrated.selectedReactions=(record.selectedReactions||[])
-        .map(oldIndex=>legacyOrder[oldIndex])
-        .filter(Boolean)
-        .map(name=>newIndexByName[name])
-        .filter(index=>Number.isInteger(index));
-      migrated.themes=normalizeThemes(record.themes||[null,null,null]);
-      state.records[key]=migrated;
-    });
-    persistRecords();
-  }
-  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2d-ai-runs")||"{}");
+  // v0.9.2g intentionally starts with a clean classification namespace.
+  // Earlier namespaces are left untouched as an archive because prior builds
+  // may have written the same Theme values into multiple image records.
+  const currentRecords=localStorage.getItem("genreactrix-v0.9.2g-records");
+  state.records=currentRecords?JSON.parse(currentRecords):{};
+  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2g-ai-runs")||"{}");
   state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
 }catch(error){ console.warn("Genreactrix storage migration skipped",error); }
 renderAll();
