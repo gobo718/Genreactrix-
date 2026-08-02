@@ -1,4 +1,4 @@
-# Genreactrix v0.9.0 — Canonical Desktop Mode
+# Genreactrix v0.9.1 — Canonical Desktop Mode
 
 Built on the verified v0.8.3 Tablet baseline. Desktop Mode preserves the Portrait, Landscape, and Tablet workflows while adding the Director's docked laboratory workspace.
 
@@ -29,3 +29,10 @@ Desktop Mode activates at 1200×650 CSS pixels or larger. Smaller windows fall b
 ## Deferred
 
 Floating or detachable windows remain intentionally out of scope.
+
+
+## v0.9.1 Matrix label repair
+
+- Restores the visible combination-reaction words inside every 13×13 matrix cell.
+- Keeps the emoji/symbol shorthand above each label.
+- Runs dynamic 15% AutoFit against the actual visible combination labels, not the symbol glyphs.

@@ -313,8 +313,8 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
         cell.type="button";
         cell.className="matrix-intersection";
         cell.innerHTML=ri===ci
-          ? `<span>${row.symbol}</span>`
-          : `<span>${row.symbol}${col.symbol}</span>`;
+          ? `<span class="matrix-combo-symbol">${row.symbol}</span><small class="matrix-combo-label">${row.name}</small>`
+          : `<span class="matrix-combo-symbol">${row.symbol}${col.symbol}</span><small class="matrix-combo-label">${combo}</small>`;
         cell.title=combo;
         const visible=!q || combo.toLowerCase().includes(q);
         cell.hidden=!visible;
@@ -416,7 +416,7 @@ function matrixAutoFitEntries(root=document){
     .map(square=>{
       const label=square.matches(".matrix-axis-header")
         ? square.querySelector("small")
-        : square.querySelector("span");
+        : square.querySelector(".matrix-combo-label");
       return label ? {square,label} : null;
     })
     .filter(Boolean);
@@ -522,7 +522,7 @@ function createTabletTheme(){
   if(!q) return;
   if(![...BASE_THEMES,...state.writeIns].some(t=>t.toLowerCase()===q.toLowerCase())){
     state.writeIns.push(q);
-    localStorage.setItem("genreactrix-v0.9.0-writeins",JSON.stringify(state.writeIns));
+    localStorage.setItem("genreactrix-v0.9.1-writeins",JSON.stringify(state.writeIns));
   }
   $("tabletCreateThemeBtn").hidden=true;
   renderThemeMatrix(q,"tabletThemeMatrix");
@@ -547,7 +547,7 @@ function createTheme(){
   if(!q) return;
   if(![...BASE_THEMES,...state.writeIns].some(t=>t.toLowerCase()===q.toLowerCase())){
     state.writeIns.push(q);
-    localStorage.setItem("genreactrix-v0.9.0-writeins",JSON.stringify(state.writeIns));
+    localStorage.setItem("genreactrix-v0.9.1-writeins",JSON.stringify(state.writeIns));
     renderWriteIns();
     $("themeError").textContent=`Created “${q}”. Select it normally for Theme ${state.targetSlot}.`;
   }
@@ -637,7 +637,7 @@ $("folderInput").addEventListener("change",e=>{
 
 
 
-const LAYOUT_KEY="genreactrix-v0.9.0-layout";
+const LAYOUT_KEY="genreactrix-v0.9.1-layout";
 const layoutState={imageFraction:1,directorFraction:1.18,aiFraction:.82,locked:false,imageCollapsed:false};
 function applyLayout(){
   document.documentElement.style.setProperty("--image-console-fr",layoutState.imageFraction);
@@ -755,7 +755,7 @@ function endDividerDrag(e){
 
 const LEGACY_SAVED_LAYOUTS_KEY="genreactrix-v0.8.0-saved-layouts";
 const DIRECTOR_ACCOUNT_KEY="genreactrix-current-director-account";
-const WORKSPACE_PROFILE_KEY="genreactrix-v0.9.0-workspace-profile";
+const WORKSPACE_PROFILE_KEY="genreactrix-v0.9.1-workspace-profile";
 const WORKSPACE_PROFILES={
   "classification":{imageFraction:1,directorFraction:1.18,aiFraction:.82,imageCollapsed:false},
   "image-study":{imageFraction:1.55,directorFraction:.95,aiFraction:.62,imageCollapsed:false},
@@ -763,7 +763,7 @@ const WORKSPACE_PROFILES={
   "matrix-analysis":{imageFraction:.82,directorFraction:1.02,aiFraction:.82,imageCollapsed:true}
 };
 function currentDirectorAccount(){return localStorage.getItem(DIRECTOR_ACCOUNT_KEY)||"local-director";}
-function savedLayoutsKey(){return `genreactrix-v0.9.0-saved-layouts:${currentDirectorAccount()}`;}
+function savedLayoutsKey(){return `genreactrix-v0.9.1-saved-layouts:${currentDirectorAccount()}`;}
 function readSavedLayouts(){
   try{
     const current=localStorage.getItem(savedLayoutsKey());
@@ -810,13 +810,13 @@ refreshSavedLayouts();
 
 try{
   state.records=JSON.parse(localStorage.getItem("genreactrix-v0.8.0-records")||localStorage.getItem("genreactrix-v0.7.0-records")||"{}");
-  state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.0-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
+  state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
 }catch{}
 renderAll();
 
 
 
-// v0.9.0 Desktop Mode: image zoom/pan, keyboard workflow, and matrix navigation.
+// v0.9.1 Desktop Mode: image zoom/pan, keyboard workflow, and matrix navigation.
 const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
 function applyImageTransform(){
   const image=$("mainImage");
