@@ -15,43 +15,103 @@ const PRIMITIVES = [
 ];
 
 
-// Canonical 13×13 secondary-theme vocabulary from MASHPEDITION.
-// Keys are order-independent so every matrix cell uses the same named concept.
-const CANONICAL_PAIR_THEMES = {
-  "Adorable|Beautiful":"Cherubic", "Adorable|Funny":"Goofy", "Adorable|Tragic":"Pitiful",
-  "Adorable|Zazzly":"Kawaii", "Adorable|Celebration":"Heartwarming", "Adorable|Smart":"Precocious",
-  "Adorable|Intense":"Spirited", "Adorable|Eerie":"Haunted", "Adorable|Disgusting":"Grimy",
-  "Adorable|Dreamy":"Whimsical", "Adorable|Hell":"Camp", "Adorable|Weird":"Bizarre",
-  "Beautiful|Funny":"Charming", "Beautiful|Tragic":"Melancholic", "Beautiful|Zazzly":"Horny",
-  "Beautiful|Celebration":"Radiant", "Beautiful|Smart":"Elegant", "Beautiful|Intense":"Majestic",
-  "Beautiful|Eerie":"Ethereal", "Beautiful|Disgusting":"Grotesque", "Beautiful|Dreamy":"Sublime",
-  "Beautiful|Hell":"Irreverent", "Beautiful|Weird":"Surreal",
-  "Funny|Tragic":"Ironic", "Funny|Zazzly":"Blue Humor", "Funny|Celebration":"Jubilant",
-  "Funny|Smart":"Witty", "Funny|Intense":"Wild", "Funny|Eerie":"Macabre",
-  "Funny|Disgusting":"Grossout", "Funny|Dreamy":"Absurd", "Funny|Hell":"Satirical",
-  "Funny|Weird":"Bonkers",
-  "Tragic|Zazzly":"Impotent", "Tragic|Celebration":"Bittersweet", "Tragic|Smart":"Poignant",
-  "Tragic|Intense":"Devastating", "Tragic|Eerie":"Lonesome", "Tragic|Disgusting":"Horrific",
-  "Tragic|Dreamy":"Liminal", "Tragic|Hell":"Dark", "Tragic|Weird":"Nightmarish",
-  "Zazzly|Celebration":"Hedonism", "Zazzly|Smart":"Kinky", "Zazzly|Intense":"Lust",
-  "Zazzly|Eerie":"Carnal", "Zazzly|Disgusting":"Lewd", "Zazzly|Dreamy":"Limerence",
-  "Zazzly|Hell":"Risqué", "Zazzly|Weird":"FreakyDeaky",
-  "Celebration|Smart":"Triumphant", "Celebration|Intense":"Exhilarating",
-  "Celebration|Eerie":"Spiritual", "Celebration|Disgusting":"Indulgent",
-  "Celebration|Dreamy":"Wonder", "Celebration|Hell":"Snarky", "Celebration|Weird":"Delirious",
-  "Smart|Intense":"Brilliant", "Smart|Eerie":"Mysterious", "Smart|Disgusting":"Clinical",
-  "Smart|Dreamy":"Visionary", "Smart|Hell":"Parodic", "Smart|Weird":"Madcap",
-  "Intense|Eerie":"Foreboding", "Intense|Disgusting":"Brutal", "Intense|Dreamy":"Epic",
-  "Intense|Hell":"Outrageous", "Intense|Weird":"Chaotic",
-  "Eerie|Disgusting":"Morbid", "Eerie|Dreamy":"Spectral", "Eerie|Hell":"Unhinged",
-  "Eerie|Weird":"Uncanny",
-  "Disgusting|Dreamy":"Putrid", "Disgusting|Hell":"Tasteless", "Disgusting|Weird":"Mutant",
-  "Dreamy|Hell":"Surreal", "Dreamy|Weird":"Psychedelic", "Hell|Weird":"Absurdist"
+const CANONICAL_MATRIX_LABELS = {
+  "Adorable|Adorable": "Adorable",
+  "Adorable|Beautiful": "Cherubic",
+  "Adorable|Funny": "Goofy",
+  "Adorable|Tragic": "Pitiful",
+  "Adorable|Zazzly": "Kawaii",
+  "Adorable|Celebration": "Heartwarming",
+  "Adorable|Smart": "Precocious",
+  "Adorable|Intense": "Spirited",
+  "Adorable|Eerie": "Haunted",
+  "Adorable|Disgusting": "Grimy",
+  "Adorable|Dreamy": "Whimsical",
+  "Adorable|Hell": "Camp",
+  "Adorable|Weird": "Bizarre",
+  "Beautiful|Beautiful": "Beautiful",
+  "Beautiful|Funny": "Charming",
+  "Beautiful|Tragic": "Melancholic",
+  "Beautiful|Zazzly": "Horny",
+  "Beautiful|Celebration": "Radiant",
+  "Beautiful|Smart": "Elegant",
+  "Beautiful|Intense": "Majestic",
+  "Beautiful|Eerie": "Ethereal",
+  "Beautiful|Disgusting": "Grotesque",
+  "Beautiful|Dreamy": "Sublime",
+  "Beautiful|Hell": "Irreverent",
+  "Beautiful|Weird": "Surreal",
+  "Funny|Funny": "Funny",
+  "Funny|Tragic": "Ironic",
+  "Funny|Zazzly": "Blue Humor",
+  "Celebration|Funny": "Jubilant",
+  "Funny|Smart": "Witty",
+  "Funny|Intense": "Wild",
+  "Eerie|Funny": "Macabre",
+  "Disgusting|Funny": "Grossout",
+  "Dreamy|Funny": "Absurd",
+  "Funny|Hell": "Satirical",
+  "Funny|Weird": "Bonkers",
+  "Tragic|Tragic": "Tragic",
+  "Tragic|Zazzly": "Impotent",
+  "Celebration|Tragic": "Bittersweet",
+  "Smart|Tragic": "Poignant",
+  "Intense|Tragic": "Devastating",
+  "Eerie|Tragic": "Lonesome",
+  "Disgusting|Tragic": "Horrific",
+  "Dreamy|Tragic": "Liminal",
+  "Hell|Tragic": "Dark",
+  "Tragic|Weird": "Nightmarish",
+  "Zazzly|Zazzly": "Zazzly",
+  "Celebration|Zazzly": "Hedonism",
+  "Smart|Zazzly": "Kinky",
+  "Intense|Zazzly": "Lust",
+  "Eerie|Zazzly": "Carnal",
+  "Disgusting|Zazzly": "Lewd",
+  "Dreamy|Zazzly": "Limerence",
+  "Hell|Zazzly": "Risqué",
+  "Weird|Zazzly": "FreakyDeaky",
+  "Celebration|Celebration": "Celebration",
+  "Celebration|Smart": "Triumphant",
+  "Celebration|Intense": "Exhilarating",
+  "Celebration|Eerie": "Spiritual",
+  "Celebration|Disgusting": "Indulgent",
+  "Celebration|Dreamy": "Wonder",
+  "Celebration|Hell": "Snarky",
+  "Celebration|Weird": "Delirious",
+  "Smart|Smart": "Smart",
+  "Intense|Smart": "Brilliant",
+  "Eerie|Smart": "Mysterious",
+  "Disgusting|Smart": "Clinical",
+  "Dreamy|Smart": "Visionary",
+  "Hell|Smart": "Parodic",
+  "Smart|Weird": "Madcap",
+  "Intense|Intense": "Intense",
+  "Eerie|Intense": "Foreboding",
+  "Disgusting|Intense": "Brutal",
+  "Dreamy|Intense": "Epic",
+  "Hell|Intense": "Outrageous",
+  "Intense|Weird": "Chaotic",
+  "Eerie|Eerie": "Eerie",
+  "Disgusting|Eerie": "Morbid",
+  "Dreamy|Eerie": "Spectral",
+  "Eerie|Hell": "Unhinged",
+  "Eerie|Weird": "Uncanny",
+  "Disgusting|Disgusting": "Disgusting",
+  "Disgusting|Dreamy": "Putrid",
+  "Disgusting|Hell": "Tasteless",
+  "Disgusting|Weird": "Mutant",
+  "Dreamy|Dreamy": "Dreamy",
+  "Dreamy|Hell": "Surreal",
+  "Dreamy|Weird": "Psychedelic",
+  "Hell|Hell": "Ticket to Hell",
+  "Hell|Weird": "Absurdist",
+  "Weird|Weird": "Weird"
 };
 
-function canonicalThemeFor(a,b){
-  if(a===b) return a;
-  return CANONICAL_PAIR_THEMES[`${a}|${b}`] || CANONICAL_PAIR_THEMES[`${b}|${a}`] || `${a} + ${b}`;
+function canonicalMatrixLabel(firstName, secondName){
+  const key=[firstName,secondName].sort().join("|");
+  return CANONICAL_MATRIX_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
 
 const BASE_THEMES = [
@@ -228,10 +288,14 @@ function renderImage(){
   const description=currentDescription();
   $("aiDescription").textContent=description;
   $("inspectionDescription").textContent=description;
-  if($("aiWorkspaceDescription")) $("aiWorkspaceDescription").textContent=description;
-  if($("tabletAiDescription")) $("tabletAiDescription").textContent=description;
   const total=state.files.length || DEMOS.length;
   const position=state.files.length ? state.index+1 : state.demoIndex+1;
+  $("profileName").textContent=state.files.length ? state.files[state.index].name : `Demo image ${position}`;
+  $("profilePosition").textContent=`${position} / ${total}`;
+  $("profileRetention").textContent=state.retention;
+  $("profileFlagged").textContent=state.flagged ? "Yes" : "No";
+  if($("aiWorkspaceDescription")) $("aiWorkspaceDescription").textContent=description;
+  if($("tabletAiDescription")) $("tabletAiDescription").textContent=description;
   $("progressText").textContent=`${state.files.length?"Image":"Demo image"} ${position} / ${total}`;
 }
 function renderFlag(){
@@ -261,16 +325,25 @@ function aiSuggestion(label,confidence,isTheme){
   return b;
 }
 function renderComparison(){
-  const rows=[
-    ["Field","Director","AI"],
-    ["Themes", state.themes.filter(Boolean).join(", ")||"—", currentAiThemes().map(x=>x[0]).join(", ")],
-    ["Primitives", state.selectedReactions.map(i=>PRIMITIVES[i].name).join(", ")||"—", currentAiPrimitives().map(x=>x[0]).join(", ")],
-    ["Write-in", state.writeIn||"—","—"],
-    ["Retention", state.retention,"—"],
-    ["Flagged", state.flagged?"Yes":"No","—"]
-  ];
-  $("comparisonTable").innerHTML=rows.map((r,i)=>`<div class="compare-row ${i===0?"compare-head":""}">
-    <div>${r[0]}</div><div>${r[1]}</div><div>${r[2]}</div></div>`).join("");
+  const directorReactionIndexes=[...state.selectedReactions];
+  const directorReactionHtml=directorReactionIndexes.length
+    ? directorReactionIndexes.map(i=>`<span class="comparison-reaction" title="${PRIMITIVES[i].name}">${PRIMITIVES[i].symbol}</span>`).join("")
+    : "—";
+  const directorThemes=state.themes.filter(Boolean);
+  const aiReactions=currentAiPrimitives();
+  const aiThemes=currentAiThemes();
+
+  $("inspectionDirectorReactions").innerHTML=directorReactionHtml;
+  $("inspectionDirectorThemes").textContent=directorThemes.length ? directorThemes.join(", ") : "—";
+  $("inspectionAiReactions").textContent=aiReactions.length
+    ? aiReactions.map(([label,confidence])=>`${label} ${confidence}%`).join(", ")
+    : "—";
+  $("inspectionAiThemes").textContent=aiThemes.length
+    ? aiThemes.map(([label,confidence])=>`${label} ${confidence}%`).join(", ")
+    : "—";
+
+  $("profileRetention").textContent=state.retention;
+  $("profileFlagged").textContent=state.flagged ? "Yes" : "No";
 }
 function renderAll(){
   renderImage(); renderReactions(); renderThemes(); renderFlag(); renderDirectorFields(); renderAi(); renderComparison(); updateUndoRedo();
@@ -355,7 +428,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
 
       columnIndexes.forEach(ci=>{
         const col=PRIMITIVES[ci];
-        const combo = canonicalThemeFor(row.name,col.name);
+        const combo = canonicalMatrixLabel(row.name,col.name);
         const cell=document.createElement("button");
         cell.type="button";
         cell.className="matrix-intersection";

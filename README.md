@@ -1,4 +1,4 @@
-# Genreactrix v0.9.2 — Portrait Workflow Completion
+# Genreactrix v0.9.2c — Portrait Workflow Completion
 
 Built on the verified v0.8.3 Tablet baseline. Desktop Mode preserves the Portrait, Landscape, and Tablet workflows while adding the Director's docked laboratory workspace.
 
@@ -38,7 +38,7 @@ Floating or detachable windows remain intentionally out of scope.
 - Runs dynamic 15% AutoFit against the actual visible combination labels, not the symbol glyphs.
 
 
-## v0.9.2 Portrait workflow completion
+## v0.9.2c Portrait workflow completion
 
 - Restores persistent Theme 1, Theme 2, and Theme 3 summary fields in the Theme/Reaction screen.
 - Replaces labeled primitive controls with the canonical two-row emoji-only selector.
@@ -50,9 +50,9 @@ Floating or detachable windows remain intentionally out of scope.
 - Preserves existing Undo, Redo, Theme commit, Reset, and Clear behavior.
 
 
-## v0.9.2b corrective Portrait pass
-- Restores canonical MASHPEDITION names in every matrix intersection.
-- Forces the emoji-only reaction selector to render on Home and Director screens.
-- Keeps selected reactions visibly circled with the thick red outline.
-- Keeps the Director 13×13 shortcut visible in Portrait.
-- Cache-busts CSS and JavaScript so the corrected assets replace stale hosted copies.
+## v0.9.2c Portrait correction
+- Uses v0.9.2a portrait workflow as the baseline.
+- Restores canonical 13×13 matrix labels.
+- Preserves emoji-only reaction selectors on Home and Director with thick red selection rings.
+- Keeps the Director Matrix shortcut.
+- Adds Image Inspection side-by-side Director vs AI reactions and themes, with image/profile above.

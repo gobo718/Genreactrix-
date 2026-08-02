@@ -449,20 +449,44 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 }
 
 
-/* v0.9.2b corrective Portrait pass */
+/* v0.9.2c — Image Inspection comparison and stable Portrait controls */
+.image-profile,
+.comparison-panel,
+.inspection-ai-description{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+}
+.image-profile h3,
+.comparison-panel h3,
+.inspection-ai-description h3{
+  font-size:.9rem;
+  margin:0 0 8px;
+}
+.image-profile dl{margin:0;display:grid;gap:7px}
+.image-profile dl>div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}
+.image-profile dt{color:var(--muted);font-size:.78rem}
+.image-profile dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.inspection-comparison{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:10px;
+}
+.comparison-field{display:grid;gap:5px;margin-top:9px}
+.comparison-field>span{color:var(--muted);font-size:.78rem}
+.comparison-values{line-height:1.35;overflow-wrap:anywhere}
+.comparison-reactions{display:flex;flex-wrap:wrap;gap:6px;min-height:1.5rem;align-items:center}
+.comparison-reaction{font-size:1.35rem;line-height:1}
+.inspection-ai-description p{
+  margin:0;
+  white-space:pre-wrap;
+  font-size:clamp(.78rem,2.9vw,.95rem);
+  line-height:1.45;
+}
 @media (max-width:599px) and (orientation:portrait){
-  .reaction-bar,.director-reaction-grid{
-    display:grid!important;
-    grid-template-columns:repeat(7,minmax(0,1fr))!important;
-    gap:8px!important;
-    visibility:visible!important;
-  }
-  .director-reaction-grid{padding:6px 4px 10px}
-  .director-workspace-header{
-    display:grid;
-    grid-template-columns:auto minmax(0,1fr) auto;
-    align-items:center;
-  }
-  .director-workspace-header h2{font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .matrix-shortcut{display:inline-flex!important;padding:7px 8px!important;font-size:.78rem!important}
+  .inspection-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .inspection-comparison{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .director-reaction-grid,.reaction-bar{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .matrix-shortcut{display:inline-flex!important;align-items:center;justify-content:center}
 }
