@@ -48,3 +48,11 @@ Floating or detachable windows remain intentionally out of scope.
 - Replaces matrix ellipsis fallback with exact per-label AutoFit so complete semantic labels remain visible.
 - Keeps the existing matrix layout; no 3/3/3/4 redesign.
 - Preserves existing Undo, Redo, Theme commit, Reset, and Clear behavior.
+
+
+## v0.9.2b corrective Portrait pass
+- Restores canonical MASHPEDITION names in every matrix intersection.
+- Forces the emoji-only reaction selector to render on Home and Director screens.
+- Keeps selected reactions visibly circled with the thick red outline.
+- Keeps the Director 13×13 shortcut visible in Portrait.
+- Cache-busts CSS and JavaScript so the corrected assets replace stale hosted copies.

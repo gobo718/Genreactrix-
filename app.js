@@ -14,6 +14,46 @@ const PRIMITIVES = [
   {name:"Tragic",symbol:"😭"}
 ];
 
+
+// Canonical 13×13 secondary-theme vocabulary from MASHPEDITION.
+// Keys are order-independent so every matrix cell uses the same named concept.
+const CANONICAL_PAIR_THEMES = {
+  "Adorable|Beautiful":"Cherubic", "Adorable|Funny":"Goofy", "Adorable|Tragic":"Pitiful",
+  "Adorable|Zazzly":"Kawaii", "Adorable|Celebration":"Heartwarming", "Adorable|Smart":"Precocious",
+  "Adorable|Intense":"Spirited", "Adorable|Eerie":"Haunted", "Adorable|Disgusting":"Grimy",
+  "Adorable|Dreamy":"Whimsical", "Adorable|Hell":"Camp", "Adorable|Weird":"Bizarre",
+  "Beautiful|Funny":"Charming", "Beautiful|Tragic":"Melancholic", "Beautiful|Zazzly":"Horny",
+  "Beautiful|Celebration":"Radiant", "Beautiful|Smart":"Elegant", "Beautiful|Intense":"Majestic",
+  "Beautiful|Eerie":"Ethereal", "Beautiful|Disgusting":"Grotesque", "Beautiful|Dreamy":"Sublime",
+  "Beautiful|Hell":"Irreverent", "Beautiful|Weird":"Surreal",
+  "Funny|Tragic":"Ironic", "Funny|Zazzly":"Blue Humor", "Funny|Celebration":"Jubilant",
+  "Funny|Smart":"Witty", "Funny|Intense":"Wild", "Funny|Eerie":"Macabre",
+  "Funny|Disgusting":"Grossout", "Funny|Dreamy":"Absurd", "Funny|Hell":"Satirical",
+  "Funny|Weird":"Bonkers",
+  "Tragic|Zazzly":"Impotent", "Tragic|Celebration":"Bittersweet", "Tragic|Smart":"Poignant",
+  "Tragic|Intense":"Devastating", "Tragic|Eerie":"Lonesome", "Tragic|Disgusting":"Horrific",
+  "Tragic|Dreamy":"Liminal", "Tragic|Hell":"Dark", "Tragic|Weird":"Nightmarish",
+  "Zazzly|Celebration":"Hedonism", "Zazzly|Smart":"Kinky", "Zazzly|Intense":"Lust",
+  "Zazzly|Eerie":"Carnal", "Zazzly|Disgusting":"Lewd", "Zazzly|Dreamy":"Limerence",
+  "Zazzly|Hell":"Risqué", "Zazzly|Weird":"FreakyDeaky",
+  "Celebration|Smart":"Triumphant", "Celebration|Intense":"Exhilarating",
+  "Celebration|Eerie":"Spiritual", "Celebration|Disgusting":"Indulgent",
+  "Celebration|Dreamy":"Wonder", "Celebration|Hell":"Snarky", "Celebration|Weird":"Delirious",
+  "Smart|Intense":"Brilliant", "Smart|Eerie":"Mysterious", "Smart|Disgusting":"Clinical",
+  "Smart|Dreamy":"Visionary", "Smart|Hell":"Parodic", "Smart|Weird":"Madcap",
+  "Intense|Eerie":"Foreboding", "Intense|Disgusting":"Brutal", "Intense|Dreamy":"Epic",
+  "Intense|Hell":"Outrageous", "Intense|Weird":"Chaotic",
+  "Eerie|Disgusting":"Morbid", "Eerie|Dreamy":"Spectral", "Eerie|Hell":"Unhinged",
+  "Eerie|Weird":"Uncanny",
+  "Disgusting|Dreamy":"Putrid", "Disgusting|Hell":"Tasteless", "Disgusting|Weird":"Mutant",
+  "Dreamy|Hell":"Surreal", "Dreamy|Weird":"Psychedelic", "Hell|Weird":"Absurdist"
+};
+
+function canonicalThemeFor(a,b){
+  if(a===b) return a;
+  return CANONICAL_PAIR_THEMES[`${a}|${b}`] || CANONICAL_PAIR_THEMES[`${b}|${a}`] || `${a} + ${b}`;
+}
+
 const BASE_THEMES = [
   "Fantasy","Nature","Mythology","Cute","Food","Animal","Magic","Adventure",
   "Comedy","Romance","Science Fiction","Holiday","Transformation",
@@ -315,7 +355,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
 
       columnIndexes.forEach(ci=>{
         const col=PRIMITIVES[ci];
-        const combo = ri===ci ? row.name : `${row.name} + ${col.name}`;
+        const combo = canonicalThemeFor(row.name,col.name);
         const cell=document.createElement("button");
         cell.type="button";
         cell.className="matrix-intersection";
