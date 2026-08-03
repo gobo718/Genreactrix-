@@ -1,4 +1,4 @@
-# Genreactrix v0.9.3.2 — Compact AI + PrimFusion Tiers
+# Genreactrix v0.9.3.3 — Calmer PrimFusion Typography + Unified Navigation
 
 This build applies the final bounded landscape refinements agreed after v0.9.3.1.
 
@@ -12,3 +12,9 @@ This build applies the final bounded landscape refinements agreed after v0.9.3.1
 - Navigation arrow sizing is harmonized in folded landscape.
 
 The verified v0.9.2j storage namespace and existing classification/state behavior remain unchanged.
+
+## Changes from v0.9.3.2
+- Reduced the PrimFusion Matrix shared typography baseline to 75% of its previous size.
+- Overflow tiers now derive from that new base: 75% fallback, then 50% final fallback with truncation allowed.
+- Replaced mixed text glyphs for Previous, Next, Undo, and Redo with one consistent SVG icon family.
+- Preserved the existing storage namespace, classification state, console layouts, and three-tier DOM overflow detection.

@@ -4,21 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.3.2</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.3.2">
+  <title>Genreactrix v0.9.3.3</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.3.3">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.3.2</span>
+        <span>v0.9.3.3</span>
       </div>
       <div class="nav-actions">
-        <button id="prevBtn" title="Previous image">←</button>
-        <button id="nextBtn" title="Next image">→</button>
-        <button id="undoBtn" title="Undo">↶</button>
-        <button id="redoBtn" title="Redo">↷</button>
+        <button id="prevBtn" class="nav-icon-button" title="Previous image" aria-label="Previous image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button id="nextBtn" class="nav-icon-button" title="Next image" aria-label="Next image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button id="undoBtn" class="nav-icon-button" title="Undo" aria-label="Undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H5v-4"/><path d="M5 7c2.2-2.3 5-3.4 8.1-3 4.4.5 7.7 4.3 7.4 8.7-.3 4.4-4 7.8-8.4 7.8-3.1 0-5.8-1.7-7.3-4.2"/></svg></button>
+        <button id="redoBtn" class="nav-icon-button" title="Redo" aria-label="Redo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h4v-4"/><path d="M19 7c-2.2-2.3-5-3.4-8.1-3-4.4.5-7.7 4.3-7.4 8.7.3 4.4 4 7.8 8.4 7.8 3.1 0 5.8-1.7 7.3-4.2"/></svg></button>
         <button id="resetViewBtn" title="Reset canonical layout">Reset View</button>
         <button id="lockDividerBtn" aria-pressed="false" title="Lock console layout">🔓 Layout</button>
         <select id="workspaceProfileSelect" class="tablet-layout-control desktop-profile-control" aria-label="Workspace profile" title="Switch workspace profile">
@@ -261,6 +261,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.3.2"></script>
+  <script src="app.js?v=0.9.3.3"></script>
 </body>
 </html>
