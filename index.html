@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.3.5</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.3.5">
+  <title>Genreactrix v0.9.3.7</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.3.7">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.3.5</span>
+        <span>v0.9.3.7</span>
       </div>
       <div class="nav-actions">
-        <button id="prevBtn" class="nav-icon-button" title="Previous image" aria-label="Previous image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-        <button id="nextBtn" class="nav-icon-button" title="Next image" aria-label="Next image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
+        <button id="nextBtn" class="nav-icon-button nav-caret" title="Next image" aria-label="Next image">›</button>
         <button id="undoBtn" class="nav-icon-button" title="Undo" aria-label="Undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H5v-4"/><path d="M5 7c2.2-2.3 5-3.4 8.1-3 4.4.5 7.7 4.3 7.4 8.7-.3 4.4-4 7.8-8.4 7.8-3.1 0-5.8-1.7-7.3-4.2"/></svg></button>
         <button id="redoBtn" class="nav-icon-button" title="Redo" aria-label="Redo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h4v-4"/><path d="M19 7c-2.2-2.3-5-3.4-8.1-3-4.4.5-7.7 4.3-7.4 8.7.3 4.4 4 7.8 8.4 7.8 3.1 0 5.8-1.7 7.3-4.2"/></svg></button>
         <button id="resetViewBtn" title="Reset canonical layout">Reset View</button>
@@ -94,7 +94,7 @@
 
         <div class="director-action-row">
           <button id="directorFlagBtn" class="flag" aria-pressed="false">⚑ Flag</button>
-          <button id="directorNextBtn" class="primary-action">Next image →</button>
+          <button id="directorNextBtn" class="primary-action">Next image ›</button>
         </div>
 
         <div id="directorStatus" class="status-line" aria-live="polite">Tap reactions, then choose Theme 1 to commit and advance.</div>
@@ -145,7 +145,7 @@
   <dialog id="themeWorkspace" class="workspace theme-workspace">
     <div class="workspace-shell">
       <header class="theme-header">
-        <button class="back-button" data-close="themeWorkspace">← Back</button>
+        <button class="back-button" data-close="themeWorkspace">‹ Back</button>
         <h2 class="workspace-location">Director Console</h2>
         <div class="slot-buttons">
           <button class="slot-button" data-target-slot="1">Theme 1</button>
@@ -186,7 +186,7 @@
   <dialog id="aiWorkspace" class="workspace">
     <div class="workspace-shell">
       <header class="workspace-header">
-        <button class="back-button" data-close="aiWorkspace">← Back</button>
+        <button class="back-button" data-close="aiWorkspace">‹ Back</button>
         <h2>AI Console</h2>
         <button id="rerunAiBtn" class="ai-rerun-header">Rerun AI Analysis</button>
       </header>
@@ -208,7 +208,7 @@
   <dialog id="imageWorkspace" class="workspace">
     <div class="workspace-shell">
       <header class="workspace-header">
-        <button class="back-button" data-close="imageWorkspace">← Back</button>
+        <button class="back-button" data-close="imageWorkspace">‹ Back</button>
         <h2>Image Console</h2>
       </header>
 
@@ -237,7 +237,7 @@
   <dialog id="directorWorkspace" class="workspace">
     <div class="workspace-shell">
       <header class="workspace-header director-workspace-header">
-        <button class="back-button" data-close="directorWorkspace">← Back</button>
+        <button class="back-button" data-close="directorWorkspace">‹ Back</button>
         <h2>Director Console</h2>
         <button id="directorPrimFusionBtn" class="primfusion-shortcut">PrimFusion Matrix</button>
       </header>
@@ -261,6 +261,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.3.5"></script>
+  <script src="app.js?v=0.9.3.7"></script>
 </body>
 </html>

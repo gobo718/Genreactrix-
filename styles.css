@@ -1434,3 +1434,17 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .primfusion-matrix.primfusion-fitting{pointer-events:none}
   .primfusion-matrix.primfusion-fitted{pointer-events:auto}
 }
+
+
+/* v0.9.3.6 — reliable PrimFusion overflow tiers and canonical navigation carets */
+.nav-icon-button.nav-caret{
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:2rem;
+  font-weight:800;
+  line-height:.75;
+  padding:3px 7px 7px;
+}
+.back-button{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.back-button::first-letter{font-weight:800}

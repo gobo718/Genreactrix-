@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.5";
+const GENREACTRIX_BUILD="v0.9.3.7";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -722,25 +722,48 @@ function primFusionAvailableWidth(entry){
     - parseFloat(squareStyle.paddingRight||0));
 }
 
-function primFusionLabelOverflows(entry){
-  const label=entry.label;
-  const horizontal=label.scrollWidth>label.clientWidth+1;
-  const vertical=label.scrollHeight>label.clientHeight+1;
-  if(horizontal || vertical) return true;
-
-  // Some mobile engines report a clipped element's scrollWidth as its
-  // clientWidth. A DOM Range gives the rendered text width without canvas.
-  if(label.firstChild && label.firstChild.nodeType===Node.TEXT_NODE){
-    const range=document.createRange();
-    range.selectNodeContents(label);
-    const textRect=range.getBoundingClientRect();
-    const style=getComputedStyle(label);
-    const available=Math.max(0,label.clientWidth
-      - parseFloat(style.paddingLeft||0)
-      - parseFloat(style.paddingRight||0));
-    if(textRect.width>available+1 || textRect.height>label.clientHeight+1) return true;
+function primFusionIntrinsicTextWidth(label){
+  if(!label) return 0;
+  let probe=document.getElementById("primFusionMeasureProbe");
+  if(!probe){
+    probe=document.createElement("span");
+    probe.id="primFusionMeasureProbe";
+    probe.setAttribute("aria-hidden","true");
+    Object.assign(probe.style,{
+      position:"fixed",
+      left:"-10000px",
+      top:"-10000px",
+      width:"max-content",
+      maxWidth:"none",
+      minWidth:"0",
+      whiteSpace:"nowrap",
+      overflow:"visible",
+      visibility:"hidden",
+      pointerEvents:"none",
+      contain:"layout style paint",
+      zIndex:"-1"
+    });
+    document.body.appendChild(probe);
   }
-  return false;
+  const style=getComputedStyle(label);
+  probe.style.fontFamily=style.fontFamily;
+  probe.style.fontWeight=style.fontWeight;
+  probe.style.fontStyle=style.fontStyle;
+  probe.style.fontVariant=style.fontVariant;
+  probe.style.fontStretch=style.fontStretch;
+  probe.style.fontSize=style.fontSize;
+  probe.style.letterSpacing=style.letterSpacing;
+  probe.style.textTransform=style.textTransform;
+  probe.textContent=label.textContent || "";
+  return probe.getBoundingClientRect().width;
+}
+
+function primFusionLabelOverflows(entry){
+  const {square,label}=entry;
+  if(!square || !label) return false;
+  const available=primFusionAvailableWidth(entry);
+  if(available<=1) return false;
+  return primFusionIntrinsicTextWidth(label)>available+0.5;
 }
 
 const primFusionFitTimers=new WeakMap();
@@ -794,47 +817,37 @@ function autoFitPrimFusionLabels(root=document,generation=primFusionFitGeneratio
     label.removeAttribute('title');
   });
 
-  // Keep the established 85% shared-size calculation, then use a calmer
-  // 75% visual base. Overflow labels move through only two fixed tiers.
+  // Stable three-tier typography. The visual base is 75% of the stylesheet
+  // preferred size. Only labels that truly overflow move to 75% of that base,
+  // then 50% of that base. No iterative fitting or delayed timer chain.
   void root.offsetWidth;
   const preferredPx=parseFloat(getComputedStyle(entries[0].label).fontSize) || PRIMFUSION_LABEL_FIT.preferredPx;
-  const maxScales=entries.map(entry=>{
-    const available=Math.max(1,entry.label.clientWidth);
-    const required=Math.max(1,entry.label.scrollWidth);
-    return Math.min(1,available/required);
-  }).sort((a,b)=>a-b);
-  const allowedOverflow=Math.floor(entries.length*PRIMFUSION_LABEL_FIT.allowedShrinkRatio);
-  const thresholdIndex=Math.min(maxScales.length-1,allowedOverflow);
-  const sharedScale=maxScales[thresholdIndex] || 1;
-  const sharedSize=Math.max(1,+(preferredPx*sharedScale*.75).toFixed(3));
+  const sharedSize=Math.max(1,+(preferredPx*.75).toFixed(3));
   const size75=Math.max(1,+(sharedSize*.75).toFixed(3));
   const size50=Math.max(1,+(sharedSize*.5).toFixed(3));
 
-  entries.forEach(entry=>{ entry.label.style.fontSize=`${sharedSize}px`; });
-
-  // Complete all three tiers synchronously. Reading layout after each batch
-  // forces the browser to commit that tier before overflow is tested. This
-  // avoids resize/generation callbacks cancelling the second or third tier.
+  entries.forEach(({label})=>{ label.style.fontSize=`${sharedSize}px`; });
   void root.offsetWidth;
+
   const tier75=entries.filter(primFusionLabelOverflows);
-  tier75.forEach(entry=>{
-    entry.label.style.fontSize=`${size75}px`;
-    entry.label.classList.add('autofit-shrunk','autofit-tier-75');
+  tier75.forEach(({label})=>{
+    label.style.fontSize=`${size75}px`;
+    label.classList.add('autofit-shrunk','autofit-tier-75');
   });
-
   void root.offsetWidth;
-  const tier50=tier75.filter(primFusionLabelOverflows);
-  tier50.forEach(entry=>{
-    entry.label.style.fontSize=`${size50}px`;
-    entry.label.classList.remove('autofit-tier-75');
-    entry.label.classList.add('autofit-tier-50');
-  });
 
-  entries.forEach(entry=>{
-    entry.label.dataset.autofitSize=entry.label.style.fontSize || `${sharedSize}px`;
+  const tier50=tier75.filter(primFusionLabelOverflows);
+  tier50.forEach(({label})=>{
+    label.style.fontSize=`${size50}px`;
+    label.classList.remove('autofit-tier-75');
+    label.classList.add('autofit-tier-50');
+  });
+  void root.offsetWidth;
+
+  entries.forEach(({label})=>{
+    label.dataset.autofitSize=label.style.fontSize || `${sharedSize}px`;
   });
   root.dataset.autofitVisibleCount=String(entries.length);
-  root.dataset.autofitAllowedShrinkCount=String(allowedOverflow);
   root.dataset.autofitSharedPx=String(sharedSize);
   root.dataset.autofitTier75Count=String(tier75.length-tier50.length);
   root.dataset.autofitTier50Count=String(tier50.length);
@@ -1237,7 +1250,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.5 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.7 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
