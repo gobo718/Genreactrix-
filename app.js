@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.8";
+const GENREACTRIX_BUILD="v0.9.3.10";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -715,90 +715,17 @@ function primFusionAutoFitEntries(root=document){
     .filter(Boolean);
 }
 
-function primFusionAvailableWidth(entry){
-  const squareStyle=getComputedStyle(entry.square);
-  return Math.max(0, entry.square.clientWidth
-    - parseFloat(squareStyle.paddingLeft||0)
-    - parseFloat(squareStyle.paddingRight||0));
-}
-
-function primFusionIntrinsicTextWidth(label){
-  if(!label) return 0;
-  // Measure the text exactly where the browser rendered it. Range geometry is
-  // independent of the label's overflow:hidden box and exposes clipped width.
-  const node=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim());
-  if(node){
-    const range=document.createRange();
-    range.selectNodeContents(node);
-    const width=range.getBoundingClientRect().width;
-    range.detach?.();
-    if(Number.isFinite(width) && width>0) return width;
-  }
-  // Fallback: temporarily expose the label without changing layout flow.
-  const previous={width:label.style.width,maxWidth:label.style.maxWidth,overflow:label.style.overflow,position:label.style.position,visibility:label.style.visibility,whiteSpace:label.style.whiteSpace};
-  Object.assign(label.style,{width:'max-content',maxWidth:'none',overflow:'visible',position:'fixed',visibility:'hidden',whiteSpace:'nowrap'});
-  const width=label.getBoundingClientRect().width;
-  Object.assign(label.style,previous);
-  return width;
-}
-
-function primFusionLabelOverflows(entry){
-  const {square,label}=entry;
-  if(!square || !label) return false;
-  const available=primFusionAvailableWidth(entry);
-  if(available<=1) return false;
-  return primFusionIntrinsicTextWidth(label)>available+0.5;
-}
-
-function renderPrimFusionDiagnostics(root, entries, sharedSize, tier75, tier50){
-  let panel=root.querySelector(':scope > .primfusion-fit-diagnostics');
-  if(!panel){
-    panel=document.createElement('div');
-    panel.className='primfusion-fit-diagnostics';
-    root.prepend(panel);
-  }
-  const sample=entries
-    .map(entry=>({
-      text:entry.label.textContent.trim(),
-      measured:+primFusionIntrinsicTextWidth(entry.label).toFixed(1),
-      available:+primFusionAvailableWidth(entry).toFixed(1),
-      tier:entry.label.classList.contains('autofit-tier-50')?'50':entry.label.classList.contains('autofit-tier-75')?'75':'100'
-    }))
-    .filter(item=>item.measured>item.available+.5)
-    .slice(0,8);
-  panel.textContent=`Fit diagnostic — labels ${entries.length}; base ${sharedSize}px; tier 75: ${tier75.length-tier50.length}; tier 50: ${tier50.length}; still clipped: ${sample.length}`+
-    (sample.length?` | ${sample.map(x=>`${x.text} ${x.measured}/${x.available}@${x.tier}`).join(' · ')}`:'');
-}
-
-const primFusionFitTimers=new WeakMap();
-const primFusionFitGenerations=new WeakMap();
-
 function cancelScheduledPrimFusionFit(root){
-  if(!root) return;
-  const timer=primFusionFitTimers.get(root);
-  if(timer) clearTimeout(timer);
-  primFusionFitTimers.delete(root);
-  primFusionFitGenerations.set(root,(primFusionFitGenerations.get(root)||0)+1);
+  // v0.9.3.10: fitting is intentionally disabled. PrimFusion labels use one
+  // fixed, conservative size so the matrix is immediately usable.
 }
 
 function schedulePrimFusionFit(root,delay=0){
   if(!root) return;
-  cancelScheduledPrimFusionFit(root);
-  const generation=primFusionFitGenerations.get(root)||0;
-  const run=()=>{
-    primFusionFitTimers.delete(root);
-    if((primFusionFitGenerations.get(root)||0)!==generation) return;
-    autoFitPrimFusionLabels(root,generation);
-  };
-  if(delay>0){
-    const timer=setTimeout(run,delay);
-    primFusionFitTimers.set(root,timer);
-  }else{
-    requestAnimationFrame(run);
-  }
+  requestAnimationFrame(()=>autoFitPrimFusionLabels(root));
 }
 
-function autoFitPrimFusionLabels(root=document,generation=primFusionFitGenerations.get(root)||0){
+function autoFitPrimFusionLabels(root=document){
   if(!root || !root.isConnected) return;
 
   const panel=root.closest('.landscape-primfusion-panel');
@@ -809,55 +736,22 @@ function autoFitPrimFusionLabels(root=document,generation=primFusionFitGeneratio
     return;
   }
 
-  const entries=primFusionAutoFitEntries(root);
-  if(!entries.length || !entries.every(entry=>primFusionAvailableWidth(entry)>1)) return;
-
-  root.classList.add('primfusion-fitting');
-  root.classList.remove('primfusion-fitted');
-
-  entries.forEach(({label})=>{
-    label.style.fontSize='';
+  const labels=root.querySelectorAll(
+    '.primfusion-axis-header small, .primfusion-intersection .primfusion-combo-label'
+  );
+  labels.forEach(label=>{
+    label.style.fontSize='5.0625px';
     label.classList.remove('autofit-shrunk','autofit-tier-75','autofit-tier-50');
     label.removeAttribute('title');
+    label.dataset.autofitSize='5.0625px';
   });
 
-  // Stable three-tier typography. The visual base is 75% of the stylesheet
-  // preferred size. Only labels that truly overflow move to 75% of that base,
-  // then 50% of that base. No iterative fitting or delayed timer chain.
-  void root.offsetWidth;
-  const preferredPx=parseFloat(getComputedStyle(entries[0].label).fontSize) || PRIMFUSION_LABEL_FIT.preferredPx;
-  const sharedSize=Math.max(1,+(preferredPx*.75).toFixed(3));
-  const size75=Math.max(1,+(sharedSize*.75).toFixed(3));
-  const size50=Math.max(1,+(sharedSize*.5).toFixed(3));
-
-  entries.forEach(({label})=>{ label.style.fontSize=`${sharedSize}px`; });
-  void root.offsetWidth;
-
-  const tier75=entries.filter(primFusionLabelOverflows);
-  tier75.forEach(({label})=>{
-    label.style.fontSize=`${size75}px`;
-    label.classList.add('autofit-shrunk','autofit-tier-75');
-  });
-  void root.offsetWidth;
-
-  const tier50=tier75.filter(primFusionLabelOverflows);
-  tier50.forEach(({label})=>{
-    label.style.fontSize=`${size50}px`;
-    label.classList.remove('autofit-tier-75');
-    label.classList.add('autofit-tier-50');
-  });
-  void root.offsetWidth;
-
-  entries.forEach(({label})=>{
-    label.dataset.autofitSize=label.style.fontSize || `${sharedSize}px`;
-  });
-  root.dataset.autofitVisibleCount=String(entries.length);
-  root.dataset.autofitSharedPx=String(sharedSize);
-  root.dataset.autofitTier75Count=String(tier75.length-tier50.length);
-  root.dataset.autofitTier50Count=String(tier50.length);
-  renderPrimFusionDiagnostics(root,entries,sharedSize,tier75,tier50);
   root.classList.remove('primfusion-fitting');
   root.classList.add('primfusion-fitted');
+  root.dataset.autofitVisibleCount=String(labels.length);
+  root.dataset.autofitSharedPx='5.0625';
+  root.dataset.autofitTier75Count='0';
+  root.dataset.autofitTier50Count='0';
 }
 
 function renderTabletTargetSlots(){
@@ -1255,7 +1149,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.8 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.10 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");

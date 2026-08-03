@@ -1450,5 +1450,58 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .back-button::first-letter{font-weight:800}
 
 
-/* v0.9.3.8 — temporary on-device PrimFusion diagnostics */
-.primfusion-fit-diagnostics{font-size:9px;line-height:1.25;color:#ffd45c;background:#211a10;border:1px solid #6e5520;border-radius:6px;padding:4px 6px;margin:0 0 5px;white-space:normal;overflow-wrap:anywhere}
+
+
+/* v0.9.3.10 — fixed PrimFusion typography for immediate, stable use */
+.primfusion-axis-header small,
+.primfusion-intersection .primfusion-combo-label{
+  font-size:5.0625px !important;
+}
+.primfusion-matrix.primfusion-fitting,
+.primfusion-matrix.primfusion-fitted{pointer-events:auto}
+
+
+/* v0.9.3.10 — portrait regression cleanup only */
+.primfusion-fit-diagnostics{display:none!important}
+
+@media (max-width:599px) and (orientation:portrait){
+  /* Keep the three Theme target buttons on-screen; the page context is already clear. */
+  #themeWorkspace .workspace-location{display:none!important}
+  #themeWorkspace .theme-header{justify-content:flex-start;gap:8px}
+  #themeWorkspace .slot-buttons{
+    flex:1 1 auto;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    min-width:0;
+  }
+  #themeWorkspace .slot-button{
+    min-width:0;
+    padding-inline:8px;
+  }
+
+  /* Restore a bounded portrait preview instead of a full-height hero image. */
+  #directorWorkspace .director-workspace-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:8px;
+    min-width:0;
+  }
+  #directorWorkspace .director-thumbnail-panel{
+    width:100%;
+    height:min(42dvh,360px);
+    min-height:210px;
+    max-height:360px;
+    background:#09080c;
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    display:grid;
+    place-items:center;
+  }
+  #directorWorkspace .director-thumbnail-panel img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    object-position:center;
+  }
+}
