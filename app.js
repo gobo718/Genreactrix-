@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.13";
+const GENREACTRIX_BUILD="v0.9.3.14";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -718,7 +718,7 @@ function primFusionAutoFitEntries(root=document){
 }
 
 function cancelScheduledPrimFusionFit(root){
-  // v0.9.3.13: fitting is intentionally disabled. PrimFusion labels use one
+  // v0.9.3.14: fitting is intentionally disabled. PrimFusion labels use one
   // fixed, conservative size so the matrix is immediately usable.
 }
 
@@ -1015,7 +1015,7 @@ $("lockDividerBtn").addEventListener("click",()=>{layoutState.locked=!layoutStat
 $("collapseImageBtn").addEventListener("click",()=>{layoutState.imageCollapsed=!layoutState.imageCollapsed;applyLayout();saveLayout();});
 
 let dividerPointer=null;
-function isTabletMode(){return matchMedia("(min-width: 600px) and (min-height: 600px)").matches;}
+function isTabletMode(){return matchMedia("(min-width: 600px) and (min-height: 500px)").matches;}
 function isLandscapeMode(){return matchMedia("(orientation: landscape)").matches;}
 function dividerIsAvailable(kind){
   return kind==="ai" ? isTabletMode() : (isTabletMode() || isLandscapeMode());
@@ -1164,7 +1164,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.13 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.14 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");

@@ -1,3 +1,9 @@
+# Genreactrix v0.9.3.14 — Stable Tablet Breakpoint
+
+The tablet layout no longer switches modes when Android browser chrome expands or collapses. The root cause was the 600px viewport-height breakpoint: the visible browser toolbar pushed the viewport just below 600px at the top of the page, and a slight scroll hid the toolbar and pushed it above 600px. That repeatedly enabled and disabled the tablet workspace.
+
+Tablet detection now uses a 500px minimum viewport height in both CSS and JavaScript. This remains above folded-landscape phone heights while staying below the tablet viewport with browser chrome visible. No tablet layout structure or application behavior was otherwise changed.
+
 # Genreactrix v0.9.3.13 — Tablet Single-Page Workspace
 
 Tablet mode now presents one continuous vertically scrolling workspace in this order:

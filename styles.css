@@ -295,7 +295,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
   .director-field input,.director-field select{padding:6px}
 }
 
-@media (min-width:600px) and (orientation:landscape) and (min-height:600px){
+@media (min-width:600px) and (orientation:landscape) and (min-height:500px){
   .ai-grid{grid-template-columns:1fr 1fr}
 }
 
@@ -321,7 +321,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
   overflow-x:auto;
 }
 
-@media (min-width:600px) and (min-height:600px){
+@media (min-width:600px) and (min-height:500px){
   html,body{min-height:100%;overflow-x:hidden}
   .app-shell{height:auto;min-height:100svh;overflow:visible;padding:12px}
   .tablet-layout-control{display:inline-flex}
@@ -352,7 +352,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 }
 
 /* Tablet scrolling refinement: the page owns vertical scrolling. */
-@media (min-width:600px) and (min-height:600px){
+@media (min-width:600px) and (min-height:500px){
   .nav-actions{flex-wrap:wrap}
   .nav-console{min-height:48px;height:auto}
   .base-layout{grid-template-rows:auto;min-height:500px}
@@ -648,7 +648,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 }
 
 /* Unfolded/tablet-class landscape keeps all three primary consoles visible without horizontal drift. */
-@media (orientation:landscape) and (min-width:600px) and (min-height:600px){
+@media (orientation:landscape) and (min-width:600px) and (min-height:500px){
   .base-layout{
     grid-template-columns:
       minmax(0,var(--image-console-fr)) 8px
@@ -1701,8 +1701,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.3.13 — canonical tablet single-page workspace */
-@media (min-width:600px) and (max-width:1199px) and (min-height:600px){
+/* v0.9.3.14 — canonical tablet single-page workspace */
+@media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   html,body{overflow-x:hidden}
   .app-shell{height:auto;min-height:100svh;overflow:visible}
 
@@ -1820,7 +1820,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .nav-console [data-open]{display:none!important}
 }
 
-@media (min-width:600px) and (max-width:1199px) and (min-height:600px) and (orientation:portrait){
+@media (min-width:600px) and (max-width:1199px) and (min-height:500px) and (orientation:portrait){
   .image-console .image-description-row,
   .image-console.supporting-collapsed .image-description-row{
     grid-template-columns:minmax(220px,44%) minmax(0,1fr)!important;
