@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2x";
+const GENREACTRIX_BUILD="v0.9.2y";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -465,6 +465,34 @@ function scheduleFoldedLandscapeDescriptionFit(){
   requestAnimationFrame(()=>requestAnimationFrame(fitFoldedLandscapeDescription));
 }
 
+
+function fitAdaptiveWorkspaceDescription(panelSelector, preferredPx=18, minimumPx=11){
+  const panel=document.querySelector(panelSelector);
+  const text=panel?.querySelector("p");
+  if(!panel || !text) return;
+  text.style.fontSize="";
+  text.style.overflowY="hidden";
+  let size=preferredPx;
+  text.style.fontSize=`${size}px`;
+  const fits=()=>text.scrollHeight<=text.clientHeight+1;
+  while(size>minimumPx && !fits()){
+    size=Math.max(minimumPx,+(size-.25).toFixed(2));
+    text.style.fontSize=`${size}px`;
+  }
+  text.style.overflowY=fits()?"hidden":"auto";
+  panel.dataset.descriptionFitPx=String(size);
+  panel.dataset.descriptionScrolls=String(!fits());
+}
+
+function scheduleWorkspaceDescriptionFits(){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(document.getElementById("aiWorkspace")?.open)
+      fitAdaptiveWorkspaceDescription("#aiWorkspace .ai-freeform-panel",18,11);
+    if(document.getElementById("imageWorkspace")?.open)
+      fitAdaptiveWorkspaceDescription("#imageWorkspace .inspection-ai-description",18,11);
+  }));
+}
+
 function renderAi(){
   renderPrimitiveWeights($("homeAiPrimitives"));
   renderPrimitiveWeights($("aiPrimitives"));
@@ -874,7 +902,11 @@ if(landscapePrimFusionToggle){
     landscapePrimFusionToggle.textContent=collapsed?"Expand PrimFusion Matrix":"Collapse PrimFusion Matrix";
     document.querySelector("#themeWorkspace .workspace-shell")?.classList.toggle("primfusion-expanded",!collapsed);
     if(!collapsed){
-      requestAnimationFrame(()=>autoFitPrimFusionLabels($("primFusionMatrix")));
+      renderPrimFusionMatrix($("themeSearch")?.value || "", "primFusionMatrix");
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        autoFitPrimFusionLabels($("primFusionMatrix"));
+        $("primFusionMatrix")?.scrollIntoView({block:"start",behavior:"smooth"});
+      }));
     }else{
       document.querySelector("#themeWorkspace .workspace-shell")?.scrollTo({top:0,behavior:"instant"});
     }
@@ -1155,7 +1187,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2x preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.2y preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1256,6 +1288,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.2x: hydrate the active demo/image record from persistent storage only
+// v0.9.2y: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();

@@ -760,7 +760,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
   #aiWorkspace .read-only-note{grid-column:2 / 3;margin:0;align-self:center;font-size:.58rem;line-height:1.15;text-align:right}
 }
 
-/* v0.9.2x — Fold6 folded-landscape AI Console vertical-balance polish only. */
+/* v0.9.2y — Fold6 folded-landscape AI Console vertical-balance polish only. */
 @media (orientation:landscape) and (max-height:599px){
   /* Reserve enough height for both complete 7-over-6 primitive rows. */
   #aiWorkspace .workspace-shell{
@@ -834,7 +834,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 }
 
 
-/* v0.9.2x — canonical PrimFusion terminology and Fold6 landscape consolidation */
+/* v0.9.2y — canonical PrimFusion terminology and Fold6 landscape consolidation */
 .workspace-location{font-size:.72rem;font-weight:600;color:var(--muted);margin:0 auto;white-space:nowrap}
 button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
@@ -916,4 +916,114 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   #themeWorkspace .landscape-primfusion-toolbar{justify-content:flex-end}
   #themeWorkspace .landscape-primfusion-panel.primfusion-collapsed{flex:0 0 auto}
   #themeWorkspace .landscape-primfusion-panel.primfusion-collapsed #primFusionMatrix{display:none}
+}
+
+/* v0.9.2y — final folded-landscape console corrections */
+@media (orientation:landscape) and (max-height:599px){
+  /* AI Console: compact fixed top row; description owns all remaining height. */
+  #aiWorkspace .workspace-shell{
+    grid-template-columns:minmax(0,1fr) minmax(0,.94fr);
+    grid-template-rows:auto auto minmax(0,1fr) auto;
+  }
+  #aiWorkspace .workspace-header{grid-column:1/-1}
+  #aiWorkspace .workspace-shell>section:nth-of-type(1){grid-column:1;grid-row:2}
+  #aiWorkspace .workspace-shell>section:nth-of-type(2){grid-column:2;grid-row:2}
+  #aiWorkspace .ai-freeform-panel{grid-column:1/-1;grid-row:3;display:grid;grid-template-rows:auto minmax(0,1fr)}
+  #aiWorkspace .ai-action-row{grid-column:1;grid-row:4;align-self:end}
+  #aiWorkspace .read-only-note{grid-column:2;grid-row:4;align-self:center}
+
+  /* Image Console: full-height image left; 2x2 metadata and adaptive description right. */
+  #imageWorkspace .workspace-shell{grid-template-rows:auto minmax(0,1fr)}
+  #imageWorkspace .image-console-workspace-grid{
+    grid-template-columns:minmax(250px,.95fr) minmax(0,1.25fr);
+    height:100%;
+    min-height:0;
+  }
+  #imageWorkspace .inspection-image{
+    width:100%;
+    height:100%;
+    max-width:none;
+    aspect-ratio:auto;
+    justify-self:stretch;
+    align-self:stretch;
+  }
+  #imageWorkspace .inspection-image img{width:100%;height:100%;object-fit:contain}
+  #imageWorkspace .image-data-panel{
+    display:grid;
+    grid-template-rows:auto auto minmax(0,1fr);
+    min-height:0;
+    overflow:hidden;
+  }
+  #imageWorkspace .image-data-panel>h3{margin:0}
+  #imageWorkspace .image-data-panel dl{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px 12px;
+    margin:0;
+  }
+  #imageWorkspace .image-data-panel dl>div{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    align-items:baseline;
+    gap:6px;
+    padding:5px 7px;
+    border:1px solid var(--line);
+    border-radius:8px;
+  }
+  #imageWorkspace .image-data-panel dd{text-align:right;overflow-wrap:anywhere}
+  #imageWorkspace .inspection-ai-description{
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    min-height:0;
+    margin-top:2px;
+    overflow:hidden;
+  }
+  #imageWorkspace .inspection-ai-description p{
+    height:auto;
+    min-height:0;
+    overflow-y:auto;
+  }
+
+  /* Director Console: compact four-button toolbar in one row under image + reactions only. */
+  #directorWorkspace .workspace-shell{
+    grid-template-columns:minmax(0,2.15fr) minmax(190px,.85fr);
+    grid-template-rows:auto minmax(0,1fr) auto;
+  }
+  #directorWorkspace .director-workspace-header{grid-column:1/-1;grid-row:1}
+  #directorWorkspace .director-workspace-grid{
+    grid-column:1/-1;
+    grid-row:2;
+    grid-template-columns:minmax(112px,.72fr) minmax(250px,1.45fr) minmax(190px,1fr);
+  }
+  #directorWorkspace .director-tools{
+    grid-column:1;
+    grid-row:3;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:6px;
+  }
+  #directorWorkspace .director-tools button{
+    min-height:32px;
+    padding:5px 7px;
+    font-size:.7rem;
+    line-height:1.05;
+  }
+
+  /* Expanded PrimFusion Matrix must participate in layout and create scroll below. */
+  #themeWorkspace .workspace-shell.primfusion-expanded{
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+    overflow-y:auto;
+  }
+  #themeWorkspace .workspace-shell.primfusion-expanded .landscape-primfusion-panel{
+    display:flex;
+    flex:0 0 auto;
+    min-height:auto;
+  }
+  #themeWorkspace .workspace-shell.primfusion-expanded #primFusionMatrix{
+    display:block!important;
+    flex:0 0 auto;
+    min-height:max-content;
+  }
 }

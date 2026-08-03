@@ -1,4 +1,4 @@
-# Genreactrix v0.9.2x — Folded-Landscape AI Console Balance
+# Genreactrix v0.9.2y — Folded-Landscape AI Console Balance
 
 Canonical source: v0.9.2v.
 
@@ -21,7 +21,7 @@ This release is narrowly scoped to the Galaxy Z Fold6 folded-landscape AI Consol
 - Standard four-file package.
 
 
-v0.9.2x
+v0.9.2y
 - Canonical rename to PrimFusion Matrix across interface, code identifiers, classes, functions, comments, and documentation.
 - Fold6 landscape one-page refinements for Genreactrix, AI Console, Image Console, Director Console, and collapsed Director theme editor.
 - Reset View disables while Layout is locked; divider handle is white only while adjustable and absent while locked.
