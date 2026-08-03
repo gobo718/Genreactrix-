@@ -508,3 +508,66 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 .director-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 @media(max-width:520px){.primitive-weight-symbol{width:34px;height:34px;font-size:1.3rem}.primitive-weight-grid{gap:7px 3px}}
 
+
+
+/* v0.9.2p — Galaxy Z Fold6 folded-landscape fit */
+@media (orientation:landscape) and (max-height:520px){
+  html,body{height:100%;overflow:hidden}
+  .app-shell{height:100dvh;min-height:0;padding:5px;gap:5px}
+  .nav-console{
+    min-height:38px;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    gap:5px;
+    padding:3px 6px;
+  }
+  .brand{gap:5px}
+  .brand strong{font-size:.88rem}
+  .brand span,.progress-text{font-size:.64rem}
+  .nav-actions{justify-content:flex-start;overflow-x:auto;overscroll-behavior-inline:contain;padding-bottom:1px}
+  .nav-actions button,.folder-button{flex:0 0 auto;padding:4px 7px;font-size:.72rem}
+  .base-layout{
+    grid-template-columns:minmax(300px,var(--image-console-fr)) 8px minmax(410px,var(--director-console-fr));
+    min-height:0;
+  }
+  .console-divider{width:8px}
+  .console-divider::before{left:3px;top:8px;bottom:8px}
+  .image-console,.director-console{padding:5px}
+  .image-description-row{
+    grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);
+    grid-template-rows:minmax(0,1fr);
+    gap:5px;
+  }
+  .image-viewport{width:auto;height:100%;max-height:100%;margin:0}
+  .ai-description{padding:3px 5px 24px;overflow:auto}
+  .ai-description p{font-size:.72rem;line-height:1.24;margin:.25rem 0 0}
+  .ai-description .primitive-weight-grid.compact{display:none}
+  .console-label{font-size:.66rem}
+  .console-window-actions{top:3px;right:3px;gap:2px}
+  .console-window-actions button,.expand-button{padding:2px 5px;font-size:.7rem}
+  .director-console{grid-template-rows:auto auto auto auto auto minmax(0,1fr);gap:4px;overflow:auto}
+  .reaction-bar{gap:2px 0;padding:0 1px 2px}
+  .reaction-button{width:31px;height:31px}
+  .reaction-symbol{font-size:1.12rem}
+  .reaction-button.selected,.reaction-button:focus-visible{outline-width:3px;outline-offset:1px}
+  .theme-fields{gap:4px}
+  .theme-field{padding:5px 6px;gap:3px}
+  .theme-field span{font-size:.63rem}
+  .theme-field strong{font-size:.72rem}
+  .director-secondary-fields{gap:4px;grid-template-columns:minmax(0,1fr) minmax(7.2rem,.42fr)}
+  .director-field{gap:2px;font-size:.62rem}
+  .director-field input,.director-field select{padding:4px 5px;font-size:.7rem}
+  .director-action-row{gap:4px}
+  .director-action-row button{padding:5px 7px;font-size:.72rem}
+  .status-line{font-size:.66rem;min-height:1em}
+}
+
+/* Very short browser viewports retain every editable control through Director scrolling. */
+@media (orientation:landscape) and (max-height:380px){
+  .nav-console{min-height:34px}
+  .base-layout{grid-template-columns:minmax(285px,var(--image-console-fr)) 8px minmax(395px,var(--director-console-fr))}
+  .reaction-button{width:28px;height:28px}
+  .reaction-symbol{font-size:1rem}
+  .theme-field{padding:4px 5px}
+  .director-field input,.director-field select{padding:3px 5px}
+  .director-action-row button{padding:4px 6px}
+}

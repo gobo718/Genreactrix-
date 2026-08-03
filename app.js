@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2o";
+const GENREACTRIX_BUILD="v0.9.2p";
 const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -1075,7 +1075,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2o uses the verified v0.9.2j storage namespace and with a clean classification namespace and uniquely named assets.
+  // v0.9.2p uses the verified v0.9.2j storage namespace and with a clean classification namespace and uniquely named assets.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1165,6 +1165,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.2o: hydrate the active demo/image record from persistent storage only
+// v0.9.2p: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
