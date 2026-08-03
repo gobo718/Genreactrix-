@@ -1,18 +1,14 @@
-# Genreactrix v0.9.3.1 — Launch Candidate Corrections
+# Genreactrix v0.9.3.2 — Compact AI + PrimFusion Tiers
 
-Built from v0.9.2z with the agreed bounded completion scope.
+This build applies the final bounded landscape refinements agreed after v0.9.3.1.
 
-- Director Console retains the compact reserved 4×1 action toolbar without overlap.
-- PrimFusion Matrix preserves the 85% shared font size and individually shrinks only overflowing labels, down to 1px when necessary.
-- PrimFusion fitting no longer runs against hidden/zero-width geometry, and stale delayed fit callbacks are cancelled so labels remain stable after expansion.
-- Image Console uses a fixed square inspection viewport with `object-fit: contain`; portrait, landscape, square, and unusual aspect ratios are centered and never cropped.
-- Image Console metadata remains 2×2 with adaptive AI description below.
-- AI Console prose continues to inherit remaining height and scroll internally when needed.
-- Existing portrait, tablet, desktop, state, storage, and classification behavior remain unchanged.
+- AI Console removes redundant section headers and rerun instructions.
+- Rerun AI Analysis now sits at the far right of the top bar.
+- Primitive and theme sections are tightened and moved upward.
+- AI freeform description receives all remaining height, shrinks to the readable floor, then scrolls internally.
+- Image Console uses the largest square viewport that fits vertically and places data directly beside it.
+- PrimFusion Matrix uses a fast three-tier typography pass: shared 85% size, 75% overflow tier, then 50% final tier with truncation allowed.
+- PrimFusion fitting uses DOM overflow checks, no canvas metrics, no binary search, and no multi-second timer chain.
+- Navigation arrow sizing is harmonized in folded landscape.
 
-
-## v0.9.3.1 corrections
-- Restores the current-image preview and AI freeform binding in AI Console.
-- Gives AI freeform description all remaining landscape height.
-- Uses the largest square Image Console viewport that fits vertically, with contain/no crop.
-- Replaces visible iterative PrimFusion fitting with a deterministic shared 85% pass plus one per-label fit.
+The verified v0.9.2j storage namespace and existing classification/state behavior remain unchanged.
