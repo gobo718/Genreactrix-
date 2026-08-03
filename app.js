@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2p";
+const GENREACTRIX_BUILD="v0.9.2q";
 const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -500,17 +500,18 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
   matrix.innerHTML="";
 
   const q=(filter||"").trim().toLowerCase();
-  const tabletSingleGrid=targetId==="tabletThemeMatrix";
-  const bands=tabletSingleGrid
+  const landscapeSingleGrid=targetId==="themeMatrix" && matchMedia("(orientation: landscape)").matches;
+  const singleGrid=targetId==="tabletThemeMatrix" || landscapeSingleGrid;
+  const bands=singleGrid
     ? [PRIMITIVES.map((_,index)=>index)]
     : [[0,1,2,3],[4,5,6,7,8],[9,10,11,12]];
 
   bands.forEach((columnIndexes,bandIndex)=>{
     const section=document.createElement("section");
     section.className="true-matrix-band";
-    if(tabletSingleGrid) section.classList.add("single-13-matrix");
+    if(singleGrid) section.classList.add("single-13-matrix");
 
-    if(!tabletSingleGrid){
+    if(!singleGrid){
       const title=document.createElement("div");
       title.className="matrix-band-title";
       title.textContent=`Theme matrix ${bandIndex+1} of ${bands.length}`;
@@ -766,15 +767,18 @@ function createTheme(){
 }
 
 function undo(){
-  if(!state.history.length){
+  const current=snapshot();
+  let target=null;
+  while(state.history.length){
+    const candidate=state.history.pop();
+    if(!snapshotsEqual(current,candidate)){
+      target=candidate;
+      break;
+    }
+  }
+  if(!target){
     updateUndoRedo();
     return false;
-  }
-  const current=snapshot();
-  const target=state.history.pop();
-  if(snapshotsEqual(current,target)){
-    updateUndoRedo();
-    return undo();
   }
   if(!snapshotsEqual(state.future[state.future.length-1],current)) state.future.push(current);
   restoreSnapshot(target);
@@ -782,15 +786,18 @@ function undo(){
   return true;
 }
 function redo(){
-  if(!state.future.length){
+  const current=snapshot();
+  let target=null;
+  while(state.future.length){
+    const candidate=state.future.pop();
+    if(!snapshotsEqual(current,candidate)){
+      target=candidate;
+      break;
+    }
+  }
+  if(!target){
     updateUndoRedo();
     return false;
-  }
-  const current=snapshot();
-  const target=state.future.pop();
-  if(snapshotsEqual(current,target)){
-    updateUndoRedo();
-    return redo();
   }
   if(!snapshotsEqual(state.history[state.history.length-1],current)) state.history.push(current);
   restoreSnapshot(target);
@@ -802,6 +809,17 @@ function updateUndoRedo(){
   $("redoBtn").disabled=!state.future.length;
   if($("directorUndoBtn")) $("directorUndoBtn").disabled=!state.history.length;
   if($("directorRedoBtn")) $("directorRedoBtn").disabled=!state.future.length;
+}
+
+const landscapeMatrixToggle=$("landscapeMatrixToggle");
+if(landscapeMatrixToggle){
+  landscapeMatrixToggle.addEventListener("click",()=>{
+    const panel=$("landscapeMatrixPanel");
+    const collapsed=panel.classList.toggle("matrix-collapsed");
+    landscapeMatrixToggle.setAttribute("aria-expanded",String(!collapsed));
+    landscapeMatrixToggle.textContent=collapsed?"Expand 13×13 grid":"Collapse 13×13 grid";
+    if(!collapsed) requestAnimationFrame(()=>autoFitMatrixLabels($("themeMatrix")));
+  });
 }
 
 document.addEventListener("click",e=>{
@@ -1075,7 +1093,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2p uses the verified v0.9.2j storage namespace and with a clean classification namespace and uniquely named assets.
+  // v0.9.2q preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1165,6 +1183,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.2p: hydrate the active demo/image record from persistent storage only
+// v0.9.2q: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();

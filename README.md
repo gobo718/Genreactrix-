@@ -1,30 +1,27 @@
-# Genreactrix v0.9.2p — Folded Landscape Workspace
+# Genreactrix v0.9.2q — Folded Landscape Polish Round 1
 
-This build starts from the canonical v0.9.2o final Portrait implementation.
+Canonical continuation of the v0.9.2p folded-landscape prototype.
 
-## Scope
+## Scope completed
 
-- Preserves the verified v0.9.2j storage namespace and existing classification/state behavior.
-- Preserves the completed Portrait layout.
-- Activates the existing console architecture for landscape without reopening the state engine.
-- Fits the folded-landscape working view to short, wide browser viewports such as the Galaxy Z Fold6 cover display.
+- Restored the Image Console as a guaranteed visible part of the folded-landscape front page by removing rigid minimum-column widths that could push it outside narrow browser viewports.
+- Preserved the Home AI primitive/reaction weight grid in folded landscape and compacted it instead of hiding it.
+- Re-centered the canonical 7-over-6 reaction control using equal grid tracks and a consistently centered circular button treatment.
+- Changed the landscape Theme workspace to one complete reusable 13×13 matrix rather than the three portrait matrix bands.
+- Added a landscape-only control that collapses or expands the complete 13×13 matrix as one unit.
+- Replaced recursive Undo/Redo duplicate skipping with bounded iterative traversal.
+- Preserved portrait behavior, persistence keys, classification behavior, and the standard four-file package.
 
-## v0.9.2p changes
+## Target QA
 
-- Added a dedicated compact-landscape fit for viewports up to 520 CSS pixels high.
-- Kept the Image Console and Director Console simultaneously visible.
-- Reflowed the Image viewport and AI freeform description side by side in folded landscape.
-- Tightened navigation, reaction, theme, write-in, retention, flag, and next-image controls without removing editable fields.
-- Preserved Director Console scrolling as the safety mechanism for unusually short browser viewports.
-- Preserved divider resizing, divider lock, Reset View, image collapse, state persistence, Undo/Redo, Theme selection, and image navigation.
+Primary target: Samsung Galaxy Z Fold6, folded, Chrome, landscape.
 
-## Package
+Confirm:
+1. Image Console and Director Console are visible together on Home.
+2. Home AI primitive weights remain visible.
+3. Red selection circles are visually centered around reaction emoji.
+4. Theme 1/2/3 opens one continuous 13×13 matrix.
+5. The complete matrix collapses and expands as one unit.
+6. Undo/Redo behavior remains unchanged for ordinary actions and duplicate snapshots.
 
-- `index.html`
-- `app.js`
-- `styles.css`
-- `README.md`
-
-## Primary acceptance target
-
-Galaxy Z Fold6, folded, landscape, Google Chrome. The exact usable viewport may vary with browser UI and display scaling, so the running device remains the final visual acceptance environment.
+Package: `index.html`, `app.js`, `styles.css`, `README.md`.
