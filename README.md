@@ -1,9 +1,9 @@
-# Genreactrix v0.9.3.7 — Verified Version + Measured PrimFusion Tiers
+# Genreactrix v0.9.3.8 — Verified Version + Measured PrimFusion Tiers
 
 This correction updates the visible/runtime version consistently and replaces unreliable clipped-element overflow checks with an isolated off-screen text measurement probe. PrimFusion labels are measured at each fixed typography tier against the actual usable cell width.
 
 ## Corrections
-- Visible page title, on-page version, runtime build constant, and cache-busting references all report v0.9.3.7.
+- Visible page title, on-page version, runtime build constant, and cache-busting references all report v0.9.3.8.
 - PrimFusion base tier remains the reduced 75% visual size.
 - Labels wider than their cells move to 75% of that base.
 - Remaining overflow moves to 50% of the base and may truncate.
@@ -47,3 +47,6 @@ The verified v0.9.2j storage namespace and existing classification/state behavio
 - Typography is applied in one stable 100/75/50 tier pass based on the reduced 75% visual base.
 - Previous/Next navigation uses the canonical bold `‹ ›` carets throughout the app.
 - Back controls and the Home Next action use the same caret family.
+
+## v0.9.3.8 diagnostic
+Adds visible PrimFusion fit diagnostics and in-place Range measurement so Fold6 screenshots reveal the actual tier counts and clipped labels.

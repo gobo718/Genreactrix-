@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.7";
+const GENREACTRIX_BUILD="v0.9.3.8";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -724,38 +724,22 @@ function primFusionAvailableWidth(entry){
 
 function primFusionIntrinsicTextWidth(label){
   if(!label) return 0;
-  let probe=document.getElementById("primFusionMeasureProbe");
-  if(!probe){
-    probe=document.createElement("span");
-    probe.id="primFusionMeasureProbe";
-    probe.setAttribute("aria-hidden","true");
-    Object.assign(probe.style,{
-      position:"fixed",
-      left:"-10000px",
-      top:"-10000px",
-      width:"max-content",
-      maxWidth:"none",
-      minWidth:"0",
-      whiteSpace:"nowrap",
-      overflow:"visible",
-      visibility:"hidden",
-      pointerEvents:"none",
-      contain:"layout style paint",
-      zIndex:"-1"
-    });
-    document.body.appendChild(probe);
+  // Measure the text exactly where the browser rendered it. Range geometry is
+  // independent of the label's overflow:hidden box and exposes clipped width.
+  const node=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim());
+  if(node){
+    const range=document.createRange();
+    range.selectNodeContents(node);
+    const width=range.getBoundingClientRect().width;
+    range.detach?.();
+    if(Number.isFinite(width) && width>0) return width;
   }
-  const style=getComputedStyle(label);
-  probe.style.fontFamily=style.fontFamily;
-  probe.style.fontWeight=style.fontWeight;
-  probe.style.fontStyle=style.fontStyle;
-  probe.style.fontVariant=style.fontVariant;
-  probe.style.fontStretch=style.fontStretch;
-  probe.style.fontSize=style.fontSize;
-  probe.style.letterSpacing=style.letterSpacing;
-  probe.style.textTransform=style.textTransform;
-  probe.textContent=label.textContent || "";
-  return probe.getBoundingClientRect().width;
+  // Fallback: temporarily expose the label without changing layout flow.
+  const previous={width:label.style.width,maxWidth:label.style.maxWidth,overflow:label.style.overflow,position:label.style.position,visibility:label.style.visibility,whiteSpace:label.style.whiteSpace};
+  Object.assign(label.style,{width:'max-content',maxWidth:'none',overflow:'visible',position:'fixed',visibility:'hidden',whiteSpace:'nowrap'});
+  const width=label.getBoundingClientRect().width;
+  Object.assign(label.style,previous);
+  return width;
 }
 
 function primFusionLabelOverflows(entry){
@@ -764,6 +748,26 @@ function primFusionLabelOverflows(entry){
   const available=primFusionAvailableWidth(entry);
   if(available<=1) return false;
   return primFusionIntrinsicTextWidth(label)>available+0.5;
+}
+
+function renderPrimFusionDiagnostics(root, entries, sharedSize, tier75, tier50){
+  let panel=root.querySelector(':scope > .primfusion-fit-diagnostics');
+  if(!panel){
+    panel=document.createElement('div');
+    panel.className='primfusion-fit-diagnostics';
+    root.prepend(panel);
+  }
+  const sample=entries
+    .map(entry=>({
+      text:entry.label.textContent.trim(),
+      measured:+primFusionIntrinsicTextWidth(entry.label).toFixed(1),
+      available:+primFusionAvailableWidth(entry).toFixed(1),
+      tier:entry.label.classList.contains('autofit-tier-50')?'50':entry.label.classList.contains('autofit-tier-75')?'75':'100'
+    }))
+    .filter(item=>item.measured>item.available+.5)
+    .slice(0,8);
+  panel.textContent=`Fit diagnostic — labels ${entries.length}; base ${sharedSize}px; tier 75: ${tier75.length-tier50.length}; tier 50: ${tier50.length}; still clipped: ${sample.length}`+
+    (sample.length?` | ${sample.map(x=>`${x.text} ${x.measured}/${x.available}@${x.tier}`).join(' · ')}`:'');
 }
 
 const primFusionFitTimers=new WeakMap();
@@ -851,6 +855,7 @@ function autoFitPrimFusionLabels(root=document,generation=primFusionFitGeneratio
   root.dataset.autofitSharedPx=String(sharedSize);
   root.dataset.autofitTier75Count=String(tier75.length-tier50.length);
   root.dataset.autofitTier50Count=String(tier50.length);
+  renderPrimFusionDiagnostics(root,entries,sharedSize,tier75,tier50);
   root.classList.remove('primfusion-fitting');
   root.classList.add('primfusion-fitted');
 }
@@ -1250,7 +1255,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.7 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.8 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
