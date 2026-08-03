@@ -510,7 +510,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 
 
 
-/* v0.9.2q — Galaxy Z Fold6 folded-landscape polish */
+/* v0.9.2r — Galaxy Z Fold6 folded-landscape polish */
 @media (orientation:landscape) and (max-height:520px){
   html,body{height:100%;overflow:hidden}
   .app-shell{height:100dvh;min-height:0;padding:5px;gap:5px}
@@ -579,7 +579,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 }
 
 
-/* v0.9.2q Landscape Matrix: one reusable 13×13 grid, collapsible as a unit. */
+/* v0.9.2r Landscape Matrix: one reusable 13×13 grid, collapsible as a unit. */
 .landscape-matrix-toolbar{display:none}
 @media (orientation:landscape){
   .landscape-matrix-panel{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}
@@ -597,6 +597,53 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 @media (orientation:landscape) and (max-height:520px){
   .image-console{display:block!important;min-width:0}
   .director-console{min-width:0}
+  .image-console.supporting-collapsed .ai-description{display:block}
+  .image-console.supporting-collapsed .image-description-row{
+    grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);
+  }
+}
+
+
+/* v0.9.2r — enforce the canonical landscape composition at every landscape viewport. */
+@media (orientation:landscape){
+  html,body{max-width:100%;overflow-x:hidden}
+  .app-shell{max-width:100%;min-width:0}
+  .base-layout{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    grid-template-columns:minmax(0,var(--image-console-fr)) 8px minmax(0,var(--director-console-fr));
+    grid-template-rows:minmax(0,1fr);
+    overflow:hidden;
+  }
+  .image-console{display:grid!important;min-width:0;overflow:hidden}
+  .director-console{display:grid!important;min-width:0}
+  .image-description-row{min-width:0}
+  .reaction-bar{
+    grid-template-columns:repeat(14,minmax(0,1fr));
+    width:100%;
+    margin-inline:auto;
+  }
+  .reaction-bar>*{grid-column:span 2}
+  .reaction-bar>*:nth-child(8){grid-column:2 / span 2}
+}
+
+/* Unfolded/tablet-class landscape keeps all three primary consoles visible without horizontal drift. */
+@media (orientation:landscape) and (min-width:600px) and (min-height:600px){
+  .base-layout{
+    grid-template-columns:
+      minmax(0,var(--image-console-fr)) 8px
+      minmax(0,var(--director-console-fr)) 8px
+      minmax(0,var(--ai-console-fr));
+  }
+  .tablet-ai-console{display:grid;min-width:0}
+  .tablet-divider{display:block}
+  .image-console,.director-console,.tablet-ai-console{overflow:auto}
+}
+
+/* Folded/short landscape uses the Image and Director consoles side by side. */
+@media (orientation:landscape) and (max-height:599px){
+  .tablet-ai-console,.tablet-divider,.tablet-matrix-console{display:none!important}
   .image-console.supporting-collapsed .ai-description{display:block}
   .image-console.supporting-collapsed .image-description-row{
     grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);

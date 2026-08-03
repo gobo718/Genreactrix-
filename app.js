@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2q";
+const GENREACTRIX_BUILD="v0.9.2r";
 const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -500,7 +500,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
   matrix.innerHTML="";
 
   const q=(filter||"").trim().toLowerCase();
-  const landscapeSingleGrid=targetId==="themeMatrix" && matchMedia("(orientation: landscape)").matches;
+  const landscapeSingleGrid=targetId==="themeMatrix" && window.innerWidth > window.innerHeight;
   const singleGrid=targetId==="tabletThemeMatrix" || landscapeSingleGrid;
   const bands=singleGrid
     ? [PRIMITIVES.map((_,index)=>index)]
@@ -1093,7 +1093,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2q preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.2r preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1177,12 +1177,21 @@ $("tabletThemeMatrix").addEventListener("keydown",e=>{
 });
 
 let matrixFitResizeTimer;
+let lastMatrixLandscapeState=window.innerWidth > window.innerHeight;
 window.addEventListener("resize",()=>{
   clearTimeout(matrixFitResizeTimer);
-  matrixFitResizeTimer=setTimeout(()=>{autoFitMatrixLabels($("themeMatrix"));autoFitMatrixLabels($("tabletThemeMatrix"));},120);
+  matrixFitResizeTimer=setTimeout(()=>{
+    const matrixLandscapeState=window.innerWidth > window.innerHeight;
+    if(matrixLandscapeState!==lastMatrixLandscapeState){
+      lastMatrixLandscapeState=matrixLandscapeState;
+      renderThemeMatrix($("themeSearch")?.value||"","themeMatrix");
+    }
+    autoFitMatrixLabels($("themeMatrix"));
+    autoFitMatrixLabels($("tabletThemeMatrix"));
+  },120);
 });
 
 
-// v0.9.2q: hydrate the active demo/image record from persistent storage only
+// v0.9.2r: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
