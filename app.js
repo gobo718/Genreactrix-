@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2y";
+const GENREACTRIX_BUILD="v0.9.2z";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -512,7 +512,6 @@ function aiThemeSuggestion(label,weight){
   return b;
 }
 function renderComparison(){
-  renderPrimitiveWeights($("inspectionPrimitiveComparison"),{showDirector:true});
   const directorThemes=state.themes.filter(Boolean).map(themeLabel);
   const aiThemes=currentAiThemes();
   $("inspectionDirectorThemes").textContent=directorThemes.length?directorThemes.join(", "):"—";
@@ -744,7 +743,8 @@ function fitPrimFusionLabelExactly(entry, startPx){
   for(let attempt=0; attempt<8 && primFusionLabelOverflows(entry); attempt+=1){
     const available=primFusionAvailableWidth(entry);
     const measured=Math.max(primFusionIntrinsicLabelWidth(entry.label), 0.01);
-    size=+(size * (available/measured) * 0.985).toFixed(3);
+    if(available<=1) break;
+    size=Math.max(0.1, +(size * (available/measured) * 0.985).toFixed(3));
     entry.label.style.fontSize=`${size}px`;
   }
   return size;
@@ -753,6 +753,19 @@ function fitPrimFusionLabelExactly(entry, startPx){
 function autoFitPrimFusionLabels(root=document){
   const entries=primFusionAutoFitEntries(root);
   if(!entries.length) return;
+
+  // Never fit while the matrix is hidden or before its cells have real width.
+  // Fitting a collapsed matrix used to drive labels to 0px and they stayed invisible.
+  const laidOut=root.getClientRects().length>0 && entries.every(entry=>primFusionAvailableWidth(entry)>1);
+  if(!laidOut){
+    const attempts=Number(root.dataset.autofitDeferredAttempts||0);
+    if(attempts<8){
+      root.dataset.autofitDeferredAttempts=String(attempts+1);
+      setTimeout(()=>autoFitPrimFusionLabels(root),40);
+    }
+    return;
+  }
+  root.dataset.autofitDeferredAttempts="0";
 
   const {stepPx,allowedShrinkRatio}=PRIMFUSION_LABEL_FIT;
   entries.forEach(({label})=>{
@@ -905,6 +918,8 @@ if(landscapePrimFusionToggle){
       renderPrimFusionMatrix($("themeSearch")?.value || "", "primFusionMatrix");
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         autoFitPrimFusionLabels($("primFusionMatrix"));
+        setTimeout(()=>autoFitPrimFusionLabels($("primFusionMatrix")),80);
+        setTimeout(()=>autoFitPrimFusionLabels($("primFusionMatrix")),180);
         $("primFusionMatrix")?.scrollIntoView({block:"start",behavior:"smooth"});
       }));
     }else{
@@ -1187,7 +1202,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2y preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.2z preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1288,6 +1303,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.2y: hydrate the active demo/image record from persistent storage only
+// v0.9.2z: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
