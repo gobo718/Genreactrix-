@@ -759,3 +759,76 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
   #aiWorkspace .ai-action-row button{padding:5px 8px;font-size:.7rem}
   #aiWorkspace .read-only-note{grid-column:2 / 3;margin:0;align-self:center;font-size:.58rem;line-height:1.15;text-align:right}
 }
+
+/* v0.9.2w — Fold6 folded-landscape AI Console vertical-balance polish only. */
+@media (orientation:landscape) and (max-height:599px){
+  /* Reserve enough height for both complete 7-over-6 primitive rows. */
+  #aiWorkspace .workspace-shell{
+    grid-template-rows:auto minmax(190px,1fr) minmax(66px,auto) auto;
+    gap:5px 10px;
+  }
+  #aiWorkspace .workspace-shell > section:nth-of-type(1),
+  #aiWorkspace .workspace-shell > section:nth-of-type(2){
+    padding:5px 7px;
+  }
+  #aiWorkspace .workspace-shell > section:nth-of-type(1){
+    overflow:visible;
+  }
+  #aiWorkspace .workspace-shell > section:nth-of-type(2){
+    overflow:hidden;
+  }
+  #aiWorkspace .workspace-shell > section:nth-of-type(1) h3,
+  #aiWorkspace .workspace-shell > section:nth-of-type(2) h3{
+    margin:0 0 2px;
+    font-size:.74rem;
+    line-height:1.05;
+  }
+  #aiWorkspace #aiPrimitives{
+    gap:3px 0;
+    align-content:start;
+  }
+  #aiWorkspace .primitive-weight-symbol{
+    width:27px;
+    height:27px;
+    font-size:.98rem;
+  }
+  #aiWorkspace .primitive-weight-item{
+    gap:1px;
+  }
+  #aiWorkspace .primitive-weight-item small{
+    font-size:.54rem;
+    line-height:1;
+  }
+
+  /* Compact all three theme rows so the panel no longer consumes excess height. */
+  #aiWorkspace #aiThemes{
+    gap:3px;
+  }
+  #aiWorkspace #aiThemes .ai-item{
+    min-height:0;
+    padding:3px 7px;
+    font-size:.67rem;
+    line-height:1.05;
+  }
+
+  /* Keep the freeform result prominent while remaining compact. */
+  #aiWorkspace .ai-freeform-panel{
+    padding:5px 8px;
+    overflow:auto;
+  }
+  #aiWorkspace .ai-freeform-panel h3{
+    margin:0 0 2px;
+    font-size:.75rem;
+  }
+  #aiWorkspace .ai-freeform-panel p{
+    font-size:.74rem;
+    line-height:1.24;
+  }
+
+  /* Supporting metadata should not compete with analysis content. */
+  #aiWorkspace .read-only-note{
+    font-size:.52rem;
+    line-height:1.08;
+    text-align:right;
+  }
+}
