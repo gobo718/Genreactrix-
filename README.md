@@ -1,6 +1,8 @@
-# Genreactrix v0.9.2t — Folded-Landscape Image Console Refinement
+# Genreactrix v0.9.2u — Folded-Landscape Image Console Refinement
 
-Canonical continuation of v0.9.2s.
+Canonical continuation of v0.9.2t.
+
+This build also advances both CSS and JavaScript cache-busting query strings to v0.9.2u so the Fold6 receives the new Home layout instead of a cached v0.9.2s stylesheet.
 
 ## Scope
 
