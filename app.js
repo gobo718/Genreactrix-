@@ -249,11 +249,22 @@ function snapshot(){
     aiRuns:state.aiRuns
   }));
 }
+function snapshotsEqual(a,b){
+  if(!a||!b) return false;
+  return JSON.stringify(a)===JSON.stringify(b);
+}
 function pushHistory(){
-  state.history.push(snapshot());
+  const next=snapshot();
+  const last=state.history[state.history.length-1];
+  if(snapshotsEqual(last,next)){
+    updateUndoRedo();
+    return false;
+  }
+  state.history.push(next);
   if(state.history.length>100) state.history.shift();
   state.future=[];
   updateUndoRedo();
+  return true;
 }
 function applyClassification(data){
   state.selectedReactions=[...(data?.selectedReactions||[])];
@@ -754,29 +765,37 @@ function createTheme(){
   $("createThemeBtn").hidden=true;
 }
 
-function snapshotSignature(value){
-  return JSON.stringify(value);
-}
-function popDistinctSnapshot(stack,currentSignature){
-  while(stack.length){
-    const candidate=stack.pop();
-    if(snapshotSignature(candidate)!==currentSignature) return candidate;
-  }
-  return null;
-}
 function undo(){
+  if(!state.history.length){
+    updateUndoRedo();
+    return false;
+  }
   const current=snapshot();
-  const target=popDistinctSnapshot(state.history,snapshotSignature(current));
-  if(!target){ updateUndoRedo(); return; }
-  state.future.push(current);
+  const target=state.history.pop();
+  if(snapshotsEqual(current,target)){
+    updateUndoRedo();
+    return undo();
+  }
+  if(!snapshotsEqual(state.future[state.future.length-1],current)) state.future.push(current);
   restoreSnapshot(target);
+  updateUndoRedo();
+  return true;
 }
 function redo(){
+  if(!state.future.length){
+    updateUndoRedo();
+    return false;
+  }
   const current=snapshot();
-  const target=popDistinctSnapshot(state.future,snapshotSignature(current));
-  if(!target){ updateUndoRedo(); return; }
-  state.history.push(current);
+  const target=state.future.pop();
+  if(snapshotsEqual(current,target)){
+    updateUndoRedo();
+    return redo();
+  }
+  if(!snapshotsEqual(state.history[state.history.length-1],current)) state.history.push(current);
   restoreSnapshot(target);
+  updateUndoRedo();
+  return true;
 }
 function updateUndoRedo(){
   $("undoBtn").disabled=!state.history.length;
@@ -1056,7 +1075,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2n uses the verified v0.9.2j storage namespace and with a clean classification namespace and uniquely named assets.
+  // v0.9.2o uses the verified v0.9.2j storage namespace and with a clean classification namespace and uniquely named assets.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1146,6 +1165,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.2n: hydrate the active demo/image record from persistent storage only
+// v0.9.2o: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
