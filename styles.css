@@ -1452,7 +1452,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
 
 
-/* v0.9.3.10 — fixed PrimFusion typography for immediate, stable use */
+/* v0.9.3.11 — fixed PrimFusion typography for immediate, stable use */
 .primfusion-axis-header small,
 .primfusion-intersection .primfusion-combo-label{
   font-size:5.0625px !important;
@@ -1461,7 +1461,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .primfusion-matrix.primfusion-fitted{pointer-events:auto}
 
 
-/* v0.9.3.10 — portrait regression cleanup only */
+/* v0.9.3.11 — portrait regression cleanup only */
 .primfusion-fit-diagnostics{display:none!important}
 
 @media (max-width:599px) and (orientation:portrait){
@@ -1503,5 +1503,86 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     height:100%;
     object-fit:contain;
     object-position:center;
+  }
+}
+
+
+/* v0.9.3.11 — dedicated portrait image viewports.
+   Portrait no longer inherits the landscape console image containers. */
+.portrait-only-image-viewport{display:none}
+
+@media (max-width:599px) and (orientation:portrait){
+  /* Remove the shared landscape image panels from portrait entirely. */
+  #aiWorkspace .landscape-shared-image-viewport,
+  #directorWorkspace .landscape-shared-image-viewport{
+    display:none!important;
+  }
+
+  /* A bounded, independent portrait viewport using the same current-image data. */
+  .portrait-only-image-viewport{
+    display:grid;
+    width:min(62vw,280px);
+    aspect-ratio:1/1;
+    margin:0 auto 10px;
+    place-items:center;
+    overflow:hidden;
+    flex:0 0 auto;
+    background:#09080c;
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+  .portrait-only-image-viewport img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    object-position:center;
+  }
+
+  /* Portrait AI Console: compact header, bounded image, then analysis content. */
+  #aiWorkspace .workspace-shell{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  #aiWorkspace .workspace-header{
+    flex:0 0 auto;
+    min-width:0;
+  }
+  #aiWorkspace .workspace-header h2{
+    min-width:0;
+    white-space:nowrap;
+    font-size:clamp(.95rem,4vw,1.15rem);
+  }
+  #aiWorkspace .ai-rerun-header{
+    flex:0 0 auto;
+    max-width:44vw;
+    padding-inline:8px;
+    font-size:.72rem;
+    white-space:nowrap;
+  }
+  #aiWorkspace .ai-primitive-panel,
+  #aiWorkspace .ai-theme-panel,
+  #aiWorkspace .ai-freeform-panel{
+    width:100%;
+    min-width:0;
+    flex:0 0 auto;
+  }
+  #aiWorkspace .ai-freeform-panel p{
+    overflow:visible;
+  }
+
+  /* Portrait Director Console: bounded image above the existing controls. */
+  #directorWorkspace .workspace-shell{
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  #directorWorkspace .director-workspace-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:8px;
+    min-width:0;
   }
 }

@@ -1,9 +1,12 @@
-# Genreactrix v0.9.3.10 — Verified Version + Measured PrimFusion Tiers
+# Genreactrix v0.9.3.11 — Dedicated Portrait Image Viewports
+
+Portrait AI Console and Director Console now render the current image in independent, bounded square viewports rather than inheriting the landscape image containers. Landscape layouts and application state remain unchanged.
+
 
 This correction updates the visible/runtime version consistently and replaces unreliable clipped-element overflow checks with an isolated off-screen text measurement probe. PrimFusion labels are measured at each fixed typography tier against the actual usable cell width.
 
 ## Corrections
-- Visible page title, on-page version, runtime build constant, and cache-busting references all report v0.9.3.10.
+- Visible page title, on-page version, runtime build constant, and cache-busting references all report v0.9.3.11.
 - PrimFusion base tier remains the reduced 75% visual size.
 - Labels wider than their cells move to 75% of that base.
 - Remaining overflow moves to 50% of the base and may truncate.
@@ -48,11 +51,11 @@ The verified v0.9.2j storage namespace and existing classification/state behavio
 - Previous/Next navigation uses the canonical bold `‹ ›` carets throughout the app.
 - Back controls and the Home Next action use the same caret family.
 
-## v0.9.3.10 diagnostic
+## v0.9.3.11 diagnostic
 Adds visible PrimFusion fit diagnostics and in-place Range measurement so Fold6 screenshots reveal the actual tier counts and clipped labels.
 
 
-## v0.9.3.10 stabilization
+## v0.9.3.11 stabilization
 
 - Removed PrimFusion overflow diagnostics and tier-fitting logic.
 - All PrimFusion labels now use one fixed 5.0625px size, equal to 75% of the prior displayed base size.
@@ -60,7 +63,7 @@ Adds visible PrimFusion fit diagnostics and in-place Range measurement so Fold6 
 - Long labels may truncate by design so the matrix remains stable and usable.
 
 
-## v0.9.3.10 portrait regression cleanup
+## v0.9.3.11 portrait regression cleanup
 - Removed the temporary PrimFusion diagnostic overlay.
 - Removed the portrait Director Console location heading from the Theme target row so all three target buttons remain visible.
 - Restored a bounded, contained portrait Director image preview.
