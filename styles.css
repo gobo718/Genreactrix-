@@ -1586,3 +1586,116 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     min-width:0;
   }
 }
+
+/* v0.9.3.12 — tablet image bounds and breathable emoji grids */
+@media (min-width:600px) and (max-width:1199px){
+  /* Tablet-wide reaction and primitive groups: seven real columns with breathing room. */
+  .director-reaction-grid,
+  .reaction-bar,
+  .tablet-ai-console .primitive-weight-grid,
+  #aiWorkspace .primitive-weight-grid{
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    column-gap:8px;
+    row-gap:10px;
+    padding-inline:8px;
+  }
+  .director-reaction-grid>*,
+  .reaction-bar>*,
+  .tablet-ai-console .primitive-weight-grid>*,
+  #aiWorkspace .primitive-weight-grid>*{
+    grid-column:auto!important;
+    min-width:0;
+  }
+  .director-reaction-grid>*:nth-child(8),
+  .reaction-bar>*:nth-child(8),
+  .tablet-ai-console .primitive-weight-grid>*:nth-child(8),
+  #aiWorkspace .primitive-weight-grid>*:nth-child(8){
+    grid-column:auto!important;
+  }
+  .director-reaction-grid .reaction-button,
+  .reaction-bar .reaction-button{
+    width:36px;
+    height:36px;
+    margin:0 auto;
+  }
+  .tablet-ai-console .primitive-weight-item,
+  #aiWorkspace .primitive-weight-item{
+    min-width:0;
+    width:100%;
+    justify-self:stretch;
+  }
+  .tablet-ai-console .primitive-weight-symbol,
+  #aiWorkspace .primitive-weight-symbol{
+    margin-inline:auto;
+  }
+  .tablet-ai-console .primitive-weight-item small,
+  #aiWorkspace .primitive-weight-item small{
+    display:block;
+    width:100%;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:clip;
+  }
+}
+
+@media (min-width:600px) and (max-width:1199px) and (orientation:portrait){
+  /* Tablet portrait gets a bounded image component instead of the landscape hero panel. */
+  #aiWorkspace .landscape-shared-image-viewport,
+  #directorWorkspace .landscape-shared-image-viewport{
+    display:none!important;
+  }
+  #aiWorkspace .portrait-only-image-viewport,
+  #directorWorkspace .portrait-only-image-viewport{
+    display:grid;
+    width:min(48vw,420px);
+    max-height:420px;
+    aspect-ratio:1/1;
+    margin:0 auto 14px;
+    place-items:center;
+    overflow:hidden;
+    flex:0 0 auto;
+    background:#09080c;
+    border:1px solid var(--line);
+    border-radius:14px;
+  }
+  #aiWorkspace .portrait-only-image-viewport img,
+  #directorWorkspace .portrait-only-image-viewport img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    object-position:center;
+  }
+  #aiWorkspace .workspace-shell,
+  #directorWorkspace .workspace-shell,
+  #imageWorkspace .workspace-shell{
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  #aiWorkspace .ai-primitive-panel,
+  #aiWorkspace .ai-theme-panel,
+  #aiWorkspace .ai-freeform-panel{
+    width:100%;
+    min-width:0;
+  }
+  /* The full Image Console uses the same bounded-square rule in tablet portrait. */
+  #imageWorkspace .image-console-workspace-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:14px;
+  }
+  #imageWorkspace .inspection-image{
+    width:min(78vw,620px);
+    aspect-ratio:1/1;
+    height:auto;
+    max-height:620px;
+    margin-inline:auto;
+    overflow:hidden;
+  }
+  #imageWorkspace .inspection-image img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    object-position:center;
+  }
+}
