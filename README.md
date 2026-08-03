@@ -1,4 +1,4 @@
-# Genreactrix v0.9.3.4 — Completed PrimFusion Tiers + Visible Director Actions
+# Genreactrix v0.9.3.5 — Synchronous PrimFusion Tier Completion
 
 This build applies the final bounded landscape refinements agreed after v0.9.3.1.
 
@@ -20,6 +20,13 @@ The verified v0.9.2j storage namespace and existing classification/state behavio
 - Preserved the existing storage namespace, classification state, console layouts, and three-tier DOM overflow detection.
 
 
-## v0.9.3.4
+## v0.9.3.5
 - Completes the PrimFusion base → 75% → 50% typography tiers using rendered DOM overflow checks across two animation frames.
 - Reserves the folded-landscape Director action row so Flag and Next image remain fully visible.
+
+## v0.9.3.5
+
+- PrimFusion typography now completes base, 75%, and 50% tiers in one synchronous fitting pass.
+- Forced layout reads occur between tiers so overflow is measured after each font-size batch is committed.
+- Removed the inter-frame tier handoff that could be cancelled by resize/generation updates after only the base tier.
+

@@ -1401,7 +1401,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .primfusion-matrix{--primfusion-visual-base-scale:.75}
 
 
-/* v0.9.3.4 — complete PrimFusion tiers and reserve folded Director actions */
+/* v0.9.3.5 — complete PrimFusion tiers and reserve folded Director actions */
 @media (orientation:landscape) and (max-height:599px){
   /* The action row is a non-negotiable visible footer inside the Director panel. */
   .director-console{
