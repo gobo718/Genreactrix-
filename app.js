@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2n";
+const GENREACTRIX_BUILD="v0.9.2o";
 const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -754,15 +754,29 @@ function createTheme(){
   $("createThemeBtn").hidden=true;
 }
 
+function snapshotSignature(value){
+  return JSON.stringify(value);
+}
+function popDistinctSnapshot(stack,currentSignature){
+  while(stack.length){
+    const candidate=stack.pop();
+    if(snapshotSignature(candidate)!==currentSignature) return candidate;
+  }
+  return null;
+}
 function undo(){
-  if(!state.history.length) return;
-  state.future.push(snapshot());
-  restoreSnapshot(state.history.pop());
+  const current=snapshot();
+  const target=popDistinctSnapshot(state.history,snapshotSignature(current));
+  if(!target){ updateUndoRedo(); return; }
+  state.future.push(current);
+  restoreSnapshot(target);
 }
 function redo(){
-  if(!state.future.length) return;
-  state.history.push(snapshot());
-  restoreSnapshot(state.future.pop());
+  const current=snapshot();
+  const target=popDistinctSnapshot(state.future,snapshotSignature(current));
+  if(!target){ updateUndoRedo(); return; }
+  state.history.push(current);
+  restoreSnapshot(target);
 }
 function updateUndoRedo(){
   $("undoBtn").disabled=!state.history.length;
