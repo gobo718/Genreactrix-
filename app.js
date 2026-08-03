@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2r";
+const GENREACTRIX_BUILD="v0.9.2s";
 const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -596,7 +596,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
     matrix.prepend(quick);
   }
 
-  requestAnimationFrame(()=>autoFitMatrixLabels(matrix));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>autoFitMatrixLabels(matrix)));
 }
 function renderWriteIns(){
   const list=$("writeinList"); list.innerHTML="";
@@ -652,8 +652,20 @@ function matrixAvailableWidth(entry){
     - parseFloat(squareStyle.paddingRight||0));
 }
 
+let matrixMeasureCanvas;
+function matrixIntrinsicLabelWidth(label){
+  matrixMeasureCanvas ||= document.createElement("canvas");
+  const context=matrixMeasureCanvas.getContext("2d");
+  const style=getComputedStyle(label);
+  context.font=`${style.fontStyle} ${style.fontVariant} ${style.fontWeight} ${style.fontSize} / ${style.lineHeight} ${style.fontFamily}`;
+  const text=label.textContent||"";
+  const base=context.measureText(text).width;
+  const spacing=parseFloat(style.letterSpacing);
+  return base + (Number.isFinite(spacing) ? Math.max(0,text.length-1)*spacing : 0);
+}
+
 function matrixLabelOverflows(entry){
-  return entry.label.scrollWidth > matrixAvailableWidth(entry) + 0.5;
+  return matrixIntrinsicLabelWidth(entry.label) > matrixAvailableWidth(entry) + 0.5;
 }
 
 function fitMatrixLabelExactly(entry, startPx){
@@ -661,7 +673,7 @@ function fitMatrixLabelExactly(entry, startPx){
   entry.label.style.fontSize=`${size}px`;
   for(let attempt=0; attempt<8 && matrixLabelOverflows(entry); attempt+=1){
     const available=matrixAvailableWidth(entry);
-    const measured=Math.max(entry.label.scrollWidth, 0.01);
+    const measured=Math.max(matrixIntrinsicLabelWidth(entry.label), 0.01);
     size=+(size * (available/measured) * 0.985).toFixed(3);
     entry.label.style.fontSize=`${size}px`;
   }
@@ -924,9 +936,9 @@ $("folderInput").addEventListener("change",e=>{
 const LAYOUT_KEY="genreactrix-v0.9.1-layout";
 const layoutState={imageFraction:1,directorFraction:1.18,aiFraction:.82,locked:false,imageCollapsed:false};
 function applyLayout(){
-  document.documentElement.style.setProperty("--image-console-fr",layoutState.imageFraction);
-  document.documentElement.style.setProperty("--director-console-fr",layoutState.directorFraction);
-  document.documentElement.style.setProperty("--ai-console-fr",layoutState.aiFraction);
+  document.documentElement.style.setProperty("--image-console-fr",`${layoutState.imageFraction}fr`);
+  document.documentElement.style.setProperty("--director-console-fr",`${layoutState.directorFraction}fr`);
+  document.documentElement.style.setProperty("--ai-console-fr",`${layoutState.aiFraction}fr`);
   $("app").querySelector(".base-layout").classList.toggle("divider-locked",layoutState.locked);
   document.querySelector(".image-console").classList.toggle("supporting-collapsed",layoutState.imageCollapsed);
   $("lockDividerBtn").setAttribute("aria-pressed",layoutState.locked);
@@ -1093,7 +1105,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2r preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.2s preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1192,6 +1204,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.2r: hydrate the active demo/image record from persistent storage only
+// v0.9.2s: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();

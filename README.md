@@ -1,4 +1,4 @@
-# Genreactrix v0.9.2r — Landscape Composition Correction
+# Genreactrix v0.9.2s — Landscape Composition Correction
 
 Canonical continuation of v0.9.2q.
 
@@ -24,3 +24,11 @@ Canonical continuation of v0.9.2q.
 6. The full landscape matrix collapses and expands as one unit.
 
 Package: `index.html`, `app.js`, `styles.css`, `README.md`.
+
+## v0.9.2s — Landscape composition and matrix typography repair
+
+- Corrected the responsive console fraction variables so the Image Console and Director Console render side by side in landscape instead of allowing the Director Console to occupy the full workspace.
+- Preserved the existing square image viewport, AI freeform description, primitive weights, AI button, zoom/pan, and expand controls.
+- Reused the established portrait 85%/15% matrix typography algorithm.
+- Replaced overflow detection based on clipped `scrollWidth` with intrinsic canvas text measurement so the longest 15% of labels reliably shrink to fit.
+- Delayed matrix fitting until two animation frames after render so the one-piece 13×13 landscape grid has its final cell widths before measurement.
