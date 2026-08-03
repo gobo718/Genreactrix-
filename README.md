@@ -1,28 +1,11 @@
-# Genreactrix v0.9.2z — Landscape Regression Corrections
+# Genreactrix v0.9.3.0 — Landscape Completion
 
-Canonical source: v0.9.2y.
+Built from v0.9.2z with the agreed bounded completion scope.
 
-This release corrects the three Fold6 landscape regressions found during device QA.
-
-## Director Console
-- Reserves a dedicated compact toolbar row beneath the image and reaction panels.
-- Keeps Undo, Redo, Reset Current Changes, and Clear Data in one 4×1 row.
-- Prevents the toolbar from overlapping the panels above it.
-- Keeps the Theme column independent and full-height on the right.
-
-## PrimFusion Matrix
-- Prevents the font-fitting pass from running while the expanded matrix has no measurable width.
-- Repeats fitting after expansion and layout settlement.
-- Restores visible row, column, and fusion labels while preserving the fit-at-any-size rule.
-
-## Image Console
-- Removes AI primitive/reaction results from this page.
-- Keeps the image fully contained in the left column without viewport cropping.
-- Keeps the four metadata fields in a 2×2 grid on the right.
-- Places the adaptive, internally scrollable AI freeform description directly beneath the metadata.
-
-## Preserved
-- PrimFusion terminology and one-piece matrix.
-- Existing state, persistence, history, navigation, and AI analysis logic.
-- Portrait, tablet, and desktop behavior outside the targeted Fold6 landscape corrections.
-- Standard four-file package.
+- Director Console retains the compact reserved 4×1 action toolbar without overlap.
+- PrimFusion Matrix preserves the 85% shared font size and individually shrinks only overflowing labels, down to 1px when necessary.
+- PrimFusion fitting no longer runs against hidden/zero-width geometry, and stale delayed fit callbacks are cancelled so labels remain stable after expansion.
+- Image Console uses a fixed square inspection viewport with `object-fit: contain`; portrait, landscape, square, and unusual aspect ratios are centered and never cropped.
+- Image Console metadata remains 2×2 with adaptive AI description below.
+- AI Console prose continues to inherit remaining height and scroll internally when needed.
+- Existing portrait, tablet, desktop, state, storage, and classification behavior remain unchanged.

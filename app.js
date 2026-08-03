@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.2z";
-const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
+const GENREACTRIX_BUILD="v0.9.3.0";
+const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
   if(status) status.textContent=message;
@@ -665,7 +665,7 @@ function renderPrimFusionMatrix(filter, targetId="primFusionMatrix"){
     primFusion.prepend(quick);
   }
 
-  requestAnimationFrame(()=>requestAnimationFrame(()=>autoFitPrimFusionLabels(primFusion)));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>schedulePrimFusionFit(primFusion,0)));
 }
 function renderWriteIns(){
   const list=$("writeinList"); list.innerHTML="";
@@ -737,41 +737,66 @@ function primFusionLabelOverflows(entry){
   return primFusionIntrinsicLabelWidth(entry.label) > primFusionAvailableWidth(entry) + 0.5;
 }
 
+const primFusionFitTimers=new WeakMap();
+const primFusionFitGenerations=new WeakMap();
+
+function cancelScheduledPrimFusionFit(root){
+  if(!root) return;
+  const timer=primFusionFitTimers.get(root);
+  if(timer) clearTimeout(timer);
+  primFusionFitTimers.delete(root);
+  primFusionFitGenerations.set(root,(primFusionFitGenerations.get(root)||0)+1);
+}
+
+function schedulePrimFusionFit(root,delay=0){
+  if(!root) return;
+  cancelScheduledPrimFusionFit(root);
+  const generation=primFusionFitGenerations.get(root)||0;
+  const timer=setTimeout(()=>{
+    primFusionFitTimers.delete(root);
+    if((primFusionFitGenerations.get(root)||0)!==generation) return;
+    autoFitPrimFusionLabels(root);
+  },delay);
+  primFusionFitTimers.set(root,timer);
+}
+
 function fitPrimFusionLabelExactly(entry, startPx){
-  let size=startPx;
+  const minimum=PRIMFUSION_LABEL_FIT.individualMinimumPx;
+  let size=Math.max(minimum,startPx);
   entry.label.style.fontSize=`${size}px`;
-  for(let attempt=0; attempt<8 && primFusionLabelOverflows(entry); attempt+=1){
+  for(let attempt=0; attempt<16 && primFusionLabelOverflows(entry); attempt+=1){
     const available=primFusionAvailableWidth(entry);
-    const measured=Math.max(primFusionIntrinsicLabelWidth(entry.label), 0.01);
-    if(available<=1) break;
-    size=Math.max(0.1, +(size * (available/measured) * 0.985).toFixed(3));
+    const measured=Math.max(primFusionIntrinsicLabelWidth(entry.label),0.01);
+    if(available<=1) return size;
+    const next=Math.max(minimum, +(size*(available/measured)*0.985).toFixed(3));
+    if(Math.abs(next-size)<0.001) break;
+    size=next;
     entry.label.style.fontSize=`${size}px`;
   }
   return size;
 }
 
 function autoFitPrimFusionLabels(root=document){
-  const entries=primFusionAutoFitEntries(root);
-  if(!entries.length) return;
+  if(!root || !root.isConnected) return;
 
-  // Never fit while the matrix is hidden or before its cells have real width.
-  // Fitting a collapsed matrix used to drive labels to 0px and they stayed invisible.
-  const laidOut=root.getClientRects().length>0 && entries.every(entry=>primFusionAvailableWidth(entry)>1);
-  if(!laidOut){
-    const attempts=Number(root.dataset.autofitDeferredAttempts||0);
-    if(attempts<8){
-      root.dataset.autofitDeferredAttempts=String(attempts+1);
-      setTimeout(()=>autoFitPrimFusionLabels(root),40);
-    }
+  // Never measure a collapsed, hidden, or zero-geometry matrix. A stale delayed
+  // pass must not overwrite a valid visible fit after expansion.
+  const panel=root.closest('.landscape-primfusion-panel');
+  const rect=root.getBoundingClientRect();
+  if((panel && panel.classList.contains('primfusion-collapsed')) ||
+     root.hidden || getComputedStyle(root).display==='none' ||
+     rect.width<=1 || rect.height<=1){
     return;
   }
-  root.dataset.autofitDeferredAttempts="0";
+
+  const entries=primFusionAutoFitEntries(root);
+  if(!entries.length || !entries.every(entry=>primFusionAvailableWidth(entry)>1)) return;
 
   const {stepPx,allowedShrinkRatio}=PRIMFUSION_LABEL_FIT;
   entries.forEach(({label})=>{
-    label.style.fontSize="";
-    label.classList.remove("autofit-shrunk","autofit-ellipsized");
-    label.removeAttribute("title");
+    label.style.fontSize='';
+    label.classList.remove('autofit-shrunk','autofit-ellipsized');
+    label.removeAttribute('title');
   });
   entries.forEach(entry=>{
     entry.preferredPx=parseFloat(getComputedStyle(entry.label).fontSize) || PRIMFUSION_LABEL_FIT.preferredPx;
@@ -782,7 +807,7 @@ function autoFitPrimFusionLabels(root=document){
   for(let guard=0;guard<80;guard+=1){
     let overflowCount=0;
     entries.forEach(entry=>{
-      const size=Math.max(0,entry.preferredPx-globalReductionPx);
+      const size=Math.max(PRIMFUSION_LABEL_FIT.individualMinimumPx,entry.preferredPx-globalReductionPx);
       entry.label.style.fontSize=`${size}px`;
       if(primFusionLabelOverflows(entry)) overflowCount+=1;
     });
@@ -791,12 +816,13 @@ function autoFitPrimFusionLabels(root=document){
   }
 
   entries.forEach(entry=>{
-    const sharedSize=Math.max(0,entry.preferredPx-globalReductionPx);
+    const sharedSize=Math.max(PRIMFUSION_LABEL_FIT.individualMinimumPx,entry.preferredPx-globalReductionPx);
+    entry.label.style.fontSize=`${sharedSize}px`;
     const finalSize=primFusionLabelOverflows(entry)
       ? fitPrimFusionLabelExactly(entry,sharedSize)
       : sharedSize;
     entry.label.dataset.autofitSize=String(finalSize);
-    entry.label.classList.toggle("autofit-shrunk",finalSize<sharedSize-0.01);
+    entry.label.classList.toggle('autofit-shrunk',finalSize<sharedSize-0.01);
   });
 
   root.dataset.autofitVisibleCount=String(entries.length);
@@ -917,9 +943,7 @@ if(landscapePrimFusionToggle){
     if(!collapsed){
       renderPrimFusionMatrix($("themeSearch")?.value || "", "primFusionMatrix");
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        autoFitPrimFusionLabels($("primFusionMatrix"));
-        setTimeout(()=>autoFitPrimFusionLabels($("primFusionMatrix")),80);
-        setTimeout(()=>autoFitPrimFusionLabels($("primFusionMatrix")),180);
+        schedulePrimFusionFit($("primFusionMatrix"),80);
         $("primFusionMatrix")?.scrollIntoView({block:"start",behavior:"smooth"});
       }));
     }else{
@@ -1202,7 +1226,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2z preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.0 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1295,14 +1319,14 @@ window.addEventListener("resize",()=>{
       lastPrimFusionLandscapeState=primFusionLandscapeState;
       renderPrimFusionMatrix($("themeSearch")?.value||"","primFusionMatrix");
     }
-    autoFitPrimFusionLabels($("primFusionMatrix"));
-    autoFitPrimFusionLabels($("tabletPrimFusionMatrix"));
+    schedulePrimFusionFit($("primFusionMatrix"),0);
+    schedulePrimFusionFit($("tabletPrimFusionMatrix"),0);
     scheduleFoldedLandscapeDescriptionFit();
     scheduleWorkspaceDescriptionFits();
   },120);
 });
 
 
-// v0.9.2z: hydrate the active demo/image record from persistent storage only
+// v0.9.3.0: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
