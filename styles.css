@@ -1399,3 +1399,38 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
 /* v0.9.3.3 — calmer PrimFusion typography and unified toolbar icons */
 .primfusion-matrix{--primfusion-visual-base-scale:.75}
+
+
+/* v0.9.3.4 — complete PrimFusion tiers and reserve folded Director actions */
+@media (orientation:landscape) and (max-height:599px){
+  /* The action row is a non-negotiable visible footer inside the Director panel. */
+  .director-console{
+    grid-template-rows:auto auto auto auto minmax(34px,auto) 0;
+    align-content:stretch;
+    overflow:hidden;
+  }
+  .director-console .reaction-bar{padding-block:0;gap:1px 0}
+  .director-console .theme-fields{gap:3px}
+  .director-console .theme-field{padding:3px 5px}
+  .director-console .director-secondary-fields{gap:3px}
+  .director-console .director-field{gap:1px}
+  .director-console .director-field input,
+  .director-console .director-field select{padding:3px 5px}
+  .director-console .director-action-row{
+    align-self:end;
+    min-height:34px;
+    height:34px;
+    overflow:visible;
+  }
+  .director-console .director-action-row button{
+    min-height:34px;
+    height:34px;
+    padding:4px 7px;
+    line-height:1;
+  }
+  .director-console .status-line{display:none}
+
+  /* Keep the matrix selectable except for the two brief layout frames. */
+  .primfusion-matrix.primfusion-fitting{pointer-events:none}
+  .primfusion-matrix.primfusion-fitted{pointer-events:auto}
+}
