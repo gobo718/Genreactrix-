@@ -1,4 +1,15 @@
-# Genreactrix v0.9.3.12 — Tablet Viewport and Emoji Spacing Repair
+# Genreactrix v0.9.3.13 — Tablet Single-Page Workspace
+
+Tablet mode now presents one continuous vertically scrolling workspace in this order:
+
+1. Image with the single AI freeform description beside it
+2. AI Console without a duplicate freeform description
+3. Director Console
+4. PrimFusion Matrix directly beneath the Director Console
+
+Tablet-only page-hopping controls are suppressed. Theme targets on the Director Console select the corresponding tablet matrix slot instead of opening a separate workspace. Portrait and folded-landscape layouts remain separate.
+
+# Genreactrix v0.9.3.13 — Tablet Viewport and Emoji Spacing Repair
 
 Portrait AI Console and Director Console now render the current image in independent, bounded square viewports rather than inheriting the landscape image containers. Landscape layouts and application state remain unchanged.
 
@@ -6,7 +17,7 @@ Portrait AI Console and Director Console now render the current image in indepen
 This correction updates the visible/runtime version consistently and replaces unreliable clipped-element overflow checks with an isolated off-screen text measurement probe. PrimFusion labels are measured at each fixed typography tier against the actual usable cell width.
 
 ## Corrections
-- Visible page title, on-page version, runtime build constant, and cache-busting references all report v0.9.3.12.
+- Visible page title, on-page version, runtime build constant, and cache-busting references all report v0.9.3.13.
 
 This pass bounds tablet portrait image viewports and gives reaction/primitive emoji grids consistent spacing without changing application state or classification behavior.
 - PrimFusion base tier remains the reduced 75% visual size.
@@ -53,11 +64,11 @@ The verified v0.9.2j storage namespace and existing classification/state behavio
 - Previous/Next navigation uses the canonical bold `‹ ›` carets throughout the app.
 - Back controls and the Home Next action use the same caret family.
 
-## v0.9.3.12 diagnostic
+## v0.9.3.13 diagnostic
 Adds visible PrimFusion fit diagnostics and in-place Range measurement so Fold6 screenshots reveal the actual tier counts and clipped labels.
 
 
-## v0.9.3.12 stabilization
+## v0.9.3.13 stabilization
 
 - Removed PrimFusion overflow diagnostics and tier-fitting logic.
 - All PrimFusion labels now use one fixed 5.0625px size, equal to 75% of the prior displayed base size.
@@ -65,7 +76,7 @@ Adds visible PrimFusion fit diagnostics and in-place Range measurement so Fold6 
 - Long labels may truncate by design so the matrix remains stable and usable.
 
 
-## v0.9.3.12 portrait regression cleanup
+## v0.9.3.13 portrait regression cleanup
 - Removed the temporary PrimFusion diagnostic overlay.
 - Removed the portrait Director Console location heading from the Theme target row so all three target buttons remain visible.
 - Restored a bounded, contained portrait Director image preview.

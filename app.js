@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.12";
+const GENREACTRIX_BUILD="v0.9.3.13";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -718,7 +718,7 @@ function primFusionAutoFitEntries(root=document){
 }
 
 function cancelScheduledPrimFusionFit(root){
-  // v0.9.3.12: fitting is intentionally disabled. PrimFusion labels use one
+  // v0.9.3.13: fitting is intentionally disabled. PrimFusion labels use one
   // fixed, conservative size so the matrix is immediately usable.
 }
 
@@ -877,16 +877,29 @@ if(landscapePrimFusionToggle){
   });
 }
 
+
+function isTabletWorkspace(){
+  return window.innerWidth>=600 && window.innerWidth<=1199 && window.innerHeight>=600;
+}
+
 document.addEventListener("click",e=>{
   const opener=e.target.closest("[data-open]");
-  if(opener){ $(opener.dataset.open).showModal(); scheduleWorkspaceDescriptionFits(); }
+  if(opener && !isTabletWorkspace()){ $(opener.dataset.open).showModal(); scheduleWorkspaceDescriptionFits(); }
   const closer=e.target.closest("[data-close]");
   if(closer) $(closer.dataset.close).close();
   const themeField=e.target.closest(".theme-field");
-  if(themeField) openThemeWorkspace(themeField.dataset.slot);
+  if(themeField){
+    if(isTabletWorkspace()){
+      state.targetSlot=Number(themeField.dataset.slot);
+      renderTabletTargetSlots();
+      document.getElementById("tabletPrimFusionMatrix")?.scrollIntoView({block:"start",behavior:"smooth"});
+    }else{
+      openThemeWorkspace(themeField.dataset.slot);
+    }
+  }
 });
 
-$("openAiBtn").addEventListener("click",()=>{ $("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); });
+$("openAiBtn").addEventListener("click",()=>{ if(!isTabletWorkspace()){ $("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); } });
 $("directorPrimFusionBtn").addEventListener("click",()=>{
   if($("directorWorkspace").open) $("directorWorkspace").close();
   openThemeWorkspace(state.targetSlot || 1);
@@ -1151,7 +1164,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.12 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.13 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
