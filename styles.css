@@ -503,3 +503,5 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 .ai-action-row{display:flex;justify-content:flex-end;margin-top:10px}
 .director-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 @media(max-width:520px){.primitive-weight-symbol{width:34px;height:34px;font-size:1.3rem}.primitive-weight-grid{gap:7px 3px}}
+
+.theme-diagnostic{margin:.55rem 0 .75rem;padding:.55rem .7rem;border:1px solid var(--line);border-radius:.65rem;background:var(--panel);color:var(--text);font-size:.78rem;line-height:1.35;overflow-wrap:anywhere;}

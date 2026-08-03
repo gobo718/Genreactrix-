@@ -1,3 +1,10 @@
+const GENREACTRIX_BUILD="v0.9.2n";
+const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
+function setDirectorStatus(message){
+  const status=$("directorStatus");
+  if(status) status.textContent=message;
+}
+console.info(`Genreactrix JavaScript loaded: ${GENREACTRIX_BUILD}`);
 const PRIMITIVES = [
   {id:"P01",name:"Beautiful",symbol:"✨"},
   {id:"P02",name:"Adorable",symbol:"🧸"},
@@ -259,18 +266,17 @@ function persistRecords(){
   try{
     const recordsJson=JSON.stringify(state.records);
     const aiRunsJson=JSON.stringify(state.aiRuns);
-    localStorage.setItem("genreactrix-v0.9.2h-records",recordsJson);
-    localStorage.setItem("genreactrix-v0.9.2h-ai-runs",aiRunsJson);
+    localStorage.setItem("genreactrix-v0.9.2j-records",recordsJson);
+    localStorage.setItem("genreactrix-v0.9.2j-ai-runs",aiRunsJson);
     // Verify the classification write immediately. A failed or blocked write must
     // not masquerade as a successful save in the UI.
-    if(localStorage.getItem("genreactrix-v0.9.2h-records")!==recordsJson){
+    if(localStorage.getItem("genreactrix-v0.9.2j-records")!==recordsJson){
       throw new Error("Classification storage verification failed");
     }
     return true;
   }catch(error){
     console.error("Genreactrix could not persist classification data",error);
-    const status=$("directorStatus");
-    if(status) status.textContent="Save failed. Classification data was not stored.";
+    setDirectorStatus("Save failed. Classification data was not stored.");
     return false;
   }
 }
@@ -302,6 +308,10 @@ function loadCurrent(){
   const key=currentKey();
   applyClassification(readClassificationForKey(key));
   state.visitBaseline=classificationState();
+  // Paint the destination image's classification immediately, before any
+  // nonclassification console work.
+  renderThemes();
+  renderReactions();
   renderAll();
 }
 function advanceImageIndex(){
@@ -312,7 +322,8 @@ function commitAndAdvance(sourceKey){
   // Theme 1 is one transaction: persist the source image under the key that
   // was active when selection began, then switch identity and load a fresh
   // destination record. No working Theme state is carried across the boundary.
-  if(!writeClassificationForKey(sourceKey,classificationState())) return;
+  const saveOk=writeClassificationForKey(sourceKey,classificationState());
+  if(!saveOk) return;
   advanceImageIndex();
   const destinationKey=currentKey();
   applyClassification(readClassificationForKey(destinationKey));
@@ -320,15 +331,16 @@ function commitAndAdvance(sourceKey){
   if($("themeWorkspace")?.open) $("themeWorkspace").close();
   renderAll();
 }
-function nextImage(){
-  advanceImageIndex();
+function navigateImage(delta){
+  if(state.files.length){
+    state.index=(state.index+delta+state.files.length)%state.files.length;
+  }else{
+    state.demoIndex=(state.demoIndex+delta+DEMOS.length)%DEMOS.length;
+  }
   loadCurrent();
 }
-function prevImage(){
-  if(state.files.length) state.index=(state.index-1+state.files.length)%state.files.length;
-  else state.demoIndex=(state.demoIndex-1+DEMOS.length)%DEMOS.length;
-  loadCurrent();
-}
+function nextImage(){ navigateImage(1); }
+function prevImage(){ navigateImage(-1); }
 function normalizeTheme(value){
   if(!value) return null;
   if(typeof value==="object" && value.id) return value;
@@ -437,7 +449,16 @@ function renderComparison(){
   $("profileFlagged").textContent=state.flagged?"Yes":"No";
 }
 function renderAll(){
-  renderImage(); renderReactions(); renderThemes(); renderFlag(); renderDirectorFields(); renderAi(); renderComparison(); updateUndoRedo();
+  // Classification fields render first so image/profile rendering can never leave
+  // Theme 1/2/3 showing the previous image if a later render stage fails.
+  renderThemes();
+  renderReactions();
+  renderFlag();
+  renderDirectorFields();
+  renderImage();
+  renderAi();
+  renderComparison();
+  updateUndoRedo();
   renderTabletTargetSlots();
   renderThemeMatrix($("tabletThemeSearch")?.value || "", "tabletThemeMatrix");
 }
@@ -590,11 +611,10 @@ function selectTheme(themeInput){
     commitAndAdvance(sourceKey);
     return;
   }
-  if(!writeClassificationForKey(sourceKey,classificationState())) return;
+  const saveOk=writeClassificationForKey(sourceKey,classificationState());
+  if(!saveOk) return;
   renderThemes();
   renderComparison();
-  const status=$("directorStatus");
-  if(status) status.textContent=`Theme ${sourceSlot} saved for ${sourceKey}.`;
 }
 
 function matrixAutoFitEntries(root=document){
@@ -849,6 +869,7 @@ $("folderInput").addEventListener("change",e=>{
 
 
 
+
 const LAYOUT_KEY="genreactrix-v0.9.1-layout";
 const layoutState={imageFraction:1,directorFraction:1.18,aiFraction:.82,locked:false,imageCollapsed:false};
 function applyLayout(){
@@ -1021,15 +1042,14 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2h intentionally starts with a clean classification namespace.
+  // v0.9.2n uses the verified v0.9.2j storage namespace and with a clean classification namespace and uniquely named assets.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
-  const currentRecords=localStorage.getItem("genreactrix-v0.9.2h-records");
+  const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
   state.records=currentRecords?JSON.parse(currentRecords):{};
-  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2h-ai-runs")||"{}");
+  state.aiRuns=JSON.parse(localStorage.getItem("genreactrix-v0.9.2j-ai-runs")||"{}");
   state.writeIns=JSON.parse(localStorage.getItem("genreactrix-v0.9.1-writeins")||localStorage.getItem("genreactrix-v0.8.0-writeins")||localStorage.getItem("genreactrix-v0.7.0-writeins")||'["Horror","Dreamcore"]');
 }catch(error){ console.warn("Genreactrix storage migration skipped",error); }
-renderAll();
 
 
 
@@ -1110,3 +1130,8 @@ window.addEventListener("resize",()=>{
   clearTimeout(matrixFitResizeTimer);
   matrixFitResizeTimer=setTimeout(()=>{autoFitMatrixLabels($("themeMatrix"));autoFitMatrixLabels($("tabletThemeMatrix"));},120);
 });
+
+
+// v0.9.2n: hydrate the active demo/image record from persistent storage only
+// after all renderer dependencies (including image transform state) exist.
+loadCurrent();
