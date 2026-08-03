@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.2w";
-const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
+const GENREACTRIX_BUILD="v0.9.2x";
+const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
   if(status) status.textContent=message;
@@ -23,11 +23,11 @@ const PRIMITIVES = [
 const PRIMITIVE_BY_ID = Object.fromEntries(PRIMITIVES.map(p=>[p.id,p]));
 const PRIMITIVE_BY_NAME = Object.fromEntries(PRIMITIVES.map(p=>[p.name,p]));
 const primitivePairId=(a,b)=>[a,b].sort().join("|");
-const matrixCellId=(a,b)=>`CELL:${primitivePairId(a,b)}`;
+const primFusionCellId=(a,b)=>`CELL:${primitivePairId(a,b)}`;
 
 
 
-const CANONICAL_MATRIX_LABELS = {
+const CANONICAL_PRIMFUSION_LABELS = {
   "Adorable|Adorable": "Adorable",
   "Adorable|Beautiful": "Cherubic",
   "Adorable|Funny": "Goofy",
@@ -121,9 +121,9 @@ const CANONICAL_MATRIX_LABELS = {
   "Weird|Weird": "Weird"
 };
 
-function canonicalMatrixLabel(firstName, secondName){
+function canonicalPrimFusionLabel(firstName, secondName){
   const key=[firstName,secondName].sort().join("|");
-  return CANONICAL_MATRIX_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
+  return CANONICAL_PRIMFUSION_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
 
 const BASE_THEMES = [
@@ -400,6 +400,7 @@ function renderImage(){
   if(typeof resetImageTransform==="function") resetImageTransform();
   $("imageEmpty").hidden=true;
   $("inspectionImage").src=src;
+  if($("directorThumbnail")) $("directorThumbnail").src=src;
   const description=currentAiRun().description || currentDescription();
   $("aiDescription").textContent=description;
   $("inspectionDescription").textContent=description;
@@ -501,17 +502,25 @@ function renderAll(){
   renderImage();
   renderAi();
   scheduleFoldedLandscapeDescriptionFit();
+  scheduleWorkspaceDescriptionFits();
   renderComparison();
   updateUndoRedo();
   renderTabletTargetSlots();
-  renderThemeMatrix($("tabletThemeSearch")?.value || "", "tabletThemeMatrix");
+  renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
 }
 
 function openThemeWorkspace(slot=1){
   state.targetSlot=Number(slot);
+  const primFusionPanel=$("landscapePrimFusionPanel");
+  if(primFusionPanel && window.innerWidth>window.innerHeight){
+    primFusionPanel.classList.add("primfusion-collapsed");
+    $("landscapePrimFusionToggle")?.setAttribute("aria-expanded","false");
+    if($("landscapePrimFusionToggle")) $("landscapePrimFusionToggle").textContent="Expand PrimFusion Matrix";
+    document.querySelector("#themeWorkspace .workspace-shell")?.classList.remove("primfusion-expanded");
+  }
   renderTargetSlot(true);
   $("themeSearch").value="";
-  renderThemeMatrix("");
+  renderPrimFusionMatrix("");
   renderWriteIns();
   $("themeError").textContent="";
   $("themeWorkspace").showModal();
@@ -527,46 +536,46 @@ function renderTargetSlot(blink=false){
     requestAnimationFrame(()=>document.querySelector('.slot-button[data-target-slot="1"]').classList.add("commit-alert"));
   }
 }
-function renderThemeMatrix(filter, targetId="themeMatrix"){
-  const matrix=$(targetId);
-  if(!matrix) return;
-  matrix.innerHTML="";
+function renderPrimFusionMatrix(filter, targetId="primFusionMatrix"){
+  const primFusion=$(targetId);
+  if(!primFusion) return;
+  primFusion.innerHTML="";
 
   const q=(filter||"").trim().toLowerCase();
-  const landscapeSingleGrid=targetId==="themeMatrix" && window.innerWidth > window.innerHeight;
-  const singleGrid=targetId==="tabletThemeMatrix" || landscapeSingleGrid;
+  const landscapeSingleGrid=targetId==="primFusionMatrix" && window.innerWidth > window.innerHeight;
+  const singleGrid=targetId==="tabletPrimFusionMatrix" || landscapeSingleGrid;
   const bands=singleGrid
     ? [PRIMITIVES.map((_,index)=>index)]
     : [[0,1,2,3],[4,5,6,7,8],[9,10,11,12]];
 
   bands.forEach((columnIndexes,bandIndex)=>{
     const section=document.createElement("section");
-    section.className="true-matrix-band";
-    if(singleGrid) section.classList.add("single-13-matrix");
+    section.className="true-primfusion-band";
+    if(singleGrid) section.classList.add("single-primfusion-primFusion");
 
     if(!singleGrid){
       const title=document.createElement("div");
-      title.className="matrix-band-title";
-      title.textContent=`Theme matrix ${bandIndex+1} of ${bands.length}`;
+      title.className="primfusion-band-title";
+      title.textContent=`PrimFusion Matrix ${bandIndex+1} of ${bands.length}`;
       section.appendChild(title);
     }
 
     const scroller=document.createElement("div");
-    scroller.className="matrix-scroller";
+    scroller.className="primfusion-scroller";
 
     const grid=document.createElement("div");
-    grid.className="true-matrix-grid";
+    grid.className="true-primfusion-grid";
     grid.style.setProperty("--band-columns", columnIndexes.length);
 
     const corner=document.createElement("div");
-    corner.className="matrix-corner";
+    corner.className="primfusion-corner";
     corner.textContent="×";
     grid.appendChild(corner);
 
     columnIndexes.forEach(ci=>{
       const col=PRIMITIVES[ci];
       const head=document.createElement("button");
-      head.className="matrix-axis-header matrix-column-header";
+      head.className="primfusion-axis-header primfusion-column-header";
       head.type="button";
       head.innerHTML=`<span>${col.symbol}</span><small>${col.name}</small>`;
       head.title=`Select ${col.name}`;
@@ -576,7 +585,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
 
     PRIMITIVES.forEach((row,ri)=>{
       const rowHead=document.createElement("button");
-      rowHead.className="matrix-axis-header matrix-row-header";
+      rowHead.className="primfusion-axis-header primfusion-row-header";
       rowHead.type="button";
       rowHead.innerHTML=`<span>${row.symbol}</span><small>${row.name}</small>`;
       rowHead.title=`Select ${row.name}`;
@@ -585,24 +594,24 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
 
       columnIndexes.forEach(ci=>{
         const col=PRIMITIVES[ci];
-        const combo = canonicalMatrixLabel(row.name,col.name);
+        const combo = canonicalPrimFusionLabel(row.name,col.name);
         const cell=document.createElement("button");
         cell.type="button";
-        cell.className="matrix-intersection";
+        cell.className="primfusion-intersection";
         cell.innerHTML=ri===ci
-          ? `<span class="matrix-combo-symbol">${row.symbol}</span><small class="matrix-combo-label">${row.name}</small>`
-          : `<span class="matrix-combo-symbol">${row.symbol}${col.symbol}</span><small class="matrix-combo-label">${combo}</small>`;
+          ? `<span class="primfusion-combo-symbol">${row.symbol}</span><small class="primfusion-combo-label">${row.name}</small>`
+          : `<span class="primfusion-combo-symbol">${row.symbol}${col.symbol}</span><small class="primfusion-combo-label">${combo}</small>`;
         cell.title=combo;
         const visible=!q || combo.toLowerCase().includes(q);
         cell.hidden=!visible;
-        cell.addEventListener("click",()=>selectTheme({id:matrixCellId(row.id,col.id),label:combo,kind:"matrix",primitiveIds:[row.id,col.id].sort()}));
+        cell.addEventListener("click",()=>selectTheme({id:primFusionCellId(row.id,col.id),label:combo,kind:"primFusion",primitiveIds:[row.id,col.id].sort()}));
         grid.appendChild(cell);
       });
     });
 
     scroller.appendChild(grid);
     section.appendChild(scroller);
-    matrix.appendChild(section);
+    primFusion.appendChild(section);
   });
 
   const directMatches=[...BASE_THEMES,...state.writeIns]
@@ -613,7 +622,7 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
     const quick=document.createElement("section");
     quick.className="quick-theme-results";
     const heading=document.createElement("div");
-    heading.className="matrix-band-title";
+    heading.className="primfusion-band-title";
     heading.textContent=q ? "Matching established Themes" : "Established Themes";
     quick.appendChild(heading);
     const wrap=document.createElement("div");
@@ -626,10 +635,10 @@ function renderThemeMatrix(filter, targetId="themeMatrix"){
       wrap.appendChild(b);
     });
     quick.appendChild(wrap);
-    matrix.prepend(quick);
+    primFusion.prepend(quick);
   }
 
-  requestAnimationFrame(()=>requestAnimationFrame(()=>autoFitMatrixLabels(matrix)));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>autoFitPrimFusionLabels(primFusion)));
 }
 function renderWriteIns(){
   const list=$("writeinList"); list.innerHTML="";
@@ -662,33 +671,33 @@ function selectTheme(themeInput){
   renderComparison();
 }
 
-function matrixAutoFitEntries(root=document){
-  return [...root.querySelectorAll(".matrix-axis-header, .matrix-intersection")]
+function primFusionAutoFitEntries(root=document){
+  return [...root.querySelectorAll(".primfusion-axis-header, .primfusion-intersection")]
     .filter(square=>{
       if(square.hidden) return false;
       const style=getComputedStyle(square);
       return style.display!=="none" && style.visibility!=="hidden";
     })
     .map(square=>{
-      const label=square.matches(".matrix-axis-header")
+      const label=square.matches(".primfusion-axis-header")
         ? square.querySelector("small")
-        : square.querySelector(".matrix-combo-label");
+        : square.querySelector(".primfusion-combo-label");
       return label ? {square,label} : null;
     })
     .filter(Boolean);
 }
 
-function matrixAvailableWidth(entry){
+function primFusionAvailableWidth(entry){
   const squareStyle=getComputedStyle(entry.square);
   return Math.max(0, entry.square.clientWidth
     - parseFloat(squareStyle.paddingLeft||0)
     - parseFloat(squareStyle.paddingRight||0));
 }
 
-let matrixMeasureCanvas;
-function matrixIntrinsicLabelWidth(label){
-  matrixMeasureCanvas ||= document.createElement("canvas");
-  const context=matrixMeasureCanvas.getContext("2d");
+let primFusionMeasureCanvas;
+function primFusionIntrinsicLabelWidth(label){
+  primFusionMeasureCanvas ||= document.createElement("canvas");
+  const context=primFusionMeasureCanvas.getContext("2d");
   const style=getComputedStyle(label);
   context.font=`${style.fontStyle} ${style.fontVariant} ${style.fontWeight} ${style.fontSize} / ${style.lineHeight} ${style.fontFamily}`;
   const text=label.textContent||"";
@@ -697,34 +706,34 @@ function matrixIntrinsicLabelWidth(label){
   return base + (Number.isFinite(spacing) ? Math.max(0,text.length-1)*spacing : 0);
 }
 
-function matrixLabelOverflows(entry){
-  return matrixIntrinsicLabelWidth(entry.label) > matrixAvailableWidth(entry) + 0.5;
+function primFusionLabelOverflows(entry){
+  return primFusionIntrinsicLabelWidth(entry.label) > primFusionAvailableWidth(entry) + 0.5;
 }
 
-function fitMatrixLabelExactly(entry, startPx){
+function fitPrimFusionLabelExactly(entry, startPx){
   let size=startPx;
   entry.label.style.fontSize=`${size}px`;
-  for(let attempt=0; attempt<8 && matrixLabelOverflows(entry); attempt+=1){
-    const available=matrixAvailableWidth(entry);
-    const measured=Math.max(matrixIntrinsicLabelWidth(entry.label), 0.01);
+  for(let attempt=0; attempt<8 && primFusionLabelOverflows(entry); attempt+=1){
+    const available=primFusionAvailableWidth(entry);
+    const measured=Math.max(primFusionIntrinsicLabelWidth(entry.label), 0.01);
     size=+(size * (available/measured) * 0.985).toFixed(3);
     entry.label.style.fontSize=`${size}px`;
   }
   return size;
 }
 
-function autoFitMatrixLabels(root=document){
-  const entries=matrixAutoFitEntries(root);
+function autoFitPrimFusionLabels(root=document){
+  const entries=primFusionAutoFitEntries(root);
   if(!entries.length) return;
 
-  const {stepPx,allowedShrinkRatio}=MATRIX_LABEL_FIT;
+  const {stepPx,allowedShrinkRatio}=PRIMFUSION_LABEL_FIT;
   entries.forEach(({label})=>{
     label.style.fontSize="";
     label.classList.remove("autofit-shrunk","autofit-ellipsized");
     label.removeAttribute("title");
   });
   entries.forEach(entry=>{
-    entry.preferredPx=parseFloat(getComputedStyle(entry.label).fontSize) || MATRIX_LABEL_FIT.preferredPx;
+    entry.preferredPx=parseFloat(getComputedStyle(entry.label).fontSize) || PRIMFUSION_LABEL_FIT.preferredPx;
   });
 
   const allowedShrinkCount=Math.floor(entries.length*allowedShrinkRatio);
@@ -732,18 +741,18 @@ function autoFitMatrixLabels(root=document){
   for(let guard=0;guard<80;guard+=1){
     let overflowCount=0;
     entries.forEach(entry=>{
-      const size=Math.max(0.1,entry.preferredPx-globalReductionPx);
+      const size=Math.max(0,entry.preferredPx-globalReductionPx);
       entry.label.style.fontSize=`${size}px`;
-      if(matrixLabelOverflows(entry)) overflowCount+=1;
+      if(primFusionLabelOverflows(entry)) overflowCount+=1;
     });
     if(overflowCount<=allowedShrinkCount) break;
     globalReductionPx=+(globalReductionPx+stepPx).toFixed(2);
   }
 
   entries.forEach(entry=>{
-    const sharedSize=Math.max(0.1,entry.preferredPx-globalReductionPx);
-    const finalSize=matrixLabelOverflows(entry)
-      ? fitMatrixLabelExactly(entry,sharedSize)
+    const sharedSize=Math.max(0,entry.preferredPx-globalReductionPx);
+    const finalSize=primFusionLabelOverflows(entry)
+      ? fitPrimFusionLabelExactly(entry,sharedSize)
       : sharedSize;
     entry.label.dataset.autofitSize=String(finalSize);
     entry.label.classList.toggle("autofit-shrunk",finalSize<sharedSize-0.01);
@@ -762,7 +771,7 @@ function renderTabletTargetSlots(){
 
 function updateTabletSearch(){
   const q=$("tabletThemeSearch").value.trim();
-  renderThemeMatrix(q,"tabletThemeMatrix");
+  renderPrimFusionMatrix(q,"tabletPrimFusionMatrix");
   const existing=[...BASE_THEMES,...state.writeIns].find(t=>t.toLowerCase()===q.toLowerCase());
   const create=$("tabletCreateThemeBtn");
   if(q && !existing){
@@ -782,13 +791,13 @@ function createTabletTheme(){
     localStorage.setItem("genreactrix-v0.9.1-writeins",JSON.stringify(state.writeIns));
   }
   $("tabletCreateThemeBtn").hidden=true;
-  renderThemeMatrix(q,"tabletThemeMatrix");
+  renderPrimFusionMatrix(q,"tabletPrimFusionMatrix");
   $("tabletThemeError").textContent=`Created “${q}”. Select it normally for Theme ${state.targetSlot}.`;
 }
 
 function updateSearch(){
   const q=$("themeSearch").value.trim();
-  renderThemeMatrix(q);
+  renderPrimFusionMatrix(q);
   const existing=[...BASE_THEMES,...state.writeIns].find(t=>t.toLowerCase()===q.toLowerCase());
   const create=$("createThemeBtn");
   if(q && !existing){
@@ -856,28 +865,33 @@ function updateUndoRedo(){
   if($("directorRedoBtn")) $("directorRedoBtn").disabled=!state.future.length;
 }
 
-const landscapeMatrixToggle=$("landscapeMatrixToggle");
-if(landscapeMatrixToggle){
-  landscapeMatrixToggle.addEventListener("click",()=>{
-    const panel=$("landscapeMatrixPanel");
-    const collapsed=panel.classList.toggle("matrix-collapsed");
-    landscapeMatrixToggle.setAttribute("aria-expanded",String(!collapsed));
-    landscapeMatrixToggle.textContent=collapsed?"Expand 13×13 grid":"Collapse 13×13 grid";
-    if(!collapsed) requestAnimationFrame(()=>autoFitMatrixLabels($("themeMatrix")));
+const landscapePrimFusionToggle=$("landscapePrimFusionToggle");
+if(landscapePrimFusionToggle){
+  landscapePrimFusionToggle.addEventListener("click",()=>{
+    const panel=$("landscapePrimFusionPanel");
+    const collapsed=panel.classList.toggle("primfusion-collapsed");
+    landscapePrimFusionToggle.setAttribute("aria-expanded",String(!collapsed));
+    landscapePrimFusionToggle.textContent=collapsed?"Expand PrimFusion Matrix":"Collapse PrimFusion Matrix";
+    document.querySelector("#themeWorkspace .workspace-shell")?.classList.toggle("primfusion-expanded",!collapsed);
+    if(!collapsed){
+      requestAnimationFrame(()=>autoFitPrimFusionLabels($("primFusionMatrix")));
+    }else{
+      document.querySelector("#themeWorkspace .workspace-shell")?.scrollTo({top:0,behavior:"instant"});
+    }
   });
 }
 
 document.addEventListener("click",e=>{
   const opener=e.target.closest("[data-open]");
-  if(opener) $(opener.dataset.open).showModal();
+  if(opener){ $(opener.dataset.open).showModal(); scheduleWorkspaceDescriptionFits(); }
   const closer=e.target.closest("[data-close]");
   if(closer) $(closer.dataset.close).close();
   const themeField=e.target.closest(".theme-field");
   if(themeField) openThemeWorkspace(themeField.dataset.slot);
 });
 
-$("openAiBtn").addEventListener("click",()=> $("aiWorkspace").showModal());
-$("directorMatrixBtn").addEventListener("click",()=>{
+$("openAiBtn").addEventListener("click",()=>{ $("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); });
+$("directorPrimFusionBtn").addEventListener("click",()=>{
   if($("directorWorkspace").open) $("directorWorkspace").close();
   openThemeWorkspace(state.targetSlot || 1);
 });
@@ -976,6 +990,8 @@ function applyLayout(){
   document.querySelector(".image-console").classList.toggle("supporting-collapsed",layoutState.imageCollapsed);
   $("lockDividerBtn").setAttribute("aria-pressed",layoutState.locked);
   $("lockDividerBtn").textContent=layoutState.locked?"🔒 Layout":"🔓 Layout";
+  $("resetViewBtn").disabled=layoutState.locked;
+  $("resetViewBtn").setAttribute("aria-disabled",String(layoutState.locked));
   $("collapseImageBtn").textContent=layoutState.imageCollapsed?"＋":"−";
 }
 function saveLayout(){localStorage.setItem(LAYOUT_KEY,JSON.stringify(layoutState));}
@@ -1089,7 +1105,7 @@ const WORKSPACE_PROFILES={
   "classification":{imageFraction:1,directorFraction:1.18,aiFraction:.82,imageCollapsed:false},
   "image-study":{imageFraction:1.55,directorFraction:.95,aiFraction:.62,imageCollapsed:false},
   "ai-review":{imageFraction:.78,directorFraction:1.02,aiFraction:1.42,imageCollapsed:false},
-  "matrix-analysis":{imageFraction:.82,directorFraction:1.02,aiFraction:.82,imageCollapsed:true}
+  "primfusion-analysis":{imageFraction:.82,directorFraction:1.02,aiFraction:.82,imageCollapsed:true}
 };
 function currentDirectorAccount(){return localStorage.getItem(DIRECTOR_ACCOUNT_KEY)||"local-director";}
 function savedLayoutsKey(){return `genreactrix-v0.9.1-saved-layouts:${currentDirectorAccount()}`;}
@@ -1133,12 +1149,13 @@ $("savedLayoutSelect").addEventListener("change",e=>{
   if(saved){Object.assign(layoutState,saved);applyLayout();saveLayout();}
 });
 $("workspaceProfileSelect").addEventListener("change",e=>applyWorkspaceProfile(e.target.value));
-const initialWorkspaceProfile=localStorage.getItem(WORKSPACE_PROFILE_KEY)||"classification";
+let initialWorkspaceProfile=localStorage.getItem(WORKSPACE_PROFILE_KEY)||"classification";
+if(initialWorkspaceProfile===["matrix","analysis"].join("-")) initialWorkspaceProfile="primfusion-analysis";
 $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?initialWorkspaceProfile:"classification";
 refreshSavedLayouts();
 
 try{
-  // v0.9.2w preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.2x preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1149,7 +1166,7 @@ try{
 
 
 
-// v0.9.1 Desktop Mode: image zoom/pan, keyboard workflow, and matrix navigation.
+// v0.9.1 Desktop Mode: image zoom/pan, keyboard workflow, and primFusion navigation.
 const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
 function applyImageTransform(){
   const image=$("mainImage");
@@ -1202,7 +1219,7 @@ document.addEventListener("keydown",e=>{
   if(editableTarget(e.target)) return;
   if(e.altKey && ["1","2","3","4"].includes(e.key)){
     e.preventDefault();
-    const names=["classification","image-study","ai-review","matrix-analysis"];
+    const names=["classification","image-study","ai-review","primfusion-analysis"];
     applyWorkspaceProfile(names[Number(e.key)-1]);
     return;
   }
@@ -1210,9 +1227,9 @@ document.addEventListener("keydown",e=>{
   if(e.key.toLowerCase()==="p" || e.key==="ArrowLeft"){e.preventDefault();prevImage();return;}
   if(e.key.toLowerCase()==="f"){$("directorFlagBtn").click();}
 });
-$("tabletThemeMatrix").addEventListener("keydown",e=>{
+$("tabletPrimFusionMatrix").addEventListener("keydown",e=>{
   if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) return;
-  const buttons=[...$("tabletThemeMatrix").querySelectorAll("button:not([hidden])")];
+  const buttons=[...$("tabletPrimFusionMatrix").querySelectorAll("button:not([hidden])")];
   const index=buttons.indexOf(document.activeElement);
   if(index<0) return;
   e.preventDefault();
@@ -1221,23 +1238,24 @@ $("tabletThemeMatrix").addEventListener("keydown",e=>{
   buttons[Math.max(0,Math.min(buttons.length-1,index+delta))]?.focus();
 });
 
-let matrixFitResizeTimer;
-let lastMatrixLandscapeState=window.innerWidth > window.innerHeight;
+let primFusionFitResizeTimer;
+let lastPrimFusionLandscapeState=window.innerWidth > window.innerHeight;
 window.addEventListener("resize",()=>{
-  clearTimeout(matrixFitResizeTimer);
-  matrixFitResizeTimer=setTimeout(()=>{
-    const matrixLandscapeState=window.innerWidth > window.innerHeight;
-    if(matrixLandscapeState!==lastMatrixLandscapeState){
-      lastMatrixLandscapeState=matrixLandscapeState;
-      renderThemeMatrix($("themeSearch")?.value||"","themeMatrix");
+  clearTimeout(primFusionFitResizeTimer);
+  primFusionFitResizeTimer=setTimeout(()=>{
+    const primFusionLandscapeState=window.innerWidth > window.innerHeight;
+    if(primFusionLandscapeState!==lastPrimFusionLandscapeState){
+      lastPrimFusionLandscapeState=primFusionLandscapeState;
+      renderPrimFusionMatrix($("themeSearch")?.value||"","primFusionMatrix");
     }
-    autoFitMatrixLabels($("themeMatrix"));
-    autoFitMatrixLabels($("tabletThemeMatrix"));
+    autoFitPrimFusionLabels($("primFusionMatrix"));
+    autoFitPrimFusionLabels($("tabletPrimFusionMatrix"));
     scheduleFoldedLandscapeDescriptionFit();
+    scheduleWorkspaceDescriptionFits();
   },120);
 });
 
 
-// v0.9.2w: hydrate the active demo/image record from persistent storage only
+// v0.9.2x: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
