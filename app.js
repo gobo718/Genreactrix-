@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.2s";
+const GENREACTRIX_BUILD="v0.9.2t";
 const MATRIX_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -432,6 +432,38 @@ function renderPrimitiveWeights(target, {showDirector=false}={}){
     target.appendChild(item);
   });
 }
+function isFoldedLandscapeHome(){
+  return window.innerWidth>window.innerHeight && window.innerHeight<600;
+}
+
+function fitFoldedLandscapeDescription(){
+  const panel=document.querySelector(".image-console .ai-description");
+  const text=$("aiDescription");
+  if(!panel || !text){return;}
+
+  panel.style.removeProperty("--folded-ai-description-size");
+  text.style.fontSize="";
+  if(!isFoldedLandscapeHome()) return;
+
+  const preferredPx=11.52; // .72rem at the default 16px root size
+  const minimumPx=8.8;
+  const stepPx=.2;
+  let size=preferredPx;
+  text.style.fontSize=`${size}px`;
+
+  // Prefer the largest readable size that fits before relying on vertical scrolling.
+  while(size>minimumPx && panel.scrollHeight>panel.clientHeight+1){
+    size=Math.max(minimumPx,+(size-stepPx).toFixed(2));
+    text.style.fontSize=`${size}px`;
+  }
+  panel.dataset.descriptionFitPx=String(size);
+  panel.dataset.descriptionScrolls=String(panel.scrollHeight>panel.clientHeight+1);
+}
+
+function scheduleFoldedLandscapeDescriptionFit(){
+  requestAnimationFrame(()=>requestAnimationFrame(fitFoldedLandscapeDescription));
+}
+
 function renderAi(){
   renderPrimitiveWeights($("homeAiPrimitives"));
   renderPrimitiveWeights($("aiPrimitives"));
@@ -468,6 +500,7 @@ function renderAll(){
   renderDirectorFields();
   renderImage();
   renderAi();
+  scheduleFoldedLandscapeDescriptionFit();
   renderComparison();
   updateUndoRedo();
   renderTabletTargetSlots();
@@ -1105,7 +1138,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.2s preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.2t preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1200,10 +1233,11 @@ window.addEventListener("resize",()=>{
     }
     autoFitMatrixLabels($("themeMatrix"));
     autoFitMatrixLabels($("tabletThemeMatrix"));
+    scheduleFoldedLandscapeDescriptionFit();
   },120);
 });
 
 
-// v0.9.2s: hydrate the active demo/image record from persistent storage only
+// v0.9.2t: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();

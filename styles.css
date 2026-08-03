@@ -649,3 +649,38 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
     grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);
   }
 }
+
+/* v0.9.2t — Fold6 folded-landscape Image Console refinement only. */
+@media (orientation:landscape) and (max-height:599px){
+  /* Keep the existing Director console unchanged. */
+  .image-console .image-description-row,
+  .image-console.supporting-collapsed .image-description-row{
+    grid-template-columns:minmax(0,.52fr) minmax(0,1.48fr);
+    gap:6px;
+    align-items:stretch;
+  }
+  .image-console .image-viewport{
+    justify-self:start;
+    align-self:start;
+    width:100%;
+    max-width:100%;
+    max-height:100%;
+  }
+  .image-console .ai-description{
+    min-height:0;
+    padding:3px 5px 24px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-gutter:stable;
+  }
+  .image-console .ai-description p{
+    margin:.22rem 0 0;
+    font-size:var(--folded-ai-description-size,.72rem);
+    line-height:1.22;
+    overflow-wrap:anywhere;
+  }
+  /* Categorization results stay exclusive to the dedicated AI surfaces. */
+  .image-console .ai-description .primitive-weight-grid.compact{
+    display:none!important;
+  }
+}
