@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.3.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.3.0">
+  <title>Genreactrix v0.9.3.1</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.3.1">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.3.0</span>
+        <span>v0.9.3.1</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" title="Previous image">←</button>
@@ -189,11 +189,14 @@
         <button class="back-button" data-close="aiWorkspace">← Back</button>
         <h2>AI Console</h2>
       </header>
-      <section>
+      <section class="ai-image-preview">
+        <img id="aiWorkspaceImage" alt="Current image">
+      </section>
+      <section class="ai-primitive-panel">
         <h3>Primitive suggestions</h3>
         <div id="aiPrimitives" class="primitive-weight-grid"></div>
       </section>
-      <section>
+      <section class="ai-theme-panel">
         <h3>Theme suggestions</h3>
         <div id="aiThemes" class="ai-list"></div>
       </section>
@@ -262,6 +265,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.3.0"></script>
+  <script src="app.js?v=0.9.3.1"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.0";
+const GENREACTRIX_BUILD="v0.9.3.1";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -400,6 +400,7 @@ function renderImage(){
   if(typeof resetImageTransform==="function") resetImageTransform();
   $("imageEmpty").hidden=true;
   $("inspectionImage").src=src;
+  if($("aiWorkspaceImage")) $("aiWorkspaceImage").src=src;
   if($("directorThumbnail")) $("directorThumbnail").src=src;
   const description=currentAiRun().description || currentDescription();
   $("aiDescription").textContent=description;
@@ -762,25 +763,22 @@ function schedulePrimFusionFit(root,delay=0){
 
 function fitPrimFusionLabelExactly(entry, startPx){
   const minimum=PRIMFUSION_LABEL_FIT.individualMinimumPx;
-  let size=Math.max(minimum,startPx);
-  entry.label.style.fontSize=`${size}px`;
-  for(let attempt=0; attempt<16 && primFusionLabelOverflows(entry); attempt+=1){
-    const available=primFusionAvailableWidth(entry);
-    const measured=Math.max(primFusionIntrinsicLabelWidth(entry.label),0.01);
-    if(available<=1) return size;
-    const next=Math.max(minimum, +(size*(available/measured)*0.985).toFixed(3));
-    if(Math.abs(next-size)<0.001) break;
-    size=next;
-    entry.label.style.fontSize=`${size}px`;
-  }
-  return size;
+  const available=primFusionAvailableWidth(entry);
+  if(available<=1) return startPx;
+
+  // One deterministic calculation instead of repeated DOM writes. The label is
+  // measured once at the shared size, then scaled directly to the largest size
+  // that fits. This prevents the visible multi-second "stutter" on Fold6.
+  entry.label.style.fontSize=`${Math.max(minimum,startPx)}px`;
+  const measured=Math.max(primFusionIntrinsicLabelWidth(entry.label),0.01);
+  const fitted=Math.max(minimum, +(startPx*(available/measured)*0.985).toFixed(3));
+  entry.label.style.fontSize=`${fitted}px`;
+  return fitted;
 }
 
 function autoFitPrimFusionLabels(root=document){
   if(!root || !root.isConnected) return;
 
-  // Never measure a collapsed, hidden, or zero-geometry matrix. A stale delayed
-  // pass must not overwrite a valid visible fit after expansion.
   const panel=root.closest('.landscape-primfusion-panel');
   const rect=root.getBoundingClientRect();
   if((panel && panel.classList.contains('primfusion-collapsed')) ||
@@ -792,7 +790,9 @@ function autoFitPrimFusionLabels(root=document){
   const entries=primFusionAutoFitEntries(root);
   if(!entries.length || !entries.every(entry=>primFusionAvailableWidth(entry)>1)) return;
 
+  root.classList.add('primfusion-fitting');
   const {stepPx,allowedShrinkRatio}=PRIMFUSION_LABEL_FIT;
+
   entries.forEach(({label})=>{
     label.style.fontSize='';
     label.classList.remove('autofit-shrunk','autofit-ellipsized');
@@ -806,16 +806,16 @@ function autoFitPrimFusionLabels(root=document){
   let globalReductionPx=0;
   for(let guard=0;guard<80;guard+=1){
     let overflowCount=0;
-    entries.forEach(entry=>{
+    for(const entry of entries){
       const size=Math.max(PRIMFUSION_LABEL_FIT.individualMinimumPx,entry.preferredPx-globalReductionPx);
       entry.label.style.fontSize=`${size}px`;
       if(primFusionLabelOverflows(entry)) overflowCount+=1;
-    });
+    }
     if(overflowCount<=allowedShrinkCount) break;
     globalReductionPx=+(globalReductionPx+stepPx).toFixed(2);
   }
 
-  entries.forEach(entry=>{
+  for(const entry of entries){
     const sharedSize=Math.max(PRIMFUSION_LABEL_FIT.individualMinimumPx,entry.preferredPx-globalReductionPx);
     entry.label.style.fontSize=`${sharedSize}px`;
     const finalSize=primFusionLabelOverflows(entry)
@@ -823,11 +823,13 @@ function autoFitPrimFusionLabels(root=document){
       : sharedSize;
     entry.label.dataset.autofitSize=String(finalSize);
     entry.label.classList.toggle('autofit-shrunk',finalSize<sharedSize-0.01);
-  });
+  }
 
   root.dataset.autofitVisibleCount=String(entries.length);
   root.dataset.autofitAllowedShrinkCount=String(allowedShrinkCount);
   root.dataset.autofitGlobalReductionPx=String(globalReductionPx);
+  root.classList.remove('primfusion-fitting');
+  root.classList.add('primfusion-fitted');
 }
 
 function renderTabletTargetSlots(){
@@ -943,7 +945,6 @@ if(landscapePrimFusionToggle){
     if(!collapsed){
       renderPrimFusionMatrix($("themeSearch")?.value || "", "primFusionMatrix");
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        schedulePrimFusionFit($("primFusionMatrix"),80);
         $("primFusionMatrix")?.scrollIntoView({block:"start",behavior:"smooth"});
       }));
     }else{
@@ -1226,7 +1227,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.0 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.1 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1327,6 +1328,6 @@ window.addEventListener("resize",()=>{
 });
 
 
-// v0.9.3.0: hydrate the active demo/image record from persistent storage only
+// v0.9.3.1: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
