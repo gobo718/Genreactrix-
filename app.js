@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.15";
+const GENREACTRIX_BUILD="v0.9.3.16";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -543,7 +543,7 @@ function renderTabletWorkbench(){
   });
   for(let i=0;i<3;i++) $("tabletWorkbenchTheme"+(i+1)).textContent=themeLabel(state.themes[i]);
   currentAiThemes().slice(0,3).forEach(([label,weight],i)=>$("tabletWorkbenchAiTheme"+(i+1)).textContent=tabletAiVisible?`${label} ${weight}%`:"—");
-  $("tabletWorkbenchAiDescription").textContent=tabletAiVisible?(currentAiRun().description||currentDescription()):"AI description";
+  $("tabletWorkbenchAiDescription").textContent=tabletAiVisible?(currentAiRun().description||currentDescription()):"";
   root.classList.toggle("ai-visible",tabletAiVisible);
   $("tabletShowAiBtn").setAttribute("aria-pressed",String(tabletAiVisible));
   $("tabletShowAiBtn").textContent=tabletAiVisible?"HIDE AI":"SHOW AI";
@@ -602,7 +602,7 @@ function renderPrimFusionMatrix(filter, targetId="primFusionMatrix"){
 
   const q=(filter||"").trim().toLowerCase();
   const landscapeSingleGrid=targetId==="primFusionMatrix" && window.innerWidth > window.innerHeight;
-  const singleGrid=targetId==="tabletPrimFusionMatrix" || landscapeSingleGrid;
+  const singleGrid=targetId==="tabletPrimFusionMatrix" || targetId==="tabletWorkbenchMatrix" || landscapeSingleGrid;
   const bands=singleGrid
     ? [PRIMITIVES.map((_,index)=>index)]
     : [[0,1,2,3],[4,5,6,7,8],[9,10,11,12]];
@@ -747,7 +747,7 @@ function primFusionAutoFitEntries(root=document){
 }
 
 function cancelScheduledPrimFusionFit(root){
-  // v0.9.3.15: fitting is intentionally disabled. PrimFusion labels use one
+  // v0.9.3.16: fitting is intentionally disabled. PrimFusion labels use one
   // fixed, conservative size so the matrix is immediately usable.
 }
 
@@ -883,6 +883,8 @@ function redo(){
 function updateUndoRedo(){
   $("undoBtn").disabled=!state.history.length;
   $("redoBtn").disabled=!state.future.length;
+  if($("tabletUndoBtn")) $("tabletUndoBtn").disabled=!state.history.length;
+  if($("tabletRedoBtn")) $("tabletRedoBtn").disabled=!state.future.length;
   if($("directorUndoBtn")) $("directorUndoBtn").disabled=!state.history.length;
   if($("directorRedoBtn")) $("directorRedoBtn").disabled=!state.future.length;
 }
@@ -937,6 +939,10 @@ $("prevBtn").addEventListener("click",prevImage);
 $("nextBtn").addEventListener("click",nextImage);
 $("undoBtn").addEventListener("click",undo);
 $("redoBtn").addEventListener("click",redo);
+$("tabletPrevBtn")?.addEventListener("click",prevImage);
+$("tabletNextBtn")?.addEventListener("click",nextImage);
+$("tabletUndoBtn")?.addEventListener("click",undo);
+$("tabletRedoBtn")?.addEventListener("click",redo);
 $("directorFlagBtn").addEventListener("click",()=>{
   pushHistory(); state.flagged=!state.flagged; saveCurrent(); renderFlag(); renderComparison();
 });
@@ -1004,16 +1010,17 @@ $("rerunAiBtn").addEventListener("click",()=>{
   persistRecords(); renderAll();
 });
 
-$("folderInput").addEventListener("change",e=>{
+function loadImageFolder(fileList){
   state.objectUrls.forEach(URL.revokeObjectURL);
   state.objectUrls=[];
-  state.files=[...e.target.files].filter(f=>f.type.startsWith("image/")).map(file=>{
+  state.files=[...fileList].filter(f=>f.type.startsWith("image/")).map(file=>{
     const url=URL.createObjectURL(file); state.objectUrls.push(url); return {name:file.name,url};
   });
-  // Randomize once, then resume in this random queue.
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
   state.index=0; loadCurrent();
-});
+}
+$("folderInput").addEventListener("change",e=>loadImageFolder(e.target.files));
+$("tabletFolderInput")?.addEventListener("change",e=>loadImageFolder(e.target.files));
 
 
 
@@ -1193,7 +1200,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.15 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.16 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");

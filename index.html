@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.3.15</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.3.15">
+  <title>Genreactrix v0.9.3.16</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.3.16">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.3.15</span>
+        <span>v0.9.3.16</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -41,29 +41,45 @@
 
 
     <section id="tabletWorkbench" class="tablet-workbench" aria-label="Tablet classification workspace">
-      <div class="tablet-top-grid">
+      <div class="tablet-workbench-top">
         <div class="tablet-image-box"><img id="tabletWorkbenchImage" alt="Current image"></div>
+
         <div class="tablet-prims-panel">
-          <div class="tablet-section-label">Prims</div>
-          <div id="tabletWorkbenchPrims" class="tablet-prims-row"></div>
+          <div id="tabletWorkbenchPrims" class="tablet-prims-row" aria-label="Primitive reactions"></div>
         </div>
+
         <div class="tablet-themes-panel">
-          <button id="tabletShowAiBtn" class="tablet-show-ai" type="button" aria-pressed="false">SHOW AI</button>
-          <div class="tablet-theme-grid tablet-director-theme-grid">
-            <button class="tablet-theme-cell" data-tablet-workbench-slot="1"><small>Theme 1</small><strong id="tabletWorkbenchTheme1">—</strong></button>
-            <button class="tablet-theme-cell" data-tablet-workbench-slot="2"><small>Theme 2</small><strong id="tabletWorkbenchTheme2">—</strong></button>
-            <button class="tablet-theme-cell" data-tablet-workbench-slot="3"><small>Theme 3</small><strong id="tabletWorkbenchTheme3">—</strong></button>
+          <div class="tablet-theme-toolbar" aria-label="Tablet image controls">
+            <button id="tabletPrevBtn" class="tablet-caret" type="button" aria-label="Previous image">‹</button>
+            <button id="tabletNextBtn" class="tablet-caret" type="button" aria-label="Next image">›</button>
+            <button id="tabletUndoBtn" type="button">Undo</button>
+            <button id="tabletRedoBtn" type="button">Redo</button>
+            <label class="tablet-images-button">Images<input id="tabletFolderInput" type="file" webkitdirectory multiple accept="image/*"></label>
+            <button id="tabletShowAiBtn" class="tablet-show-ai" type="button" aria-pressed="false">SHOW AI</button>
           </div>
-          <div class="tablet-theme-grid tablet-ai-theme-grid" aria-label="AI themes">
-            <div class="tablet-theme-cell tablet-ai-ghost"><small>AI 1</small><strong id="tabletWorkbenchAiTheme1">—</strong></div>
-            <div class="tablet-theme-cell tablet-ai-ghost"><small>AI 2</small><strong id="tabletWorkbenchAiTheme2">—</strong></div>
-            <div class="tablet-theme-cell tablet-ai-ghost"><small>AI 3</small><strong id="tabletWorkbenchAiTheme3">—</strong></div>
+
+          <div class="tablet-theme-row tablet-director-row">
+            <span class="tablet-row-label">Director:</span>
+            <button class="tablet-theme-cell" data-tablet-workbench-slot="1"><span class="tablet-slot-number">1</span><strong id="tabletWorkbenchTheme1">—</strong></button>
+            <button class="tablet-theme-cell" data-tablet-workbench-slot="2"><span class="tablet-slot-number">2</span><strong id="tabletWorkbenchTheme2">—</strong></button>
+            <button class="tablet-theme-cell" data-tablet-workbench-slot="3"><span class="tablet-slot-number">3</span><strong id="tabletWorkbenchTheme3">—</strong></button>
+          </div>
+
+          <div class="tablet-theme-row tablet-ai-row" aria-label="AI themes">
+            <span class="tablet-row-label">AI:</span>
+            <div class="tablet-theme-cell tablet-ai-ghost"><span class="tablet-slot-number">1</span><strong id="tabletWorkbenchAiTheme1">—</strong></div>
+            <div class="tablet-theme-cell tablet-ai-ghost"><span class="tablet-slot-number">2</span><strong id="tabletWorkbenchAiTheme2">—</strong></div>
+            <div class="tablet-theme-cell tablet-ai-ghost"><span class="tablet-slot-number">3</span><strong id="tabletWorkbenchAiTheme3">—</strong></div>
+          </div>
+
+          <div class="tablet-ai-description-wrap">
+            <span class="tablet-ai-description-label">AI Description</span>
+            <div id="tabletWorkbenchAiDescription" class="tablet-ai-description-ghost" aria-label="AI description"></div>
           </div>
         </div>
       </div>
-      <div class="tablet-matrix-label">PrimFusion Matrix</div>
+
       <div id="tabletWorkbenchMatrix" class="primfusion-matrix tablet-workbench-matrix" aria-label="PrimFusion Matrix"></div>
-      <div id="tabletWorkbenchAiDescription" class="tablet-ai-description-ghost" aria-label="AI description">AI description</div>
     </section>
 
     <section class="base-layout">
@@ -294,6 +310,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.3.15"></script>
+  <script src="app.js?v=0.9.3.16"></script>
 </body>
 </html>

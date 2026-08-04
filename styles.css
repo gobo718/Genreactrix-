@@ -1837,7 +1837,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.3.15 — dedicated dense tablet workbench */
+/* v0.9.3.16 — dedicated dense tablet workbench */
 .tablet-workbench{display:none}
 @media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   .base-layout,.tablet-primfusion-console{display:none!important}
@@ -1875,4 +1875,188 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .tablet-workbench-matrix .primfusion-axis-header small,.tablet-workbench-matrix .primfusion-combo-label{font-size:5px!important;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .tablet-ai-description-ghost{height:38px;margin-top:5px;padding:5px 7px;border:1px dashed var(--line);border-radius:6px;font-size:.72rem;color:transparent;overflow:hidden}
   .tablet-workbench.ai-visible .tablet-ai-description-ghost{color:var(--text);border-style:solid}
+}
+
+/* v0.9.3.16 — purpose-built dense tablet classifier */
+@media (min-width:600px) and (max-width:1199px) and (min-height:500px){
+  .nav-console{display:none!important}
+  .base-layout,.tablet-primfusion-console{display:none!important}
+  .tablet-workbench{
+    display:block;
+    margin:0;
+    padding:4px;
+    border:0;
+    border-radius:0;
+    background:var(--bg);
+    min-height:100%;
+  }
+  .tablet-workbench-top{
+    display:grid;
+    grid-template-columns:minmax(128px,18vw) minmax(220px,.85fr) minmax(360px,1.25fr);
+    gap:4px;
+    align-items:stretch;
+    margin-bottom:4px;
+  }
+  .tablet-image-box{
+    width:100%;
+    aspect-ratio:1;
+    max-height:170px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    overflow:hidden;
+    background:#0d0b12;
+  }
+  .tablet-image-box img{width:100%;height:100%;object-fit:contain;display:block}
+  .tablet-prims-panel,.tablet-themes-panel{
+    min-width:0;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:4px;
+    background:var(--panel);
+  }
+  .tablet-prims-panel{display:flex;align-items:center}
+  .tablet-prims-row{
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:2px;
+    align-items:center;
+  }
+  .tablet-prim-button{
+    border:0;
+    background:transparent;
+    padding:0;
+    min-width:0;
+    display:grid;
+    grid-template-rows:auto auto auto;
+    place-items:center;
+    gap:0;
+    border-radius:3px;
+  }
+  .tablet-prim-button .symbol{font-size:1.2rem;line-height:1}
+  .tablet-prim-button .ring{width:20px;height:20px;border:2px solid #ff3d3d;border-radius:50%;margin:0}
+  .tablet-prim-button .pct{font-size:5px;line-height:1;height:6px;color:var(--muted);visibility:hidden}
+  .tablet-workbench.ai-visible .tablet-prim-button .pct{visibility:visible}
+  .tablet-prim-button.selected{background:rgba(191,145,255,.14)}
+
+  .tablet-themes-panel{display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:3px}
+  .tablet-theme-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:3px;
+    min-height:23px;
+  }
+  .tablet-theme-toolbar button,.tablet-images-button{
+    min-height:22px;
+    padding:2px 7px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:#211c29;
+    color:var(--text);
+    font-size:.68rem;
+    line-height:1;
+  }
+  .tablet-theme-toolbar .tablet-caret{font-size:1.3rem;font-weight:800;padding:0 7px}
+  .tablet-images-button{display:inline-flex;align-items:center;cursor:pointer}
+  .tablet-images-button input{display:none}
+  .tablet-show-ai{position:static!important;margin-left:auto!important;z-index:auto!important}
+
+  .tablet-theme-row{
+    display:grid;
+    grid-template-columns:48px repeat(3,minmax(0,1fr));
+    gap:3px;
+    align-items:stretch;
+  }
+  .tablet-row-label{
+    display:flex;
+    align-items:center;
+    font-size:.65rem;
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  .tablet-theme-cell{
+    position:relative;
+    min-width:0;
+    height:28px;
+    padding:2px 5px 2px 16px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    background:#1d1924;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    overflow:hidden;
+  }
+  .tablet-theme-cell strong{font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tablet-slot-number{
+    position:absolute;
+    left:4px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:.62rem;
+    font-weight:700;
+    color:rgba(255,255,255,.18);
+    pointer-events:none;
+  }
+  .tablet-ai-row,.tablet-ai-description-wrap{visibility:hidden}
+  .tablet-workbench.ai-visible .tablet-ai-row,
+  .tablet-workbench.ai-visible .tablet-ai-description-wrap{visibility:visible}
+  .tablet-ai-ghost{opacity:1;border-style:solid}
+  .tablet-ai-description-wrap{
+    min-height:0;
+    display:grid;
+    grid-template-columns:48px minmax(0,1fr);
+    gap:3px;
+    overflow:hidden;
+  }
+  .tablet-ai-description-label{
+    font-size:5px;
+    line-height:1;
+    color:var(--muted);
+    align-self:start;
+    padding-top:2px;
+  }
+  .tablet-ai-description-ghost{
+    height:100%;
+    min-height:22px;
+    margin:0;
+    padding:2px 4px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    font-size:5px;
+    line-height:1.08;
+    color:var(--text);
+    overflow-y:auto;
+    overflow-x:hidden;
+    background:#17131d;
+  }
+
+  .tablet-workbench-matrix{margin:0;padding:0}
+  .tablet-workbench-matrix .quick-theme-results{display:none}
+  .tablet-workbench-matrix .true-primfusion-band{margin:0}
+  .tablet-workbench-matrix .primfusion-scroller{overflow:hidden}
+  .tablet-workbench-matrix .true-primfusion-grid{
+    width:100%;
+    min-width:0;
+    grid-template-columns:38px repeat(13,minmax(0,1fr));
+  }
+  .tablet-workbench-matrix .primfusion-axis-header,
+  .tablet-workbench-matrix .primfusion-intersection{
+    min-width:0;
+    height:29px;
+    padding:1px;
+    border-radius:0;
+  }
+  .tablet-workbench-matrix .primfusion-axis-header span{font-size:.82rem;line-height:1}
+  .tablet-workbench-matrix .primfusion-axis-header small,
+  .tablet-workbench-matrix .primfusion-combo-label{
+    font-size:5px!important;
+    line-height:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:100%;
+  }
+  .tablet-workbench-matrix .primfusion-combo-symbol{display:none!important}
 }
