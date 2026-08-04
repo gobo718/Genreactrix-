@@ -2256,7 +2256,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.4.1 — isolated portrait Director Control Station shell */
+/* v0.9.4.2 — isolated portrait Director Control Station shell */
 .portrait-control-station{display:none}
 
 @media (max-width:599px) and (orientation:portrait){
@@ -2332,6 +2332,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .portrait-two-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .portrait-two-actions button{padding:10px 6px;font-size:.74rem}
   .portrait-primary-action{width:100%;padding:10px;border-color:var(--accent);color:var(--accent);font-weight:700}
+  .portrait-ai-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .portrait-ai-status{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);font-size:.72rem}
   .portrait-ai-status span{color:var(--muted)}
   .portrait-ai-status strong{color:var(--accent)}

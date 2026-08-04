@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.4.1";
+const GENREACTRIX_BUILD="v0.9.4.2";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -563,14 +563,17 @@ function renderPortraitControlStation(){
   const flagged=records.filter(record=>record?.flagged).length + (state.flagged && !state.records[currentKey()] ? 1 : 0);
   const saved=records.filter(record=>record?.saved).length;
   const analyzed=state.files.filter(file=>Boolean(state.aiRuns?.[file.name]?.length)).length;
-  $("portraitQueuedCount").textContent=String(Math.max(0,total-position));
-  $("portraitAvailableCount").textContent=String(total);
+  const aiQueue=window.genreactrixAiQueueEngine?.snapshot?.() || {pending:0,available:Math.max(0,total-analyzed),bufferTarget:25};
+  $("portraitQueuedCount").textContent=String(aiQueue.pending);
+  $("portraitAvailableCount").textContent=String(aiQueue.available);
   $("portraitReadyBatchCount").textContent=String(records.length);
   $("portraitSavedTotal").textContent=String(saved);
   $("portraitFlaggedTotal").textContent=String(flagged);
   $("portraitSavedCurrent").textContent=String(saved);
   $("portraitFlaggedCurrent").textContent=String(flagged);
   $("portraitAiReadyCount").textContent=String(analyzed);
+  if($("portraitAiPendingCount")) $("portraitAiPendingCount").textContent=String(aiQueue.pending);
+  if($("portraitAiBufferTarget")) $("portraitAiBufferTarget").textContent=String(aiQueue.bufferTarget);
 }
 function setPortraitStationStatus(message){
   const status=$("portraitStationStatus");
@@ -1048,6 +1051,8 @@ function loadImageFolder(fileList, limit=null){
   });
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
   state.index=0; loadCurrent();
+  window.genreactrixAiQueueEngine?.maintainBuffer?.();
+  renderPortraitControlStation();
 }
 let pendingPortraitImportLimit=null;
 $("folderInput").addEventListener("change",e=>{
@@ -1344,8 +1349,14 @@ loadCurrent();
 document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
 
-// v0.9.4.1 portrait shell connections. These call shared capabilities without changing other modes.
+// v0.9.4.2 portrait Control Station connections.
+// Portrait remains a client of shared capabilities; queue state is owned by a small,
+// orientation-neutral engine rather than by portrait markup.
 const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
+const AI_QUEUE_KEY="genreactrix-ai-lookahead-queue";
+const AI_BUFFER_TARGET_KEY="genreactrix-ai-buffer-target";
+const AI_QUICK_ADD_KEY="genreactrix-ai-quick-add";
+
 function portraitDefaultAmount(){
   const input=document.getElementById("portraitDefaultAmount");
   const parsed=Math.max(1,Math.floor(Number(input?.value)||100));
@@ -1363,14 +1374,65 @@ function syncPortraitDefaultAmount(){
     setPortraitStationStatus(`Quick-add default set to ${amount} images.`);
   });
 }
+
+function createAiLookAheadQueueEngine(){
+  let pending=[];
+  try{ pending=JSON.parse(localStorage.getItem(AI_QUEUE_KEY)||"[]"); }
+  catch(error){ pending=[]; }
+  if(!Array.isArray(pending)) pending=[];
+
+  const bufferTarget=()=>Math.max(0,Math.floor(Number(localStorage.getItem(AI_BUFFER_TARGET_KEY))||25));
+  const quickAddAmount=()=>Math.max(1,Math.floor(Number(localStorage.getItem(AI_QUICK_ADD_KEY))||100));
+  const currentKeys=()=>state.files.map(file=>file.name);
+  const analyzedKeys=()=>new Set(currentKeys().filter(key=>Boolean(state.aiRuns?.[key]?.length)));
+  const persist=()=>localStorage.setItem(AI_QUEUE_KEY,JSON.stringify(pending));
+
+  function normalize(){
+    const current=new Set(currentKeys());
+    const analyzed=analyzedKeys();
+    pending=[...new Set(pending)].filter(key=>current.has(key)&&!analyzed.has(key));
+    persist();
+  }
+  function availableKeys(){
+    normalize();
+    const pendingSet=new Set(pending);
+    const analyzed=analyzedKeys();
+    return currentKeys().filter(key=>!pendingSet.has(key)&&!analyzed.has(key));
+  }
+  function queueNext(count){
+    const additions=availableKeys().slice(0,Math.max(0,Math.floor(Number(count)||0)));
+    pending.push(...additions);
+    normalize();
+    renderPortraitControlStation();
+    return additions.length;
+  }
+  function maintainBuffer(){
+    normalize();
+    const needed=Math.max(0,bufferTarget()-pending.length);
+    return needed?queueNext(needed):0;
+  }
+  function snapshot(){
+    normalize();
+    return {pending:pending.length,available:availableKeys().length,bufferTarget:bufferTarget(),quickAddAmount:quickAddAmount()};
+  }
+  return {queueNext,maintainBuffer,snapshot};
+}
+
+window.genreactrixAiQueueEngine=createAiLookAheadQueueEngine();
 syncPortraitDefaultAmount();
+window.genreactrixAiQueueEngine.maintainBuffer();
+
 document.getElementById("portraitAddFolderBtn")?.addEventListener("click",()=>{
   pendingPortraitImportLimit=portraitDefaultAmount();
   document.getElementById("folderInput")?.click();
 });
 document.getElementById("portraitResumeBtn")?.addEventListener("click",()=>setPortraitStationStatus("Rotate to landscape to resume classification."));
 document.getElementById("portraitAddUrlsBtn")?.addEventListener("click",()=>setPortraitStationStatus(`URL intake will add the next ${portraitDefaultAmount()} images when connected.`));
-document.getElementById("portraitAnalyzeMoreBtn")?.addEventListener("click",()=>setPortraitStationStatus("AI look-ahead queue connection is ready for implementation."));
+document.getElementById("portraitAnalyzeMoreBtn")?.addEventListener("click",()=>{
+  const amount=window.genreactrixAiQueueEngine.snapshot().quickAddAmount;
+  const added=window.genreactrixAiQueueEngine.queueNext(amount);
+  setPortraitStationStatus(added?`${added} images added to the AI look-ahead queue.`:"No additional unanalyzed images are available.");
+});
 ["portraitImagesMenuBtn","portraitImagesMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full + Images console.")));
 ["portraitBatchMenuBtn","portraitBatchMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full Batch console.")));
 document.getElementById("portraitQueueMenuBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the Queue console."));

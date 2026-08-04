@@ -1,17 +1,13 @@
-# Genreactrix v0.9.4.1
+# Genreactrix v0.9.4.2
 
-Portrait Control Station foundation.
+Portrait Control Station: working quick-add amount and AI look-ahead queue foundation.
 
-- Replaces only the phone portrait composition with a clean, isolated Control Station shell.
-- Preserves all existing reusable assets and DOM modules.
-- Leaves landscape, tablet, desktop, and existing dialogs unchanged.
-- Adds clean initial connections to shared image-folder loading and shared application state.
-- Establishes the portrait-only top navigation, batch/status panel, quick acquisition panel, and AI look-ahead panel.
+- Correctly places the editable default quick-add amount on the portrait panel.
+- Keeps the amount persistent between sessions.
+- Adds an orientation-neutral AI look-ahead queue engine.
+- Automatically maintains the configured 25-image AI queue buffer.
+- “Queue more for AI” adds the configured quick block (default 100) without fabricating analysis results.
+- Shows queued and available unanalyzed counts on the portrait Control Station.
+- Leaves landscape, tablet, desktop, shared classification logic, and existing dialogs unchanged.
 
-This release is intentionally a layout/foundation stage. Advanced portrait consoles are represented by one-tap entry controls but are not yet implemented.
-
-
-## v0.9.4.1
-- Replaced the temporary “Add the default amount” copy with a persistent numeric quick-add field.
-- Portrait folder quick-add now limits the imported working set to that amount.
-- Other folder loaders and non-portrait modes remain unchanged.
+This release establishes real queue state. It does not pretend that external AI analysis is connected.

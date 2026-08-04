@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.4.1</title>
+  <title>Genreactrix v0.9.4.0</title>
   <link rel="stylesheet" href="styles.css?v=0.9.4.0">
 </head>
 <body>
@@ -12,7 +12,7 @@
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.4.1</span>
+        <span>v0.9.4.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -83,10 +83,8 @@
         <div class="portrait-panel-heading">
           <div>
             <span>Quick acquisition</span>
-            <label class="portrait-default-amount" for="portraitDefaultAmount">
-              <span>Add</span>
-              <input id="portraitDefaultAmount" type="number" min="1" step="1" inputmode="numeric" value="100" aria-label="Default quick-add amount">
-              <span>images</span>
+            <label id="portraitAcquisitionHeading" class="portrait-default-amount">
+              Add <input id="portraitDefaultAmount" type="number" min="1" step="1" inputmode="numeric" aria-label="Default quick-add image amount"> <span>images</span>
             </label>
           </div>
           <button id="portraitImagesMoreBtn" type="button">＋ Images…</button>
@@ -105,11 +103,17 @@
           </div>
           <button id="portraitAiMoreBtn" type="button">AI…</button>
         </div>
-        <div class="portrait-ai-status">
-          <span>Automatic buffer</span>
-          <strong id="portraitAiBufferTarget">25</strong>
+        <div class="portrait-ai-status-grid">
+          <div class="portrait-ai-status">
+            <span>Automatic buffer</span>
+            <strong id="portraitAiBufferTarget">25</strong>
+          </div>
+          <div class="portrait-ai-status">
+            <span>Queued for AI</span>
+            <strong id="portraitAiPendingCount">0</strong>
+          </div>
         </div>
-        <button id="portraitAnalyzeMoreBtn" class="portrait-primary-action" type="button">Analyze more</button>
+        <button id="portraitAnalyzeMoreBtn" class="portrait-primary-action" type="button">Queue more for AI</button>
       </section>
 
       <div id="portraitStationStatus" class="portrait-station-status" role="status" aria-live="polite">Portrait Control Station shell active.</div>
