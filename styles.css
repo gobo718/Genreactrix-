@@ -2383,3 +2383,25 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .image-intake-actions,.image-intake-footer{display:flex;gap:10px;justify-content:flex-end}
 .image-intake-actions{justify-content:flex-start}
 .image-intake-preview{min-height:1.2em;color:#c9b5f3;font-size:.82rem}
+
+
+/* v0.9.5.2 Image Record Engine settings and recycle-bin controls */
+.portrait-settings-dialog{width:min(92vw,520px);border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);padding:0}
+.portrait-settings-dialog::backdrop{background:rgba(0,0,0,.7)}
+.portrait-settings-form{display:grid;gap:14px;padding:16px}
+.settings-section{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}
+.settings-section h3{margin:0;font-size:1rem}
+.settings-section label{display:grid;gap:6px}
+.settings-action-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.settings-action-row:has(button:only-child){grid-template-columns:1fr}
+.settings-action-row input,.settings-section input{min-width:0}
+
+/* v0.9.6.0 AI Analysis Engine console */
+.ai-analysis-dialog{width:min(94vw,760px);max-height:92vh;border:1px solid #4b5563;border-radius:18px;background:#111827;color:#f9fafb;padding:0}.ai-analysis-form{padding:16px;display:grid;gap:14px;overflow:auto;max-height:88vh}.ai-console-section{border:1px solid #374151;border-radius:12px;padding:12px;display:grid;gap:10px}.ai-console-section h3{margin:0;font-size:.9rem}.ai-console-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-console-section label{display:grid;gap:5px;font-size:.78rem}.ai-console-section input,.ai-console-section select{min-width:0;padding:8px;border-radius:8px;border:1px solid #4b5563;background:#0b1220;color:#fff}.ai-component-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ai-component-option{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border:1px solid #374151;border-radius:8px;padding:8px}.ai-component-option select{padding:5px}.ai-provider-row,.ai-job-controls,.ai-job-counts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ai-job-counts span{padding:6px 9px;border:1px solid #374151;border-radius:999px}.ai-job-summary{font-size:.8rem;color:#cbd5e1}.ai-job-list{display:grid;gap:6px;max-height:180px;overflow:auto}.ai-job-row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:8px;border:1px solid #374151;border-radius:8px;font-size:.75rem}.ai-job-row small{color:#94a3b8}.ai-analysis-dialog progress{width:100%}@media(max-width:520px){.ai-console-grid,.ai-component-grid{grid-template-columns:1fr}}
+
+/* v0.9.7.0 Batch Engine */
+.portrait-batch-progress{display:flex;gap:14px;padding:0 2px;font-size:.72rem;color:var(--muted)}
+.batch-dialog{width:min(94vw,720px);max-height:90vh;border:1px solid var(--line);border-radius:18px;background:var(--panel);color:var(--text);padding:0}
+.batch-dialog::backdrop{background:#09070db8;backdrop-filter:blur(4px)}
+.batch-dialog-shell{display:grid;gap:14px;padding:16px;max-height:86vh;overflow:auto}
+.batch-dialog header,.batch-dialog footer,.batch-toolbar,.batch-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.batch-dialog header h2{margin:0;flex:1}.batch-dialog button,.batch-dialog select,.batch-dialog input{min-height:38px}.batch-toolbar select{flex:1;min-width:180px}.batch-count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.batch-count-grid span{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}.batch-actions label{display:flex;gap:6px;align-items:center}.batch-actions input{width:84px}.batch-contents{display:grid;gap:6px;max-height:260px;overflow:auto}.batch-image-row{display:flex;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:8px}.batch-image-row span{display:grid}.batch-image-row small{color:var(--muted)}.batch-status{min-height:1.2em;color:var(--accent)}.batch-dialog footer{justify-content:flex-end}.batch-dialog .primary{font-weight:800}.batch-report-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}.batch-empty{color:var(--muted)}

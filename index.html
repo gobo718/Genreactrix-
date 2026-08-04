@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.5.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.5.0">
+  <title>Genreactrix v0.9.7.0</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.7.0">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.5.0</span>
+        <span>v0.9.7.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -42,7 +42,7 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.5.0</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.7.0</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -57,7 +57,8 @@
           </div>
           <button id="portraitBatchMenuBtn" class="portrait-module-button" type="button" data-module-button="batch">Batch</button>
         </div>
-        <div class="portrait-batch-name">Current Import</div>
+        <div id="portraitBatchName" class="portrait-batch-name">New Batch</div>
+        <div class="portrait-batch-progress"><span>Total <strong id="portraitBatchTotal">0</strong></span><span>Remaining <strong id="portraitBatchRemaining">0</strong></span></div>
         <div class="portrait-metric-grid" aria-label="Batch and queue status">
           <button type="button" data-portrait-status="queued"><span>Queued</span><strong id="portraitQueuedCount">0</strong></button>
           <button type="button" data-portrait-status="available"><span>Available</span><strong id="portraitAvailableCount">0</strong></button>
@@ -83,6 +84,7 @@
           <span>Links <strong id="portraitLinkedImageCount">0</strong></span>
           <span>Saved <strong id="portraitReferenceImageCount">0</strong></span>
           <span>Flagged <strong id="portraitEngineFlaggedCount">0</strong></span>
+          <span>Recycle <strong id="portraitRecycleImageCount">0</strong></span>
         </div>
       </section>
 
@@ -161,6 +163,51 @@
           <button type="button" id="imageUrlPreviewBtn">Preview</button>
           <button type="button" id="imageUrlAddBtn" class="primary-action">Add URLs</button>
         </div>
+      </form>
+    </dialog>
+
+
+    <dialog id="portraitSettingsDialog" class="portrait-settings-dialog">
+      <form method="dialog" class="portrait-settings-form">
+        <div class="image-intake-header"><h2>Settings</h2><button type="button" id="portraitSettingsClose" aria-label="Close">×</button></div>
+        <section class="settings-section">
+          <h3>Recycle Bin</h3>
+          <label>Automatic retention (days)<input id="recycleRetentionDays" type="number" min="0" step="1" value="30"></label>
+          <div class="settings-action-row"><button type="button" id="recycleEmptyNow">Empty now</button></div>
+          <div class="settings-action-row"><input id="recycleBeforeDate" type="date" aria-label="Purge items deleted before date"><button type="button" id="recycleEmptyBefore">Empty before date</button></div>
+          <div class="settings-action-row"><input id="recycleFreeMbAmount" type="number" min="1" step="1" value="100" aria-label="Megabytes to free"><button type="button" id="recycleFreeMb">Free MB oldest first</button></div>
+        </section>
+        <section class="settings-section"><h3>Maintenance</h3><button type="button" id="runImageIntegrityCheck">Verify image records and storage</button></section>
+      </form>
+    </dialog>
+
+    <dialog id="aiAnalysisDialog" class="ai-analysis-dialog">
+      <form method="dialog" class="ai-analysis-form">
+        <div class="image-intake-header"><h2>AI</h2><button type="button" id="aiAnalysisClose" aria-label="Close">×</button></div>
+        <div class="ai-job-summary" id="aiJobSummary">No AI job selected.</div>
+        <section class="ai-console-section">
+          <h3>Components</h3>
+          <div class="ai-component-grid" id="aiComponentGrid"></div>
+        </section>
+        <section class="ai-console-section ai-console-grid">
+          <label>Target<select id="aiTarget"><option value="current">Current import</option><option value="flagged">Flagged</option><option value="saved">Saved</option><option value="failed">Failed</option><option value="all">All records</option></select></label>
+          <label>Quantity<input id="aiQuantity" type="number" min="1" step="1" value="100"></label>
+          <label>Selection<select id="aiQuantityMode"><option value="next">Next #</option><option value="all">All matching</option><option value="random">Random #</option></select></label>
+          <label>Order<select id="aiOrder"><option value="queue">Queue order</option><option value="oldest">Oldest imported</option><option value="newest">Newest imported</option><option value="random">Random</option></select></label>
+        </section>
+        <section class="ai-console-section">
+          <h3>Provider</h3>
+          <label>Worker URL<input id="aiWorkerUrl" type="url" placeholder="https://your-worker.workers.dev"></label>
+          <label>Analysis key<input id="aiAnalysisKey" type="password" autocomplete="off"></label>
+          <div class="ai-provider-row"><button type="button" id="aiSaveProvider">Save</button><button type="button" id="aiHealthCheck">Check</button><span id="aiProviderStatus">Not configured</span></div>
+        </section>
+        <section class="ai-console-section">
+          <h3>Queue</h3>
+          <div class="ai-job-counts"><span>Queued <strong id="aiDialogQueued">0</strong></span><span>Running <strong id="aiDialogRunning">0</strong></span><span>Done <strong id="aiDialogDone">0</strong></span><span>Failed <strong id="aiDialogFailed">0</strong></span></div>
+          <progress id="aiJobProgress" max="100" value="0"></progress>
+          <div class="ai-job-controls"><button type="button" id="aiStartJob" class="primary-action">Start</button><button type="button" id="aiPauseJob">Pause</button><button type="button" id="aiResumeJob">Resume</button><button type="button" id="aiStopJob">Stop</button><button type="button" id="aiRetryFailed">Retry failed</button></div>
+          <div id="aiJobList" class="ai-job-list"></div>
+        </section>
       </form>
     </dialog>
 
@@ -466,6 +513,8 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.5.0"></script>
+  <script src="app.js?v=0.9.6.0"></script>
+  <script src="genreactrix-cloud-api.js?v=0.9.6.0"></script>
+  <script src="ai-analysis-engine.js?v=0.9.6.0"></script>
 </body>
 </html>
