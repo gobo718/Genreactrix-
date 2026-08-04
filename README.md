@@ -1,4 +1,4 @@
-# Genreactrix v0.9.9.0
+# Genreactrix v0.9.10.0
 
 Portrait configurable quick-action architecture.
 
@@ -14,7 +14,7 @@ Portrait configurable quick-action architecture.
 - Leaves landscape, tablet, desktop, shared data, and reusable assets unchanged.
 
 
-## v0.9.9.0 — Shared Queue Engine
+## v0.9.10.0 — Shared Queue Engine
 - Adds one persistent Queue Engine for scheduling and operational state across engine-owned work.
 - Migrates and removes the legacy localStorage AI look-ahead queue.
 - Mirrors AI jobs/items into the shared queue without moving AI business logic out of the AI engine.
@@ -75,3 +75,10 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Adds flexible scopes, composable filters, report modules, immutable snapshots, saved presets, JSON/CSV export, and printable output.
 - Adds Director reaction/theme/PrimFusion, source, workflow, and AI–Director comparison modules.
 - Batch submission now calls the Reports Engine for its automatic standard report.
+
+
+## v0.9.10.0 Notifications Engine
+- Persistent mailbox notifications with unread badge.
+- Read/unread, archive/restore, resolve, filters, deduplication, and routing to owning modules.
+- Queue terminal states, reports, and batch submissions create operational notifications.
+- Successful automatic background progress remains quiet unless a meaningful job transition occurs.

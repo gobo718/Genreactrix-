@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.9.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.9.0">
+  <title>Genreactrix v0.9.10.0</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.10.0">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.9.0</span>
+        <span>v0.9.10.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -42,9 +42,9 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.9.0</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.10.0</span></strong>
         <div class="portrait-header-actions">
-          <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
+          <button id="portraitMailboxBtn" class="portrait-icon-button portrait-mailbox-button" type="button" aria-label="Notifications" title="Notifications">📬<span id="portraitMailboxBadge" class="mailbox-badge" hidden>0</span></button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
         </div>
       </header>
@@ -568,11 +568,25 @@
     </section>
   </dialog>
 
-  <script src="app.js?v=0.9.9.0"></script>
-  <script src="queue-engine.js?v=0.9.9.0"></script>
-  <script src="genreactrix-cloud-api.js?v=0.9.9.0"></script>
-  <script src="reports-engine.js?v=0.9.9.0"></script>
-  <script src="batch-engine.js?v=0.9.9.0"></script>
-  <script src="ai-analysis-engine.js?v=0.9.9.0"></script>
+  <script src="app.js?v=0.9.10.0"></script>
+
+  <dialog id="notificationsDialog" class="notifications-dialog">
+    <div class="notifications-shell">
+      <header><h2>Notifications</h2><button type="button" id="notificationsClose" aria-label="Close">×</button></header>
+      <div class="notifications-toolbar">
+        <select id="notificationsFilter"><option value="all">All</option><option value="unread">Unread</option><option value="attention">Attention</option><option value="critical">Critical</option><option value="archived">Archived</option></select>
+        <button type="button" id="notificationsMarkAllRead">Mark all read</button>
+        <button type="button" id="notificationsArchiveResolved">Archive resolved</button>
+      </div>
+      <section id="notificationsList" class="notifications-list"></section>
+    </div>
+  </dialog>
+
+  <script src="notifications-engine.js?v=0.9.10.0"></script>
+  <script src="queue-engine.js?v=0.9.10.0"></script>
+  <script src="genreactrix-cloud-api.js?v=0.9.10.0"></script>
+  <script src="reports-engine.js?v=0.9.10.0"></script>
+  <script src="batch-engine.js?v=0.9.10.0"></script>
+  <script src="ai-analysis-engine.js?v=0.9.10.0"></script>
 </body>
 </html>
