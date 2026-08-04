@@ -1,4 +1,4 @@
-# Genreactrix v0.9.3.14 — Stable Tablet Breakpoint
+# Genreactrix v0.9.3.15 — Stable Tablet Breakpoint
 
 The tablet layout no longer switches modes when Android browser chrome expands or collapses. The root cause was the 600px viewport-height breakpoint: the visible browser toolbar pushed the viewport just below 600px at the top of the page, and a slight scroll hid the toolbar and pushed it above 600px. That repeatedly enabled and disabled the tablet workspace.
 

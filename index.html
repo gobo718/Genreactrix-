@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.3.14</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.3.14">
+  <title>Genreactrix v0.9.3.15</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.3.15">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.3.14</span>
+        <span>v0.9.3.15</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -38,6 +38,33 @@
       </div>
       <div id="progressText" class="progress-text">Demo image 1 / 3</div>
     </nav>
+
+
+    <section id="tabletWorkbench" class="tablet-workbench" aria-label="Tablet classification workspace">
+      <div class="tablet-top-grid">
+        <div class="tablet-image-box"><img id="tabletWorkbenchImage" alt="Current image"></div>
+        <div class="tablet-prims-panel">
+          <div class="tablet-section-label">Prims</div>
+          <div id="tabletWorkbenchPrims" class="tablet-prims-row"></div>
+        </div>
+        <div class="tablet-themes-panel">
+          <button id="tabletShowAiBtn" class="tablet-show-ai" type="button" aria-pressed="false">SHOW AI</button>
+          <div class="tablet-theme-grid tablet-director-theme-grid">
+            <button class="tablet-theme-cell" data-tablet-workbench-slot="1"><small>Theme 1</small><strong id="tabletWorkbenchTheme1">—</strong></button>
+            <button class="tablet-theme-cell" data-tablet-workbench-slot="2"><small>Theme 2</small><strong id="tabletWorkbenchTheme2">—</strong></button>
+            <button class="tablet-theme-cell" data-tablet-workbench-slot="3"><small>Theme 3</small><strong id="tabletWorkbenchTheme3">—</strong></button>
+          </div>
+          <div class="tablet-theme-grid tablet-ai-theme-grid" aria-label="AI themes">
+            <div class="tablet-theme-cell tablet-ai-ghost"><small>AI 1</small><strong id="tabletWorkbenchAiTheme1">—</strong></div>
+            <div class="tablet-theme-cell tablet-ai-ghost"><small>AI 2</small><strong id="tabletWorkbenchAiTheme2">—</strong></div>
+            <div class="tablet-theme-cell tablet-ai-ghost"><small>AI 3</small><strong id="tabletWorkbenchAiTheme3">—</strong></div>
+          </div>
+        </div>
+      </div>
+      <div class="tablet-matrix-label">PrimFusion Matrix</div>
+      <div id="tabletWorkbenchMatrix" class="primfusion-matrix tablet-workbench-matrix" aria-label="PrimFusion Matrix"></div>
+      <div id="tabletWorkbenchAiDescription" class="tablet-ai-description-ghost" aria-label="AI description">AI description</div>
+    </section>
 
     <section class="base-layout">
       <section class="console image-console" aria-label="Image and AI description">
@@ -267,6 +294,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.3.14"></script>
+  <script src="app.js?v=0.9.3.15"></script>
 </body>
 </html>

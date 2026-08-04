@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.14";
+const GENREACTRIX_BUILD="v0.9.3.15";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -522,6 +522,34 @@ function renderComparison(){
   $("profileRetention").textContent=state.retention;
   $("profileFlagged").textContent=state.flagged?"Yes":"No";
 }
+
+
+let tabletAiVisible=false;
+function renderTabletWorkbench(){
+  const root=$("tabletWorkbench");
+  if(!root) return;
+  $("tabletWorkbenchImage").src=currentSource();
+  const prims=$("tabletWorkbenchPrims");
+  prims.innerHTML="";
+  const weights=currentAiWeights();
+  PRIMITIVES.forEach((p,i)=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="tablet-prim-button"+(state.selectedReactions.includes(i)?" selected":"");
+    b.title=p.name;
+    b.innerHTML=`<span class="symbol">${p.symbol}</span><span class="ring"></span><span class="pct">${weights[p.id]??0}%</span>`;
+    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(i);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(i);saveCurrent();renderAll();});
+    prims.appendChild(b);
+  });
+  for(let i=0;i<3;i++) $("tabletWorkbenchTheme"+(i+1)).textContent=themeLabel(state.themes[i]);
+  currentAiThemes().slice(0,3).forEach(([label,weight],i)=>$("tabletWorkbenchAiTheme"+(i+1)).textContent=tabletAiVisible?`${label} ${weight}%`:"—");
+  $("tabletWorkbenchAiDescription").textContent=tabletAiVisible?(currentAiRun().description||currentDescription()):"AI description";
+  root.classList.toggle("ai-visible",tabletAiVisible);
+  $("tabletShowAiBtn").setAttribute("aria-pressed",String(tabletAiVisible));
+  $("tabletShowAiBtn").textContent=tabletAiVisible?"HIDE AI":"SHOW AI";
+  renderPrimFusionMatrix("","tabletWorkbenchMatrix");
+}
+
 function renderAll(){
   // Classification fields render first so image/profile rendering can never leave
   // Theme 1/2/3 showing the previous image if a later render stage fails.
@@ -537,6 +565,7 @@ function renderAll(){
   updateUndoRedo();
   renderTabletTargetSlots();
   renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
+  renderTabletWorkbench();
 }
 
 function openThemeWorkspace(slot=1){
@@ -718,7 +747,7 @@ function primFusionAutoFitEntries(root=document){
 }
 
 function cancelScheduledPrimFusionFit(root){
-  // v0.9.3.14: fitting is intentionally disabled. PrimFusion labels use one
+  // v0.9.3.15: fitting is intentionally disabled. PrimFusion labels use one
   // fixed, conservative size so the matrix is immediately usable.
 }
 
@@ -879,7 +908,7 @@ if(landscapePrimFusionToggle){
 
 
 function isTabletWorkspace(){
-  return window.innerWidth>=600 && window.innerWidth<=1199 && window.innerHeight>=600;
+  return window.innerWidth>=600 && window.innerWidth<=1199 && window.innerHeight>=500;
 }
 
 document.addEventListener("click",e=>{
@@ -1164,7 +1193,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.14 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.15 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
@@ -1268,3 +1297,7 @@ window.addEventListener("resize",()=>{
 // v0.9.3.2: hydrate the active demo/image record from persistent storage only
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
+
+
+document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
+document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
