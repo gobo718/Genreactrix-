@@ -1,4 +1,4 @@
-# Genreactrix v0.9.5.2
+# Genreactrix v0.9.9.0
 
 Portrait configurable quick-action architecture.
 
@@ -13,6 +13,15 @@ Portrait configurable quick-action architecture.
 - Stores action binding, parameter snapshot, visibility, slot, and custom label without duplicating engine logic.
 - Leaves landscape, tablet, desktop, shared data, and reusable assets unchanged.
 
+
+## v0.9.9.0 — Shared Queue Engine
+- Adds one persistent Queue Engine for scheduling and operational state across engine-owned work.
+- Migrates and removes the legacy localStorage AI look-ahead queue.
+- Mirrors AI jobs/items into the shared queue without moving AI business logic out of the AI engine.
+- Adds persistent queue jobs/items, priority, pause, resume, safe stop, retry, interruption recovery, and finished-record cleanup.
+- Adds a connected Queue console and compact portrait counts.
+- Keeps active Batch membership/order as the Director work source rather than duplicating image lists.
+- Keeps the repository shallow: one new root file (`queue-engine.js`); no folder structure changes.
 
 ## v0.9.5.2 — Shared Images Engine
 

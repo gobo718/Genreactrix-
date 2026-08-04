@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.8.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.7.0">
+  <title>Genreactrix v0.9.9.0</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.9.0">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.8.0</span>
+        <span>v0.9.9.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -42,7 +42,7 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.8.0</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.9.0</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -545,10 +545,34 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.8.0"></script>
-  <script src="genreactrix-cloud-api.js?v=0.9.8.0"></script>
-  <script src="reports-engine.js?v=0.9.8.0"></script>
-  <script src="batch-engine.js?v=0.9.8.0"></script>
-  <script src="ai-analysis-engine.js?v=0.9.8.0"></script>
+  <dialog id="queueDialog" class="queue-dialog">
+    <section class="queue-shell">
+      <header>
+        <h2>Queue</h2>
+        <button id="queueDialogClose" type="button" aria-label="Close queue">✕</button>
+      </header>
+      <div class="queue-count-grid" aria-label="Queue summary">
+        <span>Running <strong id="queueRunningCount">0</strong></span>
+        <span>Queued <strong id="queueQueuedCount">0</strong></span>
+        <span>Paused <strong id="queuePausedCount">0</strong></span>
+        <span>Failed <strong id="queueFailedCount">0</strong></span>
+        <span>Blocked <strong id="queueBlockedCount">0</strong></span>
+        <span>Director <strong id="queueDirectorCount">0</strong></span>
+        <span>To batch <strong id="queueBatchReadyCount">0</strong></span>
+      </div>
+      <div class="queue-toolbar">
+        <button id="queueRecover" type="button">Recover interrupted</button>
+        <button id="queueClearFinished" type="button">Clear finished</button>
+      </div>
+      <div id="queueJobList" class="queue-job-list"></div>
+    </section>
+  </dialog>
+
+  <script src="app.js?v=0.9.9.0"></script>
+  <script src="queue-engine.js?v=0.9.9.0"></script>
+  <script src="genreactrix-cloud-api.js?v=0.9.9.0"></script>
+  <script src="reports-engine.js?v=0.9.9.0"></script>
+  <script src="batch-engine.js?v=0.9.9.0"></script>
+  <script src="ai-analysis-engine.js?v=0.9.9.0"></script>
 </body>
 </html>

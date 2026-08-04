@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.8.0";
+const GENREACTRIX_BUILD="v0.9.9.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -573,8 +573,9 @@ function renderPortraitControlStation(){
   const flagged=records.filter(record=>record?.flagged).length + (state.flagged && !state.records[currentKey()] ? 1 : 0);
   const saved=records.filter(record=>record?.saved).length;
   const analyzed=state.files.filter(file=>Boolean(state.aiRuns?.[file.id || file.name]?.length)).length;
-  const aiQueue=window.genreactrixAiQueueEngine?.snapshot?.() || {pending:0,available:Math.max(0,total-analyzed),bufferTarget:25};
-  $("portraitQueuedCount").textContent=String(aiQueue.pending);
+  const aiQueue=window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {pending:0,available:Math.max(0,total-analyzed),bufferTarget:25};
+  const sharedQueue=window.genreactrixQueueEngine?.snapshot?.()?.summary || {queued:aiQueue.pending};
+  $("portraitQueuedCount").textContent=String(sharedQueue.queued ?? aiQueue.pending);
   $("portraitAvailableCount").textContent=String(aiQueue.available);
   $("portraitReadyBatchCount").textContent=String(records.length);
   $("portraitSavedTotal").textContent=String(saved);
@@ -1068,7 +1069,7 @@ async function applyEngineWorkingFiles(files){
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
   state.index=0;
   loadCurrent();
-  window.genreactrixAiQueueEngine?.maintainBuffer?.();
+  window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
   renderPortraitControlStation();
 }
 async function loadImageFolder(fileList,limit=null){
@@ -1671,21 +1672,28 @@ function createImagesEngine(){
   }
   async function importFiles(fileList,{limit=null,batchId="current-import"}={}){
     const files=[...fileList].filter(file=>file.type.startsWith("image/"));const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files;const created=[];
-    for(const file of selected){
-      const id=createImageId("local");let record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:batchId},storage:{mode:"temporary",temporaryKey:id,mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[batchId]});
-      try{await imageBlobPut(id,file);}catch(error){record=records.update(id,{attributes:{failed:true},error:String(error?.message||error)},"storage-failed");}
+    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`Folder import · ${selected.length} image${selected.length===1?"":"s"}`,state:"running",total:selected.length,batchId,message:"Copying images"});
+    const qItems=[];
+    for(const [order,file] of selected.entries()){
+      const id=createImageId("local");const qItem={id:qJob?`queue_import_${id}`:null,imageId:id,order,type:"acquisition",state:"processing"};if(qJob){await window.genreactrixQueueEngine.addItems(qJob.id,[qItem]);qItems.push(qItem)}
+      let record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:batchId},storage:{mode:"temporary",temporaryKey:id,mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[batchId]});
+      try{await imageBlobPut(id,file);if(qItem.id)await window.genreactrixQueueEngine.setItemState(qItem.id,"complete");}catch(error){record=records.update(id,{attributes:{failed:true},error:String(error?.message||error)},"storage-failed");if(qItem.id)await window.genreactrixQueueEngine.setItemState(qItem.id,"failed",{error:String(error?.message||error)});}
       created.push(record);
     }
+    if(qJob)await window.genreactrixQueueEngine.setJobState(qJob.id,created.some(r=>r.attributes?.failed)?"completed-with-failures":"completed",created.some(r=>r.attributes?.failed)?"Import completed with failures":"Import complete");
     activeSessionIds=created.map(r=>r.id);return created;
   }
   async function prefetchUrls(text,{limit=null}={}){const raw=[...new Set(String(text||"").split(/\r?\n|,\s*(?=https?:)/).map(safeUrl).filter(Boolean))];const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));}
   async function importUrls(text,{limit=null,mode="link",prefetch=true,batchId="current-import"}={}){
     const sources=await prefetchUrls(text,{limit});const created=[];
-    for(const source of sources){
-      const id=createImageId("url");let record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:mode==="download"?"temporary-copy":"hyperlink-only",firstBatchId:batchId},storage:{mode:mode==="download"?"temporary":"linked",temporaryKey:mode==="download"?id:null,hyperlink:source.url},workflow:{stage:"available"},attributes:{hyperlinkOnly:mode!=="download"},batchIds:[batchId]});
+    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`URL ${mode==="download"?"download":"intake"} · ${sources.length}`,state:"running",total:sources.length,batchId,message:mode==="download"?"Downloading images":"Creating hyperlinks"});
+    for(const [order,source] of sources.entries()){
+      const id=createImageId("url"),qItemId=qJob?`queue_url_${id}`:null;if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
+      let record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:mode==="download"?"temporary-copy":"hyperlink-only",firstBatchId:batchId},storage:{mode:mode==="download"?"temporary":"linked",temporaryKey:mode==="download"?id:null,hyperlink:source.url},workflow:{stage:"available"},attributes:{hyperlinkOnly:mode!=="download"},batchIds:[batchId]});
       if(mode==="download")try{const response=await fetch(source.url,{mode:"cors"});if(!response.ok)throw new Error(`HTTP ${response.status}`);const blob=await response.blob();if(!blob.type.startsWith("image/"))throw new Error("URL did not return an image");await imageBlobPut(id,blob);record=records.update(id,{storage:{mimeType:blob.type,size:blob.size}},"downloaded");}catch(error){record=records.update(id,{storage:{mode:"linked",temporaryKey:null,hyperlink:source.url},attributes:{hyperlinkOnly:true,failed:true},error:String(error?.message||error)},"download-fallback");}
-      created.push(record);
+      if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,record.attributes?.failed?"failed":"complete",record.attributes?.failed?{error:record.error||"Download failed; hyperlink retained"}:{});created.push(record);
     }
+    if(qJob)await window.genreactrixQueueEngine.setJobState(qJob.id,created.some(r=>r.attributes?.failed)?"completed-with-failures":"completed",created.some(r=>r.attributes?.failed)?"URL intake completed with failures":"URL intake complete");
     activeSessionIds=created.map(r=>r.id);return created;
   }
   async function fileForRecord(record){
@@ -1721,7 +1729,6 @@ window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)con
 // Portrait remains a client of shared capabilities. Quick buttons store references
 // to engine actions plus validated parameter snapshots; they do not duplicate action logic.
 const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
-const AI_QUEUE_KEY="genreactrix-ai-lookahead-queue";
 const AI_BUFFER_TARGET_KEY="genreactrix-ai-buffer-target";
 const AI_QUICK_ADD_KEY="genreactrix-ai-quick-add";
 const PORTRAIT_AI_OUTPUTS_KEY="genreactrix-portrait-ai-outputs";
@@ -1760,50 +1767,6 @@ function syncPortraitAiOutputs(){
   });
 }
 
-function createAiLookAheadQueueEngine(){
-  let pending=[];
-  try{ pending=JSON.parse(localStorage.getItem(AI_QUEUE_KEY)||"[]"); }
-  catch(error){ pending=[]; }
-  if(!Array.isArray(pending)) pending=[];
-
-  const bufferTarget=()=>Math.max(0,Math.floor(Number(localStorage.getItem(AI_BUFFER_TARGET_KEY))||25));
-  const quickAddAmount=()=>Math.max(1,Math.floor(Number(localStorage.getItem(AI_QUICK_ADD_KEY))||100));
-  const currentKeys=()=>state.files.map(file=>file.id || file.name);
-  const analyzedKeys=()=>new Set(currentKeys().filter(key=>Boolean(state.aiRuns?.[key]?.length)));
-  const persist=()=>localStorage.setItem(AI_QUEUE_KEY,JSON.stringify(pending));
-
-  function normalize(){
-    const current=new Set(currentKeys());
-    const analyzed=analyzedKeys();
-    pending=[...new Set(pending)].filter(key=>current.has(key)&&!analyzed.has(key));
-    persist();
-  }
-  function availableKeys(){
-    normalize();
-    const pendingSet=new Set(pending);
-    const analyzed=analyzedKeys();
-    return currentKeys().filter(key=>!pendingSet.has(key)&&!analyzed.has(key));
-  }
-  function queueNext(count){
-    const additions=availableKeys().slice(0,Math.max(0,Math.floor(Number(count)||0)));
-    pending.push(...additions);
-    normalize();
-    renderPortraitControlStation();
-    return additions.length;
-  }
-  function maintainBuffer(){
-    normalize();
-    const needed=Math.max(0,bufferTarget()-pending.length);
-    return needed?queueNext(needed):0;
-  }
-  function snapshot(){
-    normalize();
-    return {pending:pending.length,available:availableKeys().length,bufferTarget:bufferTarget(),quickAddAmount:quickAddAmount()};
-  }
-  return {queueNext,maintainBuffer,snapshot};
-}
-
-window.genreactrixAiQueueEngine=createAiLookAheadQueueEngine();
 
 const QUICK_ACTIONS={
   "images.add-folder":{
@@ -1826,7 +1789,7 @@ const QUICK_ACTIONS={
   "ai.analyze-more":{
     module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",
     fields:[
-      {key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>window.genreactrixAiQueueEngine.snapshot().quickAddAmount},
+      {key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>Math.max(1,Number(localStorage.getItem(AI_QUICK_ADD_KEY))||100)},
       {key:"outputs",label:"Outputs",type:"ai-outputs",getDefault:()=>selectedPortraitAiOutputs()}
     ],
     summarize:p=>{
@@ -1835,12 +1798,12 @@ const QUICK_ACTIONS={
       return [`Quantity: ${p.quantity}`,`Outputs: ${selected.join(", ")||"None"}`];
     },
     validate:p=>Object.values(p.outputs||{}).some(Boolean)?"":"Choose at least one AI output.",
-    run:p=>{
-      const added=window.genreactrixAiQueueEngine.queueNext(Math.max(1,Number(p.quantity)||100));
-      setPortraitStationStatus(added?`${added} images added to the AI look-ahead queue.`:"No additional unanalyzed images are available.");
+    run:async p=>{
+      const added=await window.genreactrixAiAnalysisEngine.queueNext(Math.max(1,Number(p.quantity)||100),p.outputs);
+      setPortraitStationStatus(added?`${added} images added to the AI queue.`:"No additional unanalyzed images are available.");
     }
   },
-  "queue.open":{module:"queue",name:"Open queue",defaultLabel:"Open queue",fields:[],summarize:()=>["View: Queue"],run:()=>setPortraitStationStatus("Open the Queue console.")},
+  "queue.open":{module:"queue",name:"Open queue",defaultLabel:"Open queue",fields:[],summarize:()=>["View: Queue"],run:()=>window.genreactrixQueueEngine?.openConsole?.()},
   "reports.open":{module:"reports",name:"Open reports",defaultLabel:"Open reports",fields:[],summarize:()=>["View: Reports"],run:()=>window.genreactrixReportsEngine?.openConsole?.()}
 };
 
@@ -2003,7 +1966,7 @@ function bindLongPress(element,onLongPress){
 
 syncPortraitDefaultAmount();
 syncPortraitAiOutputs();
-window.genreactrixAiQueueEngine.maintainBuffer();
+window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
 renderQuickButtons();
 
 document.querySelectorAll("[data-quick-slot]").forEach(button=>{
@@ -2021,7 +1984,7 @@ document.querySelectorAll("[data-module-button]").forEach(button=>{
     else if(module==="ai") window.genreactrixAiAnalysisEngine?.openConsole?.();
     else if(module==="batch") window.genreactrixBatchEngine?.openConsole?.();
     else if(module==="reports") window.genreactrixReportsEngine?.openConsole?.();
-    else if(module==="queue") window.genreactrixAiAnalysisEngine?.openConsole?.();
+    else if(module==="queue") window.genreactrixQueueEngine?.openConsole?.();
     else setPortraitStationStatus(`Open the full ${button.textContent.trim()} console.`);
   });
   bindLongPress(button,()=>openModuleQuickManager(module));
