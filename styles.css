@@ -1837,7 +1837,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.3.16 — dedicated dense tablet workbench */
+/* v0.9.3.17 — dedicated dense tablet workbench */
 .tablet-workbench{display:none}
 @media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   .base-layout,.tablet-primfusion-console{display:none!important}
@@ -1877,7 +1877,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .tablet-workbench.ai-visible .tablet-ai-description-ghost{color:var(--text);border-style:solid}
 }
 
-/* v0.9.3.16 — purpose-built dense tablet classifier */
+/* v0.9.3.17 — purpose-built dense tablet classifier */
 @media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   .nav-console{display:none!important}
   .base-layout,.tablet-primfusion-console{display:none!important}
@@ -2058,5 +2058,131 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     text-overflow:ellipsis;
     max-width:100%;
   }
+  .tablet-workbench-matrix .primfusion-combo-symbol{display:none!important}
+}
+
+
+/* v0.9.3.17 — tablet density, real-width fit, canonical reaction rings */
+@media (min-width:600px) and (max-width:1199px) and (min-height:500px){
+  .tablet-workbench,
+  .tablet-workbench *{box-sizing:border-box}
+  .tablet-workbench{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    padding:3px 7px 3px 3px;
+    overflow-x:hidden;
+    font-size:5px;
+  }
+  .tablet-workbench-top{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    grid-template-columns:minmax(0,19%) minmax(0,33%) minmax(0,48%);
+    gap:3px;
+    margin-bottom:3px;
+  }
+  .tablet-image-box{
+    width:100%;
+    max-width:100%;
+    max-height:132px;
+    min-width:0;
+  }
+  .tablet-prims-panel,.tablet-themes-panel{min-width:0;padding:3px}
+  .tablet-prims-row{grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
+  .tablet-prim-button{
+    position:relative;
+    display:grid;
+    grid-template-rows:auto 6px;
+    place-items:center;
+    min-width:0;
+    padding:1px;
+    background:transparent!important;
+  }
+  .tablet-prim-button .symbol{
+    display:grid;
+    place-items:center;
+    width:14px;
+    height:14px;
+    font-size:10px;
+    line-height:1;
+    border:1.5px solid transparent;
+    border-radius:50%;
+  }
+  .tablet-prim-button.selected .symbol{border-color:#ff3d3d}
+  .tablet-prim-button .pct{font-size:5px;line-height:1;height:5px}
+
+  .tablet-theme-toolbar{gap:2px;min-height:16px}
+  .tablet-theme-toolbar button,.tablet-images-button{
+    min-height:15px;
+    padding:1px 4px;
+    font-size:5px;
+    border-radius:2px;
+  }
+  .tablet-theme-toolbar .tablet-caret{font-size:10px;line-height:1;padding:0 4px}
+  .tablet-theme-row{grid-template-columns:28px repeat(3,minmax(0,1fr));gap:2px}
+  .tablet-row-label,.tablet-theme-cell strong,.tablet-slot-number{font-size:5px}
+  .tablet-theme-cell{
+    height:18px;
+    padding:1px 3px 1px 10px;
+    border-radius:2px;
+  }
+  .tablet-theme-cell strong{
+    text-overflow:clip;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+  .tablet-slot-number{left:3px}
+  .tablet-ai-description-wrap{grid-template-columns:28px minmax(0,1fr);gap:2px}
+  .tablet-ai-description-label,.tablet-ai-description-ghost{font-size:5px}
+  .tablet-ai-description-ghost{min-height:16px;padding:1px 2px;border-radius:2px}
+
+  .tablet-workbench-matrix,
+  .tablet-workbench-matrix .true-primfusion-band,
+  .tablet-workbench-matrix .primfusion-scroller,
+  .tablet-workbench-matrix .true-primfusion-grid{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
+  .tablet-workbench-matrix .primfusion-scroller{overflow:hidden}
+  .tablet-workbench-matrix .true-primfusion-grid{
+    grid-template-columns:44px repeat(13,minmax(0,1fr));
+  }
+  .tablet-workbench-matrix .primfusion-corner,
+  .tablet-workbench-matrix .primfusion-axis-header,
+  .tablet-workbench-matrix .primfusion-intersection{
+    min-width:0;
+    width:auto;
+    height:22px;
+    min-height:22px;
+    padding:0 1px;
+  }
+  .tablet-workbench-matrix .primfusion-axis-header{
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    justify-content:flex-start;
+    gap:1px;
+    overflow:hidden;
+  }
+  .tablet-workbench-matrix .primfusion-column-header{justify-content:center}
+  .tablet-workbench-matrix .primfusion-axis-header span{
+    flex:0 0 auto;
+    font-size:8px;
+    line-height:1;
+  }
+  .tablet-workbench-matrix .primfusion-axis-header small,
+  .tablet-workbench-matrix .primfusion-combo-label{
+    display:block;
+    min-width:0;
+    max-width:100%;
+    font-size:5px!important;
+    line-height:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:clip!important;
+  }
+  .tablet-workbench-matrix .primfusion-intersection{display:grid;place-items:center}
   .tablet-workbench-matrix .primfusion-combo-symbol{display:none!important}
 }

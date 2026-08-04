@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.16";
+const GENREACTRIX_BUILD="v0.9.3.17";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -537,7 +537,7 @@ function renderTabletWorkbench(){
     b.type="button";
     b.className="tablet-prim-button"+(state.selectedReactions.includes(i)?" selected":"");
     b.title=p.name;
-    b.innerHTML=`<span class="symbol">${p.symbol}</span><span class="ring"></span><span class="pct">${weights[p.id]??0}%</span>`;
+    b.innerHTML=`<span class="symbol">${p.symbol}</span><span class="pct">${weights[p.id]??0}%</span>`;
     b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(i);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(i);saveCurrent();renderAll();});
     prims.appendChild(b);
   });
@@ -747,7 +747,7 @@ function primFusionAutoFitEntries(root=document){
 }
 
 function cancelScheduledPrimFusionFit(root){
-  // v0.9.3.16: fitting is intentionally disabled. PrimFusion labels use one
+  // v0.9.3.17: fitting is intentionally disabled. PrimFusion labels use one
   // fixed, conservative size so the matrix is immediately usable.
 }
 
@@ -1200,7 +1200,7 @@ $("workspaceProfileSelect").value=initialWorkspaceProfile in WORKSPACE_PROFILES?
 refreshSavedLayouts();
 
 try{
-  // v0.9.3.16 preserves the verified v0.9.2j storage namespace and clean classification namespace.
+  // v0.9.3.17 preserves the verified v0.9.2j storage namespace and clean classification namespace.
   // Earlier namespaces are left untouched as an archive because prior builds
   // may have written the same Theme values into multiple image records.
   const currentRecords=localStorage.getItem("genreactrix-v0.9.2j-records");
