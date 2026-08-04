@@ -1,4 +1,14 @@
-# Genreactrix v0.9.10.0
+# Genreactrix v0.9.11.0
+
+## v0.9.11.0 — Settings Engine
+
+- Added a canonical IndexedDB Settings Engine with typed definitions, defaults, validation, subscriptions, and legacy-key migration.
+- Added full Settings console sections for daily defaults, AI, storage/recycle, batch, notifications, project, maintenance, and backups.
+- Centralized default image/URL quantities, AI quick-add and buffer values, recycle retention, batch size, notification retention, project identity, quick-action presets, and AI provider configuration.
+- Added settings export/import and versioned structured project backup generation.
+- Added settings and project integrity entry points.
+- Preserved the shallow repository structure; no folders were added, moved, renamed, or removed.
+
 
 Portrait configurable quick-action architecture.
 
@@ -14,7 +24,7 @@ Portrait configurable quick-action architecture.
 - Leaves landscape, tablet, desktop, shared data, and reusable assets unchanged.
 
 
-## v0.9.10.0 — Shared Queue Engine
+## v0.9.11.0 — Shared Queue Engine
 - Adds one persistent Queue Engine for scheduling and operational state across engine-owned work.
 - Migrates and removes the legacy localStorage AI look-ahead queue.
 - Mirrors AI jobs/items into the shared queue without moving AI business logic out of the AI engine.
@@ -77,7 +87,7 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Batch submission now calls the Reports Engine for its automatic standard report.
 
 
-## v0.9.10.0 Notifications Engine
+## v0.9.11.0 Notifications Engine
 - Persistent mailbox notifications with unread badge.
 - Read/unread, archive/restore, resolve, filters, deduplication, and routing to owning modules.
 - Queue terminal states, reports, and batch submissions create operational notifications.

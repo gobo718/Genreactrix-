@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.10.0";
+const GENREACTRIX_BUILD="v0.9.11.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -1717,7 +1717,7 @@ function createImagesEngine(){
     for(const record of candidates){if(!all&&!before&&Number.isFinite(freeBytes)&&freed>=freeBytes)break;await imageBlobDelete(record.id).catch(()=>{});freed+=record.storage.size||0;purged++;records.update(record.id,{storage:{mode:record.storage.hyperlink?"linked":"none",temporaryKey:null,referenceKey:null,recycle:{deletedAt:null,priorMode:null}},attributes:{inRecycleBin:false,hyperlinkOnly:Boolean(record.storage.hyperlink)},workflow:{stage:"archived"}},"recycle-purged");}
     return{purged,freed};
   }
-  async function purgeExpired(){const days=Math.max(0,Number(localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
+  async function purgeExpired(){const days=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.("recycle.retentionDays",30) ?? localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
   async function verifyStorage(){const issues=[];for(const record of records.all()){if(["temporary","reference","recycle"].includes(record.storage.mode)){const blob=await imageBlobGet(record.id).catch(()=>null);if(!blob){records.update(record.id,{storage:{missingReference:true}},"integrity");issues.push({imageId:record.id,type:"missing-blob"});}}}const recordIntegrity=records.integrity();const historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};}
   function allRecords(){return records.all();}
   return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,saveReference,cleanupProcessed,moveToRecycle,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
@@ -1743,11 +1743,11 @@ function portraitDefaultAmount(){
 function syncPortraitDefaultAmount(){
   const input=document.getElementById("portraitDefaultAmount");
   if(!input) return;
-  const saved=Math.max(1,Math.floor(Number(localStorage.getItem(PORTRAIT_DEFAULT_AMOUNT_KEY))||100));
+  const saved=Math.max(1,Math.floor(Number(window.genreactrixSettingsEngine?.get?.("defaults.images.amount",100) ?? localStorage.getItem(PORTRAIT_DEFAULT_AMOUNT_KEY))||100));
   input.value=String(saved);
   input.addEventListener("change",()=>{
     const amount=portraitDefaultAmount();
-    localStorage.setItem(PORTRAIT_DEFAULT_AMOUNT_KEY,String(amount));
+    window.genreactrixSettingsEngine?.set?.("defaults.images.amount",amount);
     renderQuickButtons();
     setPortraitStationStatus(`Quick-add default set to ${amount} images.`);
   });
@@ -1760,10 +1760,10 @@ function syncPortraitAiOutputs(){
   const controls=[...document.querySelectorAll("[data-portrait-ai-output]")];
   if(!controls.length) return;
   let saved={};
-  try{ saved=JSON.parse(localStorage.getItem(PORTRAIT_AI_OUTPUTS_KEY)||"{}"); }catch(error){ saved={}; }
+  try{ saved=window.genreactrixSettingsEngine?.get?.("ai.components.default",{}) || JSON.parse(localStorage.getItem(PORTRAIT_AI_OUTPUTS_KEY)||"{}"); }catch(error){ saved={}; }
   controls.forEach(control=>{
     if(Object.prototype.hasOwnProperty.call(saved,control.dataset.portraitAiOutput)) control.checked=Boolean(saved[control.dataset.portraitAiOutput]);
-    control.addEventListener("change",()=>localStorage.setItem(PORTRAIT_AI_OUTPUTS_KEY,JSON.stringify(selectedPortraitAiOutputs())));
+    control.addEventListener("change",()=>window.genreactrixSettingsEngine?.set?.("ai.components.default",selectedPortraitAiOutputs()));
   });
 }
 
@@ -1789,7 +1789,7 @@ const QUICK_ACTIONS={
   "ai.analyze-more":{
     module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",
     fields:[
-      {key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>Math.max(1,Number(localStorage.getItem(AI_QUICK_ADD_KEY))||100)},
+      {key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>Math.max(1,Number(window.genreactrixSettingsEngine?.get?.("defaults.ai.quickAdd",100) ?? localStorage.getItem(AI_QUICK_ADD_KEY))||100)},
       {key:"outputs",label:"Outputs",type:"ai-outputs",getDefault:()=>selectedPortraitAiOutputs()}
     ],
     summarize:p=>{
@@ -1817,7 +1817,7 @@ const DEFAULT_QUICK_PRESETS={
 
 function loadQuickPresets(){
   let saved={};
-  try{ saved=JSON.parse(localStorage.getItem(QUICK_PRESETS_KEY)||"{}"); }catch(error){ saved={}; }
+  try{ saved=window.genreactrixSettingsEngine?.get?.("quick.presets",{}) || JSON.parse(localStorage.getItem(QUICK_PRESETS_KEY)||"{}"); }catch(error){ saved={}; }
   const merged=structuredClone(DEFAULT_QUICK_PRESETS);
   Object.keys(merged).forEach(module=>[1,2].forEach(slot=>{
     if(saved?.[module]?.[slot]) merged[module][slot]={...merged[module][slot],...saved[module][slot],params:{...merged[module][slot].params,...(saved[module][slot].params||{})}};
@@ -1825,7 +1825,7 @@ function loadQuickPresets(){
   return merged;
 }
 let quickPresets=loadQuickPresets();
-function saveQuickPresets(){ localStorage.setItem(QUICK_PRESETS_KEY,JSON.stringify(quickPresets)); }
+function saveQuickPresets(){ window.genreactrixSettingsEngine?.set?.("quick.presets",quickPresets); }
 function resolveActionParams(action,preset={}){
   const params={...(preset.params||{})};
   (action.fields||[]).forEach(field=>{
@@ -1990,30 +1990,6 @@ document.querySelectorAll("[data-module-button]").forEach(button=>{
   bindLongPress(button,()=>openModuleQuickManager(module));
 });
 document.getElementById("portraitMailboxBtn")?.addEventListener("click",()=>window.genreactrixNotificationsEngine?.openConsole?.());
-document.getElementById("portraitSettingsBtn")?.addEventListener("click",()=>{
-  const dialog=document.getElementById("portraitSettingsDialog");
-  if(dialog){
-    document.getElementById("recycleRetentionDays").value=String(Math.max(0,Number(localStorage.getItem(RECYCLE_RETENTION_KEY))||30));
-    dialog.showModal();
-  }
-});
-document.getElementById("portraitSettingsClose")?.addEventListener("click",()=>document.getElementById("portraitSettingsDialog")?.close());
-document.getElementById("recycleRetentionDays")?.addEventListener("change",event=>{
-  const days=Math.max(0,Math.floor(Number(event.target.value)||30));event.target.value=String(days);localStorage.setItem(RECYCLE_RETENTION_KEY,String(days));setPortraitStationStatus(`Recycle retention set to ${days} days.`);
-});
-document.getElementById("recycleEmptyNow")?.addEventListener("click",async()=>{
-  const result=await window.genreactrixImagesEngine.purgeRecycle({all:true});renderPortraitStation();setPortraitStationStatus(`Recycle bin purged ${result.purged} image(s).`);
-});
-document.getElementById("recycleEmptyBefore")?.addEventListener("click",async()=>{
-  const date=document.getElementById("recycleBeforeDate")?.value;if(!date){setPortraitStationStatus("Choose a recycle cutoff date.");return;}
-  const result=await window.genreactrixImagesEngine.purgeRecycle({before:new Date(`${date}T23:59:59`).toISOString()});renderPortraitStation();setPortraitStationStatus(`Purged ${result.purged} image(s) deleted before ${date}.`);
-});
-document.getElementById("recycleFreeMb")?.addEventListener("click",async()=>{
-  const mb=Math.max(1,Number(document.getElementById("recycleFreeMbAmount")?.value)||100);const result=await window.genreactrixImagesEngine.purgeRecycle({freeBytes:mb*1024*1024});renderPortraitStation();setPortraitStationStatus(`Purged ${result.purged} oldest image(s), freeing ${(result.freed/1024/1024).toFixed(1)} MB.`);
-});
-document.getElementById("runImageIntegrityCheck")?.addEventListener("click",async()=>{
-  const result=await window.genreactrixImagesEngine.verifyStorage();setPortraitStationStatus(`Integrity check: ${result.issueCount} issue(s) across ${result.recordCount} records.`);
-});
 document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEventListener("click",()=>setPortraitStationStatus(`Open ${button.dataset.portraitStatus.replaceAll("-"," ")}.`)));
 
 document.querySelectorAll("[data-quick-dialog='cancel']").forEach(button=>button.addEventListener("click",()=>document.getElementById("quickAssignDialog")?.close()));

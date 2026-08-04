@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.10.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.10.0">
+  <title>Genreactrix v0.9.11.0</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.11.0">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.10.0</span>
+        <span>v0.9.11.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -42,7 +42,7 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.10.0</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.11.0</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button portrait-mailbox-button" type="button" aria-label="Notifications" title="Notifications">📬<span id="portraitMailboxBadge" class="mailbox-badge" hidden>0</span></button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -168,18 +168,72 @@
     </dialog>
 
 
-    <dialog id="portraitSettingsDialog" class="portrait-settings-dialog">
-      <form method="dialog" class="portrait-settings-form">
-        <div class="image-intake-header"><h2>Settings</h2><button type="button" id="portraitSettingsClose" aria-label="Close">×</button></div>
-        <section class="settings-section">
-          <h3>Recycle Bin</h3>
-          <label>Automatic retention (days)<input id="recycleRetentionDays" type="number" min="0" step="1" value="30"></label>
-          <div class="settings-action-row"><button type="button" id="recycleEmptyNow">Empty now</button></div>
-          <div class="settings-action-row"><input id="recycleBeforeDate" type="date" aria-label="Purge items deleted before date"><button type="button" id="recycleEmptyBefore">Empty before date</button></div>
-          <div class="settings-action-row"><input id="recycleFreeMbAmount" type="number" min="1" step="1" value="100" aria-label="Megabytes to free"><button type="button" id="recycleFreeMb">Free MB oldest first</button></div>
-        </section>
-        <section class="settings-section"><h3>Maintenance</h3><button type="button" id="runImageIntegrityCheck">Verify image records and storage</button></section>
-      </form>
+    <dialog id="portraitSettingsDialog" class="portrait-settings-dialog settings-console-dialog">
+      <div class="settings-console">
+        <header class="settings-console-header"><h2>Settings</h2><button type="button" id="portraitSettingsClose" aria-label="Close">×</button></header>
+        <nav class="settings-console-nav" aria-label="Settings sections">
+          <button type="button" class="active" data-settings-section="defaults">Defaults</button>
+          <button type="button" data-settings-section="ai">AI</button>
+          <button type="button" data-settings-section="storage">Storage</button>
+          <button type="button" data-settings-section="batch">Batch</button>
+          <button type="button" data-settings-section="notifications">Notices</button>
+          <button type="button" data-settings-section="project">Project</button>
+          <button type="button" data-settings-section="maintenance">Maintenance</button>
+          <button type="button" data-settings-section="backups">Backups</button>
+        </nav>
+        <div class="settings-console-body">
+          <section data-settings-panel="defaults">
+            <h3>Daily defaults</h3>
+            <div class="settings-grid">
+              <label>Images<input id="settingDefaultImages" type="number" min="1" step="1"></label>
+              <label>URLs<input id="settingDefaultUrls" type="number" min="1" step="1"></label>
+              <label>AI quick add<input id="settingAiQuickAdd" type="number" min="1" step="1"></label>
+            </div>
+          </section>
+          <section data-settings-panel="ai" hidden>
+            <h3>AI</h3>
+            <div class="settings-grid">
+              <label>Buffer target<input id="settingAiBuffer" type="number" min="0" step="1"></label>
+              <label>Refill threshold<input id="settingAiRefill" type="number" min="0" step="1"></label>
+            </div>
+            <p class="settings-note">Provider URL and access key remain in the AI console, but are stored through the Settings Engine.</p>
+          </section>
+          <section data-settings-panel="storage" hidden>
+            <h3>Acquisition &amp; storage</h3>
+            <label>Recycle retention (days)<input id="settingRecycleDays" type="number" min="0" step="1"></label>
+            <div class="settings-action-row"><button type="button" id="recycleEmptyNow">Empty now</button></div>
+            <div class="settings-action-row"><input id="recycleBeforeDate" type="date"><button type="button" id="recycleEmptyBefore">Empty before date</button></div>
+            <div class="settings-action-row"><input id="recycleFreeMbAmount" type="number" min="1" step="1" value="100"><button type="button" id="recycleFreeMb">Free MB oldest first</button></div>
+          </section>
+          <section data-settings-panel="batch" hidden>
+            <h3>Batch</h3>
+            <label>Default batch size<input id="settingBatchSize" type="number" min="1" step="1"></label>
+          </section>
+          <section data-settings-panel="notifications" hidden>
+            <h3>Notifications</h3>
+            <label>Resolved retention (days)<input id="settingNotifyDays" type="number" min="0" step="1"></label>
+          </section>
+          <section data-settings-panel="project" hidden>
+            <h3>Project</h3>
+            <label>Name<input id="settingProjectName" type="text"></label>
+            <label>Director ID<input id="settingDirectorId" type="text"></label>
+            <pre id="settingsProjectInfo" class="settings-info"></pre>
+          </section>
+          <section data-settings-panel="maintenance" hidden>
+            <h3>Maintenance</h3>
+            <button type="button" id="settingsVerify">Verify settings</button>
+            <button type="button" id="settingsVerifyProject">Run project integrity checks</button>
+          </section>
+          <section data-settings-panel="backups" hidden>
+            <h3>Backups</h3>
+            <button type="button" id="settingsExport">Export settings</button>
+            <button type="button" id="settingsBackupData">Create data backup</button>
+            <label class="settings-file-label">Import settings or backup<input id="settingsImportFile" type="file" accept="application/json,.json"></label>
+            <p class="settings-note">Backups include structured Genreactrix databases. Image blobs remain represented by their existing stores and references.</p>
+          </section>
+        </div>
+        <div id="settingsStatus" class="settings-status" role="status" aria-live="polite"></div>
+      </div>
     </dialog>
 
     <dialog id="aiAnalysisDialog" class="ai-analysis-dialog">
@@ -568,7 +622,8 @@
     </section>
   </dialog>
 
-  <script src="app.js?v=0.9.10.0"></script>
+  <script src="settings-engine.js?v=0.9.11.0"></script>
+  <script src="app.js?v=0.9.11.0"></script>
 
   <dialog id="notificationsDialog" class="notifications-dialog">
     <div class="notifications-shell">
@@ -582,11 +637,11 @@
     </div>
   </dialog>
 
-  <script src="notifications-engine.js?v=0.9.10.0"></script>
-  <script src="queue-engine.js?v=0.9.10.0"></script>
-  <script src="genreactrix-cloud-api.js?v=0.9.10.0"></script>
-  <script src="reports-engine.js?v=0.9.10.0"></script>
-  <script src="batch-engine.js?v=0.9.10.0"></script>
-  <script src="ai-analysis-engine.js?v=0.9.10.0"></script>
+  <script src="notifications-engine.js?v=0.9.11.0"></script>
+  <script src="queue-engine.js?v=0.9.11.0"></script>
+  <script src="genreactrix-cloud-api.js?v=0.9.11.0"></script>
+  <script src="reports-engine.js?v=0.9.11.0"></script>
+  <script src="batch-engine.js?v=0.9.11.0"></script>
+  <script src="ai-analysis-engine.js?v=0.9.11.0"></script>
 </body>
 </html>
