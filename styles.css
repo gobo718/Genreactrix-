@@ -1837,7 +1837,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.3.17 — dedicated dense tablet workbench */
+/* v0.9.3.18 — dedicated dense tablet workbench */
 .tablet-workbench{display:none}
 @media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   .base-layout,.tablet-primfusion-console{display:none!important}
@@ -1877,7 +1877,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .tablet-workbench.ai-visible .tablet-ai-description-ghost{color:var(--text);border-style:solid}
 }
 
-/* v0.9.3.17 — purpose-built dense tablet classifier */
+/* v0.9.3.18 — purpose-built dense tablet classifier */
 @media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   .nav-console{display:none!important}
   .base-layout,.tablet-primfusion-console{display:none!important}
@@ -2062,7 +2062,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.3.17 — tablet density, real-width fit, canonical reaction rings */
+/* v0.9.3.18 — tablet density, real-width fit, canonical reaction rings */
 @media (min-width:600px) and (max-width:1199px) and (min-height:500px){
   .tablet-workbench,
   .tablet-workbench *{box-sizing:border-box}
@@ -2185,4 +2185,73 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
   .tablet-workbench-matrix .primfusion-intersection{display:grid;place-items:center}
   .tablet-workbench-matrix .primfusion-combo-symbol{display:none!important}
+}
+
+
+/* v0.9.3.18 — tablet Prim reactions reuse the canonical staggered constellation */
+@media (min-width:600px) and (max-width:1199px) and (min-height:500px){
+  .tablet-prims-row{
+    display:grid;
+    grid-template-columns:repeat(14,minmax(0,1fr));
+    grid-auto-rows:minmax(20px,auto);
+    column-gap:0;
+    row-gap:5px;
+    align-items:center;
+    width:100%;
+    padding:2px 1px 3px;
+  }
+  .tablet-prims-row > *{
+    grid-column:span 2;
+  }
+  .tablet-prims-row > *:nth-child(8){
+    grid-column:2 / span 2;
+  }
+  .tablet-prim-button{
+    position:relative;
+    justify-self:center;
+    width:20px;
+    min-width:20px;
+    height:25px;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent!important;
+    display:grid;
+    grid-template-rows:18px 5px;
+    place-items:center;
+    overflow:visible;
+  }
+  .tablet-prim-button .symbol{
+    position:relative;
+    z-index:1;
+    width:18px;
+    height:18px;
+    border:0!important;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    font-size:11px;
+    line-height:1;
+    overflow:visible;
+  }
+  .tablet-prim-button.selected .symbol::after,
+  .tablet-prim-button:focus-visible .symbol::after{
+    content:"";
+    position:absolute;
+    inset:-3px;
+    z-index:2;
+    border:3px solid #ff3d3d;
+    border-radius:50%;
+    pointer-events:none;
+    box-sizing:border-box;
+  }
+  .tablet-prim-button .pct{
+    position:relative;
+    z-index:1;
+    width:100%;
+    height:5px;
+    font-size:5px;
+    line-height:1;
+    text-align:center;
+  }
 }
