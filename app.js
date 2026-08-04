@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.3.18";
+const GENREACTRIX_BUILD="v0.9.4.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -550,6 +550,33 @@ function renderTabletWorkbench(){
   renderPrimFusionMatrix("","tabletWorkbenchMatrix");
 }
 
+
+function portraitRecordValues(){
+  return Object.values(state.records || {});
+}
+function renderPortraitControlStation(){
+  const station=$("portraitControlStation");
+  if(!station) return;
+  const total=state.files.length;
+  const position=total?Math.min(state.index+1,total):0;
+  const records=portraitRecordValues();
+  const flagged=records.filter(record=>record?.flagged).length + (state.flagged && !state.records[currentKey()] ? 1 : 0);
+  const saved=records.filter(record=>record?.saved).length;
+  const analyzed=state.files.filter(file=>Boolean(state.aiRuns?.[file.name]?.length)).length;
+  $("portraitQueuedCount").textContent=String(Math.max(0,total-position));
+  $("portraitAvailableCount").textContent=String(total);
+  $("portraitReadyBatchCount").textContent=String(records.length);
+  $("portraitSavedTotal").textContent=String(saved);
+  $("portraitFlaggedTotal").textContent=String(flagged);
+  $("portraitSavedCurrent").textContent=String(saved);
+  $("portraitFlaggedCurrent").textContent=String(flagged);
+  $("portraitAiReadyCount").textContent=String(analyzed);
+}
+function setPortraitStationStatus(message){
+  const status=$("portraitStationStatus");
+  if(status) status.textContent=message;
+}
+
 function renderAll(){
   // Classification fields render first so image/profile rendering can never leave
   // Theme 1/2/3 showing the previous image if a later render stage fails.
@@ -566,6 +593,7 @@ function renderAll(){
   renderTabletTargetSlots();
   renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
   renderTabletWorkbench();
+  renderPortraitControlStation();
 }
 
 function openThemeWorkspace(slot=1){
@@ -1308,3 +1336,18 @@ loadCurrent();
 
 document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
+
+// v0.9.4.0 portrait shell connections. These call shared capabilities without changing other modes.
+document.getElementById("portraitAddFolderBtn")?.addEventListener("click",()=>document.getElementById("folderInput")?.click());
+document.getElementById("portraitResumeBtn")?.addEventListener("click",()=>setPortraitStationStatus("Rotate to landscape to resume classification."));
+document.getElementById("portraitAddUrlsBtn")?.addEventListener("click",()=>setPortraitStationStatus("URL intake belongs to the next portrait implementation step."));
+document.getElementById("portraitAnalyzeMoreBtn")?.addEventListener("click",()=>setPortraitStationStatus("AI look-ahead queue connection is ready for implementation."));
+["portraitImagesMenuBtn","portraitImagesMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full + Images console.")));
+["portraitBatchMenuBtn","portraitBatchMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full Batch console.")));
+document.getElementById("portraitQueueMenuBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the Queue console."));
+document.getElementById("portraitReportsMenuBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the Reports console."));
+document.getElementById("portraitAiMoreBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the full AI console."));
+document.getElementById("portraitMailboxBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open notifications."));
+document.getElementById("portraitSettingsBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open Settings."));
+document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEventListener("click",()=>setPortraitStationStatus(`Open ${button.dataset.portraitStatus.replaceAll("-"," ")}.`)));
+renderPortraitControlStation();

@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.3.18</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.3.16">
+  <title>Genreactrix v0.9.4.0</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.4.0">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.3.18</span>
+        <span>v0.9.4.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -39,6 +39,77 @@
       <div id="progressText" class="progress-text">Demo image 1 / 3</div>
     </nav>
 
+
+    <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
+      <header class="portrait-station-header">
+        <div>
+          <div class="portrait-kicker">Director Control Station</div>
+          <strong>Genreactrix</strong>
+        </div>
+        <div class="portrait-header-actions">
+          <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
+          <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
+        </div>
+      </header>
+
+      <nav class="portrait-quick-nav" aria-label="Control Station actions">
+        <button id="portraitImagesMenuBtn" type="button">＋ Images</button>
+        <button id="portraitBatchMenuBtn" type="button">Batch</button>
+        <button id="portraitQueueMenuBtn" type="button">Queue</button>
+        <button id="portraitReportsMenuBtn" type="button">Reports</button>
+      </nav>
+
+      <section class="portrait-panel portrait-batch-panel" aria-labelledby="portraitBatchHeading">
+        <div class="portrait-panel-heading">
+          <div>
+            <span>Current batch</span>
+            <strong id="portraitBatchHeading">Current Import</strong>
+          </div>
+          <button id="portraitBatchMoreBtn" type="button">Batch…</button>
+        </div>
+        <div class="portrait-metric-grid" aria-label="Batch and queue status">
+          <button type="button" data-portrait-status="queued"><span>In queue</span><strong id="portraitQueuedCount">0</strong></button>
+          <button type="button" data-portrait-status="available"><span>Available</span><strong id="portraitAvailableCount">0</strong></button>
+          <button type="button" data-portrait-status="batch"><span>Ready to batch</span><strong id="portraitReadyBatchCount">0</strong></button>
+          <button type="button" data-portrait-status="saved-total"><span>Saved total</span><strong id="portraitSavedTotal">0</strong></button>
+          <button type="button" data-portrait-status="flagged-total"><span>Flagged total</span><strong id="portraitFlaggedTotal">0</strong></button>
+          <button type="button" data-portrait-status="saved-current"><span>Saved this batch</span><strong id="portraitSavedCurrent">0</strong></button>
+          <button type="button" data-portrait-status="flagged-current"><span>Flagged this batch</span><strong id="portraitFlaggedCurrent">0</strong></button>
+        </div>
+        <button id="portraitResumeBtn" class="portrait-primary-action" type="button">Resume classification</button>
+      </section>
+
+      <section class="portrait-panel portrait-acquisition-panel" aria-labelledby="portraitAcquisitionHeading">
+        <div class="portrait-panel-heading">
+          <div>
+            <span>Quick acquisition</span>
+            <strong id="portraitAcquisitionHeading">Add the default amount</strong>
+          </div>
+          <button id="portraitImagesMoreBtn" type="button">＋ Images…</button>
+        </div>
+        <div class="portrait-two-actions">
+          <button id="portraitAddFolderBtn" type="button">Add from folder</button>
+          <button id="portraitAddUrlsBtn" type="button">Add from URLs</button>
+        </div>
+      </section>
+
+      <section class="portrait-panel portrait-ai-panel" aria-labelledby="portraitAiHeading">
+        <div class="portrait-panel-heading">
+          <div>
+            <span>AI look-ahead</span>
+            <strong id="portraitAiHeading"><span id="portraitAiReadyCount">0</span> ready</strong>
+          </div>
+          <button id="portraitAiMoreBtn" type="button">AI…</button>
+        </div>
+        <div class="portrait-ai-status">
+          <span>Automatic buffer</span>
+          <strong id="portraitAiBufferTarget">25</strong>
+        </div>
+        <button id="portraitAnalyzeMoreBtn" class="portrait-primary-action" type="button">Analyze more</button>
+      </section>
+
+      <div id="portraitStationStatus" class="portrait-station-status" role="status" aria-live="polite">Portrait Control Station shell active.</div>
+    </section>
 
     <section id="tabletWorkbench" class="tablet-workbench" aria-label="Tablet classification workspace">
       <div class="tablet-workbench-top">
@@ -310,6 +381,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.3.16"></script>
+  <script src="app.js?v=0.9.4.0"></script>
 </body>
 </html>

@@ -2255,3 +2255,82 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     text-align:center;
   }
 }
+
+/* v0.9.4.0 — isolated portrait Director Control Station shell */
+.portrait-control-station{display:none}
+
+@media (max-width:599px) and (orientation:portrait){
+  body{overflow:auto}
+  #app.app-shell{height:100dvh;min-height:100dvh;overflow:auto;padding:8px;background:var(--bg)}
+
+  /* Replace only the phone-portrait composition. Shared assets stay mounted and reusable. */
+  #app>.nav-console,
+  #app>.tablet-workbench,
+  #app>.base-layout,
+  #app>.tablet-primfusion-console{display:none!important}
+
+  .portrait-control-station{
+    display:grid;
+    grid-template-rows:auto auto auto auto auto auto;
+    gap:8px;
+    width:100%;
+    max-width:34rem;
+    min-height:100%;
+    margin:0 auto;
+    align-content:start;
+  }
+  .portrait-station-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-height:52px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--panel);
+  }
+  .portrait-station-header strong{font-size:1rem}
+  .portrait-kicker{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  .portrait-header-actions{display:flex;gap:6px}
+  .portrait-icon-button{min-width:38px;padding:7px;font-size:1rem}
+
+  .portrait-quick-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .portrait-quick-nav button{min-width:0;padding:8px 3px;font-size:.7rem;white-space:nowrap}
+
+  .portrait-panel{
+    display:grid;
+    gap:8px;
+    padding:9px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--panel);
+  }
+  .portrait-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .portrait-panel-heading>div{display:grid;gap:1px;min-width:0}
+  .portrait-panel-heading span{font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .portrait-panel-heading strong{font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .portrait-panel-heading button{padding:5px 8px;font-size:.68rem;white-space:nowrap}
+
+  .portrait-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .portrait-metric-grid button{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+    min-height:34px;
+    padding:6px 8px;
+    text-align:left;
+    background:var(--panel-2);
+  }
+  .portrait-metric-grid button:first-child{grid-column:1/-1}
+  .portrait-metric-grid span{font-size:.66rem;color:var(--muted)}
+  .portrait-metric-grid strong{font-size:.86rem;color:var(--accent)}
+
+  .portrait-two-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .portrait-two-actions button{padding:10px 6px;font-size:.74rem}
+  .portrait-primary-action{width:100%;padding:10px;border-color:var(--accent);color:var(--accent);font-weight:700}
+  .portrait-ai-status{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);font-size:.72rem}
+  .portrait-ai-status span{color:var(--muted)}
+  .portrait-ai-status strong{color:var(--accent)}
+  .portrait-station-status{min-height:1.2em;padding:0 4px 6px;color:var(--muted);font-size:.68rem;text-align:center}
+}
