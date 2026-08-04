@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.7.0";
+const GENREACTRIX_BUILD="v0.9.8.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -1717,7 +1717,7 @@ function createImagesEngine(){
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);}).catch(console.warn);
 
-// v0.9.7.0 adds the persistent modular AI Analysis Engine while preserving the Control Station, Images, Image Record, and History engines.
+// v0.9.8.0 adds the persistent modular AI Analysis Engine while preserving the Control Station, Images, Image Record, and History engines.
 // Portrait remains a client of shared capabilities. Quick buttons store references
 // to engine actions plus validated parameter snapshots; they do not duplicate action logic.
 const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
@@ -1841,7 +1841,7 @@ const QUICK_ACTIONS={
     }
   },
   "queue.open":{module:"queue",name:"Open queue",defaultLabel:"Open queue",fields:[],summarize:()=>["View: Queue"],run:()=>setPortraitStationStatus("Open the Queue console.")},
-  "reports.open":{module:"reports",name:"Open reports",defaultLabel:"Open reports",fields:[],summarize:()=>["View: Reports"],run:()=>setPortraitStationStatus("Open the Reports console.")}
+  "reports.open":{module:"reports",name:"Open reports",defaultLabel:"Open reports",fields:[],summarize:()=>["View: Reports"],run:()=>window.genreactrixReportsEngine?.openConsole?.()}
 };
 
 const DEFAULT_QUICK_PRESETS={
@@ -2019,6 +2019,9 @@ document.querySelectorAll("[data-module-button]").forEach(button=>{
   button.addEventListener("click",()=>{
     if(module==="images") openImageIntakeDialog();
     else if(module==="ai") window.genreactrixAiAnalysisEngine?.openConsole?.();
+    else if(module==="batch") window.genreactrixBatchEngine?.openConsole?.();
+    else if(module==="reports") window.genreactrixReportsEngine?.openConsole?.();
+    else if(module==="queue") window.genreactrixAiAnalysisEngine?.openConsole?.();
     else setPortraitStationStatus(`Open the full ${button.textContent.trim()} console.`);
   });
   bindLongPress(button,()=>openModuleQuickManager(module));

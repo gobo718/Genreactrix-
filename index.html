@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.7.0</title>
+  <title>Genreactrix v0.9.8.0</title>
   <link rel="stylesheet" href="styles.css?v=0.9.7.0">
 </head>
 <body>
@@ -12,7 +12,7 @@
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.7.0</span>
+        <span>v0.9.8.0</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -42,7 +42,7 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.7.0</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.8.0</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -129,6 +129,7 @@
           </div>
           <button id="portraitReportsMenuBtn" class="portrait-module-button" type="button" data-module-button="reports">Reports</button>
         </div>
+        <div class="portrait-report-status"><span>Last <strong id="portraitLastReport">None</strong></span><span><strong id="portraitReportCount">0</strong> stored</span></div>
       </section>
 
       <div id="portraitStationStatus" class="portrait-station-status" role="status" aria-live="polite"></div>
@@ -454,6 +455,37 @@
     </div>
   </dialog>
 
+  <dialog id="reportsDialog" class="reports-dialog">
+    <div class="reports-shell">
+      <header><h2>Reports</h2><button type="button" id="reportsClose" aria-label="Close">×</button></header>
+      <section class="report-builder">
+        <div class="report-grid">
+          <label>Title<input id="reportTitle" value="Custom Report"></label>
+          <label>Scope<select id="reportScope"><option value="session">This session</option><option value="current-batch">Current batch</option><option value="most-recent-batch">Most recent batch</option><option value="latest-batches">Latest N submitted batches</option><option value="date-range">Date range</option><option value="last-submitted-images">Last N submitted images</option><option value="submitted">All submitted data</option><option value="all-records">All records</option><option value="saved">Saved images</option><option value="flagged">Flagged images</option></select></label>
+          <label>N<input id="reportScopeCount" type="number" min="1" value="10"></label>
+          <label>Start<input id="reportStart" type="date"></label>
+          <label>End<input id="reportEnd" type="date"></label>
+          <label>Filter logic<select id="reportLogic"><option value="and">All conditions (AND)</option><option value="or">Any condition (OR)</option></select></label>
+        </div>
+        <div class="report-modules" aria-label="Report modules">
+          <label><input type="checkbox" data-report-module value="summary" checked> Summary</label>
+          <label><input type="checkbox" data-report-module value="reactions" checked> Reactions</label>
+          <label><input type="checkbox" data-report-module value="themes" checked> Themes</label>
+          <label><input type="checkbox" data-report-module value="primfusion" checked> PrimFusion</label>
+          <label><input type="checkbox" data-report-module value="agreement" checked> AI–Director</label>
+          <label><input type="checkbox" data-report-module value="sources" checked> Sources</label>
+          <label><input type="checkbox" data-report-module value="workflow" checked> Workflow</label>
+        </div>
+        <div class="report-condition-header"><strong>Filters</strong><button type="button" id="reportAddCondition">+ Condition</button></div>
+        <div id="reportConditions" class="report-conditions"></div>
+        <div class="report-actions"><button type="button" id="reportSavePreset">Save preset</button><button type="button" id="reportRun" class="primary">Run report</button></div>
+      </section>
+      <section><h3>Presets</h3><div id="reportPresets" class="report-presets"></div></section>
+      <section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button type="button" id="reportExportCurrentJson">JSON</button><button type="button" id="reportExportCurrentCsv">CSV</button></div></div><pre id="reportOutput" class="report-output">Run or open a report.</pre></section>
+      <section><h3>Stored reports</h3><div id="reportHistory" class="report-history"></div></section>
+    </div>
+  </dialog>
+
   <dialog id="imageWorkspace" class="workspace">
     <div class="workspace-shell">
       <header class="workspace-header">
@@ -513,8 +545,10 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.9.6.0"></script>
-  <script src="genreactrix-cloud-api.js?v=0.9.6.0"></script>
-  <script src="ai-analysis-engine.js?v=0.9.6.0"></script>
+  <script src="app.js?v=0.9.8.0"></script>
+  <script src="genreactrix-cloud-api.js?v=0.9.8.0"></script>
+  <script src="reports-engine.js?v=0.9.8.0"></script>
+  <script src="batch-engine.js?v=0.9.8.0"></script>
+  <script src="ai-analysis-engine.js?v=0.9.8.0"></script>
 </body>
 </html>

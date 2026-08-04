@@ -44,7 +44,7 @@ Portrait configurable quick-action architecture.
 - Leaves visual history timelines, charts, exports, and cross-image analytics for later modules.
 
 
-## v0.9.7.0 — AI Analysis Engine
+## v0.9.8.0 — AI Analysis Engine
 
 - Reuses the Billy Labs Cloudflare Worker/API boundary and job lifecycle patterns.
 - Adds persistent IndexedDB AI jobs and queue items.
@@ -55,5 +55,14 @@ Portrait configurable quick-action architecture.
 - Does not fabricate AI results when no provider is configured.
 
 
-## v0.9.7.0 Batch Engine
+## v0.9.8.0 Batch Engine
 Persistent active batches, canonical Image ID membership, readiness validation, submission, automatic standard reports, project-safe recycle handling, reopening, archiving, and migration from the current-import placeholder.
+
+
+## v0.9.8.0 Reports Engine
+
+- Extracts report generation from the Batch Engine into one shared Reports Engine.
+- Migrates existing standard batch reports.
+- Adds flexible scopes, composable filters, report modules, immutable snapshots, saved presets, JSON/CSV export, and printable output.
+- Adds Director reaction/theme/PrimFusion, source, workflow, and AI–Director comparison modules.
+- Batch submission now calls the Reports Engine for its automatic standard report.
