@@ -2256,7 +2256,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.4.0 — isolated portrait Director Control Station shell */
+/* v0.9.4.1 — isolated portrait Director Control Station shell */
 .portrait-control-station{display:none}
 
 @media (max-width:599px) and (orientation:portrait){
@@ -2310,6 +2310,9 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .portrait-panel-heading span{font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
   .portrait-panel-heading strong{font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .portrait-panel-heading button{padding:5px 8px;font-size:.68rem;white-space:nowrap}
+  .portrait-default-amount{display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--text)}
+  .portrait-default-amount span{font-size:.72rem;letter-spacing:0;text-transform:none;color:var(--muted)}
+  .portrait-default-amount input{width:4.5rem;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);color:var(--accent);font:inherit;text-align:center}
 
   .portrait-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
   .portrait-metric-grid button{

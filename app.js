@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.4.0";
+const GENREACTRIX_BUILD="v0.9.4.1";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -1038,16 +1038,23 @@ $("rerunAiBtn").addEventListener("click",()=>{
   persistRecords(); renderAll();
 });
 
-function loadImageFolder(fileList){
+function loadImageFolder(fileList, limit=null){
   state.objectUrls.forEach(URL.revokeObjectURL);
   state.objectUrls=[];
-  state.files=[...fileList].filter(f=>f.type.startsWith("image/")).map(file=>{
+  const imageFiles=[...fileList].filter(f=>f.type.startsWith("image/"));
+  const selectedFiles=Number.isFinite(limit)&&limit>0?imageFiles.slice(0,limit):imageFiles;
+  state.files=selectedFiles.map(file=>{
     const url=URL.createObjectURL(file); state.objectUrls.push(url); return {name:file.name,url};
   });
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
   state.index=0; loadCurrent();
 }
-$("folderInput").addEventListener("change",e=>loadImageFolder(e.target.files));
+let pendingPortraitImportLimit=null;
+$("folderInput").addEventListener("change",e=>{
+  loadImageFolder(e.target.files,pendingPortraitImportLimit);
+  pendingPortraitImportLimit=null;
+  e.target.value="";
+});
 $("tabletFolderInput")?.addEventListener("change",e=>loadImageFolder(e.target.files));
 
 
@@ -1337,10 +1344,32 @@ loadCurrent();
 document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
 
-// v0.9.4.0 portrait shell connections. These call shared capabilities without changing other modes.
-document.getElementById("portraitAddFolderBtn")?.addEventListener("click",()=>document.getElementById("folderInput")?.click());
+// v0.9.4.1 portrait shell connections. These call shared capabilities without changing other modes.
+const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
+function portraitDefaultAmount(){
+  const input=document.getElementById("portraitDefaultAmount");
+  const parsed=Math.max(1,Math.floor(Number(input?.value)||100));
+  if(input) input.value=String(parsed);
+  return parsed;
+}
+function syncPortraitDefaultAmount(){
+  const input=document.getElementById("portraitDefaultAmount");
+  if(!input) return;
+  const saved=Math.max(1,Math.floor(Number(localStorage.getItem(PORTRAIT_DEFAULT_AMOUNT_KEY))||100));
+  input.value=String(saved);
+  input.addEventListener("change",()=>{
+    const amount=portraitDefaultAmount();
+    localStorage.setItem(PORTRAIT_DEFAULT_AMOUNT_KEY,String(amount));
+    setPortraitStationStatus(`Quick-add default set to ${amount} images.`);
+  });
+}
+syncPortraitDefaultAmount();
+document.getElementById("portraitAddFolderBtn")?.addEventListener("click",()=>{
+  pendingPortraitImportLimit=portraitDefaultAmount();
+  document.getElementById("folderInput")?.click();
+});
 document.getElementById("portraitResumeBtn")?.addEventListener("click",()=>setPortraitStationStatus("Rotate to landscape to resume classification."));
-document.getElementById("portraitAddUrlsBtn")?.addEventListener("click",()=>setPortraitStationStatus("URL intake belongs to the next portrait implementation step."));
+document.getElementById("portraitAddUrlsBtn")?.addEventListener("click",()=>setPortraitStationStatus(`URL intake will add the next ${portraitDefaultAmount()} images when connected.`));
 document.getElementById("portraitAnalyzeMoreBtn")?.addEventListener("click",()=>setPortraitStationStatus("AI look-ahead queue connection is ready for implementation."));
 ["portraitImagesMenuBtn","portraitImagesMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full + Images console.")));
 ["portraitBatchMenuBtn","portraitBatchMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full Batch console.")));
