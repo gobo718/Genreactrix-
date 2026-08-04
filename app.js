@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.4.2";
+const GENREACTRIX_BUILD="v0.9.4.4";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -574,6 +574,7 @@ function renderPortraitControlStation(){
   $("portraitAiReadyCount").textContent=String(analyzed);
   if($("portraitAiPendingCount")) $("portraitAiPendingCount").textContent=String(aiQueue.pending);
   if($("portraitAiBufferTarget")) $("portraitAiBufferTarget").textContent=String(aiQueue.bufferTarget);
+  if($("portraitAnalyzeMoreBtn")) $("portraitAnalyzeMoreBtn").textContent=`Analyze +${aiQueue.quickAddAmount || 100}`;
 }
 function setPortraitStationStatus(message){
   const status=$("portraitStationStatus");
@@ -1349,13 +1350,14 @@ loadCurrent();
 document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
 
-// v0.9.4.2 portrait Control Station connections.
+// v0.9.4.4 portrait Control Station connections.
 // Portrait remains a client of shared capabilities; queue state is owned by a small,
 // orientation-neutral engine rather than by portrait markup.
 const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
 const AI_QUEUE_KEY="genreactrix-ai-lookahead-queue";
 const AI_BUFFER_TARGET_KEY="genreactrix-ai-buffer-target";
 const AI_QUICK_ADD_KEY="genreactrix-ai-quick-add";
+const PORTRAIT_AI_OUTPUTS_KEY="genreactrix-portrait-ai-outputs";
 
 function portraitDefaultAmount(){
   const input=document.getElementById("portraitDefaultAmount");
@@ -1372,6 +1374,21 @@ function syncPortraitDefaultAmount(){
     const amount=portraitDefaultAmount();
     localStorage.setItem(PORTRAIT_DEFAULT_AMOUNT_KEY,String(amount));
     setPortraitStationStatus(`Quick-add default set to ${amount} images.`);
+  });
+}
+
+
+function syncPortraitAiOutputs(){
+  const controls=[...document.querySelectorAll("[data-portrait-ai-output]")];
+  if(!controls.length) return;
+  let saved={};
+  try{ saved=JSON.parse(localStorage.getItem(PORTRAIT_AI_OUTPUTS_KEY)||"{}"); }catch(error){ saved={}; }
+  controls.forEach(control=>{
+    if(Object.prototype.hasOwnProperty.call(saved,control.dataset.portraitAiOutput)) control.checked=Boolean(saved[control.dataset.portraitAiOutput]);
+    control.addEventListener("change",()=>{
+      const selection=Object.fromEntries(controls.map(item=>[item.dataset.portraitAiOutput,item.checked]));
+      localStorage.setItem(PORTRAIT_AI_OUTPUTS_KEY,JSON.stringify(selection));
+    });
   });
 }
 
@@ -1420,13 +1437,13 @@ function createAiLookAheadQueueEngine(){
 
 window.genreactrixAiQueueEngine=createAiLookAheadQueueEngine();
 syncPortraitDefaultAmount();
+syncPortraitAiOutputs();
 window.genreactrixAiQueueEngine.maintainBuffer();
 
 document.getElementById("portraitAddFolderBtn")?.addEventListener("click",()=>{
   pendingPortraitImportLimit=portraitDefaultAmount();
   document.getElementById("folderInput")?.click();
 });
-document.getElementById("portraitResumeBtn")?.addEventListener("click",()=>setPortraitStationStatus("Rotate to landscape to resume classification."));
 document.getElementById("portraitAddUrlsBtn")?.addEventListener("click",()=>setPortraitStationStatus(`URL intake will add the next ${portraitDefaultAmount()} images when connected.`));
 document.getElementById("portraitAnalyzeMoreBtn")?.addEventListener("click",()=>{
   const amount=window.genreactrixAiQueueEngine.snapshot().quickAddAmount;

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.4.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.4.0">
+  <title>Genreactrix v0.9.4.4</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.4.3">
 </head>
 <body>
   <main id="app" class="app-shell">
@@ -42,10 +42,7 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <div>
-          <div class="portrait-kicker">Director Control Station</div>
-          <strong>Genreactrix</strong>
-        </div>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.4.4</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -60,63 +57,53 @@
       </nav>
 
       <section class="portrait-panel portrait-batch-panel" aria-labelledby="portraitBatchHeading">
-        <div class="portrait-panel-heading">
-          <div>
-            <span>Current batch</span>
-            <strong id="portraitBatchHeading">Current Import</strong>
-          </div>
+        <div class="portrait-panel-heading portrait-batch-heading">
+          <strong id="portraitBatchHeading">Batch · Current Import</strong>
           <button id="portraitBatchMoreBtn" type="button">Batch…</button>
         </div>
         <div class="portrait-metric-grid" aria-label="Batch and queue status">
-          <button type="button" data-portrait-status="queued"><span>In queue</span><strong id="portraitQueuedCount">0</strong></button>
+          <button type="button" data-portrait-status="queued"><span>Queued</span><strong id="portraitQueuedCount">0</strong></button>
           <button type="button" data-portrait-status="available"><span>Available</span><strong id="portraitAvailableCount">0</strong></button>
-          <button type="button" data-portrait-status="batch"><span>Ready to batch</span><strong id="portraitReadyBatchCount">0</strong></button>
-          <button type="button" data-portrait-status="saved-total"><span>Saved total</span><strong id="portraitSavedTotal">0</strong></button>
-          <button type="button" data-portrait-status="flagged-total"><span>Flagged total</span><strong id="portraitFlaggedTotal">0</strong></button>
-          <button type="button" data-portrait-status="saved-current"><span>Saved this batch</span><strong id="portraitSavedCurrent">0</strong></button>
-          <button type="button" data-portrait-status="flagged-current"><span>Flagged this batch</span><strong id="portraitFlaggedCurrent">0</strong></button>
+          <button type="button" data-portrait-status="batch"><span>To batch</span><strong id="portraitReadyBatchCount">0</strong></button>
+          <button type="button" data-portrait-status="saved-total"><span>Saved</span><strong><span id="portraitSavedTotal">0</span> <small>(+<span id="portraitSavedCurrent">0</span>)</small></strong></button>
+          <button type="button" data-portrait-status="flagged-total"><span>Flagged</span><strong><span id="portraitFlaggedTotal">0</span> <small>(+<span id="portraitFlaggedCurrent">0</span>)</small></strong></button>
         </div>
-        <button id="portraitResumeBtn" class="portrait-primary-action" type="button">Resume classification</button>
       </section>
 
       <section class="portrait-panel portrait-acquisition-panel" aria-labelledby="portraitAcquisitionHeading">
         <div class="portrait-panel-heading">
-          <div>
-            <span>Quick acquisition</span>
-            <label id="portraitAcquisitionHeading" class="portrait-default-amount">
-              Add <input id="portraitDefaultAmount" type="number" min="1" step="1" inputmode="numeric" aria-label="Default quick-add image amount"> <span>images</span>
-            </label>
-          </div>
+          <label id="portraitAcquisitionHeading" class="portrait-default-amount">
+            Add <input id="portraitDefaultAmount" type="number" min="1" step="1" inputmode="numeric" aria-label="Default quick-add image amount"> images
+          </label>
           <button id="portraitImagesMoreBtn" type="button">＋ Images…</button>
         </div>
         <div class="portrait-two-actions">
-          <button id="portraitAddFolderBtn" type="button">Add from folder</button>
-          <button id="portraitAddUrlsBtn" type="button">Add from URLs</button>
+          <button id="portraitAddFolderBtn" type="button">Folder · Add</button>
+          <button id="portraitAddUrlsBtn" type="button">URLs · Add</button>
         </div>
       </section>
 
       <section class="portrait-panel portrait-ai-panel" aria-labelledby="portraitAiHeading">
         <div class="portrait-panel-heading">
-          <div>
-            <span>AI look-ahead</span>
-            <strong id="portraitAiHeading"><span id="portraitAiReadyCount">0</span> ready</strong>
-          </div>
+          <strong id="portraitAiHeading">AI · <span id="portraitAiReadyCount">0</span> ready</strong>
           <button id="portraitAiMoreBtn" type="button">AI…</button>
         </div>
-        <div class="portrait-ai-status-grid">
-          <div class="portrait-ai-status">
-            <span>Automatic buffer</span>
-            <strong id="portraitAiBufferTarget">25</strong>
-          </div>
-          <div class="portrait-ai-status">
-            <span>Queued for AI</span>
-            <strong id="portraitAiPendingCount">0</strong>
-          </div>
+        <div class="portrait-ai-options" aria-label="Quick AI outputs">
+          <label><input type="checkbox" data-portrait-ai-output="reactions" checked> Reactions</label>
+          <label><input type="checkbox" data-portrait-ai-output="themes" checked> Themes</label>
+          <label><input type="checkbox" data-portrait-ai-output="description" checked> Description</label>
+          <label><input type="checkbox" data-portrait-ai-output="emotion"> Emotion</label>
+          <label><input type="checkbox" data-portrait-ai-output="reaction-reasons"> Reaction reasons</label>
+          <label><input type="checkbox" data-portrait-ai-output="genre-reasons"> Genre reasons</label>
         </div>
-        <button id="portraitAnalyzeMoreBtn" class="portrait-primary-action" type="button">Queue more for AI</button>
+        <div class="portrait-ai-status-line">
+          <span>Buffer <strong id="portraitAiBufferTarget">25</strong></span>
+          <span>Queued <strong id="portraitAiPendingCount">0</strong></span>
+        </div>
+        <button id="portraitAnalyzeMoreBtn" class="portrait-primary-action" type="button">Analyze +100</button>
       </section>
 
-      <div id="portraitStationStatus" class="portrait-station-status" role="status" aria-live="polite">Portrait Control Station shell active.</div>
+      <div id="portraitStationStatus" class="portrait-station-status" role="status" aria-live="polite"></div>
     </section>
 
     <section id="tabletWorkbench" class="tablet-workbench" aria-label="Tablet classification workspace">
