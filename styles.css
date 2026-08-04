@@ -2364,3 +2364,22 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .portrait-queue-panel,.portrait-reports-panel{min-height:48px}
   .portrait-station-status{min-height:1.2em;padding:0 4px 6px;color:var(--muted);font-size:.68rem;text-align:center}
 }
+
+
+/* v0.9.5.0 Images Engine intake and storage status */
+.portrait-image-engine-status{display:flex;flex-wrap:wrap;gap:.4rem .75rem;margin-top:.5rem;font-size:.78rem;color:var(--muted)}
+.portrait-image-engine-status strong{color:var(--text)}
+.image-intake-dialog{width:min(92vw,560px);border:1px solid rgba(214,193,255,.24);border-radius:18px;background:#17141e;color:#f4eef8;padding:0;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.image-intake-dialog::backdrop{background:rgba(0,0,0,.72)}
+.image-intake-form{display:grid;gap:14px;padding:18px}
+.image-intake-header{display:flex;align-items:center;justify-content:space-between}
+.image-intake-header h2{margin:0;font-size:1.15rem}
+.image-intake-header button{min-width:38px}
+.image-intake-form label{display:grid;gap:6px;font-size:.82rem;color:#c8bfd4}
+.image-intake-form textarea,.image-intake-form input,.image-intake-form select{width:100%;box-sizing:border-box;background:#211c2a;color:#f4eef8;border:1px solid rgba(214,193,255,.22);border-radius:10px;padding:10px;font:inherit}
+.image-intake-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:10px}
+.image-prefetch-option{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center}
+.image-prefetch-option input{width:auto}
+.image-intake-actions,.image-intake-footer{display:flex;gap:10px;justify-content:flex-end}
+.image-intake-actions{justify-content:flex-start}
+.image-intake-preview{min-height:1.2em;color:#c9b5f3;font-size:.82rem}

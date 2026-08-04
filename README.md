@@ -1,4 +1,4 @@
-# Genreactrix v0.9.4.5
+# Genreactrix v0.9.5.0
 
 Portrait configurable quick-action architecture.
 
@@ -12,3 +12,15 @@ Portrait configurable quick-action architecture.
 - Shows a verification summary with Cancel, Edit, and Save before committing the preset.
 - Stores action binding, parameter snapshot, visibility, slot, and custom label without duplicating engine logic.
 - Leaves landscape, tablet, desktop, shared data, and reusable assets unchanged.
+
+
+## v0.9.5.0 — Shared Images Engine
+
+- Added an orientation-neutral Images Engine with a persistent manifest.
+- Folder imports create temporary working copies in IndexedDB and preserve original path/provenance metadata.
+- URL intake supports hyperlink-only records and optional downloaded working copies, with CORS-safe fallback to hyperlinks.
+- Added stable image IDs, lifecycle states, storage states, saved/flagged hooks, and cleanup APIs.
+- Portrait image counts now come from the shared engine.
+- Existing folder and URL quick actions call the engine rather than owning acquisition logic.
+- Added a compact Images intake console for folder and URL workflows.
+- Landscape/tablet composition was not redesigned.

@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.4.5";
+const GENREACTRIX_BUILD="v0.9.5.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -186,7 +186,7 @@ const state = {
 };
 
 const $ = id => document.getElementById(id);
-const currentKey = () => state.files.length ? state.files[state.index].name : `demo-${state.demoIndex}`;
+const currentKey = () => state.files.length ? (state.files[state.index].id || state.files[state.index].name) : `demo-${state.demoIndex}`;
 const currentDemo = () => DEMOS[state.demoIndex % DEMOS.length];
 
 function currentSource(){
@@ -562,7 +562,7 @@ function renderPortraitControlStation(){
   const records=portraitRecordValues();
   const flagged=records.filter(record=>record?.flagged).length + (state.flagged && !state.records[currentKey()] ? 1 : 0);
   const saved=records.filter(record=>record?.saved).length;
-  const analyzed=state.files.filter(file=>Boolean(state.aiRuns?.[file.name]?.length)).length;
+  const analyzed=state.files.filter(file=>Boolean(state.aiRuns?.[file.id || file.name]?.length)).length;
   const aiQueue=window.genreactrixAiQueueEngine?.snapshot?.() || {pending:0,available:Math.max(0,total-analyzed),bufferTarget:25};
   $("portraitQueuedCount").textContent=String(aiQueue.pending);
   $("portraitAvailableCount").textContent=String(aiQueue.available);
@@ -574,6 +574,11 @@ function renderPortraitControlStation(){
   $("portraitAiReadyCount").textContent=String(analyzed);
   if($("portraitAiPendingCount")) $("portraitAiPendingCount").textContent=String(aiQueue.pending);
   if($("portraitAiBufferTarget")) $("portraitAiBufferTarget").textContent=String(aiQueue.bufferTarget);
+  const imageEngine=window.genreactrixImagesEngine?.snapshot?.() || {temporary:0,linked:0,saved:0,flagged:0};
+  if($("portraitTempImageCount")) $("portraitTempImageCount").textContent=String(imageEngine.temporary);
+  if($("portraitLinkedImageCount")) $("portraitLinkedImageCount").textContent=String(imageEngine.linked);
+  if($("portraitReferenceImageCount")) $("portraitReferenceImageCount").textContent=String(imageEngine.saved);
+  if($("portraitEngineFlaggedCount")) $("portraitEngineFlaggedCount").textContent=String(imageEngine.flagged);
 }
 function setPortraitStationStatus(message){
   const status=$("portraitStationStatus");
@@ -975,7 +980,9 @@ $("tabletNextBtn")?.addEventListener("click",nextImage);
 $("tabletUndoBtn")?.addEventListener("click",undo);
 $("tabletRedoBtn")?.addEventListener("click",redo);
 $("directorFlagBtn").addEventListener("click",()=>{
-  pushHistory(); state.flagged=!state.flagged; saveCurrent(); renderFlag(); renderComparison();
+  pushHistory(); state.flagged=!state.flagged; saveCurrent();
+  if(state.files.length) window.genreactrixImagesEngine?.setFlagged?.(currentKey(),state.flagged);
+  renderFlag(); renderComparison(); renderPortraitControlStation();
 });
 $("directorNextBtn").addEventListener("click",nextImage);
 $("directorWriteIn").addEventListener("change",e=>{
@@ -1041,22 +1048,26 @@ $("rerunAiBtn").addEventListener("click",()=>{
   persistRecords(); renderAll();
 });
 
-function loadImageFolder(fileList, limit=null){
+async function applyEngineWorkingFiles(files){
   state.objectUrls.forEach(URL.revokeObjectURL);
   state.objectUrls=[];
-  const imageFiles=[...fileList].filter(f=>f.type.startsWith("image/"));
-  const selectedFiles=Number.isFinite(limit)&&limit>0?imageFiles.slice(0,limit):imageFiles;
-  state.files=selectedFiles.map(file=>{
-    const url=URL.createObjectURL(file); state.objectUrls.push(url); return {name:file.name,url};
-  });
+  state.files=[...files];
   for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
-  state.index=0; loadCurrent();
+  state.index=0;
+  loadCurrent();
   window.genreactrixAiQueueEngine?.maintainBuffer?.();
   renderPortraitControlStation();
 }
+async function loadImageFolder(fileList,limit=null){
+  const records=await window.genreactrixImagesEngine.importFiles(fileList,{limit,batchId:"current-import"});
+  const files=await window.genreactrixImagesEngine.workingFiles(records.map(record=>record.id));
+  await applyEngineWorkingFiles(files);
+  setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} copied into Temporary Import.`);
+}
 let pendingPortraitImportLimit=null;
-$("folderInput").addEventListener("change",e=>{
-  loadImageFolder(e.target.files,pendingPortraitImportLimit);
+$("folderInput").addEventListener("change",async e=>{
+  try{ await loadImageFolder(e.target.files,pendingPortraitImportLimit); }
+  catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
   pendingPortraitImportLimit=null;
   e.target.value="";
 });
@@ -1349,7 +1360,192 @@ loadCurrent();
 document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
 
-// v0.9.4.5 portrait Control Station and reusable quick-action presets.
+
+// Shared Images Engine. It owns acquisition records and working/reference blobs;
+// screens consume the engine through explicit methods and do not duplicate lifecycle state.
+const IMAGE_ENGINE_MANIFEST_KEY="genreactrix-image-engine-manifest-v1";
+const IMAGE_ENGINE_DB_NAME="genreactrix-image-engine";
+const IMAGE_ENGINE_DB_VERSION=1;
+const IMAGE_ENGINE_BLOB_STORE="image-blobs";
+
+function createImageId(prefix="img"){
+  const random=globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${random}`;
+}
+function safeUrl(value){
+  try{ const url=new URL(String(value).trim()); return ["http:","https:"].includes(url.protocol)?url.href:""; }
+  catch(error){ return ""; }
+}
+function openImageEngineDatabase(){
+  return new Promise((resolve,reject)=>{
+    if(!globalThis.indexedDB){ reject(new Error("IndexedDB is unavailable")); return; }
+    const request=indexedDB.open(IMAGE_ENGINE_DB_NAME,IMAGE_ENGINE_DB_VERSION);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      if(!db.objectStoreNames.contains(IMAGE_ENGINE_BLOB_STORE)) db.createObjectStore(IMAGE_ENGINE_BLOB_STORE);
+    };
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error || new Error("Could not open image storage"));
+  });
+}
+async function imageBlobPut(key,blob){
+  const db=await openImageEngineDatabase();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMAGE_ENGINE_BLOB_STORE,"readwrite");
+    tx.objectStore(IMAGE_ENGINE_BLOB_STORE).put(blob,key);
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onerror=()=>{db.close();reject(tx.error);};
+  });
+}
+async function imageBlobGet(key){
+  const db=await openImageEngineDatabase();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMAGE_ENGINE_BLOB_STORE,"readonly");
+    const request=tx.objectStore(IMAGE_ENGINE_BLOB_STORE).get(key);
+    request.onsuccess=()=>resolve(request.result || null);
+    request.onerror=()=>reject(request.error);
+    tx.oncomplete=()=>db.close();
+  });
+}
+async function imageBlobDelete(key){
+  const db=await openImageEngineDatabase();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMAGE_ENGINE_BLOB_STORE,"readwrite");
+    tx.objectStore(IMAGE_ENGINE_BLOB_STORE).delete(key);
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onerror=()=>{db.close();reject(tx.error);};
+  });
+}
+function createImagesEngine(){
+  let manifest=[];
+  let activeSessionIds=[];
+  let objectUrls=new Map();
+  try{ manifest=JSON.parse(localStorage.getItem(IMAGE_ENGINE_MANIFEST_KEY)||"[]"); }
+  catch(error){ manifest=[]; }
+  if(!Array.isArray(manifest)) manifest=[];
+  const persist=()=>localStorage.setItem(IMAGE_ENGINE_MANIFEST_KEY,JSON.stringify(manifest));
+  const now=()=>new Date().toISOString();
+  const recordById=id=>manifest.find(record=>record.id===id);
+  const normalizeRecord=record=>({
+    id:record.id || createImageId(),
+    name:record.name || "Untitled image",
+    sourceType:record.sourceType || "unknown",
+    originalLocation:record.originalLocation || "",
+    originalUrl:record.originalUrl || "",
+    acquisitionMode:record.acquisitionMode || "temporary-copy",
+    storageState:record.storageState || "temporary",
+    lifecycleState:record.lifecycleState || "available",
+    mimeType:record.mimeType || "",
+    size:Number(record.size)||0,
+    lastModified:Number(record.lastModified)||0,
+    addedAt:record.addedAt || now(),
+    accessedAt:record.accessedAt || null,
+    savedAt:record.savedAt || null,
+    flaggedAt:record.flaggedAt || null,
+    processedAt:record.processedAt || null,
+    batchId:record.batchId || "current-import",
+    error:record.error || ""
+  });
+  manifest=manifest.map(normalizeRecord); persist();
+  function revokeObjectUrls(){ objectUrls.forEach(url=>URL.revokeObjectURL(url)); objectUrls.clear(); }
+  function snapshot(){
+    const count=predicate=>manifest.filter(predicate).length;
+    return {
+      total:manifest.length,
+      available:count(r=>r.lifecycleState==="available"),
+      queued:count(r=>r.lifecycleState==="queued"),
+      processed:count(r=>r.lifecycleState==="processed"),
+      temporary:count(r=>r.storageState==="temporary"),
+      linked:count(r=>r.storageState==="linked"),
+      saved:count(r=>r.storageState==="reference"),
+      flagged:count(r=>Boolean(r.flaggedAt)),
+      discardable:count(r=>r.lifecycleState==="processed"&&r.storageState==="temporary"&&!r.flaggedAt)
+    };
+  }
+  async function importFiles(fileList,{limit=null,batchId="current-import"}={}){
+    const files=[...fileList].filter(file=>file.type.startsWith("image/"));
+    const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files;
+    const records=[];
+    for(const file of selected){
+      const id=createImageId("local");
+      const record=normalizeRecord({id,name:file.name,sourceType:"file",originalLocation:file.webkitRelativePath||file.name,acquisitionMode:"temporary-copy",storageState:"temporary",lifecycleState:"available",mimeType:file.type,size:file.size,lastModified:file.lastModified,batchId});
+      try{ await imageBlobPut(id,file); }
+      catch(error){ record.error=String(error?.message||error); }
+      manifest.push(record); records.push(record);
+    }
+    activeSessionIds=records.map(r=>r.id); persist();
+    return records;
+  }
+  async function prefetchUrls(text,{limit=null}={}){
+    const raw=[...new Set(String(text||"").split(/\r?\n|,\s*(?=https?:)/).map(safeUrl).filter(Boolean))];
+    const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;
+    return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));
+  }
+  async function importUrls(text,{limit=null,mode="link",prefetch=true,batchId="current-import"}={}){
+    const sources=await prefetchUrls(text,{limit});
+    const records=[];
+    for(const source of sources){
+      const id=createImageId("url");
+      const record=normalizeRecord({id,name:source.name,sourceType:"url",originalUrl:source.url,originalLocation:source.url,acquisitionMode:mode==="download"?"temporary-copy":"hyperlink-only",storageState:mode==="download"?"temporary":"linked",lifecycleState:"available",batchId});
+      if(mode==="download"){
+        try{
+          const response=await fetch(source.url,{mode:"cors"});
+          if(!response.ok) throw new Error(`HTTP ${response.status}`);
+          const blob=await response.blob();
+          if(!blob.type.startsWith("image/")) throw new Error("URL did not return an image");
+          record.mimeType=blob.type; record.size=blob.size;
+          await imageBlobPut(id,blob);
+        }catch(error){
+          record.error=String(error?.message||error);
+          record.storageState="linked";
+          record.acquisitionMode="hyperlink-only-fallback";
+        }
+      }
+      manifest.push(record); records.push(record);
+    }
+    activeSessionIds=records.map(r=>r.id); persist();
+    return records;
+  }
+  async function fileForRecord(record){
+    if(!record) return null;
+    if(record.storageState==="linked") return {id:record.id,name:record.name,url:record.originalUrl,imageRecord:record};
+    const blob=await imageBlobGet(record.id);
+    if(!blob) return record.originalUrl?{id:record.id,name:record.name,url:record.originalUrl,imageRecord:record}:null;
+    const prior=objectUrls.get(record.id); if(prior) URL.revokeObjectURL(prior);
+    const url=URL.createObjectURL(blob); objectUrls.set(record.id,url);
+    record.accessedAt=now(); persist();
+    return {id:record.id,name:record.name,url,imageRecord:record};
+  }
+  async function workingFiles(ids=activeSessionIds){
+    const selected=(ids?.length?ids:manifest.filter(r=>["available","queued"].includes(r.lifecycleState)).map(r=>r.id));
+    const files=[];
+    for(const id of selected){ const file=await fileForRecord(recordById(id)); if(file) files.push(file); }
+    return files;
+  }
+  function setLifecycle(id,lifecycleState){ const record=recordById(id); if(!record)return null; record.lifecycleState=lifecycleState; if(lifecycleState==="processed")record.processedAt=now(); persist(); return record; }
+  function setFlagged(id,flagged=true){ const record=recordById(id); if(!record)return null; record.flaggedAt=flagged?now():null; persist(); return record; }
+  async function saveReference(id){
+    const record=recordById(id); if(!record) throw new Error("Image record not found");
+    if(record.storageState==="linked"){
+      const response=await fetch(record.originalUrl,{mode:"cors"});
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob=await response.blob();
+      if(!blob.type.startsWith("image/")) throw new Error("URL did not return an image");
+      await imageBlobPut(record.id,blob); record.mimeType=blob.type; record.size=blob.size;
+    }
+    record.storageState="reference"; record.savedAt=now(); persist(); return record;
+  }
+  async function cleanupProcessed(){
+    const removals=manifest.filter(r=>r.lifecycleState==="processed"&&r.storageState==="temporary"&&!r.flaggedAt);
+    for(const record of removals){ await imageBlobDelete(record.id).catch(()=>{}); const url=objectUrls.get(record.id); if(url)URL.revokeObjectURL(url); objectUrls.delete(record.id); }
+    const removeIds=new Set(removals.map(r=>r.id)); manifest=manifest.filter(r=>!removeIds.has(r.id)); persist(); return removals.length;
+  }
+  function allRecords(){ return manifest.map(record=>({...record})); }
+  return {snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,saveReference,cleanupProcessed,allRecords,recordById,revokeObjectUrls};
+}
+window.genreactrixImagesEngine=createImagesEngine();
+
+// v0.9.5.0 portrait Control Station, Images Engine, and reusable quick-action presets.
 // Portrait remains a client of shared capabilities. Quick buttons store references
 // to engine actions plus validated parameter snapshots; they do not duplicate action logic.
 const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
@@ -1400,7 +1596,7 @@ function createAiLookAheadQueueEngine(){
 
   const bufferTarget=()=>Math.max(0,Math.floor(Number(localStorage.getItem(AI_BUFFER_TARGET_KEY))||25));
   const quickAddAmount=()=>Math.max(1,Math.floor(Number(localStorage.getItem(AI_QUICK_ADD_KEY))||100));
-  const currentKeys=()=>state.files.map(file=>file.name);
+  const currentKeys=()=>state.files.map(file=>file.id || file.name);
   const analyzedKeys=()=>new Set(currentKeys().filter(key=>Boolean(state.aiRuns?.[key]?.length)));
   const persist=()=>localStorage.setItem(AI_QUEUE_KEY,JSON.stringify(pending));
 
@@ -1448,7 +1644,7 @@ const QUICK_ACTIONS={
     module:"images",name:"Add from URLs",defaultLabel:"URLs · Add",
     fields:[{key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>portraitDefaultAmount()}],
     summarize:p=>[`Source: URLs`,`Quantity: ${p.quantity}`],
-    run:p=>setPortraitStationStatus(`URL intake will add the next ${p.quantity} images when connected.`)
+    run:p=>openImageIntakeDialog({quantity:p.quantity})
   },
   "batch.current":{
     module:"batch",name:"Batch current work",defaultLabel:"Batch current",
@@ -1648,7 +1844,10 @@ document.querySelectorAll("[data-quick-slot]").forEach(button=>{
 });
 document.querySelectorAll("[data-module-button]").forEach(button=>{
   const module=button.dataset.moduleButton;
-  button.addEventListener("click",()=>setPortraitStationStatus(`Open the full ${button.textContent.trim()} console.`));
+  button.addEventListener("click",()=>{
+    if(module==="images") openImageIntakeDialog();
+    else setPortraitStationStatus(`Open the full ${button.textContent.trim()} console.`);
+  });
   bindLongPress(button,()=>openModuleQuickManager(module));
 });
 document.getElementById("portraitMailboxBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open notifications."));
@@ -1666,6 +1865,42 @@ document.querySelector("[data-quick-dialog='save']")?.addEventListener("click",(
   renderQuickButtons();
   document.getElementById("quickAssignDialog")?.close();
   setPortraitStationStatus(`${candidate.label} assigned to ${candidate.module} Quick ${candidate.slot}.`);
+});
+
+
+function parseImageIntakeUrls(){ return document.getElementById("imageUrlList")?.value || ""; }
+function openImageIntakeDialog({quantity=null}={}){
+  const amount=Math.max(1,Number(quantity)||portraitDefaultAmount());
+  if($("imageUrlQuantity")) $("imageUrlQuantity").value=String(amount);
+  if($("imageIntakePreview")) $("imageIntakePreview").textContent="";
+  $("imageIntakeDialog")?.showModal();
+}
+$("imageIntakeClose")?.addEventListener("click",()=>$("imageIntakeDialog")?.close());
+$("imageIntakeFolderBtn")?.addEventListener("click",()=>{
+  pendingPortraitImportLimit=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
+  $("imageIntakeDialog")?.close();
+  $("folderInput")?.click();
+});
+$("imageUrlPreviewBtn")?.addEventListener("click",async()=>{
+  const quantity=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
+  const sources=await window.genreactrixImagesEngine.prefetchUrls(parseImageIntakeUrls(),{limit:quantity});
+  const mode=$("imageUrlMode")?.value||"link";
+  $("imageIntakePreview").textContent=sources.length?`${sources.length} valid URL${sources.length===1?"":"s"} · ${mode==="download"?"working copies":"hyperlinks"}`:"No valid HTTP/HTTPS URLs found.";
+});
+$("imageUrlAddBtn")?.addEventListener("click",async()=>{
+  const quantity=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
+  const mode=$("imageUrlMode")?.value||"link";
+  const prefetch=Boolean($("imageUrlPrefetch")?.checked);
+  const button=$("imageUrlAddBtn"); button.disabled=true;
+  try{
+    const records=await window.genreactrixImagesEngine.importUrls(parseImageIntakeUrls(),{limit:quantity,mode,prefetch,batchId:"current-import"});
+    const files=await window.genreactrixImagesEngine.workingFiles(records.map(record=>record.id));
+    await applyEngineWorkingFiles(files);
+    const failures=records.filter(record=>record.error).length;
+    $("imageIntakeDialog")?.close();
+    setPortraitStationStatus(`${records.length} URL image${records.length===1?"":"s"} added${failures?` · ${failures} download fallback${failures===1?"":"s"}`:""}.`);
+  }catch(error){ $("imageIntakePreview").textContent=`Add failed: ${error.message||error}`; }
+  finally{ button.disabled=false; renderPortraitControlStation(); }
 });
 
 renderPortraitControlStation();
