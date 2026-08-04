@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.4.4</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.4.3">
+  <title>Genreactrix v0.9.4.5</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.4.5">
 </head>
 <body>
   <main id="app" class="app-shell">
@@ -42,25 +42,22 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.4.4</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.4.5</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button" type="button" aria-label="Notifications" title="Notifications">📬</button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
         </div>
       </header>
 
-      <nav class="portrait-quick-nav" aria-label="Control Station actions">
-        <button id="portraitImagesMenuBtn" type="button">＋ Images</button>
-        <button id="portraitBatchMenuBtn" type="button">Batch</button>
-        <button id="portraitQueueMenuBtn" type="button">Queue</button>
-        <button id="portraitReportsMenuBtn" type="button">Reports</button>
-      </nav>
-
-      <section class="portrait-panel portrait-batch-panel" aria-labelledby="portraitBatchHeading">
-        <div class="portrait-panel-heading portrait-batch-heading">
-          <strong id="portraitBatchHeading">Batch · Current Import</strong>
-          <button id="portraitBatchMoreBtn" type="button">Batch…</button>
+      <section class="portrait-panel portrait-batch-panel" data-quick-module="batch" aria-label="Batch">
+        <div class="portrait-module-row">
+          <div class="portrait-quick-slots" data-quick-slots="batch">
+            <button id="portraitBatchQuick1" class="portrait-quick-action" type="button" data-quick-slot="batch:1"></button>
+            <button id="portraitBatchQuick2" class="portrait-quick-action" type="button" data-quick-slot="batch:2"></button>
+          </div>
+          <button id="portraitBatchMenuBtn" class="portrait-module-button" type="button" data-module-button="batch">Batch</button>
         </div>
+        <div class="portrait-batch-name">Current Import</div>
         <div class="portrait-metric-grid" aria-label="Batch and queue status">
           <button type="button" data-portrait-status="queued"><span>Queued</span><strong id="portraitQueuedCount">0</strong></button>
           <button type="button" data-portrait-status="available"><span>Available</span><strong id="portraitAvailableCount">0</strong></button>
@@ -70,23 +67,26 @@
         </div>
       </section>
 
-      <section class="portrait-panel portrait-acquisition-panel" aria-labelledby="portraitAcquisitionHeading">
-        <div class="portrait-panel-heading">
-          <label id="portraitAcquisitionHeading" class="portrait-default-amount">
-            Add <input id="portraitDefaultAmount" type="number" min="1" step="1" inputmode="numeric" aria-label="Default quick-add image amount"> images
-          </label>
-          <button id="portraitImagesMoreBtn" type="button">＋ Images…</button>
+      <section class="portrait-panel portrait-acquisition-panel" data-quick-module="images" aria-label="Images">
+        <div class="portrait-module-row">
+          <div class="portrait-quick-slots" data-quick-slots="images">
+            <button id="portraitImagesQuick1" class="portrait-quick-action" type="button" data-quick-slot="images:1"></button>
+            <button id="portraitImagesQuick2" class="portrait-quick-action" type="button" data-quick-slot="images:2"></button>
+          </div>
+          <button id="portraitImagesMenuBtn" class="portrait-module-button" type="button" data-module-button="images">＋ Images</button>
         </div>
-        <div class="portrait-two-actions">
-          <button id="portraitAddFolderBtn" type="button">Folder · Add</button>
-          <button id="portraitAddUrlsBtn" type="button">URLs · Add</button>
-        </div>
+        <label class="portrait-default-amount">
+          Add <input id="portraitDefaultAmount" type="number" min="1" step="1" inputmode="numeric" aria-label="Default quick-add image amount"> images
+        </label>
       </section>
 
-      <section class="portrait-panel portrait-ai-panel" aria-labelledby="portraitAiHeading">
-        <div class="portrait-panel-heading">
-          <strong id="portraitAiHeading">AI · <span id="portraitAiReadyCount">0</span> ready</strong>
-          <button id="portraitAiMoreBtn" type="button">AI…</button>
+      <section class="portrait-panel portrait-ai-panel" data-quick-module="ai" aria-label="AI">
+        <div class="portrait-module-row">
+          <div class="portrait-quick-slots" data-quick-slots="ai">
+            <button id="portraitAiQuick1" class="portrait-quick-action" type="button" data-quick-slot="ai:1"></button>
+            <button id="portraitAiQuick2" class="portrait-quick-action" type="button" data-quick-slot="ai:2"></button>
+          </div>
+          <button id="portraitAiMenuBtn" class="portrait-module-button" type="button" data-module-button="ai">AI</button>
         </div>
         <div class="portrait-ai-options" aria-label="Quick AI outputs">
           <label><input type="checkbox" data-portrait-ai-output="reactions" checked> Reactions</label>
@@ -97,14 +97,66 @@
           <label><input type="checkbox" data-portrait-ai-output="genre-reasons"> Genre reasons</label>
         </div>
         <div class="portrait-ai-status-line">
+          <span><strong id="portraitAiReadyCount">0</strong> ready</span>
           <span>Buffer <strong id="portraitAiBufferTarget">25</strong></span>
           <span>Queued <strong id="portraitAiPendingCount">0</strong></span>
         </div>
-        <button id="portraitAnalyzeMoreBtn" class="portrait-primary-action" type="button">Analyze +100</button>
+      </section>
+
+      <section class="portrait-panel portrait-queue-panel" data-quick-module="queue" aria-label="Queue">
+        <div class="portrait-module-row">
+          <div class="portrait-quick-slots" data-quick-slots="queue">
+            <button id="portraitQueueQuick1" class="portrait-quick-action" type="button" data-quick-slot="queue:1"></button>
+            <button id="portraitQueueQuick2" class="portrait-quick-action" type="button" data-quick-slot="queue:2"></button>
+          </div>
+          <button id="portraitQueueMenuBtn" class="portrait-module-button" type="button" data-module-button="queue">Queue</button>
+        </div>
+      </section>
+
+      <section class="portrait-panel portrait-reports-panel" data-quick-module="reports" aria-label="Reports">
+        <div class="portrait-module-row">
+          <div class="portrait-quick-slots" data-quick-slots="reports">
+            <button id="portraitReportsQuick1" class="portrait-quick-action" type="button" data-quick-slot="reports:1"></button>
+            <button id="portraitReportsQuick2" class="portrait-quick-action" type="button" data-quick-slot="reports:2"></button>
+          </div>
+          <button id="portraitReportsMenuBtn" class="portrait-module-button" type="button" data-module-button="reports">Reports</button>
+        </div>
       </section>
 
       <div id="portraitStationStatus" class="portrait-station-status" role="status" aria-live="polite"></div>
     </section>
+
+    <dialog id="quickAssignDialog" class="quick-assign-dialog">
+      <form method="dialog" id="quickAssignForm" class="quick-assign-form">
+        <div id="quickAssignConfigure" class="quick-assign-step">
+          <h2>Assign Quick Button</h2>
+          <label>Slot
+            <select id="quickAssignSlot">
+              <option value="1">Quick 1</option>
+              <option value="2">Quick 2</option>
+            </select>
+          </label>
+          <label>Label
+            <input id="quickAssignLabel" type="text" maxlength="24" autocomplete="off">
+          </label>
+          <label class="quick-visible"><input id="quickAssignVisible" type="checkbox" checked> Show button</label>
+          <div id="quickAssignFields" class="quick-assign-fields"></div>
+          <div class="quick-dialog-actions">
+            <button type="button" data-quick-dialog="cancel">Cancel</button>
+            <button type="button" data-quick-dialog="review" class="primary-action">Review</button>
+          </div>
+        </div>
+        <div id="quickAssignReview" class="quick-assign-step" hidden>
+          <h2>Verify Quick Button</h2>
+          <div id="quickAssignSummary" class="quick-assign-summary"></div>
+          <div class="quick-dialog-actions three-actions">
+            <button type="button" data-quick-dialog="cancel">Cancel</button>
+            <button type="button" data-quick-dialog="edit">Edit</button>
+            <button type="button" data-quick-dialog="save" class="primary-action">Save</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
 
     <section id="tabletWorkbench" class="tablet-workbench" aria-label="Tablet classification workspace">
       <div class="tablet-workbench-top">

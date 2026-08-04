@@ -2256,14 +2256,44 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.4.4 — refined portrait Director Control Station */
+/* v0.9.4.5 — portrait modules with configurable quick-action presets */
 .portrait-control-station{display:none}
+.quick-assign-dialog{
+  width:min(92vw,30rem);
+  max-height:88dvh;
+  padding:0;
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  box-shadow:0 20px 60px rgba(0,0,0,.55);
+}
+.quick-assign-dialog::backdrop{background:rgba(0,0,0,.72)}
+.quick-assign-form{display:grid;gap:12px;padding:14px}
+.quick-assign-step{display:grid;gap:12px}
+.quick-assign-step h2{margin:0;font-size:1rem}
+.quick-assign-step>label,.quick-assign-fields>label{display:grid;gap:5px;color:var(--muted);font-size:.76rem}
+.quick-assign-step input,.quick-assign-step select{width:100%;min-width:0}
+.quick-visible{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center;color:var(--text)!important}
+.quick-visible input{width:auto}
+.quick-assign-fields{display:grid;gap:9px}
+.quick-output-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}
+.quick-output-fields legend{padding:0 5px;color:var(--muted);font-size:.72rem}
+.quick-output-fields label{display:flex;align-items:center;gap:6px;font-size:.72rem}
+.quick-output-fields input{width:auto;margin:0;accent-color:var(--accent)}
+.quick-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick-dialog-actions.three-actions{grid-template-columns:repeat(3,1fr)}
+.quick-assign-summary{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}
+.quick-assign-summary dl{display:grid;gap:7px;margin:0}
+.quick-assign-summary dl>div{display:grid;grid-template-columns:minmax(5rem,.42fr) 1fr;gap:8px}
+.quick-assign-summary dt{color:var(--muted);font-size:.7rem}
+.quick-assign-summary dd{margin:0;font-size:.76rem;overflow-wrap:anywhere}
 
 @media (max-width:599px) and (orientation:portrait){
   body{overflow:auto}
   #app.app-shell{height:100dvh;min-height:100dvh;overflow:auto;padding:8px;background:var(--bg)}
 
-  /* Replace only the phone-portrait composition. Shared assets stay mounted and reusable. */
+  /* Replace only phone-portrait composition. Shared assets stay mounted and reusable. */
   #app>.nav-console,
   #app>.tablet-workbench,
   #app>.base-layout,
@@ -2271,7 +2301,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
   .portrait-control-station{
     display:grid;
-    grid-template-rows:auto auto auto auto auto auto;
+    grid-template-rows:auto;
     gap:8px;
     width:100%;
     max-width:34rem;
@@ -2283,8 +2313,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     display:flex;
     align-items:center;
     justify-content:space-between;
-    min-height:52px;
-    padding:8px 10px;
+    min-height:48px;
+    padding:7px 9px;
     border:1px solid var(--line);
     border-radius:12px;
     background:var(--panel);
@@ -2292,23 +2322,23 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .portrait-title{font-size:1rem}
   .portrait-build-version{font-size:.72em;font-weight:600;color:var(--muted);white-space:nowrap}
   .portrait-header-actions{display:flex;gap:6px}
-  .portrait-icon-button{min-width:38px;padding:7px;font-size:1rem}
-
-  .portrait-quick-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
-  .portrait-quick-nav button{min-width:0;padding:8px 3px;font-size:.7rem;white-space:nowrap}
+  .portrait-icon-button{min-width:36px;padding:6px;font-size:1rem}
 
   .portrait-panel{
     display:grid;
     gap:8px;
-    padding:9px;
+    padding:8px;
     border:1px solid var(--line);
     border-radius:12px;
     background:var(--panel);
   }
-  .portrait-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .portrait-panel-heading strong{font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .portrait-panel-heading button{padding:5px 8px;font-size:.68rem;white-space:nowrap}
-  .portrait-default-amount{display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;color:var(--text)}
+  .portrait-module-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center}
+  .portrait-quick-slots{display:flex;gap:6px;min-width:0}
+  .portrait-quick-action{min-width:0;padding:7px 9px;font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .portrait-quick-action[hidden]{display:none}
+  .portrait-module-button{padding:7px 10px;font-size:.72rem;font-weight:700;white-space:nowrap;border-color:var(--accent-soft)}
+  .portrait-batch-name{padding:0 2px;font-size:.78rem;font-weight:700;color:var(--text)}
+  .portrait-default-amount{display:flex;align-items:center;gap:5px;padding:0 2px;font-size:.76rem;font-weight:700;color:var(--text)}
   .portrait-default-amount input{width:4.5rem;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);color:var(--accent);font:inherit;text-align:center}
 
   .portrait-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
@@ -2325,15 +2355,12 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .portrait-metric-grid span{font-size:.66rem;color:var(--muted)}
   .portrait-metric-grid strong{font-size:.86rem;color:var(--accent)}
   .portrait-metric-grid small{font-size:.72em;color:var(--muted);font-weight:600}
-  .portrait-batch-heading strong{font-size:.88rem}
 
-  .portrait-two-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .portrait-two-actions button{padding:10px 6px;font-size:.74rem}
-  .portrait-primary-action{width:100%;padding:10px;border-color:var(--accent);color:var(--accent);font-weight:700}
   .portrait-ai-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px;padding:7px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}
   .portrait-ai-options label{display:flex;align-items:center;gap:5px;min-width:0;font-size:.7rem;color:var(--text)}
   .portrait-ai-options input{margin:0;accent-color:var(--accent)}
-  .portrait-ai-status-line{display:flex;justify-content:space-between;padding:0 2px;font-size:.7rem;color:var(--muted)}
+  .portrait-ai-status-line{display:flex;justify-content:space-between;gap:6px;padding:0 2px;font-size:.68rem;color:var(--muted)}
   .portrait-ai-status-line strong{color:var(--accent)}
+  .portrait-queue-panel,.portrait-reports-panel{min-height:48px}
   .portrait-station-status{min-height:1.2em;padding:0 4px 6px;color:var(--muted);font-size:.68rem;text-align:center}
 }

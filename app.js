@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.4.4";
+const GENREACTRIX_BUILD="v0.9.4.5";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -574,7 +574,6 @@ function renderPortraitControlStation(){
   $("portraitAiReadyCount").textContent=String(analyzed);
   if($("portraitAiPendingCount")) $("portraitAiPendingCount").textContent=String(aiQueue.pending);
   if($("portraitAiBufferTarget")) $("portraitAiBufferTarget").textContent=String(aiQueue.bufferTarget);
-  if($("portraitAnalyzeMoreBtn")) $("portraitAnalyzeMoreBtn").textContent=`Analyze +${aiQueue.quickAddAmount || 100}`;
 }
 function setPortraitStationStatus(message){
   const status=$("portraitStationStatus");
@@ -1350,14 +1349,15 @@ loadCurrent();
 document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
 
-// v0.9.4.4 portrait Control Station connections.
-// Portrait remains a client of shared capabilities; queue state is owned by a small,
-// orientation-neutral engine rather than by portrait markup.
+// v0.9.4.5 portrait Control Station and reusable quick-action presets.
+// Portrait remains a client of shared capabilities. Quick buttons store references
+// to engine actions plus validated parameter snapshots; they do not duplicate action logic.
 const PORTRAIT_DEFAULT_AMOUNT_KEY="genreactrix-portrait-default-amount";
 const AI_QUEUE_KEY="genreactrix-ai-lookahead-queue";
 const AI_BUFFER_TARGET_KEY="genreactrix-ai-buffer-target";
 const AI_QUICK_ADD_KEY="genreactrix-ai-quick-add";
 const PORTRAIT_AI_OUTPUTS_KEY="genreactrix-portrait-ai-outputs";
+const QUICK_PRESETS_KEY="genreactrix-quick-action-presets-v1";
 
 function portraitDefaultAmount(){
   const input=document.getElementById("portraitDefaultAmount");
@@ -1373,11 +1373,14 @@ function syncPortraitDefaultAmount(){
   input.addEventListener("change",()=>{
     const amount=portraitDefaultAmount();
     localStorage.setItem(PORTRAIT_DEFAULT_AMOUNT_KEY,String(amount));
+    renderQuickButtons();
     setPortraitStationStatus(`Quick-add default set to ${amount} images.`);
   });
 }
 
-
+function selectedPortraitAiOutputs(){
+  return Object.fromEntries([...document.querySelectorAll("[data-portrait-ai-output]")].map(item=>[item.dataset.portraitAiOutput,item.checked]));
+}
 function syncPortraitAiOutputs(){
   const controls=[...document.querySelectorAll("[data-portrait-ai-output]")];
   if(!controls.length) return;
@@ -1385,10 +1388,7 @@ function syncPortraitAiOutputs(){
   try{ saved=JSON.parse(localStorage.getItem(PORTRAIT_AI_OUTPUTS_KEY)||"{}"); }catch(error){ saved={}; }
   controls.forEach(control=>{
     if(Object.prototype.hasOwnProperty.call(saved,control.dataset.portraitAiOutput)) control.checked=Boolean(saved[control.dataset.portraitAiOutput]);
-    control.addEventListener("change",()=>{
-      const selection=Object.fromEntries(controls.map(item=>[item.dataset.portraitAiOutput,item.checked]));
-      localStorage.setItem(PORTRAIT_AI_OUTPUTS_KEY,JSON.stringify(selection));
-    });
+    control.addEventListener("change",()=>localStorage.setItem(PORTRAIT_AI_OUTPUTS_KEY,JSON.stringify(selectedPortraitAiOutputs())));
   });
 }
 
@@ -1436,26 +1436,236 @@ function createAiLookAheadQueueEngine(){
 }
 
 window.genreactrixAiQueueEngine=createAiLookAheadQueueEngine();
+
+const QUICK_ACTIONS={
+  "images.add-folder":{
+    module:"images",name:"Add from folder",defaultLabel:"Folder · Add",
+    fields:[{key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>portraitDefaultAmount()}],
+    summarize:p=>[`Source: Folder`,`Quantity: ${p.quantity}`],
+    run:p=>{ pendingPortraitImportLimit=Math.max(1,Number(p.quantity)||portraitDefaultAmount()); document.getElementById("folderInput")?.click(); }
+  },
+  "images.add-urls":{
+    module:"images",name:"Add from URLs",defaultLabel:"URLs · Add",
+    fields:[{key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>portraitDefaultAmount()}],
+    summarize:p=>[`Source: URLs`,`Quantity: ${p.quantity}`],
+    run:p=>setPortraitStationStatus(`URL intake will add the next ${p.quantity} images when connected.`)
+  },
+  "batch.current":{
+    module:"batch",name:"Batch current work",defaultLabel:"Batch current",
+    fields:[],summarize:()=>["Target: Current import","Standard report: Automatic"],
+    run:()=>setPortraitStationStatus("Batch current work when the Batch engine is connected.")
+  },
+  "ai.analyze-more":{
+    module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",
+    fields:[
+      {key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>window.genreactrixAiQueueEngine.snapshot().quickAddAmount},
+      {key:"outputs",label:"Outputs",type:"ai-outputs",getDefault:()=>selectedPortraitAiOutputs()}
+    ],
+    summarize:p=>{
+      const labels={reactions:"Reactions",themes:"Themes",description:"Description",emotion:"Emotion","reaction-reasons":"Reaction reasons","genre-reasons":"Genre reasons"};
+      const selected=Object.entries(p.outputs||{}).filter(([,on])=>on).map(([key])=>labels[key]);
+      return [`Quantity: ${p.quantity}`,`Outputs: ${selected.join(", ")||"None"}`];
+    },
+    validate:p=>Object.values(p.outputs||{}).some(Boolean)?"":"Choose at least one AI output.",
+    run:p=>{
+      const added=window.genreactrixAiQueueEngine.queueNext(Math.max(1,Number(p.quantity)||100));
+      setPortraitStationStatus(added?`${added} images added to the AI look-ahead queue.`:"No additional unanalyzed images are available.");
+    }
+  },
+  "queue.open":{module:"queue",name:"Open queue",defaultLabel:"Open queue",fields:[],summarize:()=>["View: Queue"],run:()=>setPortraitStationStatus("Open the Queue console.")},
+  "reports.open":{module:"reports",name:"Open reports",defaultLabel:"Open reports",fields:[],summarize:()=>["View: Reports"],run:()=>setPortraitStationStatus("Open the Reports console.")}
+};
+
+const DEFAULT_QUICK_PRESETS={
+  batch:{1:{visible:true,actionId:"batch.current",label:"Batch current",params:{}},2:{visible:false,actionId:"",label:"",params:{}}},
+  images:{1:{visible:true,actionId:"images.add-folder",label:"Folder · Add",params:{}},2:{visible:true,actionId:"images.add-urls",label:"URLs · Add",params:{}}},
+  ai:{1:{visible:true,actionId:"ai.analyze-more",label:"Analyze more",params:{}},2:{visible:false,actionId:"",label:"",params:{}}},
+  queue:{1:{visible:false,actionId:"",label:"",params:{}},2:{visible:false,actionId:"",label:"",params:{}}},
+  reports:{1:{visible:false,actionId:"",label:"",params:{}},2:{visible:false,actionId:"",label:"",params:{}}}
+};
+
+function loadQuickPresets(){
+  let saved={};
+  try{ saved=JSON.parse(localStorage.getItem(QUICK_PRESETS_KEY)||"{}"); }catch(error){ saved={}; }
+  const merged=structuredClone(DEFAULT_QUICK_PRESETS);
+  Object.keys(merged).forEach(module=>[1,2].forEach(slot=>{
+    if(saved?.[module]?.[slot]) merged[module][slot]={...merged[module][slot],...saved[module][slot],params:{...merged[module][slot].params,...(saved[module][slot].params||{})}};
+  }));
+  return merged;
+}
+let quickPresets=loadQuickPresets();
+function saveQuickPresets(){ localStorage.setItem(QUICK_PRESETS_KEY,JSON.stringify(quickPresets)); }
+function resolveActionParams(action,preset={}){
+  const params={...(preset.params||{})};
+  (action.fields||[]).forEach(field=>{
+    if(params[field.key]===undefined || params[field.key]===null || params[field.key]==="") params[field.key]=field.getDefault?field.getDefault():"";
+  });
+  return params;
+}
+function renderQuickButtons(){
+  document.querySelectorAll("[data-quick-slot]").forEach(button=>{
+    const [module,slotText]=button.dataset.quickSlot.split(":");
+    const preset=quickPresets?.[module]?.[Number(slotText)];
+    const action=preset?.actionId?QUICK_ACTIONS[preset.actionId]:null;
+    const visible=Boolean(preset?.visible&&action);
+    button.hidden=!visible;
+    if(!visible){ button.textContent=""; button.removeAttribute("data-action-id"); return; }
+    const params=resolveActionParams(action,preset);
+    let label=preset.label||action.defaultLabel||action.name;
+    if(preset.actionId==="ai.analyze-more" && !preset.label) label=`Analyze +${params.quantity}`;
+    button.textContent=label;
+    button.dataset.actionId=preset.actionId;
+    button.title="Long-press to edit this quick action";
+  });
+}
+function executeQuickSlot(button){
+  const [module,slotText]=button.dataset.quickSlot.split(":");
+  const preset=quickPresets?.[module]?.[Number(slotText)];
+  const action=preset?.actionId?QUICK_ACTIONS[preset.actionId]:null;
+  if(!action) return;
+  const params=resolveActionParams(action,preset);
+  const error=action.validate?.(params);
+  if(error){ openQuickAssignment(action,preset,Number(slotText)); return; }
+  action.run(params);
+}
+
+let quickAssignment=null;
+function fieldInputValue(field,root){
+  if(field.type==="ai-outputs") return Object.fromEntries([...root.querySelectorAll("[data-assign-ai-output]")].map(input=>[input.dataset.assignAiOutput,input.checked]));
+  const input=root.querySelector(`[data-assign-field="${field.key}"]`);
+  return field.type==="number"?Math.max(Number(field.min)||0,Number(input?.value)||0):(input?.value||"");
+}
+function buildQuickFields(action,params){
+  const root=document.getElementById("quickAssignFields");
+  root.innerHTML="";
+  (action.fields||[]).forEach(field=>{
+    if(field.type==="ai-outputs"){
+      const box=document.createElement("fieldset");
+      box.className="quick-output-fields";
+      box.innerHTML="<legend>Outputs</legend>";
+      const labels={reactions:"Reactions",themes:"Themes",description:"Description",emotion:"Emotion","reaction-reasons":"Reaction reasons","genre-reasons":"Genre reasons"};
+      Object.entries(labels).forEach(([key,label])=>{
+        const item=document.createElement("label");
+        item.innerHTML=`<input type="checkbox" data-assign-ai-output="${key}" ${params[field.key]?.[key]?"checked":""}> ${label}`;
+        box.appendChild(item);
+      });
+      root.appendChild(box);
+      return;
+    }
+    const label=document.createElement("label");
+    label.textContent=field.label;
+    const input=document.createElement("input");
+    input.dataset.assignField=field.key;
+    input.type=field.type||"text";
+    if(field.min!==undefined) input.min=String(field.min);
+    input.value=String(params[field.key]??"");
+    label.appendChild(input);
+    root.appendChild(label);
+  });
+}
+function collectQuickAssignment(){
+  const action=quickAssignment.action;
+  const params={};
+  (action.fields||[]).forEach(field=>params[field.key]=fieldInputValue(field,document.getElementById("quickAssignFields")));
+  return {
+    module:action.module,
+    slot:Number(document.getElementById("quickAssignSlot").value),
+    visible:document.getElementById("quickAssignVisible").checked,
+    actionId:quickAssignment.actionId,
+    label:document.getElementById("quickAssignLabel").value.trim()||action.defaultLabel||action.name,
+    params
+  };
+}
+function showQuickConfigure(){
+  document.getElementById("quickAssignConfigure").hidden=false;
+  document.getElementById("quickAssignReview").hidden=true;
+}
+function showQuickReview(){
+  const candidate=collectQuickAssignment();
+  const error=quickAssignment.action.validate?.(candidate.params);
+  if(error){ setPortraitStationStatus(error); return; }
+  quickAssignment.candidate=candidate;
+  const lines=quickAssignment.action.summarize?.(candidate.params)||[];
+  document.getElementById("quickAssignSummary").innerHTML=`
+    <dl>
+      <div><dt>Module</dt><dd>${candidate.module}</dd></div>
+      <div><dt>Slot</dt><dd>Quick ${candidate.slot}</dd></div>
+      <div><dt>Label</dt><dd>${candidate.label}</dd></div>
+      <div><dt>Visible</dt><dd>${candidate.visible?"Yes":"No"}</dd></div>
+      <div><dt>Action</dt><dd>${quickAssignment.action.name}</dd></div>
+      ${lines.map(line=>{const [key,...rest]=line.split(":");return `<div><dt>${key}</dt><dd>${rest.join(":").trim()}</dd></div>`;}).join("")}
+    </dl>`;
+  document.getElementById("quickAssignConfigure").hidden=true;
+  document.getElementById("quickAssignReview").hidden=false;
+}
+function openQuickAssignment(actionOrId,preset={},preferredSlot=1){
+  const actionId=typeof actionOrId==="string"?actionOrId:Object.keys(QUICK_ACTIONS).find(key=>QUICK_ACTIONS[key]===actionOrId);
+  const action=QUICK_ACTIONS[actionId];
+  if(!action) return;
+  const params=resolveActionParams(action,preset);
+  quickAssignment={actionId,action,candidate:null};
+  document.getElementById("quickAssignSlot").value=String(preferredSlot||1);
+  document.getElementById("quickAssignLabel").value=preset.label||action.defaultLabel||action.name;
+  document.getElementById("quickAssignVisible").checked=preset.visible!==false;
+  buildQuickFields(action,params);
+  showQuickConfigure();
+  document.getElementById("quickAssignDialog")?.showModal();
+}
+function openModuleQuickManager(module){
+  const existing=quickPresets[module]?.[1];
+  const actionId=existing?.actionId || Object.keys(QUICK_ACTIONS).find(key=>QUICK_ACTIONS[key].module===module);
+  if(actionId) openQuickAssignment(actionId,existing||{},1);
+  else setPortraitStationStatus(`No quick actions are available for ${module} yet.`);
+}
+
+function bindLongPress(element,onLongPress){
+  let timer=null,longPressed=false;
+  const start=event=>{
+    if(event.button!==undefined&&event.button!==0) return;
+    longPressed=false;
+    timer=setTimeout(()=>{ longPressed=true; onLongPress(event); },550);
+  };
+  const cancel=()=>{ if(timer) clearTimeout(timer); timer=null; };
+  element.addEventListener("pointerdown",start);
+  ["pointerup","pointercancel","pointerleave"].forEach(type=>element.addEventListener(type,cancel));
+  element.addEventListener("click",event=>{
+    if(longPressed){ event.preventDefault(); event.stopImmediatePropagation(); longPressed=false; }
+  },true);
+}
+
 syncPortraitDefaultAmount();
 syncPortraitAiOutputs();
 window.genreactrixAiQueueEngine.maintainBuffer();
+renderQuickButtons();
 
-document.getElementById("portraitAddFolderBtn")?.addEventListener("click",()=>{
-  pendingPortraitImportLimit=portraitDefaultAmount();
-  document.getElementById("folderInput")?.click();
+document.querySelectorAll("[data-quick-slot]").forEach(button=>{
+  button.addEventListener("click",()=>executeQuickSlot(button));
+  bindLongPress(button,()=>{
+    const [module,slotText]=button.dataset.quickSlot.split(":");
+    const preset=quickPresets[module][Number(slotText)];
+    if(preset?.actionId) openQuickAssignment(preset.actionId,preset,Number(slotText));
+  });
 });
-document.getElementById("portraitAddUrlsBtn")?.addEventListener("click",()=>setPortraitStationStatus(`URL intake will add the next ${portraitDefaultAmount()} images when connected.`));
-document.getElementById("portraitAnalyzeMoreBtn")?.addEventListener("click",()=>{
-  const amount=window.genreactrixAiQueueEngine.snapshot().quickAddAmount;
-  const added=window.genreactrixAiQueueEngine.queueNext(amount);
-  setPortraitStationStatus(added?`${added} images added to the AI look-ahead queue.`:"No additional unanalyzed images are available.");
+document.querySelectorAll("[data-module-button]").forEach(button=>{
+  const module=button.dataset.moduleButton;
+  button.addEventListener("click",()=>setPortraitStationStatus(`Open the full ${button.textContent.trim()} console.`));
+  bindLongPress(button,()=>openModuleQuickManager(module));
 });
-["portraitImagesMenuBtn","portraitImagesMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full + Images console.")));
-["portraitBatchMenuBtn","portraitBatchMoreBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setPortraitStationStatus("Open the full Batch console.")));
-document.getElementById("portraitQueueMenuBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the Queue console."));
-document.getElementById("portraitReportsMenuBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the Reports console."));
-document.getElementById("portraitAiMoreBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open the full AI console."));
 document.getElementById("portraitMailboxBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open notifications."));
 document.getElementById("portraitSettingsBtn")?.addEventListener("click",()=>setPortraitStationStatus("Open Settings."));
 document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEventListener("click",()=>setPortraitStationStatus(`Open ${button.dataset.portraitStatus.replaceAll("-"," ")}.`)));
+
+document.querySelectorAll("[data-quick-dialog='cancel']").forEach(button=>button.addEventListener("click",()=>document.getElementById("quickAssignDialog")?.close()));
+document.querySelector("[data-quick-dialog='review']")?.addEventListener("click",showQuickReview);
+document.querySelector("[data-quick-dialog='edit']")?.addEventListener("click",showQuickConfigure);
+document.querySelector("[data-quick-dialog='save']")?.addEventListener("click",()=>{
+  const candidate=quickAssignment?.candidate;
+  if(!candidate) return;
+  quickPresets[candidate.module][candidate.slot]={visible:candidate.visible,actionId:candidate.actionId,label:candidate.label,params:candidate.params};
+  saveQuickPresets();
+  renderQuickButtons();
+  document.getElementById("quickAssignDialog")?.close();
+  setPortraitStationStatus(`${candidate.label} assigned to ${candidate.module} Quick ${candidate.slot}.`);
+});
+
 renderPortraitControlStation();
