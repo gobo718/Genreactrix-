@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.14.0";
+const GENREACTRIX_BUILD="v0.9.19.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -366,6 +366,7 @@ function commitAndAdvance(sourceKey){
   renderAll();
 }
 function navigateImage(delta){
+  saveImageTransformForCurrent?.();
   if(state.files.length){
     state.index=(state.index+delta+state.files.length)%state.files.length;
   }else{
@@ -399,7 +400,7 @@ function renderReactions(){
         pushHistory();
         const n=state.selectedReactions.indexOf(i);
         if(n>=0) state.selectedReactions.splice(n,1); else state.selectedReactions.push(i);
-        saveCurrent(); renderReactions(); renderComparison();
+        saveCurrent(); renderReactions(); renderComparison(); renderDirectorWorkspaceState();
       });
       return b;
     };
@@ -420,7 +421,7 @@ function renderImage(){
   const src=currentSource();
   $("mainImage").src=src;
   $("mainImage").hidden=false;
-  if(typeof resetImageTransform==="function") resetImageTransform();
+  if(typeof restoreImageTransformForCurrent==="function") restoreImageTransformForCurrent();
   $("imageEmpty").hidden=true;
   $("inspectionImage").src=src;
   if($("aiWorkspaceImage")) $("aiWorkspaceImage").src=src;
@@ -446,6 +447,24 @@ function renderFlag(){
 function renderDirectorFields(){
   $("directorWriteIn").value=state.writeIn;
   $("retentionControl").value=state.retention;
+}
+function renderDirectorWorkspaceState(){
+  const engine=window.genreactrixDirectorClassificationEngine;
+  const imageId=currentKey();
+  const canonical=engine?.get?.(imageId)||null;
+  const completion=canonical?.completion||engine?.completion?.({reactions:state.selectedReactions,themes:state.themes,primFusion:state.selectedReactions.length>=2?state.selectedReactions.slice(0,2):null})||"unclassified";
+  const labels={unclassified:"Unclassified",partial:"Partial",complete:"Complete",blocked:"Blocked"};
+  [$("directorStateStrip"),$("directorWorkspaceStateStrip")].filter(Boolean).forEach(strip=>{
+    const completionEl=strip.querySelector('[data-state="completion"]');
+    if(completionEl){completionEl.textContent=labels[completion]||completion;completionEl.dataset.tone=completion;}
+    const set=(name,show)=>{const el=strip.querySelector(`[data-state="${name}"]`);if(el)el.hidden=!show;};
+    set("draft",Boolean(engine?.isDirty?.(imageId)));
+    set("saved",Boolean(canonical?.saved));
+    set("flagged",Boolean(state.flagged||canonical?.flagged));
+    set("ai",Boolean(canonical?.aiVisible||document.getElementById("directorAiConsole")?.open));
+  });
+  const revert=$("directorRevertDraftBtn");
+  if(revert) revert.disabled=!engine?.isDirty?.(imageId);
 }
 function renderPrimitiveWeights(target, {showDirector=false}={}){
   if(!target) return;
@@ -649,6 +668,7 @@ function renderAll(){
   renderReactions();
   renderFlag();
   renderDirectorFields();
+  renderDirectorWorkspaceState();
   renderImage();
   renderAi();
   scheduleFoldedLandscapeDescriptionFit();
@@ -1085,6 +1105,14 @@ $("tabletThemeSearch").addEventListener("keydown",e=>{
   if(existing) selectTheme(existing); else createTabletTheme();
 });
 $("tabletCreateThemeBtn").addEventListener("click",createTabletTheme);
+$("directorRevertDraftBtn")?.addEventListener("click",()=>{
+  const engine=window.genreactrixDirectorClassificationEngine;
+  const restored=engine?.revertDraft?.(currentKey());
+  if(!restored) return;
+  applyClassification({selectedReactions:restored.reactions,themes:restored.themes,flagged:restored.flagged,writeIn:restored.notes,retention:restored.retention});
+  setDirectorStatus("Draft reverted.");
+  renderAll();
+});
 $("resetOriginalBtn").addEventListener("click",()=>{
   if(!confirm("Discard all classification changes made since you entered this image?")) return;
   pushHistory();
@@ -1335,10 +1363,24 @@ try{
 
 // v0.9.1 Desktop Mode: image zoom/pan, keyboard workflow, and primFusion navigation.
 const imageTransform={scale:1,x:0,y:0,pointerId:null,startX:0,startY:0,originX:0,originY:0};
+const IMAGE_TRANSFORM_KEY="genreactrix-director-image-transforms-v1";
+function loadImageTransforms(){try{return JSON.parse(localStorage.getItem(IMAGE_TRANSFORM_KEY)||"{}")||{};}catch{return {};}}
+const imageTransformsById=loadImageTransforms();
+function saveImageTransformForCurrent(){
+  const id=currentKey?.(); if(!id) return;
+  imageTransformsById[id]={scale:imageTransform.scale,x:imageTransform.x,y:imageTransform.y};
+  localStorage.setItem(IMAGE_TRANSFORM_KEY,JSON.stringify(imageTransformsById));
+}
+function restoreImageTransformForCurrent(){
+  const saved=imageTransformsById[currentKey?.()]||{scale:1,x:0,y:0};
+  Object.assign(imageTransform,{scale:Number(saved.scale)||1,x:Number(saved.x)||0,y:Number(saved.y)||0,pointerId:null});
+  applyImageTransform();
+}
 function applyImageTransform(){
   const image=$("mainImage");
   image.style.transform=`translate(${imageTransform.x}px, ${imageTransform.y}px) scale(${imageTransform.scale})`;
   $("imageViewport").classList.toggle("is-zoomed",imageTransform.scale>1);
+  saveImageTransformForCurrent();
 }
 function resetImageTransform(){
   Object.assign(imageTransform,{scale:1,x:0,y:0,pointerId:null});

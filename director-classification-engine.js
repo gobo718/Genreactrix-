@@ -32,6 +32,8 @@
     if(!Array.isArray(s.reactions)) issues.push("reactions-not-array");
     if(!Array.isArray(s.themes)||s.themes.length!==3) issues.push("themes-invalid");
     if(new Set(s.reactions||[]).size!==(s.reactions||[]).length) issues.push("duplicate-reactions");
+    const themeIds=(s.themes||[]).filter(Boolean).map(theme=>typeof theme==="object"?(theme.id||theme.label):theme);
+    if(new Set(themeIds).size!==themeIds.length) issues.push("duplicate-themes");
     if((s.reactions||[]).length>=2&&!s.primFusion) issues.push("primfusion-missing");
     return {valid:issues.length===0,issues,completion:completion(s)};
   }
@@ -49,7 +51,17 @@
       save(); emit("draft-began",{imageId,draft:drafts[imageId]}); return clone(drafts[imageId]);
     }
     function draft(imageId){return clone(drafts[imageId]||begin(imageId));}
-    function patchDraft(imageId,patch){drafts[imageId]=normalized({...draft(imageId),...clone(patch)});save();emit("draft-changed",{imageId,draft:drafts[imageId]});return clone(drafts[imageId]);}
+    function patchDraft(imageId,patch){
+      const current=draft(imageId);
+      const nextPatch=clone(patch);
+      if(Object.prototype.hasOwnProperty.call(nextPatch,"reactions")){
+        const before=JSON.stringify(current.reactions||[]);
+        const after=JSON.stringify(nextPatch.reactions||[]);
+        if(before!==after && !Object.prototype.hasOwnProperty.call(nextPatch,"primFusion")) nextPatch.primFusion=null;
+      }
+      drafts[imageId]=normalized({...current,...nextPatch});
+      save();emit("draft-changed",{imageId,draft:drafts[imageId],dirty:isDirty(imageId)});return clone(drafts[imageId]);
+    }
     function commit(imageId,options={}){
       const next=normalized(options.state||draft(imageId));
       const checked=validate(next); if(!checked.valid) return {ok:false,...checked};
@@ -67,6 +79,7 @@
       }catch(error){console.warn("Director engine canonical sync failed",error);}
       emit("committed",{imageId,before,after:next}); return {ok:true,state:clone(next),completion:next.completion};
     }
+    function isDirty(imageId){return JSON.stringify(normalized(drafts[imageId]||get(imageId)))!==JSON.stringify(get(imageId));}
     function cancel(imageId){drafts[imageId]=get(imageId);save();emit("draft-cancelled",{imageId});return draft(imageId);}
     function undo(imageId){
       const stack=store.undo[imageId]||[]; const tx=stack.pop(); if(!tx) return null;
@@ -85,7 +98,7 @@
     function canUndo(id){return !!store.undo[id]?.length} function canRedo(id){return !!store.redo[id]?.length}
     function migrate(imageId,legacy){if(!store.records[imageId]){store.records[imageId]=normalized(legacy);drafts[imageId]=clone(store.records[imageId]);save();emit("migrated",{imageId});}return get(imageId);}
     function verify(){const issues=[];for(const [id,value] of Object.entries(store.records)){const v=validate(normalized(value));if(!v.valid)issues.push({imageId:id,type:"invalid-director-state",details:v.issues});}return{ok:issues.length===0,issueCount:issues.length,issues};}
-    return {empty,normalize:normalized,begin,draft,patchDraft,commit,cancel,get,undo,redo,canUndo,canRedo,migrate,validate,completion,verify,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)}};
+    return {empty,normalize:normalized,begin,draft,patchDraft,commit,cancel,revertDraft:cancel,isDirty,get,undo,redo,canUndo,canRedo,migrate,validate,completion,verify,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)}};
   }
   window.genreactrixDirectorClassificationEngine=createEngine();
 })();

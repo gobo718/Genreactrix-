@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.18.0</title>
+<title>Genreactrix v0.9.19.0</title>
 <link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.18.0</span>
+<span>v0.9.19.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.18.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.19.0</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
@@ -378,7 +378,7 @@
 <div aria-label="Resize Image and Director consoles" aria-orientation="vertical" class="console-divider" id="consoleDivider" role="separator" tabindex="0"></div>
 <section aria-label="Director classification" class="console director-console">
 <button class="expand-button" data-open="directorWorkspace" title="Expand Director console">↗</button>
-<div class="console-label">Director</div>
+<div class="director-heading-row"><div class="console-label">Director</div><div class="director-state-strip" id="directorStateStrip" aria-live="polite"><span data-state="completion">Unclassified</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Saved</span><span data-state="flagged" hidden>Flagged</span><span data-state="ai" hidden>AI viewed</span></div></div>
 <div aria-label="Primitive reactions" class="reaction-bar" id="reactionBar"></div>
 <div class="theme-fields">
 <button class="theme-field" data-slot="1">
@@ -519,15 +519,6 @@
 <label>End<input id="reportEnd" type="date"/></label>
 <label>Filter logic<select id="reportLogic"><option value="and">All conditions (AND)</option><option value="or">Any condition (OR)</option></select></label>
 </div>
-<div class="report-grid report-definition-grid">
-<label>Description<input id="reportDescription" placeholder="What this report answers"/></label>
-<label>Group by<select id="reportGroupBy"><option value="none">No grouping</option><option value="directorReaction">Director reaction</option><option value="directorTheme">Director theme</option><option value="primFusion">PrimFusion</option><option value="batch">Batch</option><option value="saved">Saved</option><option value="flagged">Flagged</option><option value="aiAgreement">AI agreement</option><option value="source">Import source</option><option value="classifiedDate">Classification date</option><option value="workflowStage">Workflow stage</option></select></label>
-<label>Sort by<select id="reportSortBy"><option value="imageId">Image ID</option><option value="classifiedDate">Classification date</option><option value="importDate">Import date</option><option value="batch">Batch</option></select></label>
-<label>Direction<select id="reportSortDirection"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
-<label>Output<select id="reportOutputFormat"><option value="json">JSON</option><option value="csv">CSV</option><option value="html">Printable HTML</option></select></label>
-</div>
-<div class="report-fields"><strong>Fields</strong><label><input checked data-report-field type="checkbox" value="imageId"/> Image ID</label><label><input checked data-report-field type="checkbox" value="filename"/> Filename</label><label><input checked data-report-field type="checkbox" value="batch"/> Batch</label><label><input checked data-report-field type="checkbox" value="directorReactions"/> Director reactions</label><label><input checked data-report-field type="checkbox" value="directorThemes"/> Director themes</label><label><input checked data-report-field type="checkbox" value="primFusion"/> PrimFusion</label><label><input checked data-report-field type="checkbox" value="aiAgreement"/> AI agreement</label><label><input data-report-field type="checkbox" value="dates"/> Dates</label><label><input data-report-field type="checkbox" value="provider"/> AI provider/version</label></div>
-<div class="report-fields"><strong>Statistics</strong><label><input checked data-report-stat type="checkbox" value="count"/> Count</label><label><input checked data-report-stat type="checkbox" value="percentage"/> Percentage</label><label><input data-report-stat type="checkbox" value="average"/> Average</label><label><input data-report-stat type="checkbox" value="median"/> Median</label><label><input data-report-stat type="checkbox" value="agreementRate"/> Agreement rate</label><label><input data-report-stat type="checkbox" value="completionRate"/> Completion rate</label></div>
 <div aria-label="Report modules" class="report-modules">
 <label><input checked="" data-report-module="" type="checkbox" value="summary"/> Summary</label>
 <label><input checked="" data-report-module="" type="checkbox" value="reactions"/> Reactions</label>
@@ -541,7 +532,7 @@
 <div class="report-conditions" id="reportConditions"></div>
 <div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button class="primary" id="reportRun" type="button">Run report</button></div>
 </section>
-<section><h3>Report definitions</h3><div class="report-presets" id="reportPresets"></div></section>
+<section><h3>Presets</h3><div class="report-presets" id="reportPresets"></div></section>
 <section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button></div></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
 <section><h3>Stored reports</h3><div class="report-history" id="reportHistory"></div></section>
 </div>
@@ -577,7 +568,7 @@
 <div class="workspace-shell">
 <header class="workspace-header director-workspace-header">
 <button class="back-button" data-close="directorWorkspace">‹ Back</button>
-<h2>Director Console</h2>
+<div><h2>Director Console</h2><div class="director-state-strip expanded" id="directorWorkspaceStateStrip" aria-live="polite"><span data-state="completion">Unclassified</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Saved</span><span data-state="flagged" hidden>Flagged</span><span data-state="ai" hidden>AI viewed</span></div></div>
 <button class="primfusion-shortcut" id="directorPrimFusionBtn">PrimFusion Matrix</button>
 </header>
 <div aria-label="Current image" class="portrait-only-image-viewport director-portrait-image-preview">
@@ -597,6 +588,7 @@
 <div class="director-tools">
 <button id="directorUndoBtn">↶ Undo</button>
 <button id="directorRedoBtn">↷ Redo</button>
+<button id="directorRevertDraftBtn" type="button">Revert Draft</button>
 <button id="resetOriginalBtn">Reset Current Changes</button>
 <button id="clearCurrentBtn">Clear Data</button>
 </div>
@@ -689,7 +681,7 @@
 </dialog>
 <script src="maintenance-engine.js?v=0.9.14.0"></script>
 <script src="settings-engine.js?v=0.9.14.0"></script>
-<script src="director-classification-engine.js?v=0.9.17.0"></script>
+<script src="director-classification-engine.js?v=0.9.19.0"></script>
 <script src="app.js?v=0.9.17.0"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
@@ -705,8 +697,7 @@
 <script src="notifications-engine.js?v=0.9.14.0"></script>
 <script src="queue-engine.js?v=0.9.14.0"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.14.0"></script>
-<script src="report-definition-engine.js?v=0.9.18.0"></script>
-<script src="reports-engine.js?v=0.9.18.0"></script>
+<script src="reports-engine.js?v=0.9.14.0"></script>
 <script src="batch-engine.js?v=0.9.14.0"></script>
 <script src="ai-analysis-engine.js?v=0.9.14.0"></script>
 </body>

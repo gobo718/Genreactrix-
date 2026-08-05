@@ -2570,3 +2570,19 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 .report-definition-grid{margin-top:.5rem}.report-fields{display:flex;flex-wrap:wrap;gap:.45rem .8rem;align-items:center;padding:.55rem 0}.report-fields strong{min-width:5rem}.report-fields label{display:inline-flex;align-items:center;gap:.3rem}.report-output{max-height:38vh;overflow:auto}
+
+/* v0.9.19.0 Director workspace polish */
+.director-heading-row{display:flex;align-items:center;gap:8px;min-width:0}
+.director-heading-row .console-label{flex:0 0 auto}
+.director-state-strip{display:flex;gap:5px;align-items:center;min-width:0;overflow:hidden;white-space:nowrap}
+.director-state-strip span{font-size:.66rem;line-height:1;padding:4px 6px;border:1px solid var(--line);border-radius:999px;background:var(--panel-2);color:var(--muted)}
+.director-state-strip span[data-tone="complete"]{color:var(--text);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.director-state-strip span[data-state="draft"]{color:#ffd37a;border-color:#8b6a26}
+.director-state-strip span[data-state="saved"]{color:#a9e9c0;border-color:#2d7650}
+.director-state-strip span[data-state="flagged"]{color:#ffb2b2;border-color:#8c3f46}
+.director-state-strip span[data-state="ai"]{color:#b8caff;border-color:#425a9b}
+.director-workspace-header>div{min-width:0}
+.director-workspace-header h2{margin:0 0 4px}
+.director-state-strip.expanded{flex-wrap:wrap;white-space:normal}
+#directorRevertDraftBtn[disabled]{opacity:.45}
+@media (max-height:599px) and (orientation:landscape){.director-state-strip span{font-size:.6rem;padding:3px 5px}}

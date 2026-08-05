@@ -1,12 +1,14 @@
-# Genreactrix v0.9.18.0
+# Genreactrix v0.9.19.0
 
-## v0.9.18.0 — Reports Engine / Research Laboratory
+## v0.9.19.0 — Director Workspace Polish
 
-- Added a persistent Report Definition Engine and built-in research report library.
-- Added selectable fields, grouping, sorting, statistics, reusable definitions, contextual reports, and execution snapshots.
-- Manual and automatic reports share the same canonical Reports Engine.
-- JSON, CSV, and printable HTML exports remain supported.
-- Built directly from the canonical v0.9.17.0 release.
+- Added compact Director state indicators for Unclassified, Partial, Complete, Draft, Saved, Flagged, and AI-viewed state.
+- Added a dedicated Revert Draft action in the expanded Director console.
+- Director drafts now expose a formal dirty-state check.
+- Reaction changes invalidate stale PrimFusion draft data instead of carrying an incompatible pair forward.
+- Duplicate Director themes are rejected during validation.
+- Image zoom and pan are preserved per Image ID across navigation and reloads.
+- Existing landscape composition and engine ownership remain unchanged.
 
 ## v0.9.17.0 — Director Classification Engine
 
