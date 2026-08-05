@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.19.0</title>
+<title>Genreactrix v0.9.20.0</title>
 <link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.19.0</span>
+<span>v0.9.20.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.19.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.20.0</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
@@ -530,7 +530,7 @@
 </div>
 <div class="report-condition-header"><strong>Filters</strong><button id="reportAddCondition" type="button">+ Condition</button></div>
 <div class="report-conditions" id="reportConditions"></div>
-<div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button class="primary" id="reportRun" type="button">Run report</button></div>
+<div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button id="reportsAnalyticsOpen" type="button">Research Analytics</button><button class="primary" id="reportRun" type="button">Run report</button></div>
 </section>
 <section><h3>Presets</h3><div class="report-presets" id="reportPresets"></div></section>
 <section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button></div></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
@@ -697,7 +697,17 @@
 <script src="notifications-engine.js?v=0.9.14.0"></script>
 <script src="queue-engine.js?v=0.9.14.0"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.14.0"></script>
-<script src="reports-engine.js?v=0.9.14.0"></script>
+<script src="reports-engine.js?v=0.9.20.0"></script>
+<script src="analytics-engine.js?v=0.9.20.0"></script>
+<dialog class="analytics-dialog" id="analyticsDialog">
+<section class="analytics-shell">
+<header><div><h2>Research Analytics</h2><p id="analyticsSummary">0 records</p></div><button aria-label="Close" id="analyticsClose" type="button">×</button></header>
+<div class="analytics-toolbar"><label>View <select id="analyticsView"><option value="primfusion">PrimFusion matrix</option><option value="correlations">Theme correlations</option><option value="agreement">AI–Director agreement</option><option value="diagnostics">Coverage diagnostics</option></select></label><button id="analyticsRefresh" type="button">Refresh</button><button id="analyticsSaveWorkspace" type="button">Save workspace</button></div>
+<div class="analytics-workspaces" id="analyticsWorkspaces"></div>
+<section class="analytics-body" id="analyticsBody"></section>
+</section>
+</dialog>
+
 <script src="batch-engine.js?v=0.9.14.0"></script>
 <script src="ai-analysis-engine.js?v=0.9.14.0"></script>
 </body>

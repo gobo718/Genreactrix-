@@ -18,6 +18,7 @@ function aiReactionScore(r,name){const a=aiComponents(r).reactions; if(!a)return
 async function resolveScope(scope={type:'all-records'}){
  const all=records(), batches=await window.genreactrixBatchEngine?.all?.()||[];
  switch(scope.type){
+  case 'selected':{const ids=new Set(scope.imageIds||[]);return{records:all.filter(r=>ids.has(r.id)),batchIds:[]}}
   case 'session': return {records:all.filter(r=>String(r.createdAt||'')>=SESSION_STARTED),batchIds:[]};
   case 'last-submitted-images':{const n=Math.max(1,Number(scope.count)||100);return{records:[...all].filter(r=>r.workflow?.stage==='batched').sort((a,b)=>String(b.timestamps?.batchedAt||b.updatedAt).localeCompare(String(a.timestamps?.batchedAt||a.updatedAt))).slice(0,n),batchIds:[]}}
   case 'current-batch':{const b=await window.genreactrixBatchEngine?.active?.();return {records:all.filter(r=>b?.imageIds?.includes(r.id)),batchIds:b?[b.id]:[]}}

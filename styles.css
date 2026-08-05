@@ -2586,3 +2586,17 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .director-state-strip.expanded{flex-wrap:wrap;white-space:normal}
 #directorRevertDraftBtn[disabled]{opacity:.45}
 @media (max-height:599px) and (orientation:landscape){.director-state-strip span{font-size:.6rem;padding:3px 5px}}
+
+
+/* v0.9.20.0 Research Analytics */
+.analytics-dialog{width:min(96vw,1180px);max-height:94dvh;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text)}
+.analytics-shell{display:grid;grid-template-rows:auto auto auto minmax(0,1fr);max-height:92dvh;min-height:70dvh;padding:14px;gap:10px}
+.analytics-shell>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.analytics-shell h2{margin:0}.analytics-shell header p{margin:.2rem 0 0;color:var(--muted);font-size:.8rem}
+.analytics-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.analytics-toolbar label{display:grid;gap:3px}.analytics-toolbar select{min-width:220px}
+.analytics-workspaces,.analytics-chip-list{display:flex;flex-wrap:wrap;gap:6px}.analytics-workspaces button,.analytics-chip-list button{padding:5px 8px}
+.analytics-body{min-height:0;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel-2)}
+.analytics-matrix-wrap{overflow:auto}.analytics-matrix{border-collapse:separate;border-spacing:3px;min-width:max-content}.analytics-matrix th{font-size:.68rem;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.analytics-matrix td{padding:0}.analytics-matrix td button{width:38px;height:34px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) calc(var(--heat)*72%),var(--panel-2));color:var(--text);border-radius:6px}.analytics-matrix .is-na{background:transparent}.analytics-legend,.analytics-note{font-size:.75rem;color:var(--muted);margin-top:8px}
+.analytics-list{width:100%;border-collapse:collapse}.analytics-list th,.analytics-list td{text-align:left;padding:7px;border-bottom:1px solid var(--line);font-size:.78rem}.analytics-list th{position:sticky;top:0;background:var(--panel-2);z-index:1}
+.analytics-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.analytics-kpis>button,.analytics-kpis>div{display:grid;gap:3px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}.analytics-kpis strong{font-size:1.2rem;color:var(--accent)}.analytics-kpis span{font-size:.72rem;color:var(--muted)}
+@media(max-width:599px){.analytics-dialog{width:98vw}.analytics-shell{padding:9px;min-height:84dvh}.analytics-toolbar select{min-width:180px}.analytics-matrix td button{width:34px;height:31px}}

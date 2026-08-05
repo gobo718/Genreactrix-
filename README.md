@@ -1,6 +1,6 @@
-# Genreactrix v0.9.19.0
+# Genreactrix v0.9.20.0
 
-## v0.9.19.0 — Director Workspace Polish
+## v0.9.20.0 — Director Workspace Polish
 
 - Added compact Director state indicators for Unclassified, Partial, Complete, Draft, Saved, Flagged, and AI-viewed state.
 - Added a dedicated Revert Draft action in the expanded Director console.
@@ -173,3 +173,13 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Added a compact submission verification dialog showing cleanup and protection outcomes before submission.
 - Preserved automatic standard report generation, project-history writes, Saved/Flagged protection, and recycle-bin cleanup.
 - No repository folders were added, removed, renamed, or moved.
+
+## v0.9.20.0 — Research Analytics
+- Added the Research Analytics engine and console.
+- Added an interactive PrimFusion/reaction-pair matrix with report drill-down.
+- Added theme-to-reaction correlation tables.
+- Added AI–Director agreement summaries and low-agreement drill-down.
+- Added empty and underrepresented matrix-cell diagnostics.
+- Added persistent research workspaces.
+- Added selected-image scope support to the Reports Engine.
+- No repository folders were added, moved, renamed, or removed.
