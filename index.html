@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.14.0</title>
+<title>Genreactrix v0.9.15.0</title>
 <link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.14.0</span>
+<span>v0.9.15.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.14.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.15.0</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
@@ -145,6 +145,37 @@
 <button class="primary-action" id="imageUrlAddBtn" type="button">Add URLs</button>
 </div>
 </form>
+</dialog>
+<dialog class="images-console-dialog" id="imagesConsoleDialog">
+<div class="images-console">
+<header class="images-console-header"><h2>＋ Images</h2><button aria-label="Close" id="imagesConsoleClose" type="button">×</button></header>
+<nav aria-label="Images sections" class="images-console-nav">
+<button class="active" data-images-section="add" type="button">Add</button>
+<button data-images-section="review" type="button">Review</button>
+<button data-images-section="saved" type="button">Saved</button>
+<button data-images-section="flagged" type="button">Flagged</button>
+<button data-images-section="recycle" type="button">Recycle</button>
+<button data-images-section="failures" type="button">Failures</button>
+<button data-images-section="history" type="button">History</button>
+</nav>
+<div class="images-console-body">
+<section data-images-panel="add">
+<div class="images-add-actions"><button id="imagesConsoleFolder" type="button">Choose folder</button></div>
+<label>URLs or manifest text<textarea id="imagesConsoleUrls" rows="7" placeholder="One URL per line"></textarea></label>
+<div class="images-console-grid"><label>Amount<input id="imagesConsoleQuantity" type="number" min="1" step="1" value="100"></label><label>Mode<select id="imagesConsoleMode"><option value="link">Hyperlink only</option><option value="download">Temporary copies</option><option value="prefetch">Prefetch only</option></select></label></div>
+<label class="image-prefetch-option"><input id="imagesConsolePrefetch" type="checkbox" checked> Prefetch before import</label>
+<div class="images-console-actions"><button id="imagesConsolePreview" type="button">Preview</button><button class="primary-action" id="imagesConsoleImport" type="button">Import</button></div>
+<div class="images-console-summary" id="imagesConsoleSummary"></div>
+</section>
+<section data-images-panel="review" hidden><div id="imagesReviewList" class="images-record-list"></div></section>
+<section data-images-panel="saved" hidden><div id="imagesSavedList" class="images-record-list"></div></section>
+<section data-images-panel="flagged" hidden><div id="imagesFlaggedList" class="images-record-list"></div></section>
+<section data-images-panel="recycle" hidden><div class="images-console-actions"><button id="imagesRestoreSelected" type="button">Restore selected</button><button id="imagesEmptyRecycle" type="button">Empty now</button></div><div id="imagesRecycleList" class="images-record-list"></div></section>
+<section data-images-panel="failures" hidden><div id="imagesFailuresList" class="images-record-list"></div></section>
+<section data-images-panel="history" hidden><div id="imagesHistoryList" class="images-record-list"></div></section>
+</div>
+<div class="images-console-status" id="imagesConsoleStatus" role="status" aria-live="polite"></div>
+</div>
 </dialog>
 <dialog class="portrait-settings-dialog settings-console-dialog" id="portraitSettingsDialog">
 <div class="settings-console">

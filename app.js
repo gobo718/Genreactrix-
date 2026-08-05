@@ -2013,7 +2013,7 @@ document.querySelectorAll("[data-quick-slot]").forEach(button=>{
 document.querySelectorAll("[data-module-button]").forEach(button=>{
   const module=button.dataset.moduleButton;
   button.addEventListener("click",()=>{
-    if(module==="images") openImageIntakeDialog();
+    if(module==="images") window.genreactrixImagesConsole?.open?.();
     else if(module==="ai") window.genreactrixAiAnalysisEngine?.openConsole?.();
     else if(module==="batch") window.genreactrixBatchEngine?.openConsole?.();
     else if(module==="reports") window.genreactrixReportsEngine?.openConsole?.();
@@ -2028,7 +2028,7 @@ document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEv
   if(target.startsWith("batch-")||target==="saved-total"||target==="flagged-total") window.genreactrixBatchEngine?.openConsole?.();
   else if(target.startsWith("queue-")) window.genreactrixQueueEngine?.openConsole?.();
   else if(target.startsWith("reports-")) window.genreactrixReportsEngine?.openConsole?.();
-  else if(target.startsWith("images-")) openImageIntakeDialog();
+  else if(target.startsWith("images-")) { window.genreactrixImagesConsole?.open?.(); const section=target.replace("images-",""); setTimeout(()=>document.querySelector(`[data-images-section="${section}"]`)?.click(),0); }
 }));
 
 document.querySelectorAll("[data-quick-dialog='cancel']").forEach(button=>button.addEventListener("click",()=>document.getElementById("quickAssignDialog")?.close()));
