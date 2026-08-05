@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.13.0</title>
-<link href="styles.css?v=0.9.13.0" rel="stylesheet"/>
+<title>Genreactrix v0.9.14.0</title>
+<link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.13.0</span>
+<span>v0.9.14.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.13.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.14.0</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
@@ -545,6 +545,48 @@
 </div>
 </div>
 </dialog>
+
+<dialog class="batch-dialog" id="batchDialog">
+<section class="batch-dialog-shell">
+<header><h2>Batch</h2><button aria-label="Close batch" id="batchDialogClose" type="button">×</button></header>
+<div class="batch-toolbar">
+<select id="batchSelect" aria-label="Active batch"></select>
+<button id="batchCreate" type="button">New</button>
+<button id="batchRename" type="button">Rename</button>
+<button id="batchPause" type="button">Pause</button>
+<button id="batchArchive" type="button">Archive</button>
+</div>
+<div class="batch-meta" id="batchMeta"></div>
+<div class="batch-count-grid">
+<button data-batch-filter="all" type="button">Total <strong id="batchTotal">0</strong></button>
+<button data-batch-filter="ready" type="button">Ready <strong id="batchReady">0</strong></button>
+<button data-batch-filter="incomplete" type="button">Incomplete <strong id="batchIncomplete">0</strong></button>
+<button data-batch-filter="partial" type="button">Partial <strong id="batchPartial">0</strong></button>
+<button data-batch-filter="flagged" type="button">Flagged <strong id="batchFlagged">0</strong></button>
+<button data-batch-filter="saved" type="button">Saved <strong id="batchSaved">0</strong></button>
+<button data-batch-filter="inaccessible" type="button">Blocked <strong id="batchInaccessible">0</strong></button>
+<button data-batch-filter="submitted" type="button">Submitted <strong id="batchSubmitted">0</strong></button>
+</div>
+<div class="batch-actions">
+<label>Add <input id="batchAddCount" min="1" step="1" type="number" value="100"></label>
+<button id="batchAddAvailable" type="button">Add next</button>
+<button id="batchAddAll" type="button">Add all</button>
+<button id="batchRemoveSelected" type="button">Remove</button>
+<button id="batchMoveSelected" type="button">Move</button>
+<button id="batchMoveUp" type="button">↑</button>
+<button id="batchMoveDown" type="button">↓</button>
+<button id="batchShuffle" type="button">Shuffle</button>
+</div>
+<div class="batch-list-tools"><label><input id="batchSelectAll" type="checkbox"> Select visible</label><span id="batchVisibleCount">0 visible</span></div>
+<div class="batch-contents" id="batchContents"></div>
+<div class="batch-submit-actions"><button id="batchValidate" type="button">Validate</button><button class="primary" id="batchSubmit" type="button">Submit</button><button id="batchReopen" type="button">Reopen</button></div>
+<div aria-live="polite" class="batch-status" id="batchStatus"></div>
+<section><h3>Submission history</h3><div id="batchReportHistory"></div></section>
+</section>
+</dialog>
+<dialog class="batch-verify-dialog" id="batchVerifyDialog">
+<section class="batch-verify-shell"><header><h2>Submit batch</h2></header><div id="batchVerifySummary"></div><div class="batch-verify-actions"><button id="batchVerifyCancel" type="button">Cancel</button><button id="batchVerifyReview" type="button">Review incomplete</button><button class="primary" id="batchVerifyConfirm" type="button">Submit</button></div></section>
+</dialog>
 <dialog class="queue-dialog" id="queueDialog">
 <section class="queue-shell">
 <header>
@@ -588,9 +630,9 @@
 <div aria-live="polite" class="maintenance-status" id="maintenanceStatus" role="status"></div>
 </section>
 </dialog>
-<script src="maintenance-engine.js?v=0.9.13.0"></script>
-<script src="settings-engine.js?v=0.9.13.0"></script>
-<script src="app.js?v=0.9.13.0"></script>
+<script src="maintenance-engine.js?v=0.9.14.0"></script>
+<script src="settings-engine.js?v=0.9.14.0"></script>
+<script src="app.js?v=0.9.14.0"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
 <header><h2>Notifications</h2><button aria-label="Close" id="notificationsClose" type="button">×</button></header>
@@ -602,11 +644,11 @@
 <section class="notifications-list" id="notificationsList"></section>
 </div>
 </dialog>
-<script src="notifications-engine.js?v=0.9.13.0"></script>
-<script src="queue-engine.js?v=0.9.13.0"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.13.0"></script>
-<script src="reports-engine.js?v=0.9.13.0"></script>
-<script src="batch-engine.js?v=0.9.13.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.13.0"></script>
+<script src="notifications-engine.js?v=0.9.14.0"></script>
+<script src="queue-engine.js?v=0.9.14.0"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.14.0"></script>
+<script src="reports-engine.js?v=0.9.14.0"></script>
+<script src="batch-engine.js?v=0.9.14.0"></script>
+<script src="ai-analysis-engine.js?v=0.9.14.0"></script>
 </body>
 </html>
