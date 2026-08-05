@@ -2788,3 +2788,56 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .interlocked-spacer{background:transparent;border-color:transparent;pointer-events:none}
   .interlocked-cell:focus-visible,.interlocked-axis button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 }
+
+/* v0.9.39.3 — full-footprint canonical Landscape matrix geometry.
+   The matrix keeps the established 13-row × 7-column instrument shape,
+   uses the full available workspace, and does not pre-abbreviate labels. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-canvas{padding:.35%;grid-template-rows:10.5% minmax(0,1fr);gap:.35%}
+  .landscape-frame{grid-template-columns:25.5% minmax(0,1fr);gap:.45%}
+  .landscape-image-region{grid-template-rows:minmax(0,1fr) 20%;gap:.55%}
+  .landscape-workspace{border-radius:.5em}
+  .landscape-workspace-face{padding:.35%}
+  .landscape-matrix-face{padding:.35%!important;place-items:center!important}
+  .landscape-matrix-face .tablet-workbench-matrix{
+    width:100%!important;
+    height:100%!important;
+    display:grid!important;
+    place-items:center!important;
+    overflow:hidden!important;
+  }
+  .interlocked-matrix-shell{
+    width:100%!important;
+    height:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    grid-template-rows:6.2% minmax(0,1fr) 6.2%!important;
+    gap:.2%!important;
+  }
+  .interlocked-matrix-body{
+    grid-template-columns:3.7% minmax(0,1fr) 3.7%!important;
+    gap:.2%!important;
+  }
+  .interlocked-axis{gap:.2%!important}
+  .interlocked-axis-top,.interlocked-axis-bottom{padding-inline:3.9%!important}
+  .interlocked-matrix-grid{gap:.2%!important}
+  .interlocked-axis button{
+    border-radius:.1em!important;
+    font-size:min(1.34vw,2.9vh)!important;
+  }
+  .interlocked-cell{
+    padding:0 .12em!important;
+    border-radius:.08em!important;
+    font-size:min(.91vw,2.02vh)!important;
+    font-weight:750!important;
+    letter-spacing:-.015em;
+    overflow:hidden!important;
+    text-overflow:clip!important;
+    white-space:nowrap!important;
+  }
+  .interlocked-diagonal{font-size:min(1.35vw,2.95vh)!important}
+  .landscape-flip-button{
+    right:.45%;top:.45%;width:5.4%;
+    font-size:min(1.55vw,3.4vh);
+  }
+}
