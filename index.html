@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.32.0</title>
+<title>Genreactrix v0.9.38.0</title>
 <link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.32.0</span>
+<span>v0.9.38.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.32.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.38.0</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -753,7 +753,7 @@
 
 <dialog class="research-dashboard-dialog" id="researchDashboardDialog">
 <section class="research-dashboard-shell">
-<header><div><h2>Research Dashboard</h2><p id="researchDashboardStatus">Loading…</p></div><div><button id="openKnowledgeBase" type="button">Knowledge Base</button><button id="openTerminologyMethodology" type="button">Terminology & Methodology</button><button id="openCitationEvidence" type="button">Citations & Evidence</button><button id="researchDashboardRefresh" type="button">Refresh</button><button id="researchDashboardClose" type="button" aria-label="Close">×</button></div></header>
+<header><div><h2>Research Dashboard</h2><p id="researchDashboardStatus">Loading…</p></div><div><button id="openKnowledgeBase" type="button">Knowledge Base</button><button id="openTerminologyMethodology" type="button">Terminology & Methodology</button><button id="openCitationEvidence" type="button">Citations & Evidence</button><button id="openDatasetVersioning" type="button">Datasets & Reproducibility</button><button id="openPaperComposer" type="button">Research Paper</button><button id="openCommunityInput" type="button">Community Input</button><button id="openConsensus" type="button">Consensus</button><button id="openAiTrainingComparison" type="button">AI Training Comparison</button><button id="openPublicResearch" type="button">Public Research</button><button id="researchDashboardRefresh" type="button">Refresh</button><button id="researchDashboardClose" type="button" aria-label="Close">×</button></div></header>
 <div class="research-dashboard-grid" id="researchDashboardGrid"></div>
 <section><h3>Live progress</h3><div class="research-dashboard-progress" id="researchDashboardProgress"></div></section>
 <div class="research-dashboard-columns"><section><h3>Priority queue</h3><div class="research-dashboard-priorities" id="researchDashboardPriorities"></div></section><section><h3>Research goals</h3><div class="dashboard-goal-form"><input id="dashboardGoalName" placeholder="Goal name"><select id="dashboardGoalMetric"><option value="directorComplete">Director complete</option><option value="images">Images</option><option value="saved">Saved</option><option value="reports">Reports</option></select><input id="dashboardGoalTarget" type="number" min="1" value="100"><button id="researchDashboardAddGoal" type="button">Add</button></div><div id="researchDashboardGoals"></div></section></div>
@@ -829,5 +829,68 @@
 </section></dialog>
 <script src="citation-evidence-engine.js?v=0.9.32.0"></script>
 <script src="citation-evidence-ui.js?v=0.9.32.0"></script>
+
+<dialog class="knowledge-base-dialog" id="datasetVersionDialog">
+<section class="knowledge-base-shell dataset-version-shell">
+<header><div><h2>Dataset Versioning & Reproducible Research</h2><p id="datasetVersionStatus">Freeze exact research populations and export reproducible packages.</p></div><button id="datasetVersionClose" type="button" aria-label="Close">×</button></header>
+<nav class="knowledge-tabs"><button type="button" data-dv-view="datasets" class="active">Datasets</button><button type="button" data-dv-view="snapshots">Snapshots</button><button type="button" data-dv-view="packages">Packages</button></nav>
+<section class="knowledge-compose"><input id="datasetName" placeholder="Dataset name"><select id="datasetScope"><option value="all-records">All records</option><option value="submitted">Submitted</option><option value="saved">Saved</option><option value="flagged">Flagged</option></select><textarea id="datasetDescription" placeholder="Purpose and inclusion rules"></textarea><button id="datasetCreate" type="button">Create dataset</button></section>
+<section id="datasetVersionBody"></section>
+</section></dialog>
+<script src="dataset-version-engine.js?v=0.9.33.0"></script>
+<script src="dataset-version-ui.js?v=0.9.33.0"></script>
+
+<dialog class="knowledge-base-dialog" id="paperComposerDialog">
+<section class="knowledge-base-shell paper-composer-shell">
+<header><div><h2>Research Paper Composer & Final Publication</h2><p id="paperComposerStatus">Compose, validate, and export a reproducible research paper.</p></div><button id="paperComposerClose" type="button" aria-label="Close">×</button></header>
+<section class="paper-create"><input id="paperNewTitle" placeholder="Paper title"><input id="paperNewAuthors" placeholder="Authors"><button id="paperCreate" type="button">Create from canonical research</button></section>
+<div class="paper-composer-grid"><aside id="paperComposerList"></aside><main><section id="paperValidationResults"></section><section id="paperComposerBody"></section></main></div>
+</section></dialog>
+<script src="paper-composer-engine.js?v=0.9.34.0"></script>
+<script src="publication-validator-engine.js?v=0.9.34.0"></script>
+<script src="paper-composer-ui.js?v=0.9.34.0"></script>
+
+<dialog class="knowledge-base-dialog" id="communityInputDialog">
+<section class="knowledge-base-shell community-input-shell">
+<header><div><h2>Community Input Interface</h2><p id="communityInputStatus">Future MASHPEDITION vote socket.</p></div><button id="communityInputClose" type="button" aria-label="Close">×</button></header>
+<section class="knowledge-compose"><input id="communitySourceName" placeholder="Source name"><input id="communitySourceBatch" placeholder="Source batch ID"><input id="communityGameVersion" placeholder="MASHPEDITION version"><input id="communityDatasetVersion" placeholder="Dataset version"><select id="communityInputFormat"><option value="auto">Auto-detect</option><option value="json">JSON</option><option value="csv">CSV</option></select><textarea id="communityInputText" placeholder='JSON array or CSV with imageId,voteType,value'></textarea><div><button id="communityInputPreviewBtn" type="button">Preview</button><button id="communityInputImportBtn" type="button">Import votes</button></div></section>
+<section id="communityInputPreview" class="community-input-preview"></section>
+<section><h3>Import history</h3><div id="communityInputHistory" class="community-input-history"></div></section>
+</section></dialog>
+<script src="community-input-engine.js?v=0.9.35.0"></script>
+<script src="community-input-ui.js?v=0.9.35.0"></script>
+
+<dialog class="knowledge-base-dialog" id="consensusDialog">
+<section class="knowledge-base-shell consensus-shell">
+<header><div><h2>Consensus Engine</h2><p id="consensusStatus">Convert imported community votes into confidence, controversy, and Director-comparison records.</p></div><button id="consensusClose" type="button" aria-label="Close">×</button></header>
+<div class="knowledge-toolbar"><button id="consensusCalculate" type="button">Calculate consensus</button><select id="consensusVoteType"><option value="">All vote types</option><option value="reaction">Reactions</option><option value="theme">Themes</option><option value="primfusion">PrimFusion</option></select><select id="consensusAgreement"><option value="">All Director comparisons</option><option value="agree">Director agrees</option><option value="disagree">Director differs</option></select><label><input id="consensusControversialOnly" type="checkbox"> Controversial only</label></div>
+<section id="consensusBody" class="consensus-body"></section>
+</section></dialog>
+<script src="consensus-engine.js?v=0.9.36.0"></script>
+<script src="consensus-ui.js?v=0.9.36.0"></script>
+
+<dialog class="knowledge-base-dialog" id="aiTrainingDialog">
+<section class="knowledge-base-shell ai-training-shell">
+<header><div><h2>AI Training Comparison</h2><p id="aiTrainingStatus">Compare AI models and prompt versions against Director or community consensus benchmarks.</p></div><button id="aiTrainingClose" type="button" aria-label="Close">×</button></header>
+<div class="ai-training-grid">
+<section class="ai-training-setup">
+<h3>Create benchmark</h3><input id="aiTrainingBenchmarkName" placeholder="Benchmark name"><textarea id="aiTrainingBenchmarkDescription" placeholder="Purpose and inclusion rules"></textarea><select id="aiTrainingBenchmarkScope"><option value="all">All images</option><option value="current-batch">Current batch</option><option value="saved">Saved images</option><option value="flagged">Flagged images</option></select><input id="aiTrainingBenchmarkLimit" type="number" min="0" value="100" placeholder="0 = all"><select id="aiTrainingGroundTruth"><option value="director">Director ground truth</option><option value="consensus">Community consensus ground truth</option></select><div class="ai-training-components"><label><input data-training-component type="checkbox" value="reactions" checked> Reactions</label><label><input data-training-component type="checkbox" value="themes" checked> Themes</label><label><input data-training-component type="checkbox" value="primfusion" checked> PrimFusion</label></div><button id="aiTrainingCreateBenchmark" type="button">Create benchmark</button>
+<h3>Run comparison</h3><input id="aiTrainingRunName" placeholder="Comparison run name"><select id="aiTrainingBenchmark"></select><div id="aiTrainingCandidates" class="ai-training-candidates"></div><textarea id="aiTrainingRunNotes" placeholder="Run notes"></textarea><button id="aiTrainingRun" type="button">Run comparison</button>
+</section>
+<aside id="aiTrainingRunList" class="ai-training-run-list"></aside><main id="aiTrainingRunBody" class="ai-training-run-body"></main>
+</div></section></dialog>
+<script src="ai-training-comparison-engine.js?v=0.9.37.0"></script>
+<script src="ai-training-comparison-ui.js?v=0.9.37.0"></script>
+
+<dialog class="knowledge-base-dialog" id="publicResearchDialog">
+<section class="knowledge-base-shell public-research-shell">
+<header><div><h2>Public Research</h2><p id="publicResearchStatus">Build audience-safe public research snapshots.</p></div><div><button id="publicResearchRefresh" type="button">Refresh</button><button id="publicResearchClose" type="button" aria-label="Close">×</button></div></header>
+<div class="public-research-grid">
+<section class="public-research-compose"><h3>Create public snapshot</h3><input id="publicResearchTitle" value="Genreactrix Public Research" placeholder="Public title"><input id="publicResearchSubtitle" value="Evidence-backed research from Genreactrix" placeholder="Subtitle"><textarea id="publicResearchDescription" placeholder="Public description"></textarea><div class="public-research-includes"><label><input id="publicIncludeKnowledge" type="checkbox" checked> Published knowledge</label><label><input id="publicIncludeMethodology" type="checkbox" checked> Methodology</label><label><input id="publicIncludeConsensus" type="checkbox" checked> Community consensus</label><label><input id="publicIncludeAi" type="checkbox" checked> AI comparisons</label><label><input id="publicIncludeDatasets" type="checkbox" checked> Dataset manifests</label></div><button id="publicResearchCreate" type="button">Create snapshot</button><h3>Snapshots</h3><div id="publicResearchList" class="public-research-list"></div></section>
+<main><section id="publicResearchBody"></section><section><h3>Public research feed</h3><div id="publicResearchFeed" class="public-research-feed"></div></section></main>
+</div></section></dialog>
+<script src="public-research-engine.js?v=0.9.38.0"></script>
+<script src="public-research-ui.js?v=0.9.38.0"></script>
+
 </body>
 </html>

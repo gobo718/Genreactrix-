@@ -1,6 +1,25 @@
-# Genreactrix v0.9.32.0
+# Genreactrix v0.9.34.0
 
-## v0.9.32.0 — Citation & Evidence Graph
+## v0.9.34.0 — Research Paper Composer & Final Publication
+
+- Added `paper-composer-engine.js` with persistent draft/final paper records, generated canonical sections, section editing, revision history, and JSON/Markdown/HTML export.
+- Added `publication-validator-engine.js` to block finalization when required sections, citations, methodology, knowledge references, or frozen dataset snapshots are missing.
+- Added `paper-composer-ui.js` and a shallow Research Paper workspace reachable from the Research Dashboard.
+- Papers capture the selected knowledge entries, citations, methodology versions, and exact dataset snapshot used.
+- Finalized papers retain validation results and remain reproducible from canonical project data.
+- Repository structure unchanged; ZIP remains flat.
+
+## v0.9.33.0 — Dataset Versioning & Reproducible Research
+
+- Versioned dataset definitions with stable IDs and inclusion scopes.
+- Frozen snapshots with record counts, schema versions, image IDs, and content hashes.
+- Reproducible research packages containing canonical records plus optional History, Reports, and Batch context.
+- Captured terminology, methodology, and citation graph versions for research provenance.
+- Snapshot and package integrity verification.
+- JSON export for frozen snapshots and reproducible packages.
+- Added Datasets & Reproducibility entry to the Research Dashboard.
+- Repository structure unchanged; ZIP remains flat.
+
 
 - Added `citation-evidence-engine.js` with persistent versioned citations, typed evidence relationships, evidence bundles, duplicate-source prevention, revision history, graph queries, integrity checks, and JSON/CSV export.
 - Added `citation-evidence-ui.js` and a shallow Citation & Evidence workspace accessible from the Research Dashboard.
@@ -293,3 +312,42 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Added JSON, Markdown, and printable HTML exports.
 - Published entries retain traceable image, report, finding, analytics, sample-size, confidence, and contradictory-evidence references.
 - Repository structure remains unchanged and the release archive stays flat at root.
+
+## v0.9.35.0 — Community Input Interface
+- Added a stable Community Input Contract for future MASHPEDITION integration.
+- Added JSON, CSV, and manual test-data import for reaction, theme, and PrimFusion votes.
+- Added persistent import batches, source/game/dataset provenance, validation, image mapping warnings, replay, history, statistics, and integrity checks.
+- Community data remains separate from canonical Director classifications and is ready for the Consensus Engine.
+- No repository folders were added, removed, renamed, or moved.
+
+## v0.9.36.0 — Consensus Engine
+- Added `consensus-engine.js` and `consensus-ui.js` at repository root.
+- Converts imported community reaction, theme, and PrimFusion votes into persistent consensus records.
+- Calculates normalized option shares, unique participation, weighted sample size, confidence, margin, entropy-derived controversy, and stability against prior calculations.
+- Compares community consensus with canonical Director classifications without overwriting either dataset.
+- Adds filters for vote type, Director agreement, and controversial records, with image-level drill-down.
+- Stores append-only consensus calculation runs and supports source-batch analytics, integrity verification, and future AI Training Comparison consumption.
+- No repository folders were added, removed, renamed, or moved.
+
+
+## v0.9.37.0 — AI Training Comparison
+- Added `ai-training-comparison-engine.js` and `ai-training-comparison-ui.js` at repository root.
+- Creates reusable benchmark sets from all, current-batch, Saved, or Flagged images.
+- Supports Director classifications or imported community consensus as independent ground truth.
+- Compares canonical AI models and Prompt Laboratory candidates without overwriting canonical AI data.
+- Calculates exact agreement, Jaccard similarity, attempted coverage, missing outputs, failures, and average runtime by candidate and component.
+- Provides side-by-side candidate metrics and image-level drill-down for the lowest-agreement results.
+- Stores persistent comparison-run history and benchmark definitions for longitudinal model and prompt performance analysis.
+- Adds a benchmark reanalysis handoff to the canonical AI Analysis Engine.
+- Adds integrity checks for missing benchmark images, orphaned comparison runs, and malformed stored results.
+- No repository folders were added, removed, renamed, or moved.
+
+## v0.9.38.0 — Public Research
+- Added `public-research-engine.js` and `public-research-ui.js` at repository root.
+- Builds persistent audience-safe public snapshots from published Knowledge Base entries, approved methodology, community consensus, AI Training Comparison results, and dataset manifests.
+- Public snapshots intentionally exclude raw community votes, local paths, private notes, and raw Image IDs.
+- Added snapshot Draft, Published, and Archived lifecycle, validation, public update feed, and archive history.
+- Added static printable HTML, JSON, and a self-contained public-bundle manifest export.
+- Added public consensus summaries, Director-agreement rates, votes represented, and AI candidate comparison summaries without altering canonical research records.
+- Added Public Research to the Research Dashboard.
+- No repository folders were added, removed, renamed, or moved.
