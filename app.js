@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.12.1";
+const GENREACTRIX_BUILD="v0.9.13.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -562,38 +562,71 @@ function renderTabletWorkbench(){
 
 
 function portraitRecordValues(){
-  return Object.values(state.records || {});
+  return window.genreactrixImageRecordEngine?.all?.() || Object.values(state.records || {});
+}
+let portraitRefreshPending=false;
+async function refreshPortraitControlStation(){
+  if(portraitRefreshPending) return;
+  portraitRefreshPending=true;
+  try{
+    const records=portraitRecordValues();
+    const imageEngine=window.genreactrixImagesEngine?.snapshot?.() || {available:0,temporary:0,linked:0,saved:0,flagged:0,recycle:0};
+    const [batchSnapshot,aiSnapshot,reports] = await Promise.all([
+      window.genreactrixBatchEngine?.snapshot?.().catch(()=>null) || null,
+      window.genreactrixAiAnalysisEngine?.snapshot?.().catch(()=>null) || null,
+      window.genreactrixReportsEngine?.all?.().catch(()=>[]) || []
+    ]);
+    const queueSnapshot=window.genreactrixQueueEngine?.snapshot?.() || {summary:{}};
+    const q=queueSnapshot.summary||{};
+    const b=batchSnapshot || window.genreactrixBatchEngine?.snapshotCached || {activeBatch:null,counts:{total:0,ready:0,remaining:0,saved:0,flagged:0}};
+    const a=aiSnapshot || window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {ready:0,pending:0,bufferTarget:25,items:[]};
+    const savedTotal=records.filter(r=>r?.attributes?.saved || r?.saved).length;
+    const flaggedTotal=records.filter(r=>r?.attributes?.flagged || r?.flagged).length;
+    const set=(id,value)=>{const el=$(id);if(el)el.textContent=String(value ?? 0)};
+    set('portraitBatchName',b.activeBatch?.name||'No active batch');
+    set('portraitBatchTotal',b.counts?.total||0);
+    set('portraitReadyBatchCount',b.counts?.ready||0);
+    set('portraitBatchRemaining',b.counts?.remaining||0);
+    set('portraitSavedTotal',savedTotal);
+    set('portraitFlaggedTotal',flaggedTotal);
+    set('portraitSavedCurrent',b.counts?.saved||0);
+    set('portraitFlaggedCurrent',b.counts?.flagged||0);
+    set('portraitAvailableCount',imageEngine.available||0);
+    set('portraitTempImageCount',imageEngine.temporary||0);
+    set('portraitLinkedImageCount',imageEngine.linked||0);
+    set('portraitReferenceImageCount',imageEngine.saved||0);
+    set('portraitEngineFlaggedCount',imageEngine.flagged||0);
+    set('portraitRecycleImageCount',imageEngine.recycle||0);
+    set('portraitAiReadyCount',a.ready||0);
+    set('portraitAiPendingCount',a.pending||0);
+    set('portraitAiBufferTarget',a.bufferTarget||0);
+    set('portraitAiFailedCount',(a.items||[]).filter(item=>item.state==='failed').length);
+    set('portraitQueueRunningCount',q.running||0);
+    set('portraitQueuedCount',q.queued||0);
+    set('portraitQueueFailedCount',(q.failed||0)+(q.blocked||0));
+    set('portraitQueueDirectorCount',q.directorRemaining ?? b.counts?.remaining ?? 0);
+    set('portraitQueueReadyCount',q.readyToBatch ?? b.counts?.ready ?? 0);
+    const sorted=[...(reports||[])].sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
+    const lastAuto=sorted.find(r=>r.automatic);
+    const lastCustom=sorted.find(r=>!r.automatic);
+    set('portraitLastReport',lastAuto?.title||'None');
+    set('portraitLastCustomReport',lastCustom?.title||'None');
+    set('portraitReportCount',sorted.length);
+    set('portraitReportFailedCount',q.reportsPending ? 0 : (queueSnapshot.jobs||[]).filter(j=>j.type==='report'&&['failed','completed-with-failures'].includes(j.state)).length);
+  } finally { portraitRefreshPending=false; }
 }
 function renderPortraitControlStation(){
-  const station=$("portraitControlStation");
-  if(!station) return;
-  const total=state.files.length;
-  const position=total?Math.min(state.index+1,total):0;
-  const records=portraitRecordValues();
-  const flagged=records.filter(record=>record?.flagged).length + (state.flagged && !state.records[currentKey()] ? 1 : 0);
-  const saved=records.filter(record=>record?.saved).length;
-  const analyzed=state.files.filter(file=>Boolean(state.aiRuns?.[file.id || file.name]?.length)).length;
-  const aiQueue=window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {pending:0,available:Math.max(0,total-analyzed),bufferTarget:25};
-  const sharedQueue=window.genreactrixQueueEngine?.snapshot?.()?.summary || {queued:aiQueue.pending};
-  $("portraitQueuedCount").textContent=String(sharedQueue.queued ?? aiQueue.pending);
-  $("portraitAvailableCount").textContent=String(aiQueue.available);
-  $("portraitReadyBatchCount").textContent=String(records.length);
-  $("portraitSavedTotal").textContent=String(saved);
-  $("portraitFlaggedTotal").textContent=String(flagged);
-  $("portraitSavedCurrent").textContent=String(saved);
-  $("portraitFlaggedCurrent").textContent=String(flagged);
-  $("portraitAiReadyCount").textContent=String(analyzed);
-  if($("portraitAiPendingCount")) $("portraitAiPendingCount").textContent=String(aiQueue.pending);
-  if($("portraitAiBufferTarget")) $("portraitAiBufferTarget").textContent=String(aiQueue.bufferTarget);
-  const imageEngine=window.genreactrixImagesEngine?.snapshot?.() || {temporary:0,linked:0,saved:0,flagged:0};
-  if($("portraitTempImageCount")) $("portraitTempImageCount").textContent=String(imageEngine.temporary);
-  if($("portraitLinkedImageCount")) $("portraitLinkedImageCount").textContent=String(imageEngine.linked);
-  if($("portraitReferenceImageCount")) $("portraitReferenceImageCount").textContent=String(imageEngine.saved);
-  if($("portraitEngineFlaggedCount")) $("portraitEngineFlaggedCount").textContent=String(imageEngine.flagged);
+  if(!$('portraitControlStation')) return;
+  refreshPortraitControlStation().catch(console.warn);
 }
+let portraitStatusTimer=null;
 function setPortraitStationStatus(message){
-  const status=$("portraitStationStatus");
-  if(status) status.textContent=message;
+  const status=$('portraitStationStatus');
+  if(!status) return;
+  status.textContent=message||'';
+  status.hidden=!message;
+  clearTimeout(portraitStatusTimer);
+  if(message) portraitStatusTimer=setTimeout(()=>{status.textContent='';status.hidden=true},4200);
 }
 
 function renderAll(){
@@ -1990,7 +2023,13 @@ document.querySelectorAll("[data-module-button]").forEach(button=>{
   bindLongPress(button,()=>openModuleQuickManager(module));
 });
 document.getElementById("portraitMailboxBtn")?.addEventListener("click",()=>window.genreactrixNotificationsEngine?.openConsole?.());
-document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEventListener("click",()=>setPortraitStationStatus(`Open ${button.dataset.portraitStatus.replaceAll("-"," ")}.`)));
+document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEventListener("click",()=>{
+  const target=button.dataset.portraitStatus||"";
+  if(target.startsWith("batch-")||target==="saved-total"||target==="flagged-total") window.genreactrixBatchEngine?.openConsole?.();
+  else if(target.startsWith("queue-")) window.genreactrixQueueEngine?.openConsole?.();
+  else if(target.startsWith("reports-")) window.genreactrixReportsEngine?.openConsole?.();
+  else if(target.startsWith("images-")) openImageIntakeDialog();
+}));
 
 document.querySelectorAll("[data-quick-dialog='cancel']").forEach(button=>button.addEventListener("click",()=>document.getElementById("quickAssignDialog")?.close()));
 document.querySelector("[data-quick-dialog='review']")?.addEventListener("click",showQuickReview);
@@ -2005,6 +2044,9 @@ document.querySelector("[data-quick-dialog='save']")?.addEventListener("click",(
   setPortraitStationStatus(`${candidate.label} assigned to ${candidate.module} Quick ${candidate.slot}.`);
 });
 
+
+["genreactrix:image-record","genreactrix:batch","genreactrix:queue","genreactrix:report","genreactrix:notification","genreactrix:settings"].forEach(type=>window.addEventListener(type,()=>refreshPortraitControlStation().catch(console.warn)));
+window.addEventListener("orientationchange",()=>setTimeout(()=>refreshPortraitControlStation().catch(console.warn),120));
 
 function parseImageIntakeUrls(){ return document.getElementById("imageUrlList")?.value || ""; }
 function openImageIntakeDialog({quantity=null}={}){
