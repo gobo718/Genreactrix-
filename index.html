@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.15.0</title>
+<title>Genreactrix v0.9.16.0</title>
 <link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.15.0</span>
+<span>v0.9.16.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.15.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.16.0</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
@@ -72,8 +72,8 @@
 </div>
 <button class="portrait-module-button" data-module-button="batch" id="portraitBatchMenuBtn" type="button">Batch</button>
 </div>
-<div class="portrait-batch-name" id="portraitBatchName">New Batch</div>
-<div class="portrait-batch-progress"><button data-portrait-status="batch-total" type="button">Total <strong id="portraitBatchTotal">0</strong></button><button data-portrait-status="batch-ready" type="button">Ready <strong id="portraitReadyBatchCount">0</strong></button><button data-portrait-status="batch-remaining" type="button">Remaining <strong id="portraitBatchRemaining">0</strong></button></div>
+<div class="portrait-batch-summary-row"><div class="portrait-batch-name" id="portraitBatchName">New Batch</div><button data-portrait-status="batch-total" type="button">Total <strong id="portraitBatchTotal">0</strong></button></div>
+<div class="portrait-batch-progress"><button data-portrait-status="batch-remaining" type="button">Remaining <strong id="portraitBatchRemaining">0</strong></button><button data-portrait-status="batch-ready" type="button">Ready <strong id="portraitReadyBatchCount">0</strong></button></div>
 <div aria-label="Batch and queue status" class="portrait-metric-grid"><button data-portrait-status="saved-total" type="button"><span>Saved</span><strong><span id="portraitSavedTotal">0</span> <small>(+<span id="portraitSavedCurrent">0</span>)</small></strong></button><button data-portrait-status="flagged-total" type="button"><span>Flagged</span><strong><span id="portraitFlaggedTotal">0</span> <small>(+<span id="portraitFlaggedCurrent">0</span>)</small></strong></button></div>
 </section><section aria-label="AI" class="portrait-panel portrait-ai-panel" data-quick-module="ai">
 <div class="portrait-module-row">
@@ -104,7 +104,7 @@
 </div>
 <button class="portrait-module-button" data-module-button="queue" id="portraitQueueMenuBtn" type="button">Queue</button>
 </div>
-<div class="portrait-queue-status"><button data-portrait-status="queue-running" type="button">Running <strong id="portraitQueueRunningCount">0</strong></button><button data-portrait-status="queue-queued" type="button">Queued <strong id="portraitQueuedCount">0</strong></button><button data-portrait-status="queue-failed" type="button">Failed <strong id="portraitQueueFailedCount">0</strong></button><button data-portrait-status="queue-director" type="button">Director <strong id="portraitQueueDirectorCount">0</strong></button><button data-portrait-status="queue-ready" type="button">Ready <strong id="portraitQueueReadyCount">0</strong></button></div></section><section aria-label="Reports" class="portrait-panel portrait-reports-panel" data-quick-module="reports">
+<div class="portrait-queue-status"><button data-portrait-status="queue-running" type="button">Running <strong id="portraitQueueRunningCount">0</strong></button><button data-portrait-status="queue-queued" type="button">Queued <strong id="portraitQueuedCount">0</strong></button><button data-portrait-status="queue-failed" type="button">Failed <strong id="portraitQueueFailedCount">0</strong></button><button data-portrait-status="queue-ready" type="button">To batch <strong id="portraitQueueReadyCount">0</strong></button></div></section><section aria-label="Reports" class="portrait-panel portrait-reports-panel" data-quick-module="reports">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="reports">
 <button class="portrait-quick-action" data-quick-slot="reports:1" id="portraitReportsQuick1" type="button"></button>
@@ -249,27 +249,44 @@
 <div class="image-intake-header"><h2>AI</h2><button aria-label="Close" id="aiAnalysisClose" type="button">×</button></div>
 <div class="ai-job-summary" id="aiJobSummary">No AI job selected.</div>
 <section class="ai-console-section">
-<h3>Components</h3>
+<h3>Run</h3>
 <div class="ai-component-grid" id="aiComponentGrid"></div>
-</section>
-<section class="ai-console-section ai-console-grid">
-<label>Target<select id="aiTarget"><option value="current">Current import</option><option value="flagged">Flagged</option><option value="saved">Saved</option><option value="failed">Failed</option><option value="all">All records</option></select></label>
+<div class="ai-console-grid">
+<label>Target<select id="aiTarget"><option value="current">Active batch</option><option value="flagged">Flagged</option><option value="saved">Saved</option><option value="failed">Failed</option><option value="all">All records</option></select></label>
 <label>Quantity<input id="aiQuantity" min="1" step="1" type="number" value="100"/></label>
 <label>Selection<select id="aiQuantityMode"><option value="next">Next #</option><option value="all">All matching</option><option value="random">Random #</option></select></label>
 <label>Order<select id="aiOrder"><option value="queue">Queue order</option><option value="oldest">Oldest imported</option><option value="newest">Newest imported</option><option value="random">Random</option></select></label>
+</div>
+<div class="ai-preflight" id="aiPreflight">Choose components and a population.</div>
+<button class="primary-action" id="aiStartJob" type="button">Start analysis</button>
+</section>
+<section class="ai-console-section">
+<h3>Automatic look-ahead</h3>
+<div class="ai-console-grid">
+<label class="ai-inline-check"><input id="aiAutoEnabled" type="checkbox"/> Enabled</label>
+<label>Buffer target<input id="aiAutoBuffer" min="0" step="1" type="number"/></label>
+<label>Refill threshold<input id="aiAutoRefill" min="0" step="1" type="number"/></label>
+<label>Priority<select id="aiAutoPriority"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select></label>
+</div>
+<div class="ai-provider-row"><button id="aiSaveAutomatic" type="button">Save automatic settings</button><span id="aiAutomaticStatus"></span></div>
 </section>
 <section class="ai-console-section">
 <h3>Provider</h3>
 <label>Worker URL<input id="aiWorkerUrl" placeholder="https://your-worker.workers.dev" type="url"/></label>
 <label>Analysis key<input autocomplete="off" id="aiAnalysisKey" type="password"/></label>
-<div class="ai-provider-row"><button id="aiSaveProvider" type="button">Save</button><button id="aiHealthCheck" type="button">Check</button><span id="aiProviderStatus">Not configured</span></div>
+<div class="ai-console-grid"><label>Model<input id="aiModelName" placeholder="Configured by Worker" type="text"/></label><label>Prompt set<input id="aiPromptVersion" placeholder="genreactrix-v1" type="text"/></label></div>
+<div class="ai-provider-row"><button id="aiSaveProvider" type="button">Save</button><button id="aiHealthCheck" type="button">Test connection</button><span id="aiProviderStatus">Not configured</span></div>
 </section>
 <section class="ai-console-section">
-<h3>Queue</h3>
+<h3>Jobs</h3>
 <div class="ai-job-counts"><span>Queued <strong id="aiDialogQueued">0</strong></span><span>Running <strong id="aiDialogRunning">0</strong></span><span>Done <strong id="aiDialogDone">0</strong></span><span>Failed <strong id="aiDialogFailed">0</strong></span></div>
 <progress id="aiJobProgress" max="100" value="0"></progress>
-<div class="ai-job-controls"><button class="primary-action" id="aiStartJob" type="button">Start</button><button id="aiPauseJob" type="button">Pause</button><button id="aiResumeJob" type="button">Resume</button><button id="aiStopJob" type="button">Stop</button><button id="aiRetryFailed" type="button">Retry failed</button></div>
+<div class="ai-job-controls"><button id="aiPauseJob" type="button">Pause</button><button id="aiResumeJob" type="button">Resume</button><button id="aiStopJob" type="button">Stop</button><button id="aiRetryFailed" type="button">Retry failed</button></div>
 <div class="ai-job-list" id="aiJobList"></div>
+</section>
+<section class="ai-console-section">
+<h3>Selected job</h3>
+<div class="ai-job-detail" id="aiJobDetail">Select a job to inspect its target, components, failures, provider and prompt versions.</div>
 </section>
 </form>
 </dialog>

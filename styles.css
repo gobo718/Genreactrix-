@@ -2498,3 +2498,38 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 .batch-meta{font-size:.78rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}.batch-count-grid button{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);color:var(--text);text-align:left}.batch-count-grid button.active{outline:2px solid var(--accent)}.batch-list-tools{display:flex;justify-content:space-between;align-items:center;font-size:.75rem;color:var(--muted)}.batch-image-row{position:relative}.batch-image-row .batch-order{min-width:2.3em;color:var(--muted);font-variant-numeric:tabular-nums}.batch-image-row .batch-tags{display:flex;gap:4px;flex-wrap:wrap}.batch-tag{font-size:.65rem;padding:1px 5px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}.batch-image-row.hidden{display:none}.batch-submit-actions{display:flex;gap:8px;justify-content:flex-end}.batch-verify-dialog{width:min(92vw,520px);border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);padding:0}.batch-verify-dialog::backdrop{background:#09070db8;backdrop-filter:blur(4px)}.batch-verify-shell{padding:16px;display:grid;gap:14px}.batch-verify-summary{display:grid;grid-template-columns:1fr auto;gap:7px 12px}.batch-verify-summary strong{text-align:right}.batch-verify-warning{padding:10px;border:1px solid var(--danger,#a84);border-radius:10px}.batch-verify-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .images-console-dialog{width:min(94vw,760px);max-height:92vh;padding:0;border:1px solid rgba(190,160,255,.25);border-radius:24px;background:#17131f;color:#f5efff}.images-console-dialog::backdrop{background:rgba(5,3,10,.72)}.images-console{display:flex;flex-direction:column;max-height:92vh}.images-console-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px}.images-console-header h2{margin:0}.images-console-header button{font-size:30px}.images-console-nav{display:flex;gap:6px;overflow-x:auto;padding:0 16px 12px}.images-console-nav button{white-space:nowrap}.images-console-nav button.active{background:#6d45a8;color:white}.images-console-body{overflow:auto;padding:0 18px 18px}.images-console-body section{display:grid;gap:12px}.images-console-body textarea,.images-console-body input,.images-console-body select{width:100%;box-sizing:border-box}.images-console-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.images-console-actions,.images-add-actions{display:flex;gap:10px;flex-wrap:wrap}.images-console-summary,.images-console-status{padding:10px 18px;color:#cbbdde}.images-record-list{display:grid;gap:8px}.images-record-row{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(190,160,255,.18);border-radius:12px;background:rgba(255,255,255,.03)}.images-record-row span{display:grid;min-width:0}.images-record-row small{color:#a99bb8;word-break:break-all}.images-empty{color:#a99bb8}
+
+/* v0.9.16.0 — one-page portrait compression and complete AI console */
+@media (max-width:599px) and (orientation:portrait){
+  #app.app-shell{padding:5px}
+  .portrait-control-station{gap:5px}
+  .portrait-station-header{min-height:42px;padding:5px 7px}
+  .portrait-panel{gap:5px;padding:6px 7px}
+  .portrait-module-row{gap:5px}
+  .portrait-quick-action,.portrait-module-button{padding-top:6px;padding-bottom:6px}
+  .portrait-default-amount{font-size:.7rem}
+  .portrait-image-engine-status,
+  .portrait-batch-progress,
+  .portrait-queue-status,
+  .portrait-report-status{gap:4px}
+  .portrait-image-engine-status button,
+  .portrait-batch-progress button,
+  .portrait-queue-status button,
+  .portrait-report-status button,
+  .portrait-metric-grid button{min-height:28px;padding:4px 7px}
+  .portrait-batch-summary-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(7rem,.45fr);gap:4px;align-items:center}
+  .portrait-batch-summary-row>.portrait-batch-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .portrait-batch-summary-row>button{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:28px;padding:4px 7px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--muted);font-size:.66rem;text-align:left}
+  .portrait-batch-summary-row>button strong{color:var(--accent);font-size:.8rem}
+  .portrait-ai-options{gap:3px 7px;padding:5px 7px}
+  .portrait-ai-options label{font-size:.66rem}
+  .portrait-ai-status-line{font-size:.63rem}
+  .portrait-report-status{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .portrait-report-status button{width:auto}
+  .portrait-report-status button strong{max-width:62%;font-size:.68rem}
+}
+.ai-preflight,.ai-job-detail{padding:9px;border:1px solid #374151;border-radius:9px;background:#0b1220;color:#cbd5e1;font-size:.78rem;white-space:pre-wrap}
+.ai-inline-check{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center;align-content:center}
+.ai-inline-check input{width:auto!important}
+.ai-job-row.is-selected{outline:2px solid #8b5cf6;background:#172033}
+@media(max-width:520px){.ai-analysis-form{padding:11px;gap:9px}.ai-console-section{padding:9px}.ai-component-option{padding:6px}.ai-analysis-dialog{width:97vw}}
