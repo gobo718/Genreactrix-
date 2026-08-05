@@ -310,8 +310,17 @@ function readClassificationForKey(key){
   const record=state.records[key];
   return record ? JSON.parse(JSON.stringify(record)) : emptyClassification();
 }
-function saveCurrent(){
-  const saved=writeClassificationForKey(currentKey(),classificationState());
+function saveCurrent(action="commit"){
+  const imageId=currentKey();
+  const legacy=classificationState();
+  const engine=window.genreactrixDirectorClassificationEngine;
+  if(engine){
+    engine.begin(imageId,legacy);
+    engine.patchDraft(imageId,{reactions:legacy.selectedReactions,themes:legacy.themes,notes:legacy.writeIn,flagged:legacy.flagged,retention:legacy.retention,aiVisible:Boolean(document.getElementById("directorAiConsole")?.open)});
+    const result=engine.commit(imageId,{action,aiVisible:Boolean(document.getElementById("directorAiConsole")?.open)});
+    if(!result.ok){setDirectorStatus(`Classification not saved: ${result.issues.join(", ")}`);return false;}
+  }
+  const saved=writeClassificationForKey(imageId,legacy);
   if(saved) syncDirectorRecordHistory("director-classified");
   return saved;
 }
@@ -327,7 +336,11 @@ function emptyClassification(){
 }
 function loadCurrent(){
   const key=currentKey();
-  applyClassification(readClassificationForKey(key));
+  const legacy=readClassificationForKey(key);
+  const engine=window.genreactrixDirectorClassificationEngine;
+  const canonical=engine?.migrate?.(key,legacy)||null;
+  applyClassification(canonical?{selectedReactions:canonical.reactions,themes:canonical.themes,flagged:canonical.flagged,writeIn:canonical.notes,retention:canonical.retention}:legacy);
+  engine?.begin?.(key,canonical||legacy);
   state.visitBaseline=classificationState();
   // Paint the destination image's classification immediately, before any
   // nonclassification console work.
@@ -923,6 +936,9 @@ function createTheme(){
 }
 
 function undo(){
+  const engine=window.genreactrixDirectorClassificationEngine;
+  const restored=engine?.undo?.(currentKey());
+  if(restored){applyClassification({selectedReactions:restored.reactions,themes:restored.themes,flagged:restored.flagged,writeIn:restored.notes,retention:restored.retention});writeClassificationForKey(currentKey(),classificationState());renderAll();updateUndoRedo();return true;}
   const current=snapshot();
   let target=null;
   while(state.history.length){
@@ -942,6 +958,9 @@ function undo(){
   return true;
 }
 function redo(){
+  const engine=window.genreactrixDirectorClassificationEngine;
+  const restored=engine?.redo?.(currentKey());
+  if(restored){applyClassification({selectedReactions:restored.reactions,themes:restored.themes,flagged:restored.flagged,writeIn:restored.notes,retention:restored.retention});writeClassificationForKey(currentKey(),classificationState());renderAll();updateUndoRedo();return true;}
   const current=snapshot();
   let target=null;
   while(state.future.length){
@@ -961,12 +980,15 @@ function redo(){
   return true;
 }
 function updateUndoRedo(){
-  $("undoBtn").disabled=!state.history.length;
-  $("redoBtn").disabled=!state.future.length;
-  if($("tabletUndoBtn")) $("tabletUndoBtn").disabled=!state.history.length;
-  if($("tabletRedoBtn")) $("tabletRedoBtn").disabled=!state.future.length;
-  if($("directorUndoBtn")) $("directorUndoBtn").disabled=!state.history.length;
-  if($("directorRedoBtn")) $("directorRedoBtn").disabled=!state.future.length;
+  const directorEngine=window.genreactrixDirectorClassificationEngine;
+  const engineUndo=directorEngine?.canUndo?.(currentKey());
+  const engineRedo=directorEngine?.canRedo?.(currentKey());
+  $("undoBtn").disabled=!(engineUndo||state.history.length);
+  $("redoBtn").disabled=!(engineRedo||state.future.length);
+  if($("tabletUndoBtn")) $("tabletUndoBtn").disabled=!(engineUndo||state.history.length);
+  if($("tabletRedoBtn")) $("tabletRedoBtn").disabled=!(engineRedo||state.future.length);
+  if($("directorUndoBtn")) $("directorUndoBtn").disabled=!(engineUndo||state.history.length);
+  if($("directorRedoBtn")) $("directorRedoBtn").disabled=!(engineRedo||state.future.length);
 }
 
 const landscapePrimFusionToggle=$("landscapePrimFusionToggle");

@@ -1,6 +1,17 @@
-# Genreactrix v0.9.16.1
+# Genreactrix v0.9.17.0
 
-## v0.9.16.1 — Portrait Viewport-Fit Correction
+## v0.9.17.0 — Director Classification Engine
+
+- Adds `director-classification-engine.js` as the canonical Director decision layer.
+- Separates working drafts from accepted classifications.
+- Persists reactions, themes, PrimFusion derivation, notes, Saved/Flagged state, completion, AI visibility, and schema version by immutable Image ID.
+- Connects accepted state to Image Records and immutable History.
+- Adds transaction-based Director undo/redo while retaining the previous UI history as a compatibility fallback during migration.
+- Migrates existing local classification records without deleting them until the canonical record is verified.
+- Preserves the existing landscape, tablet, and portrait compositions.
+
+
+## v0.9.17.0 — Portrait Viewport-Fit Correction
 
 - Removed the blank scroll area below the Reports module when the Control Station already fits in the phone viewport.
 - Made the portrait app shell use border-box sizing at exactly 100dvh.
@@ -9,14 +20,14 @@
 - No module layout, engine behavior, or non-portrait mode changed.
 
 
-## v0.9.16.1 — AI Console + One-Page Portrait
+## v0.9.17.0 — AI Console + One-Page Portrait
 
 - Compressed Batch, Queue, Reports, spacing, and status rows to fit the portrait Control Station on one typical phone screen without removing quick-action capacity.
 - Completed the operational AI console with modular analyze/rerun controls, active-batch and filtered targeting, automatic look-ahead settings, provider health/configuration, persistent job controls, selected-job detail, failures, and prompt/model metadata.
 - No repository restructuring.
 
 
-## v0.9.16.1 — Complete Images Console
+## v0.9.17.0 — Complete Images Console
 
 - Full portrait Images console with shallow Add, Review, Saved, Flagged, Recycle, Failures, and History views.
 - Folder and URL intake use the shared Images Engine.
@@ -24,7 +35,7 @@
 - Real filtered Image Record views and recycle restore/purge controls.
 - No repository restructuring.
 
-## v0.9.16.1 — Maintenance and Recovery Engine
+## v0.9.17.0 — Maintenance and Recovery Engine
 
 - Unified quick, full, and selected integrity scans.
 - Persistent deduplicated maintenance issues and scan reports.
@@ -35,7 +46,7 @@
 - Maintenance notifications and routing.
 - No repository folder changes.
 
-## v0.9.16.1 — Settings Engine
+## v0.9.17.0 — Settings Engine
 
 - Added a canonical IndexedDB Settings Engine with typed definitions, defaults, validation, subscriptions, and legacy-key migration.
 - Added full Settings console sections for daily defaults, AI, storage/recycle, batch, notifications, project, maintenance, and backups.
@@ -59,7 +70,7 @@ Portrait configurable quick-action architecture.
 - Leaves landscape, tablet, desktop, shared data, and reusable assets unchanged.
 
 
-## v0.9.16.1 — Shared Queue Engine
+## v0.9.17.0 — Shared Queue Engine
 - Adds one persistent Queue Engine for scheduling and operational state across engine-owned work.
 - Migrates and removes the legacy localStorage AI look-ahead queue.
 - Mirrors AI jobs/items into the shared queue without moving AI business logic out of the AI engine.
@@ -122,13 +133,13 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Batch submission now calls the Reports Engine for its automatic standard report.
 
 
-## v0.9.16.1 Notifications Engine
+## v0.9.17.0 Notifications Engine
 - Persistent mailbox notifications with unread badge.
 - Read/unread, archive/restore, resolve, filters, deduplication, and routing to owning modules.
 - Queue terminal states, reports, and batch submissions create operational notifications.
 - Successful automatic background progress remains quiet unless a meaningful job transition occurs.
 
-## v0.9.16.1 — Queue Refresh Idempotence Fix
+## v0.9.17.0 — Queue Refresh Idempotence Fix
 - Automatic AI look-ahead excludes images already queued or processing.
 - Buffer maintenance is serialized so startup calls cannot overlap.
 - Empty AI jobs are no longer persisted.
@@ -136,7 +147,7 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Repeated page refreshes no longer add duplicate queue work.
 - Repository structure unchanged.
 
-## v0.9.16.1 — Portrait Control Station Home
+## v0.9.17.0 — Portrait Control Station Home
 - Finalized the portrait-only home composition without changing landscape, tablet, desktop, or Worker behavior.
 - Standardized Images, Batch, AI, Queue, and Reports modules around the approved quick-action/module-button layout.
 - Replaced placeholder counts with engine-owned state and active-batch-scoped deltas.
@@ -145,7 +156,7 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Removed the permanently reserved empty status strip; transient messages now appear only when needed.
 - Preserved configurable quick actions and all existing engine/console functionality.
 
-## v0.9.16.1 — Complete Batch Console
+## v0.9.17.0 — Complete Batch Console
 - Added the full operational Batch console with active-batch selection, creation, rename, pause/reactivate, archive, membership management, filtering, ordering, validation, submission verification, reopen, and submission history.
 - Added real filters for ready, incomplete, partial, flagged, saved, blocked, and submitted images.
 - Added selected-image removal, movement between batches, up/down reordering, shuffle, and select-visible behavior.
