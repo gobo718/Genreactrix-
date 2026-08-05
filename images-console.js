@@ -27,10 +27,18 @@
     }).join(""):`<p class="images-empty">No ${esc(section)} images.</p>`;
     $(id).querySelectorAll("[data-image-select]").forEach(box=>box.addEventListener("change",()=>{box.checked?selected.add(box.dataset.imageSelect):selected.delete(box.dataset.imageSelect);}));
   }
+
+  async function renderDashboard(){
+    const d=await window.genreactrixImportEngine?.dashboard?.(); if(!d)return;
+    $("importActiveCount").textContent=d.active.length; $("importFailedCount").textContent=d.failed.length; $("importPendingAiCount").textContent=d.pendingAi; $("importReadyDirectorCount").textContent=d.readyForDirector;
+    $("importRecentJobs").innerHTML=d.recent.map(j=>`<article class="images-record-row"><span><strong>${esc(j.sourceLabel||j.sourceType)}</strong><small>${esc(j.status)} · ${j.imported||0} imported · ${j.failed||0} failed · ${new Date(j.createdAt).toLocaleString()}</small></span></article>`).join("")||"<p class=\"images-empty\">No import jobs.</p>";
+  }
+
   function switchSection(section){
     activeSection=section;
     document.querySelectorAll("[data-images-panel]").forEach(p=>p.hidden=p.dataset.imagesPanel!==section);
     document.querySelectorAll("[data-images-section]").forEach(b=>b.classList.toggle("active",b.dataset.imagesSection===section));
+    if(section==="dashboard") { renderDashboard(); return; }
     if(section!=="add") renderList(section);
   }
   async function preview(){
@@ -46,7 +54,8 @@
     const button=$("imagesConsoleImport"); button.disabled=true;
     try{
       const batchId=await window.genreactrixBatchEngine?.activeId?.()||"current-import";
-      const records=await engine()?.importUrls?.(text,{limit:qty,mode,prefetch:Boolean($("imagesConsolePrefetch")?.checked),batchId})||[];
+      const result=await window.genreactrixImportEngine?.runUrls?.(text,{limit:qty,mode:mode==="download"?"temporary":"link",prefetch:Boolean($("imagesConsolePrefetch")?.checked),target:"active-batch"});
+      const records=result?.records||[];
       if(!records.length) throw new Error("No eligible images to import.");
       if(window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
       status(`${records.length} image${records.length===1?"":"s"} imported.`);
@@ -75,7 +84,7 @@
     document.querySelectorAll("[data-images-section]").forEach(b=>b.addEventListener("click",()=>switchSection(b.dataset.imagesSection)));
     $("imagesConsolePreview")?.addEventListener("click",()=>preview().catch(e=>status(String(e.message||e))));
     $("imagesConsoleImport")?.addEventListener("click",()=>doImport());
-    $("imagesConsoleFolder")?.addEventListener("click",()=>{window.pendingPortraitImportLimit=Math.max(1,Number($("imagesConsoleQuantity")?.value)||100); $("imagesConsoleDialog")?.close(); $("folderInput")?.click();});
+    $("imagesConsoleFolder")?.addEventListener("click",()=>{window.pendingPortraitImportLimit=Math.max(1,Number($("imagesConsoleQuantity")?.value)||100); window.pendingImportEngineMode=true; $("imagesConsoleDialog")?.close(); $("folderInput")?.click();});
     $("imagesRestoreSelected")?.addEventListener("click",restoreSelected);
     $("imagesEmptyRecycle")?.addEventListener("click",emptyRecycle);
   }

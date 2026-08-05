@@ -1,4 +1,21 @@
-# Genreactrix v0.9.20.0
+# Genreactrix v0.9.32.0
+
+## v0.9.32.0 — Citation & Evidence Graph
+
+- Added `citation-evidence-engine.js` with persistent versioned citations, typed evidence relationships, evidence bundles, duplicate-source prevention, revision history, graph queries, integrity checks, and JSON/CSV export.
+- Added `citation-evidence-ui.js` and a shallow Citation & Evidence workspace accessible from the Research Dashboard.
+- Evidence can support, contradict, qualify, define, cite, or derive from publications, findings, reports, images, datasets, terminology, and methodology records without duplicating canonical data.
+- Added missing-link, duplicate-source, malformed-relation, and bundle-reference validation.
+- Repository structure remains unchanged and the release archive stays flat at root.
+
+## v0.9.31.0 — Canonical Terminology & Methodology
+
+- Added `terminology-engine.js` with canonical names, definitions, aliases, categories, active/deprecated status, revision history, search, resolution, and integrity validation.
+- Added `methodology-engine.js` with versioned Director, AI, correlation, prediction, and publication methodology records.
+- Added a shallow Terminology & Methodology console reachable from the Research Dashboard.
+- Added duplicate-name, alias-conflict, missing-reference, and published-method validation.
+- Preserved the existing Knowledge Base and publication workflow while giving future reports and community systems authoritative vocabulary and procedures.
+- No repository folders were added, removed, renamed, or moved.
 
 ## v0.9.20.0 — Director Workspace Polish
 
@@ -183,3 +200,96 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Added persistent research workspaces.
 - Added selected-image scope support to the Reports Engine.
 - No repository folders were added, moved, renamed, or removed.
+
+## v0.9.22.0 — Director Workflow Acceleration
+
+- Rebuilt directly from the canonical v0.9.20.0 Research Analytics release.
+- Added Director workflow navigation for next incomplete, next flagged, next blocked, random, and return-to-last-image.
+- Added explicit Commit with configurable post-commit behavior through canonical Settings.
+- Added persistent Ready, Blocked, and Locked state chips without changing the landscape composition.
+- Added one-touch Clear Reactions and preserved PrimFusion invalidation when reactions change.
+- Undo/redo now skips no-op transactions iteratively and identifies the pending action in button tooltips.
+- Added Director workflow settings for post-commit navigation, draft warnings, view restoration, and default navigation.
+- Preserved per-image zoom and canonical Image ID boundaries.
+- No repository folders were added, removed, renamed, or moved.
+
+
+## v0.9.22.0 — Research Session Manager
+- Named persistent research sessions with objectives, questions, conclusions, and workspace state.
+- Automatic active-session tracking and periodic workspace capture.
+- Manual append-only snapshots and restore.
+- Image bookmarks, working-set storage APIs, session search, recent activity, and research timers.
+- Session integrity checks for missing batches and images.
+- No repository restructuring.
+
+## v0.9.24.0 — Maintenance & Integrity Center
+- Expanded the existing Maintenance and Recovery Engine instead of creating a duplicate maintenance subsystem.
+- Added a shared Validation Engine registry for reusable cross-engine validation rules.
+- Added a system-health dashboard for Images, Director, AI, Queue, Batch, Reports, Analytics, Research Sessions, History, Settings, and Notifications.
+- Added selected-subsystem scans, startup/daily/weekly scan scheduling, storage statistics, scan-duration diagnostics, and printable maintenance reports.
+- Added Director, Analytics, and Research Session integrity registration plus cross-engine validation hooks.
+- Preserved persistent deduplicated issues, guided repairs, recycle recovery, backup restore, JSON/CSV exports, and no-silent-repair behavior.
+- No repository folders were added, removed, renamed, or moved.
+
+
+## v0.9.24.0 — Import Pipeline & Acquisition Automation
+
+- Added persistent import job records and acquisition profiles.
+- Added URL preview, duplicate review, automatic batch routing, resumable job metadata, and acquisition dashboard counts.
+- Folder and URL intake now create import jobs while preserving canonical Image Records and Queue jobs.
+- No repository folders were added or moved.
+
+## v0.9.27.0 — AI Prompt Laboratory & Evaluation
+
+- Added a versioned Prompt Library with Draft, Candidate, Active, and Retired lifecycle states.
+- Added component-specific prompt categories and safe single-active-version promotion.
+- Added reusable benchmark sets and prompt-library integrity checks.
+- Added persistent evaluation runs over all, Saved, Flagged, or selected image populations.
+- Evaluation runs call the configured AI provider and retain actual outputs without replacing canonical AI results.
+- Added side-by-side prompt result inspection, Director review records, and acceptance/failure metrics.
+- Added regression-ready evaluation history and prompt/version provenance.
+- Added a Prompt Lab entry point inside the AI console.
+
+
+## v0.9.27.0 — Canonical Research Dashboard
+
+- Added `research-dashboard-engine.js` at repository root.
+- Added a global Research Dashboard entry in the portrait header.
+- Added live project cards, progress, priority actions, persistent goals, and an activity timeline.
+- Dashboard reads canonical engine data and does not duplicate images, classifications, reports, or queue state.
+- No folders were added, removed, renamed, or moved.
+
+
+## v0.9.27.0 — Correlation Discovery Laboratory
+- Adds correlation discovery across reactions, themes, PrimFusion, batches, sources, AI agreement, and Director revisions.
+- Adds a persistent Finding Library and research hypotheses.
+- Findings drill down through the canonical Reports Engine.
+
+## v0.9.28.0 — Predictive Classification Laboratory
+- Added `prediction-engine.js`, `prediction-evaluation-engine.js`, and `prediction-ui.js` at repository root.
+- Generates advisory reaction, theme, PrimFusion, and expected AI-agreement predictions from canonical Director history, current AI signals, source, and batch context.
+- Every prediction includes probability, confidence, supporting sample size, and evidence notes.
+- Added Director review outcomes for accepted, partial, rejected, false-positive, and false-negative evaluation.
+- Added persistent prediction runs and evaluation metrics without altering canonical Director or AI data.
+- Added a Prediction Laboratory entry to the Research Dashboard.
+- No folders were added, removed, renamed, or moved.
+
+
+## v0.9.29.0 — Adaptive Research Intelligence
+
+- Added `adaptive-intelligence-engine.js` for project-level learning metrics and trend snapshots.
+- Added `recommendation-engine.js` for ranked research opportunities.
+- Added `adaptive-intelligence-ui.js` and a new Adaptive Intelligence console.
+- Added recommendation routing to blocked work, partial classifications, flagged review, findings, and prediction evaluation.
+- Added Adaptive Intelligence to the Research Dashboard.
+- Preserved canonical Director authority; recommendations never modify classifications automatically.
+
+
+## v0.9.30.0 — Research Publication & Knowledge Base
+
+- Added `knowledge-base-engine.js` for versioned research articles, promoted findings, terminology, methodology, evidence links, search, and integrity checks.
+- Added `publication-engine.js` with Draft → Review → Published → Archived transitions and immutable revision snapshots.
+- Added a shallow Knowledge Base workspace accessible from the Research Dashboard.
+- Added JSON, Markdown, and printable HTML exports.
+- Published entries retain traceable image, report, finding, analytics, sample-size, confidence, and contradictory-evidence references.
+- Repository structure remains unchanged and the release archive stays flat at root.

@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.19.0";
+const GENREACTRIX_BUILD="v0.9.26.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -376,6 +376,46 @@ function navigateImage(delta){
 }
 function nextImage(){ navigateImage(1); }
 function prevImage(){ navigateImage(-1); }
+const DIRECTOR_LAST_KEY="genreactrix-director-last-image-v1";
+function directorSetting(id,fallback){try{return window.genreactrixSettingsEngine?.get?.(id,fallback)??fallback}catch{return fallback}}
+function imageCount(){return state.files.length||DEMOS.length}
+function imageKeyAt(index){return state.files.length?(state.files[index]?.id||state.files[index]?.name):`demo-${index}`}
+function goToImageIndex(index,{remember=true}={}){
+  const count=imageCount();if(!count)return false;
+  if(remember)localStorage.setItem(DIRECTOR_LAST_KEY,JSON.stringify({source:state.files.length?"files":"demo",index:state.files.length?state.index:state.demoIndex,key:currentKey()}));
+  saveImageTransformForCurrent?.();
+  const next=((index%count)+count)%count;
+  if(state.files.length)state.index=next;else state.demoIndex=next;
+  loadCurrent();return true;
+}
+function directorRecordForIndex(index){const key=imageKeyAt(index);return window.genreactrixDirectorClassificationEngine?.get?.(key)||null}
+function findDirectorIndex(predicate,{random=false}={}){
+  const count=imageCount(),current=state.files.length?state.index:state.demoIndex;if(!count)return -1;
+  const matches=[];
+  for(let step=1;step<=count;step++){const idx=(current+step)%count,record=directorRecordForIndex(idx);if(predicate(record,imageKeyAt(idx),idx))matches.push(idx);}
+  if(!matches.length)return -1;return random?matches[Math.floor(Math.random()*matches.length)]:matches[0];
+}
+function navigateDirectorMode(mode){
+  let idx=-1;
+  if(mode==="next")return goToImageIndex((state.files.length?state.index:state.demoIndex)+1);
+  if(mode==="random")idx=findDirectorIndex(()=>true,{random:true});
+  else if(mode==="next-incomplete")idx=findDirectorIndex(r=>!r||!["complete"].includes(r.completion));
+  else if(mode==="next-flagged")idx=findDirectorIndex(r=>Boolean(r?.flagged));
+  else if(mode==="next-blocked")idx=findDirectorIndex(r=>r?.completion==="blocked"||Boolean(r?.blocked));
+  if(idx<0){setDirectorStatus(`No ${mode.replace("next-","")} image found.`);return false;}
+  return goToImageIndex(idx);
+}
+function commitDirectorAndFollowSetting(){
+  const ok=saveCurrent("director-commit");if(!ok)return false;
+  setDirectorStatus("Classification committed.");
+  const behavior=directorSetting("director.postCommit","stay");
+  if(behavior==="next")navigateDirectorMode("next");
+  if(behavior==="next-incomplete")navigateDirectorMode("next-incomplete");
+  return true;
+}
+function returnToLastDirectorImage(){
+  try{const last=JSON.parse(localStorage.getItem(DIRECTOR_LAST_KEY)||"null");if(!last)return setDirectorStatus("No previous image recorded.");return goToImageIndex(Number(last.index)||0,{remember:false});}catch{return false;}
+}
 function normalizeTheme(value){
   if(!value) return null;
   if(typeof value==="object" && value.id) return value;
@@ -462,6 +502,9 @@ function renderDirectorWorkspaceState(){
     set("saved",Boolean(canonical?.saved));
     set("flagged",Boolean(state.flagged||canonical?.flagged));
     set("ai",Boolean(canonical?.aiVisible||document.getElementById("directorAiConsole")?.open));
+    set("ready",completion==="complete"&&!canonical?.blocked);
+    set("blocked",completion==="blocked"||Boolean(canonical?.blocked));
+    set("locked",Boolean(canonical?.locked));
   });
   const revert=$("directorRevertDraftBtn");
   if(revert) revert.disabled=!engine?.isDirty?.(imageId);
@@ -1007,8 +1050,8 @@ function updateUndoRedo(){
   $("redoBtn").disabled=!(engineRedo||state.future.length);
   if($("tabletUndoBtn")) $("tabletUndoBtn").disabled=!(engineUndo||state.history.length);
   if($("tabletRedoBtn")) $("tabletRedoBtn").disabled=!(engineRedo||state.future.length);
-  if($("directorUndoBtn")) $("directorUndoBtn").disabled=!(engineUndo||state.history.length);
-  if($("directorRedoBtn")) $("directorRedoBtn").disabled=!(engineRedo||state.future.length);
+  if($("directorUndoBtn")){ $("directorUndoBtn").disabled=!(engineUndo||state.history.length); const tx=directorEngine?.peekUndo?.(currentKey()); $("directorUndoBtn").title=tx?`Undo ${tx.action||"classification"}`:"Nothing to undo"; }
+  if($("directorRedoBtn")){ $("directorRedoBtn").disabled=!(engineRedo||state.future.length); const tx=directorEngine?.peekRedo?.(currentKey()); $("directorRedoBtn").title=tx?`Redo ${tx.action||"classification"}`:"Nothing to redo"; }
 }
 
 const landscapePrimFusionToggle=$("landscapePrimFusionToggle");
@@ -1105,6 +1148,18 @@ $("tabletThemeSearch").addEventListener("keydown",e=>{
   if(existing) selectTheme(existing); else createTabletTheme();
 });
 $("tabletCreateThemeBtn").addEventListener("click",createTabletTheme);
+$("directorCommitBtn")?.addEventListener("click",commitDirectorAndFollowSetting);
+$("directorNextIncompleteBtn")?.addEventListener("click",()=>navigateDirectorMode("next-incomplete"));
+$("directorNextFlaggedBtn")?.addEventListener("click",()=>navigateDirectorMode("next-flagged"));
+$("directorNextBlockedBtn")?.addEventListener("click",()=>navigateDirectorMode("next-blocked"));
+$("directorRandomBtn")?.addEventListener("click",()=>navigateDirectorMode("random"));
+$("directorReturnBtn")?.addEventListener("click",returnToLastDirectorImage);
+$("directorClearReactionsBtn")?.addEventListener("click",()=>{
+  if(!state.selectedReactions.length)return;
+  pushHistory();state.selectedReactions=[];
+  window.genreactrixDirectorClassificationEngine?.patchDraft?.(currentKey(),{reactions:[],primFusion:null});
+  saveCurrent("clear-reactions");renderAll();setDirectorStatus("Reactions cleared.");
+});
 $("directorRevertDraftBtn")?.addEventListener("click",()=>{
   const engine=window.genreactrixDirectorClassificationEngine;
   const restored=engine?.revertDraft?.(currentKey());
@@ -1157,7 +1212,9 @@ async function applyEngineWorkingFiles(files){
 }
 async function loadImageFolder(fileList,limit=null){
   const batchId=await window.genreactrixBatchEngine?.activeId?.()||"current-import";
-  const records=await window.genreactrixImagesEngine.importFiles(fileList,{limit,batchId});
+  const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit,target:"active-batch"}):null;
+  window.pendingImportEngineMode=false;
+  const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit,batchId});
   if(window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
   const files=await window.genreactrixImagesEngine.workingFiles(records.map(record=>record.id));
   await applyEngineWorkingFiles(files);
@@ -2150,3 +2207,17 @@ $("imageUrlAddBtn")?.addEventListener("click",async()=>{
 });
 
 renderPortraitControlStation();
+
+// v0.9.22.0 Research Session Manager UI
+(()=>{
+'use strict';
+let selectedSessionId=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function renderSessionLists(){const eng=window.genreactrixResearchSessionEngine;if(!eng)return;const sessions=await eng.allSessions();const active=await eng.active();selectedSessionId=selectedSessionId||active?.id||sessions[0]?.id||null;$('researchSessionStatus').textContent=active?`Active · ${active.name}`:'No active session';$('researchSessionList').innerHTML=sessions.map(s=>`<button class="research-session-item ${s.id===selectedSessionId?'active':''}" data-session-id="${s.id}"><strong>${esc(s.name)}</strong><div class="research-session-meta">${esc(s.status)} · ${new Date(s.updatedAt).toLocaleString()}</div></button>`).join('')||'<p>No sessions yet.</p>';await loadSelectedSession()}
+async function loadSelectedSession(){const eng=window.genreactrixResearchSessionEngine;if(!eng||!selectedSessionId)return;const sessions=await eng.allSessions(),s=sessions.find(x=>x.id===selectedSessionId);if(!s)return;for(const [id,key] of [['researchSessionName','name'],['researchSessionDescription','description'],['researchSessionObjectives','objectives'],['researchSessionQuestions','questions'],['researchSessionConclusions','conclusions']])$(id).value=s[key]||'';const [sn,bm,ws,ac]=await Promise.all([eng.snapshots(s.id),eng.bookmarks(s.id),eng.workingSets(s.id),eng.activity(s.id)]);$('researchSnapshotList').innerHTML=sn.map(x=>`<button class="research-session-subitem" data-restore-snapshot="${x.id}">${esc(x.label)}<div class="research-session-meta">${new Date(x.createdAt).toLocaleString()}</div></button>`).join('')||'<p>None.</p>';$('researchBookmarkList').innerHTML=bm.map(x=>`<button class="research-session-subitem">${esc(x.type)} · ${esc(x.label)}</button>`).join('')||'<p>None.</p>';$('researchWorkingSetList').innerHTML=ws.map(x=>`<button class="research-session-subitem">${esc(x.name)} · ${x.imageIds.length} images</button>`).join('')||'<p>None.</p>';$('researchActivityList').innerHTML=ac.slice(0,30).map(x=>`<div class="research-session-subitem">${esc(x.summary)}<div class="research-session-meta">${new Date(x.createdAt).toLocaleString()}</div></div>`).join('')||'<p>None.</p>'}
+async function openSessions(){await renderSessionLists();$('researchSessionDialog')?.showModal()}
+window.addEventListener('DOMContentLoaded',()=>{
+$('researchSessionsOpen')?.addEventListener('click',openSessions);$('researchSessionClose')?.addEventListener('click',()=>$('researchSessionDialog')?.close());$('researchSessionNew')?.addEventListener('click',async()=>{const name=prompt('Session name','Research session');if(!name)return;const s=await window.genreactrixResearchSessionEngine.createSession({name});selectedSessionId=s.id;await renderSessionLists()});$('researchSessionList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-session-id]');if(!b)return;selectedSessionId=b.dataset.sessionId;await window.genreactrixResearchSessionEngine.setActive(selectedSessionId);await renderSessionLists()});$('researchSessionSave')?.addEventListener('click',async()=>{if(!selectedSessionId)return;await window.genreactrixResearchSessionEngine.updateSession(selectedSessionId,{name:$('researchSessionName').value,description:$('researchSessionDescription').value,objectives:$('researchSessionObjectives').value,questions:$('researchSessionQuestions').value,conclusions:$('researchSessionConclusions').value});await renderSessionLists()});$('researchSessionSnapshot')?.addEventListener('click',async()=>{const label=prompt('Snapshot label','Manual snapshot');if(label){await window.genreactrixResearchSessionEngine.snapshot(label);await renderSessionLists()}});$('researchSessionRestore')?.addEventListener('click',async()=>{const s=(await window.genreactrixResearchSessionEngine.allSessions()).find(x=>x.id===selectedSessionId);if(s)await window.genreactrixResearchSessionEngine.restoreWorkspace(s.workspace)});$('researchSessionBookmarkImage')?.addEventListener('click',async()=>{const id=window.genreactrixDirectorEngine?.getCurrentImageId?.()||window.currentImageId;if(id){await window.genreactrixResearchSessionEngine.bookmark('image',id,`Image ${id}`,window.genreactrixResearchSessionEngine.captureWorkspace());await renderSessionLists()}});$('researchSessionSearch')?.addEventListener('input',async e=>{const q=e.target.value.trim();if(!q){await renderSessionLists();return}const rows=await window.genreactrixResearchSessionEngine.search(q);$('researchSessionList').innerHTML=rows.map(x=>`<button class="research-session-item" data-session-id="${x.sessionId}"><strong>${esc(x.label)}</strong><div class="research-session-meta">${esc(x.kind)}</div></button>`).join('')||'<p>No matches.</p>'});$('researchSnapshotList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-restore-snapshot]');if(!b)return;const list=await window.genreactrixResearchSessionEngine.snapshots(selectedSessionId),snap=list.find(x=>x.id===b.dataset.restoreSnapshot);if(snap)await window.genreactrixResearchSessionEngine.restoreWorkspace(snap.workspace)});
+});
+})();

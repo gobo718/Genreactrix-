@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.20.0</title>
+<title>Genreactrix v0.9.32.0</title>
 <link href="styles.css?v=0.9.14.0" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.20.0</span>
+<span>v0.9.32.0</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,8 +41,9 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.20.0</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.32.0</span></strong>
 <div class="portrait-header-actions">
+<button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
 </div>
@@ -157,6 +158,7 @@
 <button data-images-section="recycle" type="button">Recycle</button>
 <button data-images-section="failures" type="button">Failures</button>
 <button data-images-section="history" type="button">History</button>
+<button data-images-section="dashboard" type="button">Dashboard</button>
 </nav>
 <div class="images-console-body">
 <section data-images-panel="add">
@@ -173,6 +175,7 @@
 <section data-images-panel="recycle" hidden><div class="images-console-actions"><button id="imagesRestoreSelected" type="button">Restore selected</button><button id="imagesEmptyRecycle" type="button">Empty now</button></div><div id="imagesRecycleList" class="images-record-list"></div></section>
 <section data-images-panel="failures" hidden><div id="imagesFailuresList" class="images-record-list"></div></section>
 <section data-images-panel="history" hidden><div id="imagesHistoryList" class="images-record-list"></div></section>
+<section data-images-panel="dashboard" hidden><div class="images-dashboard-grid"><article><strong id="importActiveCount">0</strong><span>Active</span></article><article><strong id="importFailedCount">0</strong><span>Failed</span></article><article><strong id="importPendingAiCount">0</strong><span>Pending AI</span></article><article><strong id="importReadyDirectorCount">0</strong><span>Ready</span></article></div><div id="importRecentJobs" class="images-record-list"></div></section>
 </div>
 <div class="images-console-status" id="imagesConsoleStatus" role="status" aria-live="polite"></div>
 </div>
@@ -275,7 +278,7 @@
 <label>Worker URL<input id="aiWorkerUrl" placeholder="https://your-worker.workers.dev" type="url"/></label>
 <label>Analysis key<input autocomplete="off" id="aiAnalysisKey" type="password"/></label>
 <div class="ai-console-grid"><label>Model<input id="aiModelName" placeholder="Configured by Worker" type="text"/></label><label>Prompt set<input id="aiPromptVersion" placeholder="genreactrix-v1" type="text"/></label></div>
-<div class="ai-provider-row"><button id="aiSaveProvider" type="button">Save</button><button id="aiHealthCheck" type="button">Test connection</button><span id="aiProviderStatus">Not configured</span></div>
+<div class="ai-provider-row"><button id="aiSaveProvider" type="button">Save</button><button id="aiHealthCheck" type="button">Test connection</button><button id="openPromptLab" type="button">Prompt Lab</button><span id="aiProviderStatus">Not configured</span></div>
 </section>
 <section class="ai-console-section">
 <h3>Jobs</h3>
@@ -289,6 +292,15 @@
 <div class="ai-job-detail" id="aiJobDetail">Select a job to inspect its target, components, failures, provider and prompt versions.</div>
 </section>
 </form>
+</dialog>
+
+<dialog class="prompt-lab-dialog" id="promptLabDialog">
+<div class="prompt-lab">
+<header><h2>AI Prompt Laboratory</h2><button id="promptLabClose" type="button" aria-label="Close">×</button></header>
+<div class="prompt-lab-grid">
+<section><h3>Prompt library</h3><div class="prompt-form-grid"><label>Category<select id="promptCategory"><option value="reactions">Reactions</option><option value="themes">Themes</option><option value="description">Description</option><option value="emotion">Emotion</option><option value="reactionReasons">Reaction reasons</option><option value="genreReasons">Genre reasons</option><option value="primfusion">PrimFusion</option><option value="quality">Quality review</option><option value="metadata">Metadata</option></select></label><label>Name<input id="promptName" type="text" placeholder="Candidate name"></label></div><label>Prompt text<textarea id="promptText" rows="7"></textarea></label><button id="promptCreateVersion" type="button">Create draft version</button><div id="promptLibraryList" class="prompt-library-list"></div></section>
+<section><h3>Evaluation</h3><label>Run name<input id="promptEvalName" type="text" placeholder="Prompt comparison"></label><div class="prompt-form-grid"><label>Prompt A<select id="promptEvalA"></select></label><label>Prompt B<select id="promptEvalB"></select></label><label>Population<select id="promptEvalScope"><option value="all">All records</option><option value="saved">Saved</option><option value="flagged">Flagged</option></select></label><label>Limit<input id="promptEvalLimit" type="number" min="1" value="10"></label></div><button class="primary-action" id="promptStartEvaluation" type="button">Start evaluation</button><div id="promptEvaluationRuns" class="prompt-evaluation-runs"></div><pre id="promptEvalDetail" class="prompt-eval-detail">Select a run to inspect actual provider results and metrics.</pre></section>
+</div><footer id="promptLabStatus" aria-live="polite"></footer></div>
 </dialog>
 <dialog class="quick-assign-dialog" id="quickAssignDialog">
 <form class="quick-assign-form" id="quickAssignForm" method="dialog">
@@ -378,7 +390,7 @@
 <div aria-label="Resize Image and Director consoles" aria-orientation="vertical" class="console-divider" id="consoleDivider" role="separator" tabindex="0"></div>
 <section aria-label="Director classification" class="console director-console">
 <button class="expand-button" data-open="directorWorkspace" title="Expand Director console">↗</button>
-<div class="director-heading-row"><div class="console-label">Director</div><div class="director-state-strip" id="directorStateStrip" aria-live="polite"><span data-state="completion">Unclassified</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Saved</span><span data-state="flagged" hidden>Flagged</span><span data-state="ai" hidden>AI viewed</span></div></div>
+<div class="director-heading-row"><div class="console-label">Director</div><div class="director-state-strip" id="directorStateStrip" aria-live="polite"><span data-state="completion">Unclassified</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Saved</span><span data-state="flagged" hidden>Flagged</span><span data-state="ai" hidden>AI viewed</span><span data-state="ready" hidden>Ready</span><span data-state="blocked" hidden>Blocked</span><span data-state="locked" hidden>Locked</span></div></div>
 <div aria-label="Primitive reactions" class="reaction-bar" id="reactionBar"></div>
 <div class="theme-fields">
 <button class="theme-field" data-slot="1">
@@ -568,7 +580,7 @@
 <div class="workspace-shell">
 <header class="workspace-header director-workspace-header">
 <button class="back-button" data-close="directorWorkspace">‹ Back</button>
-<div><h2>Director Console</h2><div class="director-state-strip expanded" id="directorWorkspaceStateStrip" aria-live="polite"><span data-state="completion">Unclassified</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Saved</span><span data-state="flagged" hidden>Flagged</span><span data-state="ai" hidden>AI viewed</span></div></div>
+<div><h2>Director Console</h2><div class="director-state-strip expanded" id="directorWorkspaceStateStrip" aria-live="polite"><span data-state="completion">Unclassified</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Saved</span><span data-state="flagged" hidden>Flagged</span><span data-state="ai" hidden>AI viewed</span><span data-state="ready" hidden>Ready</span><span data-state="blocked" hidden>Blocked</span><span data-state="locked" hidden>Locked</span></div></div>
 <button class="primfusion-shortcut" id="directorPrimFusionBtn">PrimFusion Matrix</button>
 </header>
 <div aria-label="Current image" class="portrait-only-image-viewport director-portrait-image-preview">
@@ -585,10 +597,19 @@
 <button class="theme-field" data-slot="3"><span>Theme 3</span><strong id="expandedTheme3">—</strong></button>
 </div>
 </div>
+<div class="director-workflow-toolbar" aria-label="Director workflow navigation">
+<button id="directorCommitBtn" class="primary-action" type="button">Commit</button>
+<button id="directorNextIncompleteBtn" type="button">Next incomplete</button>
+<button id="directorNextFlaggedBtn" type="button">Next flagged</button>
+<button id="directorNextBlockedBtn" type="button">Next blocked</button>
+<button id="directorRandomBtn" type="button">Random</button>
+<button id="directorReturnBtn" type="button">Return</button>
+</div>
 <div class="director-tools">
 <button id="directorUndoBtn">↶ Undo</button>
 <button id="directorRedoBtn">↷ Redo</button>
 <button id="directorRevertDraftBtn" type="button">Revert Draft</button>
+<button id="directorClearReactionsBtn" type="button">Clear Reactions</button>
 <button id="resetOriginalBtn">Reset Current Changes</button>
 <button id="clearCurrentBtn">Clear Data</button>
 </div>
@@ -661,13 +682,18 @@
 <dialog class="maintenance-dialog" id="maintenanceDialog">
 <section class="maintenance-shell">
 <header><h2>Maintenance &amp; Recovery</h2><button aria-label="Close" id="maintenanceClose" type="button">×</button></header>
+<div class="maintenance-health-grid" id="maintenanceHealthGrid" aria-label="System health"></div>
 <div class="maintenance-toolbar">
 <button id="maintenanceQuick" type="button">Quick check</button>
 <button id="maintenanceFull" type="button">Full project check</button>
+<select id="maintenanceSelectedEngine" aria-label="Selected subsystem"><option value="images">Images</option><option value="director">Director</option><option value="ai">AI</option><option value="queue">Queue</option><option value="batch">Batch</option><option value="reports">Reports</option><option value="analytics">Analytics</option><option value="sessions">Research Sessions</option><option value="history">History</option><option value="settings">Settings</option><option value="notifications">Notifications</option></select>
+<button id="maintenanceSelected" type="button">Check selected</button>
 <button id="maintenanceRecyclePreview" type="button">Recycle preview</button>
 <button id="maintenanceReports" type="button">Reports</button>
 </div>
 <div class="maintenance-summary" id="maintenanceSummary">Open 0 · Critical 0 · Repairable 0</div>
+<div class="maintenance-metrics" id="maintenanceMetrics"></div>
+<div class="maintenance-schedule-row"><label>Automatic scan <select id="maintenanceSchedule"><option value="manual">Manual only</option><option value="startup">At startup</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label><button id="maintenanceApplySchedule" type="button">Save schedule</button></div>
 <div class="maintenance-filter-row"><label>Issues <select id="maintenanceIssueFilter"><option value="open">Open</option><option value="all">All</option><option value="critical">Critical</option><option value="attention">Attention</option><option value="warning">Warning</option><option value="resolved">Resolved</option><option value="ignored">Ignored</option></select></label></div>
 <section class="maintenance-issue-list" id="maintenanceIssueList"></section>
 <section class="maintenance-restore">
@@ -679,7 +705,10 @@
 <div aria-live="polite" class="maintenance-status" id="maintenanceStatus" role="status"></div>
 </section>
 </dialog>
-<script src="maintenance-engine.js?v=0.9.14.0"></script>
+<script src="validation-engine.js?v=0.9.24.0"></script>
+<script src="import-job-engine.js?v=0.9.24.0"></script>
+<script src="import-engine.js?v=0.9.24.0"></script>
+<script src="maintenance-engine.js?v=0.9.23.0"></script>
 <script src="settings-engine.js?v=0.9.14.0"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
 <script src="app.js?v=0.9.17.0"></script>
@@ -702,13 +731,103 @@
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
 <header><div><h2>Research Analytics</h2><p id="analyticsSummary">0 records</p></div><button aria-label="Close" id="analyticsClose" type="button">×</button></header>
-<div class="analytics-toolbar"><label>View <select id="analyticsView"><option value="primfusion">PrimFusion matrix</option><option value="correlations">Theme correlations</option><option value="agreement">AI–Director agreement</option><option value="diagnostics">Coverage diagnostics</option></select></label><button id="analyticsRefresh" type="button">Refresh</button><button id="analyticsSaveWorkspace" type="button">Save workspace</button></div>
+<div class="analytics-toolbar"><label>View <select id="analyticsView"><option value="primfusion">PrimFusion matrix</option><option value="correlations">Theme correlations</option><option value="agreement">AI–Director agreement</option><option value="diagnostics">Coverage diagnostics</option></select></label><button id="analyticsRefresh" type="button">Refresh</button><button id="analyticsSaveWorkspace" type="button">Save workspace</button><button id="researchSessionsOpen" type="button">Sessions</button></div>
 <div class="analytics-workspaces" id="analyticsWorkspaces"></div>
 <section class="analytics-body" id="analyticsBody"></section>
 </section>
 </dialog>
 
 <script src="batch-engine.js?v=0.9.14.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.14.0"></script>
+<script src="prompt-library-engine.js?v=0.9.26.0"></script>
+<script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
+<script src="ai-analysis-engine.js?v=0.9.26.0"></script>
+
+<dialog class="research-session-dialog" id="researchSessionDialog">
+<section class="research-session-shell">
+<header><div><h2>Research Sessions</h2><p id="researchSessionStatus">No active session</p></div><button aria-label="Close" id="researchSessionClose" type="button">×</button></header>
+<div class="research-session-toolbar"><button id="researchSessionNew" type="button">New session</button><button id="researchSessionSnapshot" type="button">Snapshot</button><button id="researchSessionRestore" type="button">Restore workspace</button><input id="researchSessionSearch" placeholder="Search sessions, notes, bookmarks" type="search"/></div>
+<div class="research-session-grid"><section><h3>Sessions</h3><div id="researchSessionList"></div></section><section><h3>Session</h3><label>Name<input id="researchSessionName" type="text"/></label><label>Description<textarea id="researchSessionDescription"></textarea></label><label>Objectives<textarea id="researchSessionObjectives"></textarea></label><label>Questions<textarea id="researchSessionQuestions"></textarea></label><label>Conclusions<textarea id="researchSessionConclusions"></textarea></label><div class="research-session-actions"><button id="researchSessionSave" type="button">Save</button><button id="researchSessionBookmarkImage" type="button">Bookmark current image</button></div><h3>Snapshots</h3><div id="researchSnapshotList"></div><h3>Bookmarks</h3><div id="researchBookmarkList"></div><h3>Working sets</h3><div id="researchWorkingSetList"></div><h3>Recent activity</h3><div id="researchActivityList"></div></section></div>
+</section>
+</dialog>
+<script src="research-session-engine.js?v=0.9.22.0"></script>
+
+<dialog class="research-dashboard-dialog" id="researchDashboardDialog">
+<section class="research-dashboard-shell">
+<header><div><h2>Research Dashboard</h2><p id="researchDashboardStatus">Loading…</p></div><div><button id="openKnowledgeBase" type="button">Knowledge Base</button><button id="openTerminologyMethodology" type="button">Terminology & Methodology</button><button id="openCitationEvidence" type="button">Citations & Evidence</button><button id="researchDashboardRefresh" type="button">Refresh</button><button id="researchDashboardClose" type="button" aria-label="Close">×</button></div></header>
+<div class="research-dashboard-grid" id="researchDashboardGrid"></div>
+<section><h3>Live progress</h3><div class="research-dashboard-progress" id="researchDashboardProgress"></div></section>
+<div class="research-dashboard-columns"><section><h3>Priority queue</h3><div class="research-dashboard-priorities" id="researchDashboardPriorities"></div></section><section><h3>Research goals</h3><div class="dashboard-goal-form"><input id="dashboardGoalName" placeholder="Goal name"><select id="dashboardGoalMetric"><option value="directorComplete">Director complete</option><option value="images">Images</option><option value="saved">Saved</option><option value="reports">Reports</option></select><input id="dashboardGoalTarget" type="number" min="1" value="100"><button id="researchDashboardAddGoal" type="button">Add</button></div><div id="researchDashboardGoals"></div></section></div>
+<section><h3>Research timeline</h3><div class="research-dashboard-timeline" id="researchDashboardTimeline"></div></section>
+</section></dialog>
+<script src="research-dashboard-engine.js?v=0.9.27.0"></script>
+<dialog class="correlation-dialog" id="correlationDialog">
+<section class="correlation-shell">
+<header><div><h2>Correlation Discovery Laboratory</h2><p id="correlationStatus">Ready</p></div><button id="correlationClose" type="button" aria-label="Close">×</button></header>
+<div class="correlation-toolbar"><label>Minimum count <input id="correlationMinCount" type="number" min="1" value="3"></label><label>Strength <input id="correlationMinStrength" type="number" min="0" step="0.1" value="0.5"></label><button id="correlationRun" type="button">Discover</button><button id="correlationImport" type="button" disabled>Save findings</button></div>
+<div class="correlation-tabs"><button data-correlation-view="discoveries" type="button">Discoveries</button><button data-correlation-view="library" type="button">Finding library</button><button data-correlation-view="hypotheses" type="button">Hypotheses</button></div>
+<section id="correlationBody"></section>
+</section></dialog>
+<script src="correlation-engine.js?v=0.9.27.0"></script>
+<script src="finding-library-engine.js?v=0.9.27.0"></script>
+<script src="correlation-ui.js?v=0.9.27.0"></script>
+
+<dialog class="prediction-dialog" id="predictionDialog">
+<section class="prediction-shell">
+<header><div><h2>Predictive Classification Laboratory</h2><p id="predictionStatus">Ready</p></div><button id="predictionClose" type="button" aria-label="Close">×</button></header>
+<div class="prediction-toolbar"><label>Image ID <input id="predictionImageId" type="text" placeholder="Current image"></label><button id="predictionRun" type="button">Predict</button><button id="predictionAccept" type="button">Accept prediction</button><button id="predictionPartial" type="button">Partial match</button><button id="predictionReject" type="button">Reject</button></div>
+<section id="predictionBody"></section>
+</section></dialog>
+<script src="prediction-engine.js?v=0.9.28.0"></script>
+<script src="prediction-evaluation-engine.js?v=0.9.28.0"></script>
+<script src="prediction-ui.js?v=0.9.28.0"></script>
+
+<dialog class="adaptive-intelligence-dialog" id="adaptiveIntelligenceDialog">
+<section class="adaptive-intelligence-shell">
+<header><div><h2>Adaptive Research Intelligence</h2><p id="adaptiveStatus">Ready</p></div><div><button id="adaptiveRefresh" type="button">Refresh</button><button id="adaptiveClose" type="button" aria-label="Close">×</button></div></header>
+<section><h3>Learning metrics</h3><div class="adaptive-metrics" id="adaptiveMetrics"></div></section>
+<section><h3>Trends</h3><div class="adaptive-trends" id="adaptiveTrends"></div></section>
+<section><h3>Research opportunities</h3><div id="adaptiveRecommendations"></div></section>
+</section></dialog>
+<script src="adaptive-intelligence-engine.js?v=0.9.29.0"></script>
+<script src="recommendation-engine.js?v=0.9.29.0"></script>
+<script src="adaptive-intelligence-ui.js?v=0.9.29.0"></script>
+
+<dialog class="knowledge-base-dialog" id="knowledgeBaseDialog">
+<section class="knowledge-base-shell">
+<header><div><h2>Research Publication & Knowledge Base</h2><p id="knowledgeStatus">Draft, review, publish, and preserve research knowledge.</p></div><button id="knowledgeBaseClose" type="button" aria-label="Close">×</button></header>
+<div class="knowledge-toolbar"><input id="knowledgeSearch" type="search" placeholder="Search knowledge, methodology, and definitions"></div>
+<section class="knowledge-compose"><select id="knowledgeType"><option value="article">Research article</option><option value="finding">Finding</option><option value="definition">Definition</option><option value="methodology">Methodology</option></select><input id="knowledgeTitle" placeholder="Title"><input id="knowledgeSummary" placeholder="Summary"><textarea id="knowledgeBodyText" placeholder="Research content"></textarea><button id="knowledgeCreate" type="button">Create draft</button></section>
+<section id="knowledgeBaseBody"></section>
+</section></dialog>
+<script src="knowledge-base-engine.js?v=0.9.30.0"></script>
+<script src="publication-engine.js?v=0.9.30.0"></script>
+<script>document.addEventListener('DOMContentLoaded',()=>document.getElementById('openKnowledgeBase')?.addEventListener('click',()=>window.openGenreactrixKnowledgeBase?.()));</script>
+<dialog class="knowledge-base-dialog" id="terminologyMethodologyDialog">
+<form method="dialog" class="console-shell">
+<header><div><h2>Canonical Terminology & Methodology</h2><p id="tmStatus">One authoritative language and one versioned research method library.</p></div><button id="terminologyMethodologyClose" type="button" aria-label="Close">×</button></header>
+<nav class="knowledge-tabs"><button type="button" data-tm-view="terms" class="active">Terminology</button><button type="button" data-tm-view="methods">Methodology</button></nav>
+<input id="tmSearch" type="search" placeholder="Search terms and methodology">
+<section id="termComposer" class="knowledge-compose"><input id="termId" type="hidden"><input id="termName" placeholder="Canonical name"><select id="termCategory"><option value="reaction">Reaction</option><option value="theme">Theme</option><option value="primfusion">PrimFusion</option><option value="research">Research</option><option value="system">System</option><option value="general">General</option></select><input id="termAliases" placeholder="Aliases, comma separated"><textarea id="termDefinition" placeholder="Canonical definition"></textarea><select id="termStatus"><option value="active">Active</option><option value="deprecated">Deprecated</option></select><button id="termSave" type="button">Save term</button></section>
+<section id="methodComposer" class="knowledge-compose" hidden><input id="methodId" type="hidden"><input id="methodTitle" placeholder="Methodology title"><select id="methodCategory"><option value="director-classification">Director classification</option><option value="ai-evaluation">AI evaluation</option><option value="correlation">Correlation</option><option value="prediction">Prediction</option><option value="publication">Publication</option><option value="general">General</option></select><input id="methodVersion" value="1.0" placeholder="Version"><input id="methodSummary" placeholder="Summary"><textarea id="methodBody" placeholder="Versioned methodology"></textarea><select id="methodStatus"><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select><button id="methodSave" type="button">Save methodology</button></section>
+<section id="terminologyMethodologyBody"></section>
+</form>
+</dialog>
+<script src="terminology-engine.js?v=0.9.31.0"></script>
+<script src="methodology-engine.js?v=0.9.31.0"></script>
+<script src="terminology-methodology-ui.js?v=0.9.31.0"></script>
+
+<script>document.addEventListener('DOMContentLoaded',()=>document.getElementById('openTerminologyMethodology')?.addEventListener('click',()=>window.openGenreactrixTerminologyMethodology?.()));</script>
+
+
+<dialog class="knowledge-base-dialog" id="citationEvidenceDialog">
+<section class="knowledge-base-shell citation-evidence-shell">
+<header><div><h2>Citation & Evidence Graph</h2><p id="citationEvidenceStatus">Trace every conclusion to its supporting and contradictory evidence.</p></div><button id="citationEvidenceClose" type="button" aria-label="Close">×</button></header>
+<nav class="knowledge-tabs"><button type="button" data-ce-view="citations" class="active">Citations</button><button type="button" data-ce-view="links">Evidence links</button><button type="button" data-ce-view="bundles">Bundles</button></nav>
+<div class="knowledge-toolbar"><input id="citationEvidenceSearch" type="search" placeholder="Search citations and evidence"><button id="citationLinkCreate" type="button">Link evidence</button><button id="citationEvidenceExportJson" type="button">JSON</button><button id="citationEvidenceExportCsv" type="button">CSV</button></div>
+<section class="knowledge-compose citation-compose"><select id="citationKind"><option value="external">External source</option><option value="dataset">Dataset</option><option value="report">Genreactrix report</option><option value="finding">Finding</option><option value="publication">Publication</option><option value="methodology">Methodology</option></select><input id="citationTitle" placeholder="Citation title"><input id="citationAuthors" placeholder="Authors"><input id="citationPublisher" placeholder="Publisher"><input id="citationDate" placeholder="Published date"><input id="citationLocator" placeholder="URL, DOI, report ID, or source locator"><textarea id="citationNotes" placeholder="Notes, quoted claim, or relevance"></textarea><button id="citationSave" type="button">Save citation</button></section>
+<section id="citationEvidenceBody"></section>
+</section></dialog>
+<script src="citation-evidence-engine.js?v=0.9.32.0"></script>
+<script src="citation-evidence-ui.js?v=0.9.32.0"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@
   const now=()=>new Date().toISOString();
   const empty=()=>({
     reactions:[],themes:[null,null,null],primFusion:null,notes:"",saved:false,flagged:false,
-    retention:"keep",completion:"unclassified",aiVisible:false,updatedAt:null,schemaVersion:1
+    retention:"keep",completion:"unclassified",aiVisible:false,blocked:false,locked:false,updatedAt:null,schemaVersion:2
   });
   function load(key,fallback){try{return JSON.parse(localStorage.getItem(key)||"")||fallback;}catch{return fallback;}}
   function persist(key,value){localStorage.setItem(key,JSON.stringify(value));}
@@ -20,6 +20,7 @@
     return state;
   }
   function completion(s){
+    if(s?.blocked) return "blocked";
     const hasReaction=(s.reactions||[]).length>0;
     const hasTheme=(s.themes||[]).some(Boolean);
     const needsPrim=(s.reactions||[]).length>=2;
@@ -82,23 +83,30 @@
     function isDirty(imageId){return JSON.stringify(normalized(drafts[imageId]||get(imageId)))!==JSON.stringify(get(imageId));}
     function cancel(imageId){drafts[imageId]=get(imageId);save();emit("draft-cancelled",{imageId});return draft(imageId);}
     function undo(imageId){
-      const stack=store.undo[imageId]||[]; const tx=stack.pop(); if(!tx) return null;
+      const stack=store.undo[imageId]||[]; let tx=null;
+      while(stack.length){const candidate=stack.pop();if(JSON.stringify(candidate.before)!==JSON.stringify(candidate.after)){tx=candidate;break;}}
+      if(!tx) return null;
       store.redo[imageId]=store.redo[imageId]||[]; store.redo[imageId].push(tx);
       store.records[imageId]=clone(tx.before); drafts[imageId]=clone(tx.before); save();
-      window.genreactrixHistoryEngine?.append?.({imageId,eventType:"director-undo",actor:"director",sourceEngine:"director-classification",summary:"Director undo",payload:{restored:clone(tx.before),transaction:tx}});
-      emit("undo",{imageId,state:tx.before}); return clone(tx.before);
+      window.genreactrixHistoryEngine?.append?.({imageId,eventType:"director-undo",actor:"director",sourceEngine:"director-classification",summary:`Undo ${tx.action||"classification"}`,payload:{restored:clone(tx.before),transaction:tx}});
+      emit("undo",{imageId,state:tx.before,action:tx.action}); return clone(tx.before);
     }
     function redo(imageId){
-      const stack=store.redo[imageId]||[]; const tx=stack.pop(); if(!tx) return null;
+      const stack=store.redo[imageId]||[]; let tx=null;
+      while(stack.length){const candidate=stack.pop();if(JSON.stringify(candidate.before)!==JSON.stringify(candidate.after)){tx=candidate;break;}}
+      if(!tx) return null;
       store.undo[imageId]=store.undo[imageId]||[]; store.undo[imageId].push(tx);
       store.records[imageId]=clone(tx.after); drafts[imageId]=clone(tx.after); save();
-      window.genreactrixHistoryEngine?.append?.({imageId,eventType:"director-redo",actor:"director",sourceEngine:"director-classification",summary:"Director redo",payload:{restored:clone(tx.after),transaction:tx}});
-      emit("redo",{imageId,state:tx.after}); return clone(tx.after);
+      window.genreactrixHistoryEngine?.append?.({imageId,eventType:"director-redo",actor:"director",sourceEngine:"director-classification",summary:`Redo ${tx.action||"classification"}`,payload:{restored:clone(tx.after),transaction:tx}});
+      emit("redo",{imageId,state:tx.after,action:tx.action}); return clone(tx.after);
     }
-    function canUndo(id){return !!store.undo[id]?.length} function canRedo(id){return !!store.redo[id]?.length}
+    function canUndo(id){return !!store.undo[id]?.some(tx=>JSON.stringify(tx.before)!==JSON.stringify(tx.after))}
+    function canRedo(id){return !!store.redo[id]?.some(tx=>JSON.stringify(tx.before)!==JSON.stringify(tx.after))}
+    function peekUndo(id){const list=store.undo[id]||[];for(let i=list.length-1;i>=0;i--){if(JSON.stringify(list[i].before)!==JSON.stringify(list[i].after))return clone(list[i]);}return null;}
+    function peekRedo(id){const list=store.redo[id]||[];for(let i=list.length-1;i>=0;i--){if(JSON.stringify(list[i].before)!==JSON.stringify(list[i].after))return clone(list[i]);}return null;}
     function migrate(imageId,legacy){if(!store.records[imageId]){store.records[imageId]=normalized(legacy);drafts[imageId]=clone(store.records[imageId]);save();emit("migrated",{imageId});}return get(imageId);}
     function verify(){const issues=[];for(const [id,value] of Object.entries(store.records)){const v=validate(normalized(value));if(!v.valid)issues.push({imageId:id,type:"invalid-director-state",details:v.issues});}return{ok:issues.length===0,issueCount:issues.length,issues};}
-    return {empty,normalize:normalized,begin,draft,patchDraft,commit,cancel,revertDraft:cancel,isDirty,get,undo,redo,canUndo,canRedo,migrate,validate,completion,verify,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)}};
+    return {empty,normalize:normalized,begin,draft,patchDraft,commit,cancel,revertDraft:cancel,isDirty,get,undo,redo,canUndo,canRedo,peekUndo,peekRedo,migrate,validate,completion,verify,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)}};
   }
   window.genreactrixDirectorClassificationEngine=createEngine();
 })();
