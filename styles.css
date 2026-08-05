@@ -2705,3 +2705,59 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
 /* v0.9.38.0 Public Research */
 .public-research-shell{width:min(1180px,96vw);max-height:94vh;overflow:auto}.public-research-grid{display:grid;grid-template-columns:minmax(250px,330px) 1fr;gap:16px}.public-research-compose{display:grid;align-content:start;gap:9px}.public-research-compose input,.public-research-compose textarea{width:100%}.public-research-includes{display:grid;gap:5px;padding:8px;border:1px solid var(--line,#39445a);border-radius:8px}.public-research-list{display:grid;gap:6px;max-height:310px;overflow:auto}.public-research-list button{display:grid;text-align:left;gap:3px}.public-research-list button.active{outline:2px solid currentColor}.public-research-summary>header{display:flex;justify-content:space-between;gap:12px;align-items:start}.public-research-summary>header span{padding:4px 8px;border-radius:999px;border:1px solid var(--line,#39445a)}.public-research-metrics{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:8px;margin:12px 0}.public-research-metrics>div{display:grid;padding:10px;border:1px solid var(--line,#39445a);border-radius:8px}.public-research-metrics strong{font-size:1.3rem}.public-research-entry,.public-research-feed>div{display:grid;gap:3px;padding:9px 0;border-bottom:1px solid var(--line,#39445a)}.public-research-feed span,.public-research-entry span{opacity:.75}.public-research-summary .error{border-left:3px solid #c44;padding-left:8px}.public-research-summary .warning{border-left:3px solid #d98f1f;padding-left:8px}@media(max-width:760px){.public-research-grid{grid-template-columns:1fr}.public-research-metrics{grid-template-columns:repeat(2,minmax(100px,1fr))}}
+
+
+/* v0.9.39.0 — canonical Landscape workstation layout foundation.
+   The fixed canvas scales uniformly; Portrait and legacy consoles remain untouched. */
+.landscape-workstation{display:none}
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #app>.base-layout,#app>.tablet-primfusion-console{display:none!important}
+  .landscape-workstation{display:grid!important;place-items:center;width:100%;height:100dvh;margin:0!important;padding:0!important;overflow:hidden;background:#09070d;border:0!important}
+  .landscape-scale-host{width:min(100vw,calc(100dvh * 2.222222));aspect-ratio:20/9;max-height:100dvh;display:grid;place-items:center;overflow:hidden}
+  .landscape-canvas{position:relative;width:100%;height:100%;padding:.7%;display:grid;grid-template-rows:11% minmax(0,1fr);gap:.7%;background:var(--bg);overflow:hidden}
+  .landscape-toolbar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.55%;min-height:0}
+  .landscape-toolbar button,.landscape-toolbar .tablet-images-button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;padding:0 .5em;border:1px solid var(--line);border-radius:.45em;background:var(--panel);color:var(--text);font-size:clamp(8px,1.25vw,16px);font-weight:700}
+  .landscape-toolbar .tablet-images-button input{display:none}
+  .landscape-toolbar button[aria-pressed="true"]{border-color:#ff5151;color:#ff8080}
+  .landscape-frame{display:grid;grid-template-columns:31.5% minmax(0,1fr);gap:.8%;min-height:0}
+  .landscape-image-region{display:grid;grid-template-rows:minmax(0,1fr) 24%;gap:1%;min-width:0;min-height:0}
+  .landscape-image-button{display:grid;place-items:center;min-width:0;min-height:0;padding:0;border:1px solid var(--line);border-radius:.7em;background:#0d0b12;overflow:hidden}
+  .landscape-image-button img{width:100%;height:100%;object-fit:contain;display:block}
+  .landscape-director-themes{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(3,minmax(0,1fr));gap:3%}
+  .landscape-director-themes .tablet-theme-cell{height:auto;min-height:0;font-size:clamp(8px,1.1vw,15px);border-radius:.45em}
+  .landscape-workspace{position:relative;min-width:0;min-height:0;border:1px solid var(--line);border-radius:.7em;background:var(--panel);overflow:hidden}
+  .landscape-flip-button{position:absolute;right:.8%;top:1%;z-index:5;width:6.5%;aspect-ratio:1;border-radius:50%;padding:0;font-size:clamp(12px,1.8vw,24px);background:#211c29;color:var(--accent);border:1px solid var(--accent)}
+  .landscape-workspace-face{position:absolute;inset:0;padding:1%;min-width:0;min-height:0}
+  .landscape-judgment-face{display:none;grid-template-rows:42% 10% 16% minmax(0,1fr);gap:1.4%;padding-top:2%}
+  .landscape-workstation.face-judgment .landscape-matrix-face{display:none}
+  .landscape-workstation.face-judgment .landscape-judgment-face{display:grid}
+  .landscape-matrix-face{display:grid;place-items:stretch;padding-right:8%}
+  .landscape-matrix-face .tablet-workbench-matrix{width:100%;height:100%;margin:0;padding:0;overflow:hidden}
+  .landscape-matrix-face .true-primfusion-band,.landscape-matrix-face .primfusion-scroller{height:100%;margin:0;overflow:hidden}
+  .landscape-matrix-face .true-primfusion-grid{width:100%;height:100%;min-width:0;grid-template-columns:7% repeat(13,minmax(0,1fr));grid-template-rows:repeat(14,minmax(0,1fr))}
+  .landscape-matrix-face .primfusion-corner,.landscape-matrix-face .primfusion-axis-header,.landscape-matrix-face .primfusion-intersection{height:auto;min-height:0;min-width:0;padding:0;border-radius:0}
+  .landscape-matrix-face .primfusion-axis-header small,.landscape-matrix-face .primfusion-combo-label{font-size:clamp(4px,.48vw,7px)!important}
+  .landscape-matrix-face .primfusion-axis-header span{font-size:clamp(8px,1.05vw,14px)}
+  .landscape-matrix-face .primfusion-combo-symbol{display:none!important}
+  .landscape-judgment-face .tablet-prims-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:3%;padding:1% 8% 1% 1%}
+  .landscape-judgment-face .tablet-prim-button{display:grid;place-items:center;grid-template-rows:minmax(0,1fr) auto;min-width:0;min-height:0;padding:0;border:0;background:transparent}
+  .landscape-judgment-face .tablet-prim-button .symbol{display:grid;place-items:center;width:min(4.2vw,5.8vh);aspect-ratio:1;border:2px solid transparent;border-radius:50%;font-size:clamp(14px,2.3vw,28px)}
+  .landscape-judgment-face .tablet-prim-button.selected .symbol{border-color:#ff3d3d}
+  .landscape-judgment-face .tablet-prim-button .pct{font-size:clamp(6px,.7vw,10px);color:var(--muted)}
+  .landscape-ai-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1%}
+  .landscape-ai-controls button{min-width:0;padding:0;border-radius:.4em;font-size:clamp(7px,.9vw,12px)}
+  .landscape-ai-controls button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+  .landscape-ai-theme-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1%}
+  .landscape-ai-theme-row .tablet-theme-cell{height:auto;min-height:0;font-size:clamp(7px,.85vw,12px)}
+  .landscape-judgment-face .tablet-ai-description-ghost{height:auto;min-height:0;margin:0;padding:1%;font-size:clamp(7px,.8vw,11px);overflow:auto;color:var(--text)}
+  .landscape-customs-drawer{position:absolute;left:1%;right:1%;bottom:1%;height:48%;z-index:4;padding:1.2%;border:1px solid var(--accent);border-radius:.6em;background:#17131df2;box-shadow:0 -12px 28px #0008}
+  .landscape-customs-drawer label{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:1%;font-size:clamp(7px,.85vw,12px)}
+  .landscape-customs-drawer input{min-width:0;padding:.5em}
+  .landscape-customs-placeholder{display:grid;place-items:center;height:70%;color:var(--muted);font-size:clamp(7px,.9vw,13px)}
+}
+@media (min-width:600px) and (min-height:500px) and (orientation:portrait){
+  /* Unfolded portrait currently retains the existing swappable-workstation entry point.
+     The canonical Portrait screen itself is not modified by this release. */
+  .landscape-workstation{height:auto;min-height:0;aspect-ratio:20/9;margin-block:auto!important}
+  .landscape-scale-host{width:100%;height:auto;max-height:none}
+}

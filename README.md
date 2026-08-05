@@ -1,4 +1,14 @@
-# Genreactrix v0.9.34.0
+# Genreactrix v0.9.39.0
+
+## v0.9.39.0 — Landscape Layout Foundation
+
+- Replaced the legacy tablet Landscape composition with a fixed 20:9 classification canvas that scales uniformly.
+- Added the canonical persistent frame: image, explicit Previous/Next/Undo/Redo/Flag/Save controls, Director theme fields, and flippable workspace.
+- Added Matrix and Judgment faces, independent AI visibility controls, and the Customs drawer layout socket.
+- Removed automatic image advancement from Theme 1 selection.
+- Preserved the complete Portrait Control Station and all existing engines.
+- This release is deliberately a layout foundation: the existing matrix renderer remains temporarily mounted until the canonical 13 × 7 interlocked renderer is installed.
+
 
 ## v0.9.34.0 — Research Paper Composer & Final Publication
 

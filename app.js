@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.26.0";
+const GENREACTRIX_BUILD="v0.9.39.0";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -609,7 +609,7 @@ function renderComparison(){
 }
 
 
-let tabletAiVisible=false;
+const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false};
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
@@ -622,16 +622,24 @@ function renderTabletWorkbench(){
     b.type="button";
     b.className="tablet-prim-button"+(state.selectedReactions.includes(i)?" selected":"");
     b.title=p.name;
-    b.innerHTML=`<span class="symbol">${p.symbol}</span><span class="pct">${weights[p.id]??0}%</span>`;
+    b.innerHTML=`<span class="symbol">${p.symbol}</span><span class="pct">${tabletLandscapeView.aiReactions?(weights[p.id]??0)+"%":""}</span>`;
     b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(i);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(i);saveCurrent();renderAll();});
     prims.appendChild(b);
   });
   for(let i=0;i<3;i++) $("tabletWorkbenchTheme"+(i+1)).textContent=themeLabel(state.themes[i]);
-  currentAiThemes().slice(0,3).forEach(([label,weight],i)=>$("tabletWorkbenchAiTheme"+(i+1)).textContent=tabletAiVisible?`${label} ${weight}%`:"—");
-  $("tabletWorkbenchAiDescription").textContent=tabletAiVisible?(currentAiRun().description||currentDescription()):"";
-  root.classList.toggle("ai-visible",tabletAiVisible);
-  $("tabletShowAiBtn").setAttribute("aria-pressed",String(tabletAiVisible));
-  $("tabletShowAiBtn").textContent=tabletAiVisible?"HIDE AI":"SHOW AI";
+  for(let i=0;i<3;i++){
+    const value=currentAiThemes()[i];
+    $("tabletWorkbenchAiTheme"+(i+1)).textContent=value?`${value[0]} ${value[1]}%`:"—";
+  }
+  $("tabletWorkbenchAiDescription").textContent=currentAiRun().description||currentDescription();
+  root.classList.toggle("face-judgment",tabletLandscapeView.face==="judgment");
+  $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
+  $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
+  $("tabletAiThemesPanel").hidden=!tabletLandscapeView.aiThemes;
+  $("tabletWorkbenchAiDescription").hidden=!tabletLandscapeView.aiDescription;
+  $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
+  [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
+  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
   renderPrimFusionMatrix("","tabletWorkbenchMatrix");
 }
 
@@ -876,10 +884,6 @@ function selectTheme(themeInput){
   }
   pushHistory();
   state.themes[target]=theme;
-  if(sourceSlot===1){
-    commitAndAdvance(sourceKey);
-    return;
-  }
   const saveOk=writeClassificationForKey(sourceKey,classificationState());
   if(!saveOk) return;
   renderThemes();
@@ -1527,7 +1531,13 @@ window.addEventListener("resize",()=>{
 loadCurrent();
 
 
-document.getElementById("tabletShowAiBtn")?.addEventListener("click",()=>{tabletAiVisible=!tabletAiVisible;renderTabletWorkbench();});
+document.getElementById("tabletWorkspaceFlipBtn")?.addEventListener("click",()=>{tabletLandscapeView.face=tabletLandscapeView.face==="matrix"?"judgment":"matrix";if(tabletLandscapeView.face==="matrix")tabletLandscapeView.customs=false;renderTabletWorkbench();});
+document.getElementById("tabletAiReactionsBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiReactions=!tabletLandscapeView.aiReactions;renderTabletWorkbench();});
+document.getElementById("tabletAiThemesBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiThemes=!tabletLandscapeView.aiThemes;renderTabletWorkbench();});
+document.getElementById("tabletAiDescriptionBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiDescription=!tabletLandscapeView.aiDescription;renderTabletWorkbench();});
+document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=!tabletLandscapeView.customs;renderTabletWorkbench();});
+document.getElementById("tabletFlagBtn")?.addEventListener("click",()=>document.getElementById("directorFlagBtn")?.click());
+document.getElementById("tabletSaveBtn")?.addEventListener("click",()=>{saveCurrent("director-commit");renderAll();setDirectorStatus("Record saved.");});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
 
 
