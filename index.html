@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#17141e">
-  <title>Genreactrix v0.9.11.0</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.11.0">
+  <title>Genreactrix v0.9.12.1</title>
+  <link rel="stylesheet" href="styles.css?v=0.9.12.1">
 </head>
 <body>
   <main id="app" class="app-shell">
     <nav class="console nav-console" aria-label="Image navigation">
       <div class="brand">
         <strong>Genreactrix</strong>
-        <span>v0.9.11.0</span>
+        <span>v0.9.12.1</span>
       </div>
       <div class="nav-actions">
         <button id="prevBtn" class="nav-icon-button nav-caret" title="Previous image" aria-label="Previous image">‹</button>
@@ -42,7 +42,7 @@
 
     <section id="portraitControlStation" class="portrait-control-station" aria-label="Director Control Station">
       <header class="portrait-station-header">
-        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.11.0</span></strong>
+        <strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.12.1</span></strong>
         <div class="portrait-header-actions">
           <button id="portraitMailboxBtn" class="portrait-icon-button portrait-mailbox-button" type="button" aria-label="Notifications" title="Notifications">📬<span id="portraitMailboxBadge" class="mailbox-badge" hidden>0</span></button>
           <button id="portraitSettingsBtn" class="portrait-icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -221,8 +221,8 @@
           </section>
           <section data-settings-panel="maintenance" hidden>
             <h3>Maintenance</h3>
-            <button type="button" id="settingsVerify">Verify settings</button>
-            <button type="button" id="settingsVerifyProject">Run project integrity checks</button>
+            <div class="settings-action-row"><button type="button" id="settingsVerify">Verify settings</button><button type="button" id="settingsVerifyProject">Open maintenance</button></div>
+            <p class="settings-note">Quick and full checks, recovery, recycle review, restore, and maintenance reports.</p>
           </section>
           <section data-settings-panel="backups" hidden>
             <h3>Backups</h3>
@@ -622,8 +622,31 @@
     </section>
   </dialog>
 
-  <script src="settings-engine.js?v=0.9.11.0"></script>
-  <script src="app.js?v=0.9.11.0"></script>
+  <dialog id="maintenanceDialog" class="maintenance-dialog">
+    <section class="maintenance-shell">
+      <header><h2>Maintenance &amp; Recovery</h2><button type="button" id="maintenanceClose" aria-label="Close">×</button></header>
+      <div class="maintenance-toolbar">
+        <button type="button" id="maintenanceQuick">Quick check</button>
+        <button type="button" id="maintenanceFull">Full project check</button>
+        <button type="button" id="maintenanceRecyclePreview">Recycle preview</button>
+        <button type="button" id="maintenanceReports">Reports</button>
+      </div>
+      <div id="maintenanceSummary" class="maintenance-summary">Open 0 · Critical 0 · Repairable 0</div>
+      <div class="maintenance-filter-row"><label>Issues <select id="maintenanceIssueFilter"><option value="open">Open</option><option value="all">All</option><option value="critical">Critical</option><option value="attention">Attention</option><option value="warning">Warning</option><option value="resolved">Resolved</option><option value="ignored">Ignored</option></select></label></div>
+      <section id="maintenanceIssueList" class="maintenance-issue-list"></section>
+      <section class="maintenance-restore">
+        <h3>Restore backup</h3>
+        <div class="maintenance-restore-row"><input id="maintenanceRestoreFile" type="file" accept="application/json,.json"><select id="maintenanceRestoreMode"><option value="merge">Merge by immutable IDs</option><option value="replace">Replace current project</option></select><button id="maintenanceRestoreRun" type="button" disabled>Restore</button></div>
+        <div id="maintenanceRestorePreview" class="maintenance-restore-preview"></div>
+      </section>
+      <section><h3>Maintenance reports</h3><div id="maintenanceReportList" class="maintenance-report-list"></div></section>
+      <div id="maintenanceStatus" class="maintenance-status" role="status" aria-live="polite"></div>
+    </section>
+  </dialog>
+
+  <script src="maintenance-engine.js?v=0.9.12.1"></script>
+  <script src="settings-engine.js?v=0.9.12.1"></script>
+  <script src="app.js?v=0.9.12.1"></script>
 
   <dialog id="notificationsDialog" class="notifications-dialog">
     <div class="notifications-shell">
@@ -637,11 +660,11 @@
     </div>
   </dialog>
 
-  <script src="notifications-engine.js?v=0.9.11.0"></script>
-  <script src="queue-engine.js?v=0.9.11.0"></script>
-  <script src="genreactrix-cloud-api.js?v=0.9.11.0"></script>
-  <script src="reports-engine.js?v=0.9.11.0"></script>
-  <script src="batch-engine.js?v=0.9.11.0"></script>
-  <script src="ai-analysis-engine.js?v=0.9.11.0"></script>
+  <script src="notifications-engine.js?v=0.9.12.1"></script>
+  <script src="queue-engine.js?v=0.9.12.1"></script>
+  <script src="genreactrix-cloud-api.js?v=0.9.12.1"></script>
+  <script src="reports-engine.js?v=0.9.12.1"></script>
+  <script src="batch-engine.js?v=0.9.12.1"></script>
+  <script src="ai-analysis-engine.js?v=0.9.12.1"></script>
 </body>
 </html>
