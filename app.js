@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.1";
+const GENREACTRIX_BUILD="v0.9.39.2";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -610,6 +610,99 @@ function renderComparison(){
 
 
 const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false};
+
+function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
+  const root=$(targetId);
+  if(!root) return;
+  root.innerHTML="";
+
+  const columns=[1,0,3,2,8,12,11]; // Adorable, Beautiful, Funny, Tragic, Zazzly, Celebration, Smart
+  const upperRows=[4,10,9,7,6,5];  // Intense, Eerie, Disgusting, Dreamy, Hell, Weird
+  const shell=document.createElement("div");
+  shell.className="interlocked-matrix-shell";
+
+  const top=document.createElement("div");
+  top.className="interlocked-axis interlocked-axis-top";
+  columns.forEach(index=>{
+    const primitive=PRIMITIVES[index];
+    const button=document.createElement("button");
+    button.type="button";
+    button.title=`Select ${primitive.name}`;
+    button.textContent=primitive.symbol;
+    button.addEventListener("click",()=>selectTheme({id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id}));
+    top.appendChild(button);
+  });
+  shell.appendChild(top);
+
+  const body=document.createElement("div");
+  body.className="interlocked-matrix-body";
+  const left=document.createElement("div");
+  left.className="interlocked-axis interlocked-axis-left";
+  const grid=document.createElement("div");
+  grid.className="interlocked-matrix-grid";
+  const right=document.createElement("div");
+  right.className="interlocked-axis interlocked-axis-right";
+
+  const appendPrimitiveButton=(holder,index)=>{
+    const primitive=PRIMITIVES[index];
+    const button=document.createElement("button");
+    button.type="button";
+    button.title=`Select ${primitive.name}`;
+    button.textContent=primitive.symbol;
+    button.addEventListener("click",()=>selectTheme({id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id}));
+    holder.appendChild(button);
+  };
+
+  upperRows.forEach(rowIndex=>{
+    appendPrimitiveButton(left,rowIndex);
+    appendPrimitiveButton(right,rowIndex);
+    columns.forEach(columnIndex=>{
+      const row=PRIMITIVES[rowIndex], col=PRIMITIVES[columnIndex];
+      const cell=document.createElement("button");
+      cell.type="button";
+      cell.className="interlocked-cell interlocked-upper";
+      cell.textContent=canonicalPrimFusionLabel(row.name,col.name);
+      cell.title=`${row.symbol}${col.symbol} ${cell.textContent}`;
+      cell.addEventListener("click",()=>selectTheme({id:primFusionCellId(row.id,col.id),label:cell.textContent,kind:"primFusion",primitiveIds:[row.id,col.id].sort()}));
+      grid.appendChild(cell);
+    });
+  });
+
+  columns.forEach((rowIndex,rowPosition)=>{
+    appendPrimitiveButton(left,rowIndex);
+    appendPrimitiveButton(right,rowIndex);
+    columns.forEach((columnIndex,columnPosition)=>{
+      if(columnPosition<rowPosition){
+        const spacer=document.createElement("div");
+        spacer.className="interlocked-cell interlocked-spacer";
+        grid.appendChild(spacer);
+        return;
+      }
+      const row=PRIMITIVES[rowIndex], col=PRIMITIVES[columnIndex];
+      const cell=document.createElement("button");
+      cell.type="button";
+      cell.className="interlocked-cell "+(columnPosition===rowPosition?"interlocked-diagonal":"interlocked-lower");
+      cell.textContent=columnPosition===rowPosition?row.symbol:canonicalPrimFusionLabel(row.name,col.name);
+      cell.title=columnPosition===rowPosition?`Select ${row.name}`:`${row.symbol}${col.symbol} ${cell.textContent}`;
+      if(columnPosition===rowPosition){
+        cell.addEventListener("click",()=>selectTheme({id:`primitive:${row.id}`,label:row.name,kind:"primitive",primitiveId:row.id}));
+      }else{
+        cell.addEventListener("click",()=>selectTheme({id:primFusionCellId(row.id,col.id),label:cell.textContent,kind:"primFusion",primitiveIds:[row.id,col.id].sort()}));
+      }
+      grid.appendChild(cell);
+    });
+  });
+
+  body.append(left,grid,right);
+  shell.appendChild(body);
+
+  const bottom=top.cloneNode(false);
+  bottom.className="interlocked-axis interlocked-axis-bottom";
+  columns.forEach(index=>appendPrimitiveButton(bottom,index));
+  shell.appendChild(bottom);
+  root.appendChild(shell);
+}
+
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
@@ -640,7 +733,7 @@ function renderTabletWorkbench(){
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
-  renderPrimFusionMatrix("","tabletWorkbenchMatrix");
+  renderLandscapeInterlockedMatrix("tabletWorkbenchMatrix");
 }
 
 
