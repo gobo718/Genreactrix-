@@ -1,6 +1,6 @@
-# Genreactrix v0.9.39.0
+# Genreactrix v0.9.39.1
 
-## v0.9.39.0 — Landscape Layout Foundation
+## v0.9.39.1 — Landscape Layout Foundation (Cache-Busting Correction)
 
 - Replaced the legacy tablet Landscape composition with a fixed 20:9 classification canvas that scales uniformly.
 - Added the canonical persistent frame: image, explicit Previous/Next/Undo/Redo/Flag/Save controls, Director theme fields, and flippable workspace.
