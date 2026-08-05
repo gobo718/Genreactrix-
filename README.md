@@ -1,4 +1,12 @@
-# Genreactrix v0.9.17.0
+# Genreactrix v0.9.18.0
+
+## v0.9.18.0 — Reports Engine / Research Laboratory
+
+- Added a persistent Report Definition Engine and built-in research report library.
+- Added selectable fields, grouping, sorting, statistics, reusable definitions, contextual reports, and execution snapshots.
+- Manual and automatic reports share the same canonical Reports Engine.
+- JSON, CSV, and printable HTML exports remain supported.
+- Built directly from the canonical v0.9.17.0 release.
 
 ## v0.9.17.0 — Director Classification Engine
 

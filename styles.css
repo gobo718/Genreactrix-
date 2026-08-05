@@ -2569,3 +2569,4 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     margin-bottom:0;
   }
 }
+.report-definition-grid{margin-top:.5rem}.report-fields{display:flex;flex-wrap:wrap;gap:.45rem .8rem;align-items:center;padding:.55rem 0}.report-fields strong{min-width:5rem}.report-fields label{display:inline-flex;align-items:center;gap:.3rem}.report-output{max-height:38vh;overflow:auto}
