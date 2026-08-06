@@ -2842,11 +2842,11 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.5 — exact workbook-derived 13×7 interlocked matrix. */
+/* v0.9.39.6 — exact workbook-derived 13×7 interlocked matrix. */
 .interlocked-lavender{background:#d8c9e5}.interlocked-peach{background:#f2cba8}.interlocked-green{background:#a9dda5;color:#102313}
 
 
-/* v0.9.39.5 — full-viewport Landscape and canonical diagonal alignment.
+/* v0.9.39.6 — full-viewport Landscape and canonical diagonal alignment.
    The Fold landscape workstation uses the entire browser viewport; matrix
    emoji placement follows the workbook's top-right / bottom-left alignments. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
@@ -2873,5 +2873,105 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     align-items:end!important;
     padding:0 0 .04em .16em!important;
     text-align:left!important;
+  }
+}
+
+/* v0.9.39.6 — canonical split workstation geometry.
+   Image + themes own the left column. The six record controls belong only
+   above the matrix workspace. The complete matrix is anchored bottom-right. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-canvas{
+    display:block!important;
+    padding:.28%!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  .landscape-frame{
+    display:grid!important;
+    grid-template-columns:30.25% minmax(0,1fr)!important;
+    gap:.4%!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+  }
+  .landscape-image-region{
+    display:grid!important;
+    grid-template-rows:minmax(0,1fr) 16.5%!important;
+    gap:.45%!important;
+    min-width:0!important;
+    min-height:0!important;
+  }
+  .landscape-image-button{
+    align-self:stretch!important;
+    justify-self:stretch!important;
+    width:100%!important;
+    height:100%!important;
+    border-radius:.5em!important;
+  }
+  .landscape-image-button img{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:left top!important;
+  }
+  .landscape-director-themes{
+    gap:2.2%!important;
+  }
+  .landscape-work-area{
+    display:grid!important;
+    grid-template-rows:8.6% minmax(0,1fr)!important;
+    gap:.38%!important;
+    min-width:0!important;
+    min-height:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  .landscape-toolbar{
+    display:grid!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    gap:.45%!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+  }
+  .landscape-toolbar button{
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    border-radius:.42em!important;
+    font-size:clamp(9px,1.35vw,18px)!important;
+  }
+  .landscape-workspace{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    border-radius:.5em!important;
+  }
+  .landscape-matrix-face{
+    display:grid!important;
+    place-items:end!important;
+    padding:.22%!important;
+  }
+  .landscape-matrix-face .tablet-workbench-matrix{
+    align-self:end!important;
+    justify-self:end!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+  }
+  .interlocked-matrix-shell{
+    align-self:end!important;
+    justify-self:end!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+  }
+  .landscape-flip-button{
+    right:.35%!important;
+    top:.35%!important;
+    width:4.8%!important;
   }
 }

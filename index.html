@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.5</title>
-<link href="styles.css?v=0.9.39.5" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.6</title>
+<link href="styles.css?v=0.9.39.6" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.5</span>
+<span>v0.9.39.6</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.5</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.6</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -336,15 +336,6 @@
 <section aria-label="Landscape classification workstation" class="tablet-workbench landscape-workstation" id="tabletWorkbench">
 <div class="landscape-scale-host" id="landscapeScaleHost">
 <div class="landscape-canvas" id="landscapeCanvas">
-<header class="landscape-toolbar" aria-label="Record controls">
-<button aria-label="Previous image" id="tabletPrevBtn" type="button">‹ <span>Previous</span></button>
-<button aria-label="Next image" id="tabletNextBtn" type="button"><span>Next</span> ›</button>
-<button id="tabletUndoBtn" type="button">Undo</button>
-<button id="tabletRedoBtn" type="button">Redo</button>
-<button aria-pressed="false" id="tabletFlagBtn" type="button">⚑ Flag</button>
-<button class="primary-action" id="tabletSaveBtn" type="button">Save</button>
-<label class="tablet-images-button">Images<input accept="image/*" id="tabletFolderInput" multiple="" type="file" webkitdirectory=""/></label>
-</header>
 <div class="landscape-frame">
 <section class="landscape-image-region" aria-label="Image and Director themes">
 <button class="landscape-image-button" id="tabletImageViewBtn" type="button" aria-label="Open image inspection view">
@@ -356,6 +347,16 @@
 <button class="tablet-theme-cell" data-tablet-workbench-slot="3"><span class="tablet-slot-number">3</span><strong id="tabletWorkbenchTheme3">—</strong></button>
 </div>
 </section>
+<section class="landscape-work-area" aria-label="Matrix controls and classification workspace">
+<header class="landscape-toolbar" aria-label="Record controls">
+<button aria-label="Previous image" id="tabletPrevBtn" type="button">‹ <span>Previous</span></button>
+<button aria-label="Next image" id="tabletNextBtn" type="button"><span>Next</span> ›</button>
+<button id="tabletUndoBtn" type="button">Undo</button>
+<button id="tabletRedoBtn" type="button">Redo</button>
+<button aria-pressed="false" id="tabletFlagBtn" type="button">⚑ Flag</button>
+<button class="primary-action" id="tabletSaveBtn" type="button">Save</button>
+<input accept="image/*" id="tabletFolderInput" multiple="" type="file" webkitdirectory="" hidden/>
+</header>
 <section class="landscape-workspace" aria-label="Classification workspace">
 <button class="landscape-flip-button" id="tabletWorkspaceFlipBtn" type="button" aria-label="Flip Matrix and Judgment workspace">↔</button>
 <div class="landscape-workspace-face landscape-matrix-face" id="tabletMatrixFace">
@@ -380,6 +381,7 @@
 <div class="landscape-customs-placeholder">Custom themes and reactions connect here after layout approval.</div>
 </div>
 </div>
+</section>
 </section>
 </div>
 </div>
@@ -728,7 +730,7 @@
 <script src="maintenance-engine.js?v=0.9.23.0"></script>
 <script src="settings-engine.js?v=0.9.14.0"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
-<script src="app.js?v=0.9.39.5"></script>
+<script src="app.js?v=0.9.39.6"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
 <header><h2>Notifications</h2><button aria-label="Close" id="notificationsClose" type="button">×</button></header>
