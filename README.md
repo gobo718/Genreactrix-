@@ -1,4 +1,4 @@
-# v0.9.39.23 — AI Description Panel
+# v0.9.39.24 — AI Description Panel
 
 - Places the AI Description panel immediately to the right of the AI theme fields.
 - Aligns its top with AI Theme 1 and its bottom with AI Theme 3.
@@ -503,7 +503,7 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Preserved existing Add, Edit, Delete, validation, and evaluation-version behavior.
 
 
-## v0.9.39.23 — Landscape Image View safe checkpoint
+## v0.9.39.24 — Landscape Image View safe checkpoint
 
 - Added a focused, full-screen Landscape Image View for one-glance verification of the Director's judgment.
 - The image expands to the available left-side phone borders while preserving aspect ratio.

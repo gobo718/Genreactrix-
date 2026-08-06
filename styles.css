@@ -3901,7 +3901,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.23 — Customs creation controls and ordered expression editing. */
+/* v0.9.39.24 — Customs creation controls and ordered expression editing. */
 .landscape-customs-library section{grid-template-rows:auto 1fr!important}
 .landscape-custom-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
 .landscape-custom-heading-row strong{font-size:clamp(8px,.82vw,12px);line-height:1.1;letter-spacing:.01em}
@@ -3917,7 +3917,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .custom-reorder-active,.custom-reorder-active *{cursor:grabbing!important}
 
 
-/* v0.9.39.23 — compact unequal Customs libraries, editing, reordering, and version-state UI. */
+/* v0.9.39.24 — compact unequal Customs libraries, editing, reordering, and version-state UI. */
 .landscape-customs-drawer{font-size:clamp(8px,.72vw,11px)!important}
 .landscape-customs-drawer>label{font-size:clamp(8px,.68vw,10px)!important;gap:3px!important}
 .landscape-customs-drawer>label input{font-size:clamp(8px,.72vw,11px)!important;min-height:28px!important;padding:4px 7px!important}
@@ -3935,7 +3935,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .custom-library-actions .danger-action{background:#5d2027!important;border-color:#b95562!important}
 
 
-/* v0.9.39.23 — completed safe Customs layout checkpoint. */
+/* v0.9.39.24 — completed safe Customs layout checkpoint. */
 #tabletCustomsDrawer.landscape-customs-drawer{
   display:grid!important;
   grid-template-rows:auto minmax(0,1fr)!important;
@@ -4018,7 +4018,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 #tabletCustomsDrawer .landscape-custom-item.reordering{position:relative!important;outline:2px solid #32c7c7!important;box-shadow:0 5px 16px #0009!important;transform:scale(1.01)!important;background:#211a2a!important}
 
 
-/* v0.9.39.23 — focused Landscape Image View verification mode. */
+/* v0.9.39.24 — focused Landscape Image View verification mode. */
 .landscape-image-view[hidden]{display:none!important}
 .landscape-image-view{
   position:fixed;
@@ -4151,3 +4151,4 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .landscape-image-view-theme b{font-size:9px;color:#aca0b8}
 .landscape-image-view-theme strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (orientation:portrait){.landscape-image-view{display:none!important}}
+\n\n/* v0.9.39.24 — Customs completion, keyboard safety, Flag reliability, and Image View correction. */\n#tabletCustomsDrawer.landscape-customs-drawer{\n  background:#17131d!important;\n  opacity:1!important;\n  isolation:isolate!important;\n  z-index:20!important;\n}\n.landscape-sliding-drawer.customs-active #tabletAiThemesPanel,\n.landscape-sliding-drawer.customs-active #tabletWorkbenchAiDescription{display:none!important}\n#tabletCustomsDrawer .landscape-customs-library{\n  grid-template-rows:minmax(0,2.6fr) minmax(0,1fr)!important;\n  gap:14px!important;\n}\n#tabletCustomsDrawer .landscape-custom-section{\n  grid-template-rows:28px minmax(0,1fr)!important;\n  gap:6px!important;\n  overflow:hidden!important;\n}\n#tabletCustomsDrawer .landscape-custom-heading-row{height:28px!important;gap:12px!important}\n#tabletCustomsDrawer .landscape-custom-title{font-size:10px!important}\n#tabletCustomsDrawer .landscape-custom-add{height:24px!important;min-height:24px!important;font-size:9px!important;padding:2px 8px!important}\n#tabletCustomsDrawer .landscape-custom-list{position:relative!important;z-index:1!important}\n#tabletCustomsDrawer button{pointer-events:auto!important}\n@media (orientation:landscape){\n  html.landscape-keyboard-open .landscape-workbench{height:var(--visual-viewport-height,100dvh)!important;max-height:var(--visual-viewport-height,100dvh)!important;overflow:hidden!important}\n  html.landscape-keyboard-open #tabletCustomsDrawer{position:fixed!important;left:2vw!important;right:2vw!important;top:6px!important;bottom:auto!important;height:min(190px,calc(var(--visual-viewport-height,100dvh) - 12px))!important;z-index:2500!important}\n  html.landscape-keyboard-open #tabletCustomsDrawer .landscape-customs-library{display:none!important}\n  html.landscape-keyboard-open #tabletCustomsDrawer>label{height:34px!important}\n}\n.flag-admin-dialog{width:min(420px,90vw);border:1px solid #554566;border-radius:14px;background:#17131f;color:#f4eef8;padding:0;z-index:4000}\n.flag-admin-dialog::backdrop{background:#000b}\n.flag-admin-shell{display:grid;gap:10px;padding:14px}.flag-admin-shell header{display:flex;align-items:center;justify-content:space-between}.flag-admin-shell h2,.flag-admin-shell p{margin:0}.flag-admin-shell button{min-height:36px}.flag-admin-shell .danger-action{background:#5d2027;border-color:#b95562}\n.landscape-image-view{padding:0!important}\n.landscape-image-view-shell{grid-template-columns:minmax(0,1fr) clamp(300px,31vw,390px)!important;gap:0!important}\n.landscape-image-view-canvas{align-self:stretch!important;justify-self:stretch!important;border-radius:0!important}\n.landscape-image-view-canvas img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:left center!important}\n.landscape-image-view-summary{padding:6px!important;gap:6px!important;grid-template-rows:auto minmax(0,1fr) auto!important}\n.landscape-image-view-prims{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:3px!important;overflow:auto!important;align-content:start!important}\n.landscape-image-view-prim{min-height:35px!important;font-size:21px!important;padding:2px!important}\n.landscape-image-view-prim.selected::before{width:31px!important;height:31px!important;border-width:3px!important}\n.landscape-image-view-theme{min-height:29px!important;padding:3px 6px!important;font-size:10px!important}\n.landscape-image-view-controls button[aria-pressed="true"],#tabletFlagBtn[aria-pressed="true"],#directorFlagBtn[aria-pressed="true"]{background:#4a1f2d!important;outline:2px solid #ed6375!important;outline-offset:-2px!important}\n

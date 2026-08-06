@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.23";
+const GENREACTRIX_BUILD="v0.9.39.24";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -504,7 +504,9 @@ function renderImage(){
   $("progressText").textContent=`${state.files.length?"Image":"Demo image"} ${position} / ${total}`;
 }
 function renderFlag(){
-  $("directorFlagBtn").setAttribute("aria-pressed",state.flagged);
+  $("directorFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+  $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
 }
 function renderDirectorFields(){
   $("directorWriteIn").value=state.writeIn;
@@ -805,8 +807,9 @@ function renderTabletWorkbench(){
   $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
   $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
   $("tabletAiThemesPanel").hidden=!tabletLandscapeView.aiThemes || tabletLandscapeView.customs;
-  $("tabletWorkbenchAiDescription").hidden=!tabletLandscapeView.aiDescription;
+  $("tabletWorkbenchAiDescription").hidden=!tabletLandscapeView.aiDescription || tabletLandscapeView.customs;
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
+  $("tabletSlidingDrawer")?.classList.toggle("customs-active",tabletLandscapeView.customs);
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
 
@@ -1736,7 +1739,7 @@ document.getElementById("tabletAiReactionsBtn")?.addEventListener("click",()=>{t
 document.getElementById("tabletAiThemesBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiThemes=!tabletLandscapeView.aiThemes;renderTabletWorkbench();});
 document.getElementById("tabletAiDescriptionBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiDescription=!tabletLandscapeView.aiDescription;renderTabletWorkbench();});
 document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=!tabletLandscapeView.customs;renderTabletWorkbench();});
-document.getElementById("tabletFlagBtn")?.addEventListener("click",()=>document.getElementById("directorFlagBtn")?.click());
+
 document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
   const id=currentKey();
   state.retention="keep";
@@ -1753,7 +1756,7 @@ document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
 });
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{const slot=Number(button.dataset.tabletWorkbenchSlot);state.targetSlot=slot;tabletLandscapeView.activeThemeSlot=slot;renderTabletWorkbench();}));
 
-// v0.9.39.23 — focused Image View. This is a verification mode, not an editor.
+// v0.9.39.24 — focused Image View. This is a verification mode, not an editor.
 const landscapeImageViewState={open:false,scale:1,x:0,y:0,pointers:new Map(),gestureMoved:false,pinched:false,downAt:0};
 function resetLandscapeImageViewTransform(){
   landscapeImageViewState.scale=1;landscapeImageViewState.x=0;landscapeImageViewState.y=0;
@@ -1797,7 +1800,13 @@ function navigateLandscapeImageView(delta){navigateImage(delta);resetLandscapeIm
 $("tabletImageViewBtn")?.addEventListener("click",openLandscapeImageView);
 $("landscapeImageViewPrevBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(-1)});
 $("landscapeImageViewNextBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(1)});
-$("landscapeImageViewFlagBtn")?.addEventListener("click",e=>{e.stopPropagation();$("directorFlagBtn")?.click();renderLandscapeImageView()});
+const flagHoldState={timer:null,long:false};
+function openFlagAdminDialog(){flagHoldState.long=true;$("flagAdminDialog")?.showModal();}
+function beginFlagHold(e){e.preventDefault();e.stopPropagation();flagHoldState.long=false;clearTimeout(flagHoldState.timer);flagHoldState.timer=setTimeout(openFlagAdminDialog,2000);}
+function endFlagHold(e){e?.preventDefault?.();e?.stopPropagation?.();clearTimeout(flagHoldState.timer);flagHoldState.timer=null;if(!flagHoldState.long){$("directorFlagBtn")?.click();renderFlag();renderLandscapeImageView();}setTimeout(()=>flagHoldState.long=false,0);}
+["landscapeImageViewFlagBtn","tabletFlagBtn"].forEach(id=>{const b=$(id);if(!b)return;b.addEventListener("pointerdown",beginFlagHold);b.addEventListener("pointerup",endFlagHold);b.addEventListener("pointercancel",()=>clearTimeout(flagHoldState.timer));b.addEventListener("contextmenu",e=>e.preventDefault());});
+$("flagForRejectionAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Image flagged for rejection review.")});
+$("rejectImageAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Reject workflow will be completed in the lifecycle checkpoint.")});
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
 function landscapePointerDistance(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return 0;return Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y)}
@@ -2526,7 +2535,7 @@ $('researchSessionsOpen')?.addEventListener('click',openSessions);$('researchSes
 
 
 
-// v0.9.39.23 — structured customs, editing/reordering, and evaluation-vocabulary versioning.
+// v0.9.39.24 — structured customs, editing/reordering, and evaluation-vocabulary versioning.
 const EVALUATION_VERSION_KEY="genreactrix-evaluation-vocabulary-version-v1";
 const EVALUATION_USED_KEY="genreactrix-evaluation-vocabulary-used-v1";
 const CUSTOM_PLACEHOLDER_CLEANUP_KEY="genreactrix-custom-placeholder-cleanup-v1";
@@ -2559,8 +2568,14 @@ function wireLibraryReorder(node,kind,id){let timer=0,active=false,pointerId=nul
 function renderLandscapeCustoms(){const themeList=$("tabletCustomThemeList"),reactionList=$("tabletCustomReactionList"),q=$("tabletCustomSearch")?.value.trim().toLowerCase()||"";if(themeList){themeList.innerHTML="";(state.customThemes||[]).filter(item=>!q||item.label.toLowerCase().includes(q)).forEach(theme=>{const row=document.createElement("div");row.className="landscape-custom-item";row.dataset.kind="theme";row.dataset.id=theme.id;const main=document.createElement("button");main.type="button";main.className="custom-item-main";main.textContent=theme.label;main.addEventListener("click",()=>{if(tabletLandscapeView.activeThemeSlot===null)return;state.targetSlot=tabletLandscapeView.activeThemeSlot;selectTheme(theme);});const edit=document.createElement("button");edit.type="button";edit.className="custom-item-edit";edit.textContent="Edit";edit.addEventListener("click",()=>openCustomThemeDialog(theme));row.append(main,edit);wireLibraryReorder(row,"theme",theme.id);themeList.appendChild(row);});}if(reactionList){reactionList.innerHTML="";(state.customReactions||[]).filter(item=>!q||item.label.toLowerCase().includes(q)||item.emoji.includes(q)).forEach(record=>{const token=customReactionSelectionToken(record.id),row=document.createElement("div");row.className="landscape-custom-item";row.dataset.kind="reaction";row.dataset.id=record.id;const main=document.createElement("button");main.type="button";main.className="custom-item-main"+(state.selectedReactions.includes(token)?" selected":"");main.innerHTML=`<span>${record.emoji}</span> ${record.label}`;main.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});const edit=document.createElement("button");edit.type="button";edit.className="custom-item-edit";edit.textContent="Edit";edit.addEventListener("click",()=>openCustomReactionDialog(record));row.append(main,edit);wireLibraryReorder(row,"reaction",record.id);reactionList.appendChild(row);});}}
 $("addCustomReactionBtn")?.addEventListener("click",()=>openCustomReactionDialog());
 $("addCustomThemeBtn")?.addEventListener("click",()=>openCustomThemeDialog());
-$("tabletAddCustomThemeBtn")?.addEventListener("click",()=>openCustomThemeDialog());
-$("tabletAddCustomReactionBtn")?.addEventListener("click",()=>openCustomReactionDialog());
+$("tabletAddCustomThemeBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCustomThemeDialog();});
+$("tabletAddCustomReactionBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCustomReactionDialog();});
+$("tabletCustomsDrawer")?.addEventListener("click",e=>{
+  const theme=e.target.closest?.("#tabletAddCustomThemeBtn");
+  const reaction=e.target.closest?.("#tabletAddCustomReactionBtn");
+  if(theme){e.preventDefault();e.stopPropagation();openCustomThemeDialog();}
+  if(reaction){e.preventDefault();e.stopPropagation();openCustomReactionDialog();}
+});
 $("customReactionSaveBtn")?.addEventListener("click",saveCustomReactionFromDialog);
 $("customThemeSaveBtn")?.addEventListener("click",saveCustomThemeFromDialog);
 $("customReactionDeleteBtn")?.addEventListener("click",deleteCustomReaction);
@@ -2569,6 +2584,16 @@ $("customThemeLabel")?.addEventListener("input",()=>updateCustomDialogValidation
 $("customReactionLabel")?.addEventListener("input",()=>updateCustomDialogValidation());
 $("customReactionEmoji")?.addEventListener("input",()=>updateCustomDialogValidation());
 $("tabletCustomSearch")?.addEventListener("input",renderLandscapeCustoms);
+$("tabletCustomSearch")?.addEventListener("focus",()=>{document.documentElement.classList.add("landscape-keyboard-open");setTimeout(()=>$("tabletCustomSearch")?.scrollIntoView({block:"center",behavior:"smooth"}),120)});
+$("tabletCustomSearch")?.addEventListener("blur",()=>document.documentElement.classList.remove("landscape-keyboard-open"));
 $$("[data-close-custom-dialog]").forEach(button=>button.addEventListener("click",()=>$(button.dataset.closeCustomDialog)?.close()));
 
 window.addEventListener("resize",()=>requestAnimationFrame(fitLandscapeAiDescription));
+
+// v0.9.39.24 — keep the focused Customs search visible above Android keyboards.
+if(window.visualViewport){
+  const syncViewport=()=>{document.documentElement.style.setProperty("--visual-viewport-height",`${window.visualViewport.height}px`);};
+  window.visualViewport.addEventListener("resize",syncViewport);
+  window.visualViewport.addEventListener("scroll",syncViewport);
+  syncViewport();
+}
