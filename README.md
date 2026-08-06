@@ -1,5 +1,14 @@
 # Genreactrix
 
+## v0.9.39.15 — Exact AI Theme Placement + Matrix Selection Feedback
+
+- Removed the duplicated Director-theme fields from the AI drawer.
+- Placed only the three AI theme fields at the bottom-left of the AI drawer, immediately beside the existing Director fields under the image.
+- Preserved AI field formatting: AI left, theme centered, confidence right, sorted high to low.
+- Increased and right-shifted foreground reaction rings.
+- Added persistent visual selection to assigned PrimFusion Matrix cells.
+- Preserved immediate persistence for reaction and Director-theme assignments.
+
 ## v0.9.39.14 — Instant Classification + Corrected AI Theme Fields
 - Enlarges and slightly right-shifts the foreground reaction rings while reducing the reaction glyph size.
 - Primary reaction changes commit immediately through the Director Classification Engine.

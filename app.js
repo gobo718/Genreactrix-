@@ -673,15 +673,23 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
       cell.textContent=entry.value;
       const primitive=primitiveForSymbol(entry.value);
       if(primitive){
+        const cellTheme={id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id};
+        cell.dataset.themeId=cellTheme.id;
+        if(state.themes.some(theme=>normalizeTheme(theme)?.id===cellTheme.id)) cell.classList.add("interlocked-selected");
         cell.title=`Select ${primitive.name}`;
         cell.addEventListener("click",()=>choosePrimitive(primitive));
       }else{
         const pair=pairForLabel(entry.value,rowIndex);
         const primitives=pair?.map(name=>PRIMITIVE_BY_NAME[name]).filter(Boolean) || [];
+        const cellTheme=primitives.length===2 ? {id:primFusionCellId(primitives[0].id,primitives[1].id),label:entry.value,kind:"primFusion",primitiveIds:[primitives[0].id,primitives[1].id].sort()} : null;
+        if(cellTheme){
+          cell.dataset.themeId=cellTheme.id;
+          if(state.themes.some(theme=>normalizeTheme(theme)?.id===cellTheme.id)) cell.classList.add("interlocked-selected");
+        }
         cell.title=primitives.length===2 ? `${primitives[0].symbol}${primitives[1].symbol} ${entry.value}` : entry.value;
         cell.addEventListener("click",()=>{
-          if(primitives.length!==2) return;
-          selectTheme({id:primFusionCellId(primitives[0].id,primitives[1].id),label:entry.value,kind:"primFusion",primitiveIds:[primitives[0].id,primitives[1].id].sort()});
+          if(!cellTheme) return;
+          selectTheme(cellTheme);
         });
       }
       grid.appendChild(cell);
@@ -733,7 +741,6 @@ function renderTabletWorkbench(){
   for(let i=0;i<3;i++){
     const directorValue=themeLabel(state.themes[i]);
     $("tabletWorkbenchTheme"+(i+1)).textContent=directorValue;
-    $("tabletAiDirectorTheme"+(i+1)).textContent=directorValue;
     document.querySelector(`[data-tablet-workbench-slot="${i+1}"]`)?.classList.toggle("active",tabletLandscapeView.activeThemeSlot===i+1);
   }
   const sortedAiThemes=currentAiThemes()

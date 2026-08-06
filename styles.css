@@ -3682,3 +3682,79 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .landscape-ai-theme-grid .tablet-ai-label{left:.72em!important}
   .landscape-ai-theme-grid .tablet-ai-pct{right:.72em!important}
 }
+
+
+/* v0.9.39.15 — exact AI-theme placement, no duplicated Director fields,
+   larger reaction rings, and persistent selected Matrix-cell feedback. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* The ring stays above the glyph, grows slightly, and shifts right as requested. */
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    transform:translateX(5%)!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:-9%!important;
+    border-width:4px!important;
+  }
+
+  /* AI Themes are the only content added to the drawer. They sit at the
+     bottom-left of the AI drawer, immediately beside the existing Director
+     fields under the image. No Director values are duplicated here. */
+  .landscape-ai-theme-comparison{
+    position:absolute!important;
+    left:0!important;
+    bottom:0!important;
+    width:min(62dvh,32vw)!important;
+    height:38%!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:block!important;
+    z-index:2!important;
+  }
+  .landscape-ai-theme-comparison[hidden]{display:none!important}
+  .landscape-ai-theme-grid{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:repeat(3,minmax(0,1fr))!important;
+    gap:2.2%!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  .landscape-ai-theme-grid .tablet-theme-cell{
+    position:relative!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    padding:0 2.8em!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid var(--line)!important;
+    border-radius:.45em!important;
+    background:var(--panel)!important;
+    overflow:hidden!important;
+  }
+  .landscape-ai-theme-grid .tablet-theme-cell strong{
+    width:100%!important;
+    text-align:center!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .landscape-ai-theme-grid .tablet-ai-label,
+  .landscape-ai-theme-grid .tablet-ai-pct{
+    position:absolute!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    color:var(--muted)!important;
+  }
+  .landscape-ai-theme-grid .tablet-ai-label{left:.65em!important}
+  .landscape-ai-theme-grid .tablet-ai-pct{right:.65em!important}
+
+  /* A selected matrix theme remains visibly selected after assignment. */
+  .interlocked-cell.interlocked-selected{
+    position:relative!important;
+    z-index:3!important;
+    outline:3px solid #5fd4ff!important;
+    outline-offset:-3px!important;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.75),0 0 0 1px rgba(95,212,255,.65)!important;
+  }
+}
