@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.24</title>
-<link href="styles.css?v=0.9.39.24" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.25</title>
+<link href="styles.css?v=0.9.39.25" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.24</span>
+<span>v0.9.39.25</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.24</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.25</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -354,7 +354,7 @@
 <button id="tabletUndoBtn" type="button">Undo</button>
 <button id="tabletRedoBtn" type="button">Redo</button>
 <button aria-pressed="false" id="tabletFlagBtn" type="button">⚑ Flag</button>
-<button class="primary-action" id="tabletSaveBtn" type="button">Save</button>
+<button aria-pressed="true" class="primary-action" id="tabletSaveBtn" type="button">Keep</button>
 <button id="tabletWorkspaceFlipBtn" type="button" aria-label="Flip Matrix and Judgment workspace">Flip</button>
 <input accept="image/*" id="tabletFolderInput" multiple="" type="file" webkitdirectory="" hidden/>
 </header>
@@ -368,11 +368,15 @@
 <div aria-label="AI reaction percentages" class="tablet-prims-percent-row" id="tabletWorkbenchPrimPcts"></div>
 </div>
 <div class="landscape-sliding-drawer" id="tabletSlidingDrawer" aria-label="Judgment sliding drawer">
-<div class="landscape-ai-controls" aria-label="Optional AI reference controls">
+<div class="landscape-ai-controls" aria-label="AI reference and rerun controls">
 <button aria-pressed="false" id="tabletAiReactionsBtn" type="button">AI Reactions</button>
 <button aria-pressed="false" id="tabletAiThemesBtn" type="button">AI Themes</button>
 <button aria-pressed="false" id="tabletAiDescriptionBtn" type="button">AI Description</button>
-<button id="tabletCustomsBtn" type="button">Customs</button>
+<button aria-pressed="false" id="tabletCustomsBtn" type="button">Customs</button>
+<button class="ai-rerun-action" id="tabletAiRerunReactionsBtn" type="button" disabled>AI Rerun Reactions</button>
+<button class="ai-rerun-action" id="tabletAiRerunThemesBtn" type="button" disabled>AI Rerun Themes</button>
+<button class="ai-rerun-action" id="tabletAiRerunDescriptionBtn" type="button" disabled>AI Rerun Description</button>
+<button aria-pressed="true" class="ai-rerun-lock" id="tabletAiRerunLockBtn" type="button">AI Rerun Lock</button>
 </div>
 <div class="landscape-ai-theme-comparison" id="tabletAiThemesPanel" hidden aria-label="AI themes">
 <div class="landscape-ai-theme-grid">
@@ -413,7 +417,7 @@
         <button id="landscapeImageViewPrevBtn" type="button">‹ Back</button>
         <button id="landscapeImageViewNextBtn" type="button">Next ›</button>
         <button id="landscapeImageViewFlagBtn" type="button" aria-pressed="false">⚑ Flag</button>
-        <button id="landscapeImageViewSaveBtn" class="primary-action" type="button">Save</button>
+        <button id="landscapeImageViewSaveBtn" class="primary-action" type="button" aria-pressed="true">Keep</button>
       </div>
       <div class="landscape-image-view-prims" id="landscapeImageViewPrims" aria-label="Primitive reactions"></div>
       <div class="landscape-image-view-themes" id="landscapeImageViewThemes" aria-label="Director themes"></div>
@@ -793,7 +797,7 @@
 <div class="custom-library-actions"><button class="danger-action" id="customThemeDeleteBtn" hidden type="button">Delete</button><span></span><button data-close-custom-dialog="customThemeDialog" type="button">Cancel</button><button class="primary-action" disabled id="customThemeSaveBtn" type="button">Save</button></div>
 </form>
 </dialog>
-<script src="app.js?v=0.9.39.20"></script>
+<script src="app.js?v=0.9.39.25"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
 <header><h2>Notifications</h2><button aria-label="Close" id="notificationsClose" type="button">×</button></header>

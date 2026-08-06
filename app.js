@@ -507,6 +507,7 @@ function renderFlag(){
   $("directorFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
   $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(state.retention==="keep"));
 }
 function renderDirectorFields(){
   $("directorWriteIn").value=state.writeIn;
@@ -634,6 +635,13 @@ function renderComparison(){
 
 
 const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false,activeThemeSlot:null};
+const AI_RERUN_LOCK_KEY="genreactrix-ai-rerun-lock-v1";
+let tabletAiRerunLocked=localStorage.getItem(AI_RERUN_LOCK_KEY)!=="0";
+function syncTabletAiRerunControls(){
+  const lock=$("tabletAiRerunLockBtn");
+  lock?.setAttribute("aria-pressed",String(tabletAiRerunLocked));
+  ["tabletAiRerunReactionsBtn","tabletAiRerunThemesBtn","tabletAiRerunDescriptionBtn"].forEach(id=>{const b=$(id);if(b)b.disabled=tabletAiRerunLocked;});
+}
 
 function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const root=$(targetId);
@@ -811,7 +819,12 @@ function renderTabletWorkbench(){
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   $("tabletSlidingDrawer")?.classList.toggle("customs-active",tabletLandscapeView.customs);
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
+  $("tabletCustomsBtn")?.setAttribute("aria-pressed",String(tabletLandscapeView.customs));
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+  const keepOn=state.retention==="keep";
+  $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
+  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
+  syncTabletAiRerunControls();
 
   // AI theme fields use the exact rendered width and height of the existing
   // Director theme fields. The drawer panel is positioned immediately to the
@@ -1740,18 +1753,39 @@ document.getElementById("tabletAiThemesBtn")?.addEventListener("click",()=>{tabl
 document.getElementById("tabletAiDescriptionBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiDescription=!tabletLandscapeView.aiDescription;renderTabletWorkbench();});
 document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=!tabletLandscapeView.customs;renderTabletWorkbench();});
 
+function createComponentAiRerun(component){
+  if(tabletAiRerunLocked)return;
+  if(!confirm(`Rerun AI ${component} for this image? The prior AI analysis will remain in history.`))return;
+  const previous=currentAiRun()||defaultAiRun();
+  const next={...JSON.parse(JSON.stringify(previous)),id:`${currentKey()}-${Date.now()}`,createdAt:new Date().toISOString(),model:"demo-static-rerun",rerunComponent:component};
+  state.aiRuns[currentKey()] ||= [];
+  state.aiRuns[currentKey()].push(next);persistRecords();
+  const recordEngine=window.genreactrixImageRecordEngine;
+  if(recordEngine?.get?.(currentKey(),{touch:false}))recordEngine.update(currentKey(),{analysis:{ai:next},components:{aiReactions:"current",aiThemes:"current",aiDescription:"current"}},`ai-${component}-reanalyzed`);
+  renderAll();setDirectorStatus(`AI ${component} rerun recorded.`);
+}
+$("tabletAiRerunLockBtn")?.addEventListener("click",()=>{tabletAiRerunLocked=!tabletAiRerunLocked;localStorage.setItem(AI_RERUN_LOCK_KEY,tabletAiRerunLocked?"1":"0");syncTabletAiRerunControls();});
+$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>createComponentAiRerun("reactions"));
+$("tabletAiRerunThemesBtn")?.addEventListener("click",()=>createComponentAiRerun("themes"));
+$("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>createComponentAiRerun("description"));
+syncTabletAiRerunControls();
+
 document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
   const id=currentKey();
-  state.retention="keep";
-  saveCurrent("image-retention-keep");
+  const keepOn=state.retention!=="keep";
+  pushHistory();state.retention=keepOn?"keep":"discard";
+  saveCurrent(keepOn?"image-retention-keep":"image-retention-release");
   try{
     const record=window.genreactrixImagesEngine?.recordById?.(id);
-    if(record) await window.genreactrixImagesEngine.saveReference(id);
-    renderAll();
-    setDirectorStatus("Image marked to keep during batch cleanup.");
+    if(record){
+      if(keepOn)await window.genreactrixImagesEngine.saveReference(id);
+      else window.genreactrixImageRecordEngine?.update?.(id,{attributes:{saved:false},timestamps:{savedAt:null}},"reference-keep-cleared");
+    }
+    renderAll();renderLandscapeImageView();
+    setDirectorStatus(keepOn?"Full-resolution image marked Keep for batching.":"Keep cleared; full-resolution image may recycle after batching.");
   }catch(error){
-    console.warn("Image could not be marked for retention",error);
-    setDirectorStatus("Classification is saved, but the image retention flag could not be stored.");
+    console.warn("Image Keep state could not be stored",error);
+    setDirectorStatus("Keep changed in the working evaluation, but storage preference could not be persisted.");
   }
 });
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{const slot=Number(button.dataset.tabletWorkbenchSlot);state.targetSlot=slot;tabletLandscapeView.activeThemeSlot=slot;renderTabletWorkbench();}));
@@ -1802,9 +1836,9 @@ $("landscapeImageViewPrevBtn")?.addEventListener("click",e=>{e.stopPropagation()
 $("landscapeImageViewNextBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(1)});
 const flagHoldState={timer:null,long:false};
 function openFlagAdminDialog(){flagHoldState.long=true;$("flagAdminDialog")?.showModal();}
-function beginFlagHold(e){e.preventDefault();e.stopPropagation();flagHoldState.long=false;clearTimeout(flagHoldState.timer);flagHoldState.timer=setTimeout(openFlagAdminDialog,2000);}
-function endFlagHold(e){e?.preventDefault?.();e?.stopPropagation?.();clearTimeout(flagHoldState.timer);flagHoldState.timer=null;if(!flagHoldState.long){$("directorFlagBtn")?.click();renderFlag();renderLandscapeImageView();}setTimeout(()=>flagHoldState.long=false,0);}
-["landscapeImageViewFlagBtn","tabletFlagBtn"].forEach(id=>{const b=$(id);if(!b)return;b.addEventListener("pointerdown",beginFlagHold);b.addEventListener("pointerup",endFlagHold);b.addEventListener("pointercancel",()=>clearTimeout(flagHoldState.timer));b.addEventListener("contextmenu",e=>e.preventDefault());});
+function beginFlagHold(e){e.preventDefault();e.stopPropagation();flagHoldState.long=false;clearTimeout(flagHoldState.timer);e.currentTarget?.setPointerCapture?.(e.pointerId);flagHoldState.timer=setTimeout(()=>{navigator.vibrate?.(30);openFlagAdminDialog();},2000);}
+function endFlagHold(e){e?.preventDefault?.();e?.stopPropagation?.();clearTimeout(flagHoldState.timer);flagHoldState.timer=null;if(!flagHoldState.long){$("directorFlagBtn")?.click();renderFlag();renderLandscapeImageView();}try{e.currentTarget?.releasePointerCapture?.(e.pointerId)}catch{}setTimeout(()=>flagHoldState.long=false,0);}
+["landscapeImageViewFlagBtn","tabletFlagBtn"].forEach(id=>{const b=$(id);if(!b)return;b.style.touchAction="none";b.addEventListener("pointerdown",beginFlagHold,{passive:false});b.addEventListener("pointerup",endFlagHold,{passive:false});b.addEventListener("pointercancel",()=>{clearTimeout(flagHoldState.timer);flagHoldState.timer=null;});b.addEventListener("contextmenu",e=>e.preventDefault());});
 $("flagForRejectionAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Image flagged for rejection review.")});
 $("rejectImageAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Reject workflow will be completed in the lifecycle checkpoint.")});
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
@@ -2576,6 +2610,12 @@ $("tabletCustomsDrawer")?.addEventListener("click",e=>{
   if(theme){e.preventDefault();e.stopPropagation();openCustomThemeDialog();}
   if(reaction){e.preventDefault();e.stopPropagation();openCustomReactionDialog();}
 });
+// Capture-phase fallback for mobile browsers where nested drawer controls can lose the synthesized click.
+document.addEventListener("click",e=>{
+  const id=e.target?.closest?.("#tabletAddCustomThemeBtn,#tabletAddCustomReactionBtn")?.id;
+  if(!id)return;e.preventDefault();e.stopPropagation();
+  if(id==="tabletAddCustomThemeBtn")openCustomThemeDialog();else openCustomReactionDialog();
+},{capture:true});
 $("customReactionSaveBtn")?.addEventListener("click",saveCustomReactionFromDialog);
 $("customThemeSaveBtn")?.addEventListener("click",saveCustomThemeFromDialog);
 $("customReactionDeleteBtn")?.addEventListener("click",deleteCustomReaction);

@@ -1,3 +1,16 @@
+# v0.9.39.25 — Cohesive Landscape Interaction Pass
+
+- Repaired the escaped-newline CSS defect that prevented part of the v0.9.39.24 mobile/landscape patch from parsing correctly.
+- Rebuilt the Landscape AI control strip as the canonical 2×4 panel: AI Reactions, AI Themes, AI Description, Customs / AI Rerun Reactions, AI Rerun Themes, AI Rerun Description, AI Rerun Lock.
+- AI rerun controls default locked and remain disabled until AI Rerun Lock is deliberately unlocked.
+- Renamed the Landscape Save controls to Keep and added a clear pressed/unpressed state.
+- Keep now toggles the working retention decision instead of acting as a one-way command.
+- Strengthened the two-second Flag hold with pointer capture and touch-callout suppression.
+- Added a capture-phase mobile fallback for the two Customs Add buttons.
+- Increased Customs section separation and made the Android keyboard focus mode isolate the search control instead of compressing the workspace.
+- Rebalanced Image View around a height-derived left image region and a much wider verification panel.
+- Image View now reserves room for the complete canonical/custom reaction vocabulary, compact themes, and a one-row Back/Next/Flag/Keep HUD.
+
 # v0.9.39.24 — AI Description Panel
 
 - Places the AI Description panel immediately to the right of the AI theme fields.

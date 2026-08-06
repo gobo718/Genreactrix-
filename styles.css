@@ -4151,4 +4151,246 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .landscape-image-view-theme b{font-size:9px;color:#aca0b8}
 .landscape-image-view-theme strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (orientation:portrait){.landscape-image-view{display:none!important}}
-\n\n/* v0.9.39.24 — Customs completion, keyboard safety, Flag reliability, and Image View correction. */\n#tabletCustomsDrawer.landscape-customs-drawer{\n  background:#17131d!important;\n  opacity:1!important;\n  isolation:isolate!important;\n  z-index:20!important;\n}\n.landscape-sliding-drawer.customs-active #tabletAiThemesPanel,\n.landscape-sliding-drawer.customs-active #tabletWorkbenchAiDescription{display:none!important}\n#tabletCustomsDrawer .landscape-customs-library{\n  grid-template-rows:minmax(0,2.6fr) minmax(0,1fr)!important;\n  gap:14px!important;\n}\n#tabletCustomsDrawer .landscape-custom-section{\n  grid-template-rows:28px minmax(0,1fr)!important;\n  gap:6px!important;\n  overflow:hidden!important;\n}\n#tabletCustomsDrawer .landscape-custom-heading-row{height:28px!important;gap:12px!important}\n#tabletCustomsDrawer .landscape-custom-title{font-size:10px!important}\n#tabletCustomsDrawer .landscape-custom-add{height:24px!important;min-height:24px!important;font-size:9px!important;padding:2px 8px!important}\n#tabletCustomsDrawer .landscape-custom-list{position:relative!important;z-index:1!important}\n#tabletCustomsDrawer button{pointer-events:auto!important}\n@media (orientation:landscape){\n  html.landscape-keyboard-open .landscape-workbench{height:var(--visual-viewport-height,100dvh)!important;max-height:var(--visual-viewport-height,100dvh)!important;overflow:hidden!important}\n  html.landscape-keyboard-open #tabletCustomsDrawer{position:fixed!important;left:2vw!important;right:2vw!important;top:6px!important;bottom:auto!important;height:min(190px,calc(var(--visual-viewport-height,100dvh) - 12px))!important;z-index:2500!important}\n  html.landscape-keyboard-open #tabletCustomsDrawer .landscape-customs-library{display:none!important}\n  html.landscape-keyboard-open #tabletCustomsDrawer>label{height:34px!important}\n}\n.flag-admin-dialog{width:min(420px,90vw);border:1px solid #554566;border-radius:14px;background:#17131f;color:#f4eef8;padding:0;z-index:4000}\n.flag-admin-dialog::backdrop{background:#000b}\n.flag-admin-shell{display:grid;gap:10px;padding:14px}.flag-admin-shell header{display:flex;align-items:center;justify-content:space-between}.flag-admin-shell h2,.flag-admin-shell p{margin:0}.flag-admin-shell button{min-height:36px}.flag-admin-shell .danger-action{background:#5d2027;border-color:#b95562}\n.landscape-image-view{padding:0!important}\n.landscape-image-view-shell{grid-template-columns:minmax(0,1fr) clamp(300px,31vw,390px)!important;gap:0!important}\n.landscape-image-view-canvas{align-self:stretch!important;justify-self:stretch!important;border-radius:0!important}\n.landscape-image-view-canvas img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:left center!important}\n.landscape-image-view-summary{padding:6px!important;gap:6px!important;grid-template-rows:auto minmax(0,1fr) auto!important}\n.landscape-image-view-prims{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:3px!important;overflow:auto!important;align-content:start!important}\n.landscape-image-view-prim{min-height:35px!important;font-size:21px!important;padding:2px!important}\n.landscape-image-view-prim.selected::before{width:31px!important;height:31px!important;border-width:3px!important}\n.landscape-image-view-theme{min-height:29px!important;padding:3px 6px!important;font-size:10px!important}\n.landscape-image-view-controls button[aria-pressed="true"],#tabletFlagBtn[aria-pressed="true"],#directorFlagBtn[aria-pressed="true"]{background:#4a1f2d!important;outline:2px solid #ed6375!important;outline-offset:-2px!important}\n
+
+
+/* v0.9.39.24 — Customs completion, keyboard safety, Flag reliability, and Image View correction. */
+#tabletCustomsDrawer.landscape-customs-drawer{
+  background:#17131d!important;
+  opacity:1!important;
+  isolation:isolate!important;
+  z-index:20!important;
+}
+.landscape-sliding-drawer.customs-active #tabletAiThemesPanel,
+.landscape-sliding-drawer.customs-active #tabletWorkbenchAiDescription{display:none!important}
+#tabletCustomsDrawer .landscape-customs-library{
+  grid-template-rows:minmax(0,2.6fr) minmax(0,1fr)!important;
+  gap:14px!important;
+}
+#tabletCustomsDrawer .landscape-custom-section{
+  grid-template-rows:28px minmax(0,1fr)!important;
+  gap:6px!important;
+  overflow:hidden!important;
+}
+#tabletCustomsDrawer .landscape-custom-heading-row{height:28px!important;gap:12px!important}
+#tabletCustomsDrawer .landscape-custom-title{font-size:10px!important}
+#tabletCustomsDrawer .landscape-custom-add{height:24px!important;min-height:24px!important;font-size:9px!important;padding:2px 8px!important}
+#tabletCustomsDrawer .landscape-custom-list{position:relative!important;z-index:1!important}
+#tabletCustomsDrawer button{pointer-events:auto!important}
+@media (orientation:landscape){
+  html.landscape-keyboard-open .landscape-workbench{height:var(--visual-viewport-height,100dvh)!important;max-height:var(--visual-viewport-height,100dvh)!important;overflow:hidden!important}
+  html.landscape-keyboard-open #tabletCustomsDrawer{position:fixed!important;left:2vw!important;right:2vw!important;top:6px!important;bottom:auto!important;height:min(190px,calc(var(--visual-viewport-height,100dvh) - 12px))!important;z-index:2500!important}
+  html.landscape-keyboard-open #tabletCustomsDrawer .landscape-customs-library{display:none!important}
+  html.landscape-keyboard-open #tabletCustomsDrawer>label{height:34px!important}
+}
+.flag-admin-dialog{width:min(420px,90vw);border:1px solid #554566;border-radius:14px;background:#17131f;color:#f4eef8;padding:0;z-index:4000}
+.flag-admin-dialog::backdrop{background:#000b}
+.flag-admin-shell{display:grid;gap:10px;padding:14px}.flag-admin-shell header{display:flex;align-items:center;justify-content:space-between}.flag-admin-shell h2,.flag-admin-shell p{margin:0}.flag-admin-shell button{min-height:36px}.flag-admin-shell .danger-action{background:#5d2027;border-color:#b95562}
+.landscape-image-view{padding:0!important}
+.landscape-image-view-shell{grid-template-columns:minmax(0,1fr) clamp(300px,31vw,390px)!important;gap:0!important}
+.landscape-image-view-canvas{align-self:stretch!important;justify-self:stretch!important;border-radius:0!important}
+.landscape-image-view-canvas img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:left center!important}
+.landscape-image-view-summary{padding:6px!important;gap:6px!important;grid-template-rows:auto minmax(0,1fr) auto!important}
+.landscape-image-view-prims{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:3px!important;overflow:auto!important;align-content:start!important}
+.landscape-image-view-prim{min-height:35px!important;font-size:21px!important;padding:2px!important}
+.landscape-image-view-prim.selected::before{width:31px!important;height:31px!important;border-width:3px!important}
+.landscape-image-view-theme{min-height:29px!important;padding:3px 6px!important;font-size:10px!important}
+.landscape-image-view-controls button[aria-pressed="true"],#tabletFlagBtn[aria-pressed="true"],#directorFlagBtn[aria-pressed="true"]{background:#4a1f2d!important;outline:2px solid #ed6375!important;outline-offset:-2px!important}
+
+/* v0.9.39.25 — cohesive Landscape controls, Customs, Keep, and Image View pass. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-ai-controls{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-rows:repeat(2,minmax(34px,1fr))!important;
+    gap:5px!important;
+    min-height:74px!important;
+    align-items:stretch!important;
+  }
+  .landscape-ai-controls button{
+    width:100%!important;
+    min-width:0!important;
+    min-height:34px!important;
+    height:100%!important;
+    padding:4px 5px!important;
+    border-radius:6px!important;
+    font-size:clamp(8px,.82vw,11px)!important;
+    line-height:1.05!important;
+    white-space:normal!important;
+  }
+  .landscape-ai-controls .ai-rerun-action:disabled{
+    opacity:.32!important;
+    filter:grayscale(1)!important;
+    cursor:not-allowed!important;
+  }
+  .landscape-ai-controls .ai-rerun-lock[aria-pressed="true"]{
+    border-color:#e3b95b!important;
+    color:#f0cf7d!important;
+    background:#352a16!important;
+  }
+  .landscape-ai-controls .ai-rerun-lock[aria-pressed="false"]{
+    border-color:#64c982!important;
+    color:#90e4a6!important;
+    background:#17301f!important;
+  }
+  .landscape-sliding-drawer .landscape-customs-drawer{
+    top:82px!important;
+    bottom:0!important;
+    height:auto!important;
+    inset-inline:0!important;
+  }
+}
+
+#tabletSaveBtn[aria-pressed="true"],
+#landscapeImageViewSaveBtn[aria-pressed="true"]{
+  background:#214c31!important;
+  border-color:#67d789!important;
+  color:#ecfff1!important;
+  outline:2px solid #67d789!important;
+  outline-offset:-2px!important;
+}
+#tabletSaveBtn[aria-pressed="false"],
+#landscapeImageViewSaveBtn[aria-pressed="false"]{
+  background:#242029!important;
+  border-color:#5a5262!important;
+  color:#c6bdcc!important;
+  outline:none!important;
+}
+
+#tabletFlagBtn,#landscapeImageViewFlagBtn{
+  touch-action:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-touch-callout:none!important;
+}
+
+#tabletCustomsDrawer.landscape-customs-drawer{
+  background:#17131d!important;
+  opacity:1!important;
+  isolation:isolate!important;
+  z-index:30!important;
+}
+#tabletCustomsDrawer .landscape-customs-library{
+  grid-template-rows:minmax(0,2.2fr) minmax(86px,1fr)!important;
+  gap:16px!important;
+}
+#tabletCustomsDrawer .landscape-custom-section{
+  grid-template-rows:30px minmax(0,1fr)!important;
+  gap:7px!important;
+  overflow:hidden!important;
+}
+#tabletCustomsDrawer .landscape-custom-heading-row{
+  min-height:30px!important;
+  height:30px!important;
+  gap:14px!important;
+  padding-inline:3px!important;
+}
+#tabletCustomsDrawer .landscape-custom-add{
+  min-height:27px!important;
+  height:27px!important;
+  padding:3px 9px!important;
+  pointer-events:auto!important;
+  position:relative!important;
+  z-index:3!important;
+}
+#tabletCustomsDrawer .landscape-custom-reactions-section{
+  border-top:1px solid rgba(255,255,255,.18)!important;
+  padding-top:8px!important;
+}
+
+@media (orientation:landscape){
+  html.landscape-keyboard-open body{overflow:hidden!important}
+  html.landscape-keyboard-open .landscape-workbench{height:100dvh!important;max-height:none!important;transform:none!important}
+  html.landscape-keyboard-open #tabletCustomsDrawer{
+    position:fixed!important;
+    left:8px!important;
+    right:8px!important;
+    top:8px!important;
+    bottom:auto!important;
+    width:auto!important;
+    height:auto!important;
+    min-height:46px!important;
+    max-height:calc(var(--visual-viewport-height,100dvh) - 16px)!important;
+    padding:6px 8px!important;
+    z-index:5000!important;
+  }
+  html.landscape-keyboard-open #tabletCustomsDrawer>label{
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr)!important;
+    height:34px!important;
+    min-height:34px!important;
+    align-items:center!important;
+  }
+  html.landscape-keyboard-open #tabletCustomsDrawer>label input{
+    height:32px!important;
+    min-height:32px!important;
+    font-size:14px!important;
+  }
+  html.landscape-keyboard-open #tabletCustomsDrawer .landscape-customs-library{display:none!important}
+}
+
+/* Image View: the image owns only the height-derived left region; verification data owns the rest. */
+.landscape-image-view{padding:0!important;background:#070609!important}
+.landscape-image-view-shell{
+  grid-template-columns:minmax(220px,min(52vw,100dvh)) minmax(0,1fr)!important;
+  gap:0!important;
+}
+.landscape-image-view-canvas{
+  width:100%!important;
+  height:100%!important;
+  align-self:stretch!important;
+  justify-self:stretch!important;
+  border-radius:0!important;
+  background:#020203!important;
+}
+.landscape-image-view-canvas img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+}
+.landscape-image-view-summary{
+  grid-template-rows:auto minmax(0,1fr) auto!important;
+  gap:5px!important;
+  padding:5px 7px!important;
+  background:#141019!important;
+}
+.landscape-image-view-controls{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:4px!important;
+}
+.landscape-image-view-controls button{
+  min-height:29px!important;
+  padding:3px 4px!important;
+  font-size:10px!important;
+}
+.landscape-image-view-prims{
+  display:grid!important;
+  grid-template-columns:repeat(7,minmax(32px,1fr))!important;
+  grid-auto-rows:minmax(34px,1fr)!important;
+  gap:2px!important;
+  align-content:stretch!important;
+  overflow:auto!important;
+  padding:2px!important;
+}
+.landscape-image-view-prim{
+  min-height:34px!important;
+  font-size:21px!important;
+  padding:1px!important;
+}
+.landscape-image-view-prim.selected::before{
+  width:29px!important;
+  height:29px!important;
+  border-width:3px!important;
+}
+.landscape-image-view-themes{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:4px!important;
+  padding-top:1px!important;
+}
+.landscape-image-view-theme{
+  min-height:28px!important;
+  grid-template-columns:15px minmax(0,1fr)!important;
+  gap:3px!important;
+  padding:3px 5px!important;
+  font-size:9px!important;
+}
