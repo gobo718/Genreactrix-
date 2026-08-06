@@ -3263,3 +3263,33 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     align-self:stretch!important;
   }
 }
+
+
+/* v0.9.39.9 — toolbar Flip integration rebuilt from the canonical v0.9.39.8 source.
+   The former floating circular workspace control is removed from the matrix.
+   Flip is the seventh equal-width record-control button at the far right. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-toolbar{
+    grid-template-columns:repeat(7,minmax(0,1fr))!important;
+  }
+  .landscape-toolbar #tabletWorkspaceFlipBtn{
+    display:flex!important;
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    aspect-ratio:auto!important;
+    padding:0 .5em!important;
+    border:1px solid var(--line)!important;
+    border-radius:.42em!important;
+    background:var(--panel)!important;
+    color:var(--text)!important;
+    font-size:min(1.38vw,2.8vh)!important;
+    font-weight:700!important;
+    line-height:1!important;
+    z-index:auto!important;
+  }
+}

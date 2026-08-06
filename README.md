@@ -380,3 +380,8 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Distributes Previous, Next, Undo, Redo, Flag, and Save evenly across the full matrix width.
 - Forces the complete interlocked matrix to stretch through the available workspace and remain anchored to the bottom-right.
 - Portrait behavior and existing engines remain unchanged.
+
+
+## v0.9.39.9 — Toolbar Flip Integration
+
+Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment toggle is now the seventh equal-width toolbar button labeled **Flip**. The floating circular flip control has been removed from the matrix workspace. No other layout, matrix, Portrait, or engine behavior was changed.
