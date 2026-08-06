@@ -3871,3 +3871,31 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     overflow-y:auto!important;
   }
 }
+
+
+/* v0.9.39.19 — custom reaction and custom-theme library management. */
+.custom-library-button{white-space:nowrap}
+.custom-library-dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);width:min(760px,92vw);max-height:88vh;padding:0}
+.custom-library-dialog::backdrop{background:rgba(0,0,0,.72)}
+.custom-library-shell{display:grid;gap:12px;padding:16px;max-height:84vh;overflow:auto}
+.custom-library-shell header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.custom-library-shell header h2{margin:0}
+.custom-library-shell label{display:grid;gap:5px;font-weight:700}
+.custom-library-shell input{width:100%;box-sizing:border-box}
+.custom-library-shell fieldset{border:1px solid var(--line);border-radius:10px;min-width:0}
+.custom-library-note{margin:0 0 8px;opacity:.76;font-size:.9em}
+.custom-reaction-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:7px}
+.custom-reaction-choice{display:grid;grid-template-columns:2.2em 1fr;align-items:center;text-align:left;gap:6px;min-height:44px}
+.custom-reaction-choice span{font-size:1.35em;text-align:center}.custom-reaction-choice.selected{outline:3px solid #32c7c7;outline-offset:-3px}
+.custom-expression-preview{min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px;display:grid;gap:4px}
+.custom-library-actions{display:flex;justify-content:flex-end;gap:8px}
+.custom-reaction-button.selected,.landscape-custom-list button.selected{outline-color:#32c7c7!important;box-shadow:0 0 0 2px rgba(50,199,199,.35)!important}
+.custom-theme-result::before{content:"◆ ";color:#32c7c7}
+.landscape-customs-library{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;height:100%}
+.landscape-customs-library section{display:grid;grid-template-rows:auto 1fr;gap:6px;min-height:0}
+.landscape-custom-list{display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;overflow:auto;min-height:0;padding:4px}
+.landscape-custom-list button{min-height:34px}
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+ .tablet-prims-row.has-custom-reactions .tablet-prim-button{min-width:0}
+ .tablet-prim-button.custom-reaction-button .symbol::after{border-color:#32c7c7!important}
+}

@@ -461,3 +461,13 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 ## v0.9.39.10 — Toolbar Flip Integration
 
 Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment toggle is now the seventh equal-width toolbar button labeled **Flip**. The floating circular flip control has been removed from the matrix workspace. No other layout, matrix, Portrait, or engine behavior was changed.
+
+
+## v0.9.39.19 — Custom reactions and custom-theme reaction expressions
+
+- Added structured custom reaction records (word/name + associated emoji).
+- Added structured custom themes with ordered 0–unrestricted canonical/custom reaction references.
+- Added legacy write-in migration.
+- Added Portrait Add Custom Reaction and Add Custom Theme management dialogs.
+- Added Landscape Customs selection lists.
+- Added custom reactions to Director reaction controls with teal selection semantics.
