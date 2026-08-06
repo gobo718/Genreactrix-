@@ -362,7 +362,7 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Added Public Research to the Research Dashboard.
 - No repository folders were added, removed, renamed, or moved.
 
-## v0.9.39.6 — Canonical Landscape Split Layout
+## v0.9.39.7 — Canonical Landscape Split Layout
 
 - Enlarged and moved the main image to the upper-left workstation region.
 - Kept Director Theme 1–3 directly beneath the image.

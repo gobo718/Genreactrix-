@@ -2975,3 +2975,140 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     width:4.8%!important;
   }
 }
+
+
+/* v0.9.39.7 — full instrument occupancy pass.
+   Uses the real browser viewport, keeps the six record controls above the
+   matrix, shows all three Director theme sockets, and forces the complete
+   interlocked matrix to occupy the workspace through the bottom-right edge. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  html,body,#app,#tabletWorkbench,.landscape-scale-host,.landscape-canvas{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    max-height:none!important;
+  }
+  #tabletWorkbench{inset:0!important}
+  .landscape-canvas{padding:.22%!important;overflow:hidden!important}
+  .landscape-frame{
+    grid-template-columns:29.2% minmax(0,1fr)!important;
+    gap:.32%!important;
+  }
+  .landscape-image-region{
+    grid-template-rows:64% minmax(0,1fr)!important;
+    gap:.38%!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-button{
+    place-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-button img{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:left top!important;
+  }
+  .landscape-director-themes{
+    display:grid!important;
+    grid-template-rows:repeat(3,minmax(0,1fr))!important;
+    gap:1.7%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .landscape-director-themes .tablet-theme-cell{
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    padding:.15em .45em!important;
+    font-size:min(1.22vw,2.45vh)!important;
+    line-height:1!important;
+  }
+  .landscape-work-area{
+    grid-template-rows:9.2% minmax(0,1fr)!important;
+    gap:.28%!important;
+    overflow:hidden!important;
+  }
+  .landscape-toolbar{gap:.34%!important}
+  .landscape-toolbar button{
+    font-size:min(1.38vw,2.8vh)!important;
+    line-height:1!important;
+  }
+  .landscape-workspace,
+  .landscape-workspace-face,
+  .landscape-matrix-face,
+  .landscape-matrix-face .tablet-workbench-matrix{
+    position:relative!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    max-height:none!important;
+    overflow:hidden!important;
+  }
+  .landscape-workspace-face{position:absolute!important;inset:0!important}
+  .landscape-matrix-face{padding:.16%!important;display:block!important}
+  .landscape-matrix-face .tablet-workbench-matrix{
+    display:block!important;
+    align-content:stretch!important;
+  }
+  .interlocked-matrix-shell{
+    position:absolute!important;
+    inset:.12%!important;
+    width:auto!important;
+    height:auto!important;
+    display:grid!important;
+    grid-template-rows:6.4% minmax(0,1fr) 6.4%!important;
+    gap:.16%!important;
+    align-content:stretch!important;
+    justify-content:stretch!important;
+  }
+  .interlocked-matrix-body{
+    width:100%!important;
+    height:100%!important;
+    display:grid!important;
+    grid-template-columns:3.7% minmax(0,1fr) 3.7%!important;
+    gap:.16%!important;
+    min-height:0!important;
+  }
+  .interlocked-axis-left,.interlocked-axis-right{
+    height:100%!important;
+    grid-template-rows:repeat(13,minmax(0,1fr))!important;
+  }
+  .interlocked-axis-top,.interlocked-axis-bottom{
+    width:100%!important;
+    grid-template-columns:repeat(7,minmax(0,1fr))!important;
+    padding-inline:3.86%!important;
+  }
+  .interlocked-matrix-grid{
+    width:100%!important;
+    height:100%!important;
+    grid-template-columns:repeat(7,minmax(0,1fr))!important;
+    grid-template-rows:repeat(13,minmax(0,1fr))!important;
+    gap:.16%!important;
+    align-content:stretch!important;
+  }
+  .interlocked-cell,.interlocked-axis button{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+  }
+  .interlocked-cell{
+    font-size:min(.98vw,2.02vh)!important;
+    line-height:1!important;
+  }
+  .interlocked-axis button,
+  .interlocked-green,.interlocked-diagonal{
+    font-size:min(1.38vw,2.85vh)!important;
+  }
+  .landscape-flip-button{
+    right:.26%!important;
+    top:.26%!important;
+    width:4.25%!important;
+    z-index:8!important;
+  }
+}
