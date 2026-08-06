@@ -3450,3 +3450,57 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     height:calc(100% - 16%)!important;
   }
 }
+
+
+/* v0.9.39.12 — canonical 13-reaction order, foreground selection rings,
+   and density hooks for rare custom reactions. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face .tablet-prims-row{
+    grid-template-columns:repeat(13,minmax(0,1fr))!important;
+    gap:.7%!important;
+  }
+  .tablet-prims-percent-row{
+    grid-template-columns:repeat(13,minmax(0,1fr))!important;
+    gap:.7%!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    position:relative!important;
+    width:min(4.45vw,7.5vh)!important;
+    height:min(4.45vw,7.5vh)!important;
+    border:0!important;
+    border-radius:0!important;
+    font-size:clamp(17px,2.62vw,35px)!important;
+    line-height:1!important;
+    isolation:isolate;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    content:""!important;
+    position:absolute!important;
+    inset:1%!important;
+    z-index:5!important;
+    box-sizing:border-box!important;
+    border:3px solid transparent!important;
+    border-radius:50%!important;
+    pointer-events:none!important;
+  }
+  .landscape-judgment-face .tablet-prim-button.selected .symbol::after,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"] .symbol::after{
+    border-color:#ff3030!important;
+  }
+  .landscape-judgment-face .tablet-prim-button.custom-selected .symbol::after,
+  .landscape-judgment-face .tablet-prim-button[data-custom-reaction][aria-pressed="true"] .symbol::after{
+    border-color:#20c9c3!important;
+  }
+  /* The ordinary 13-reaction state keeps the larger controls. Customs can append
+     data-custom-reaction buttons; only then does the row enter compact mode. */
+  .landscape-judgment-face .tablet-prims-row.has-custom-reactions .tablet-prim-button .symbol{
+    width:min(3.9vw,6.65vh)!important;
+    height:min(3.9vw,6.65vh)!important;
+    font-size:clamp(15px,2.28vw,31px)!important;
+  }
+  .landscape-judgment-face .tablet-prims-row.custom-reactions-many .tablet-prim-button .symbol{
+    width:min(3.45vw,5.9vh)!important;
+    height:min(3.45vw,5.9vh)!important;
+    font-size:clamp(14px,2.02vw,28px)!important;
+  }
+}

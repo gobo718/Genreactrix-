@@ -1,5 +1,16 @@
 # Genreactrix
 
+## v0.9.39.12 — Canonical Reaction Row and Foreground Rings
+
+- Rebuilt from the verified v0.9.39.11 archive.
+- Judgment reaction order is now exactly: 🧸 ✨ 😭 🤣 🌶️ 🎉 🧠 💥 👻 🤢 🌌 🎟️ 🌀.
+- All 13 canonical reactions occupy one evenly distributed row.
+- Canonical selection rings are red and render above the emoji so the ring remains complete.
+- Default reaction emoji are slightly smaller.
+- Custom-reaction density hooks are present: the row shrinks only when custom reactions are actually added.
+- Future custom reaction selections use teal rings.
+- The fixed percentage row and sliding-drawer boundary remain unchanged.
+
 ## v0.9.39.11 — Fixed Judgment Reaction Header
 
 - Rebuilt from the user-supplied v0.9.39.10 archive.

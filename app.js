@@ -706,7 +706,7 @@ function renderTabletWorkbench(){
   prims.innerHTML="";
   if(pctRow) pctRow.innerHTML="";
   const weights=currentAiWeights();
-  const judgmentReactionOrder=["✨","🧸","😭","🤣","💥","🌌","🌶️","🤢","👻","🧠","🎟️","🌀"];
+  const judgmentReactionOrder=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀"];
   judgmentReactionOrder.forEach(symbol=>{
     const primitiveIndex=PRIMITIVES.findIndex(item=>item.symbol===symbol);
     const p=PRIMITIVES[primitiveIndex];
@@ -727,6 +727,9 @@ function renderTabletWorkbench(){
       pctRow.appendChild(pct);
     }
   });
+  const customReactionCount=prims.querySelectorAll("[data-custom-reaction]").length;
+  prims.classList.toggle("has-custom-reactions",customReactionCount>0);
+  prims.classList.toggle("custom-reactions-many",customReactionCount>=3);
   for(let i=0;i<3;i++) $("tabletWorkbenchTheme"+(i+1)).textContent=themeLabel(state.themes[i]);
   for(let i=0;i<3;i++){
     const value=currentAiThemes()[i];
