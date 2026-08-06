@@ -1,4 +1,4 @@
-# v0.9.39.21 — AI Description Panel
+# v0.9.39.22 — AI Description Panel
 
 - Places the AI Description panel immediately to the right of the AI theme fields.
 - Aligns its top with AI Theme 1 and its bottom with AI Theme 3.
@@ -473,7 +473,7 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Added custom reactions to Director reaction controls with teal selection semantics.
 
 
-## v0.9.39.21 — Customs creation controls and editor validation
+## v0.9.39.22 — Customs creation controls and editor validation
 - Reduced Landscape Customs headings and placed creation buttons on the same heading lines.
 - Empty library areas stay blank until custom records exist.
 - Added working custom-theme and custom-reaction creation dialogs.
@@ -481,7 +481,7 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Save is greyed out for invalid or duplicate records; zero-reaction themes remain valid.
 
 
-## v0.9.39.21 — Customs management and evaluation-vocabulary versioning
+## v0.9.39.22 — Customs management and evaluation-vocabulary versioning
 
 - Customs typography reduced and Add buttons fixed to the right side of each heading row.
 - Themes receive roughly twice the vertical library space of reactions.
@@ -490,3 +490,14 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Evaluation vocabulary starts at 0.0.0 and is locked to each batch/evaluation.
 - Used-theme edits increment patch; used-theme additions/deletions increment minor; primitive-reaction additions/deletions/edits increment major.
 - Taxonomy changes during an active evaluated batch flag its previously evaluated images for re-evaluation.
+
+
+## v0.9.39.22 — Safe Customs layout checkpoint
+
+- Forced compact Customs heading typography with exact drawer-scoped selectors.
+- Kept each Add button on the same line, immediately right-aligned to its heading.
+- Allocated substantially more vertical space to Custom Themes than Custom Reactions.
+- Removed legacy placeholder customs and stopped recreating them from fallback seed values.
+- Corrected long-press library reordering so dragging reorders the live DOM and commits once on release.
+- Suppressed accidental selection/edit clicks after a long-press drag.
+- Preserved existing Add, Edit, Delete, validation, and evaluation-version behavior.
