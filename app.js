@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.22";
+const GENREACTRIX_BUILD="v0.9.39.23";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -1753,6 +1753,85 @@ document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
 });
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{const slot=Number(button.dataset.tabletWorkbenchSlot);state.targetSlot=slot;tabletLandscapeView.activeThemeSlot=slot;renderTabletWorkbench();}));
 
+// v0.9.39.23 — focused Image View. This is a verification mode, not an editor.
+const landscapeImageViewState={open:false,scale:1,x:0,y:0,pointers:new Map(),gestureMoved:false,pinched:false,downAt:0};
+function resetLandscapeImageViewTransform(){
+  landscapeImageViewState.scale=1;landscapeImageViewState.x=0;landscapeImageViewState.y=0;
+  landscapeImageViewState.pointers.clear();landscapeImageViewState.gestureMoved=false;landscapeImageViewState.pinched=false;
+  applyLandscapeImageViewTransform();
+}
+function applyLandscapeImageViewTransform(){
+  const image=$("landscapeImageViewImage");if(!image)return;
+  image.style.transform=`translate(${landscapeImageViewState.x}px, ${landscapeImageViewState.y}px) scale(${landscapeImageViewState.scale})`;
+}
+function landscapeImageViewReactionSelected(value){return state.selectedReactions.includes(value)}
+function renderLandscapeImageView(){
+  if(!landscapeImageViewState.open)return;
+  const image=$("landscapeImageViewImage");if(image)image.src=currentSource();
+  const primRoot=$("landscapeImageViewPrims");if(primRoot){
+    primRoot.innerHTML="";
+    const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀"];
+    order.forEach(symbol=>{
+      const index=PRIMITIVES.findIndex(item=>item.symbol===symbol);const primitive=PRIMITIVES[index];if(!primitive)return;
+      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);item.innerHTML=`<span>${primitive.symbol}</span>`;primRoot.appendChild(item);
+    });
+    (state.customReactions||[]).forEach(record=>{
+      const token=customReactionSelectionToken(record.id);const item=document.createElement("div");item.className="landscape-image-view-prim custom"+(landscapeImageViewReactionSelected(token)?" selected":"");item.title=record.label;item.setAttribute("aria-label",`${record.label}${landscapeImageViewReactionSelected(token)?", selected":""}`);item.innerHTML=`<span>${record.emoji}</span>`;primRoot.appendChild(item);
+    });
+  }
+  const themeRoot=$("landscapeImageViewThemes");if(themeRoot){
+    themeRoot.innerHTML="";
+    for(let i=0;i<3;i++){
+      const row=document.createElement("div");row.className="landscape-image-view-theme";row.innerHTML=`<b>${i+1}</b><strong>${themeLabel(state.themes[i])}</strong>`;themeRoot.appendChild(row);
+    }
+  }
+  $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+}
+function openLandscapeImageView(){
+  landscapeImageViewState.open=true;const view=$("landscapeImageView");if(view)view.hidden=false;resetLandscapeImageViewTransform();renderLandscapeImageView();
+}
+function closeLandscapeImageView(){
+  landscapeImageViewState.open=false;const view=$("landscapeImageView");if(view)view.hidden=true;resetLandscapeImageViewTransform();
+}
+function navigateLandscapeImageView(delta){navigateImage(delta);resetLandscapeImageViewTransform();renderLandscapeImageView()}
+$("tabletImageViewBtn")?.addEventListener("click",openLandscapeImageView);
+$("landscapeImageViewPrevBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(-1)});
+$("landscapeImageViewNextBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(1)});
+$("landscapeImageViewFlagBtn")?.addEventListener("click",e=>{e.stopPropagation();$("directorFlagBtn")?.click();renderLandscapeImageView()});
+$("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
+const landscapeImageCanvas=$("landscapeImageViewCanvas");
+function landscapePointerDistance(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return 0;return Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y)}
+function landscapePointerMidpoint(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return{x:0,y:0};return{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}}
+landscapeImageCanvas?.addEventListener("pointerdown",e=>{
+  e.preventDefault();landscapeImageCanvas.setPointerCapture?.(e.pointerId);
+  landscapeImageViewState.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY});
+  landscapeImageViewState.downAt=performance.now();landscapeImageViewState.gestureMoved=false;
+  if(landscapeImageViewState.pointers.size===2){landscapeImageViewState.pinched=true;landscapeImageViewState.gestureMoved=true;landscapeImageViewState.startDistance=landscapePointerDistance();landscapeImageViewState.startScale=landscapeImageViewState.scale;landscapeImageViewState.startMid=landscapePointerMidpoint();landscapeImageViewState.startX=landscapeImageViewState.x;landscapeImageViewState.startY=landscapeImageViewState.y}
+  else if(landscapeImageViewState.pointers.size===1){landscapeImageViewState.panStartX=landscapeImageViewState.x;landscapeImageViewState.panStartY=landscapeImageViewState.y}
+});
+landscapeImageCanvas?.addEventListener("pointermove",e=>{
+  const pointer=landscapeImageViewState.pointers.get(e.pointerId);if(!pointer)return;e.preventDefault();pointer.x=e.clientX;pointer.y=e.clientY;
+  if(Math.hypot(pointer.x-pointer.startX,pointer.y-pointer.startY)>5)landscapeImageViewState.gestureMoved=true;
+  if(landscapeImageViewState.pointers.size>=2){
+    const distance=landscapePointerDistance();const midpoint=landscapePointerMidpoint();const ratio=landscapeImageViewState.startDistance?distance/landscapeImageViewState.startDistance:1;
+    landscapeImageViewState.scale=Math.max(1,Math.min(8,landscapeImageViewState.startScale*ratio));
+    landscapeImageViewState.x=landscapeImageViewState.startX+(midpoint.x-landscapeImageViewState.startMid.x);
+    landscapeImageViewState.y=landscapeImageViewState.startY+(midpoint.y-landscapeImageViewState.startMid.y);
+    if(landscapeImageViewState.scale===1){landscapeImageViewState.x=0;landscapeImageViewState.y=0}
+    applyLandscapeImageViewTransform();return;
+  }
+  if(landscapeImageViewState.pointers.size===1 && landscapeImageViewState.scale>1){landscapeImageViewState.x=landscapeImageViewState.panStartX+(pointer.x-pointer.startX);landscapeImageViewState.y=landscapeImageViewState.panStartY+(pointer.y-pointer.startY);applyLandscapeImageViewTransform()}
+});
+function endLandscapeImagePointer(e){
+  if(!landscapeImageViewState.pointers.has(e.pointerId))return;e.preventDefault();
+  const wasSingle=landscapeImageViewState.pointers.size===1;const elapsed=performance.now()-landscapeImageViewState.downAt;
+  landscapeImageViewState.pointers.delete(e.pointerId);
+  if(wasSingle && !landscapeImageViewState.gestureMoved && !landscapeImageViewState.pinched && elapsed<550){closeLandscapeImageView();return}
+  if(landscapeImageViewState.pointers.size===0){landscapeImageViewState.pinched=false;landscapeImageViewState.gestureMoved=false}
+}
+landscapeImageCanvas?.addEventListener("pointerup",endLandscapeImagePointer);
+landscapeImageCanvas?.addEventListener("pointercancel",endLandscapeImagePointer);
+
 
 // Canonical Image Record Engine + shared Images Engine.
 // The Image Record Engine owns identity, provenance, workflow state, extensible metadata,
@@ -2447,7 +2526,7 @@ $('researchSessionsOpen')?.addEventListener('click',openSessions);$('researchSes
 
 
 
-// v0.9.39.22 — structured customs, editing/reordering, and evaluation-vocabulary versioning.
+// v0.9.39.23 — structured customs, editing/reordering, and evaluation-vocabulary versioning.
 const EVALUATION_VERSION_KEY="genreactrix-evaluation-vocabulary-version-v1";
 const EVALUATION_USED_KEY="genreactrix-evaluation-vocabulary-used-v1";
 const CUSTOM_PLACEHOLDER_CLEANUP_KEY="genreactrix-custom-placeholder-cleanup-v1";

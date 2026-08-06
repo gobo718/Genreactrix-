@@ -1,4 +1,4 @@
-# v0.9.39.22 — AI Description Panel
+# v0.9.39.23 — AI Description Panel
 
 - Places the AI Description panel immediately to the right of the AI theme fields.
 - Aligns its top with AI Theme 1 and its bottom with AI Theme 3.
@@ -501,3 +501,15 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Corrected long-press library reordering so dragging reorders the live DOM and commits once on release.
 - Suppressed accidental selection/edit clicks after a long-press drag.
 - Preserved existing Add, Edit, Delete, validation, and evaluation-version behavior.
+
+
+## v0.9.39.23 — Landscape Image View safe checkpoint
+
+- Added a focused, full-screen Landscape Image View for one-glance verification of the Director's judgment.
+- The image expands to the available left-side phone borders while preserving aspect ratio.
+- The right side shows every primitive reaction, with red selection rings for canonical selections and teal rings for custom selections, plus the three chosen Director themes.
+- Back and Next cycle through images while remaining in Image View; navigation resets zoom.
+- Flag and Save remain available in Image View and use the established behaviors.
+- A single stationary tap on the image returns to the existing Landscape workstation.
+- Pinch zoom and drag-to-pan are supported; no double-tap gesture is assigned.
+- This checkpoint adds no rejection, archive, queue, or lifecycle persistence changes.
