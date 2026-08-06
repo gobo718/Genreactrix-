@@ -2842,5 +2842,36 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.4 — exact workbook-derived 13×7 interlocked matrix. */
+/* v0.9.39.5 — exact workbook-derived 13×7 interlocked matrix. */
 .interlocked-lavender{background:#d8c9e5}.interlocked-peach{background:#f2cba8}.interlocked-green{background:#a9dda5;color:#102313}
+
+
+/* v0.9.39.5 — full-viewport Landscape and canonical diagonal alignment.
+   The Fold landscape workstation uses the entire browser viewport; matrix
+   emoji placement follows the workbook's top-right / bottom-left alignments. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletWorkbench{width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important}
+  .landscape-scale-host{
+    width:100vw!important;
+    height:100dvh!important;
+    max-width:none!important;
+    max-height:none!important;
+    aspect-ratio:auto!important;
+    place-items:stretch!important;
+  }
+  .landscape-canvas{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}
+  .interlocked-diagonal-upper{
+    display:grid!important;
+    justify-items:end!important;
+    align-items:start!important;
+    padding:.04em .16em 0 0!important;
+    text-align:right!important;
+  }
+  .interlocked-diagonal-lower{
+    display:grid!important;
+    justify-items:start!important;
+    align-items:end!important;
+    padding:0 0 .04em .16em!important;
+    text-align:left!important;
+  }
+}
