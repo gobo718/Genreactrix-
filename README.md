@@ -362,7 +362,7 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Added Public Research to the Research Dashboard.
 - No repository folders were added, removed, renamed, or moved.
 
-## v0.9.39.7 — Canonical Landscape Split Layout
+## v0.9.39.8 — Canonical Landscape Split Layout
 
 - Enlarged and moved the main image to the upper-left workstation region.
 - Kept Director Theme 1–3 directly beneath the image.
@@ -371,3 +371,12 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Expanded the complete interlocked matrix to the remaining right-side area.
 - Anchored the matrix to the bottom-right of its workspace.
 - Preserved the exact matrix contents, pastel regions, diagonal emoji alignment, Portrait layout, and existing engines.
+
+
+## v0.9.39.8 — Square Image Socket and Full Matrix Occupancy
+- Retains the established image-port height while reducing its width to a square.
+- Fits the current image inside the square without cropping, distortion, or an added border.
+- Restricts the three Director theme fields to the exact image-column width.
+- Distributes Previous, Next, Undo, Redo, Flag, and Save evenly across the full matrix width.
+- Forces the complete interlocked matrix to stretch through the available workspace and remain anchored to the bottom-right.
+- Portrait behavior and existing engines remain unchanged.
