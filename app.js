@@ -705,6 +705,25 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   root.appendChild(shell);
 }
 
+
+
+function fitLandscapeAiDescription(){
+  const panel=document.getElementById("tabletWorkbenchAiDescription");
+  if(!panel || panel.hidden || !panel.isConnected) return;
+  const startSize=10;
+  const minimumSize=1;
+  panel.classList.remove("ai-description-scroll");
+  panel.style.setProperty("--ai-description-font-size",`${startSize}px`);
+  let size=startSize;
+  while(size>minimumSize && (panel.scrollHeight>panel.clientHeight || panel.scrollWidth>panel.clientWidth)){
+    size-=1;
+    panel.style.setProperty("--ai-description-font-size",`${size}px`);
+  }
+  if(panel.scrollHeight>panel.clientHeight || panel.scrollWidth>panel.clientWidth){
+    panel.classList.add("ai-description-scroll");
+  }
+}
+
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
@@ -778,9 +797,16 @@ function renderTabletWorkbench(){
     const drawerRect=$("tabletSlidingDrawer")?.getBoundingClientRect();
     if(drawerRect){
       aiPanel.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
+      const descriptionPanel=$("tabletWorkbenchAiDescription");
+      if(descriptionPanel){
+        descriptionPanel.style.setProperty("--director-stack-width",`${stackRect.width}px`);
+        descriptionPanel.style.setProperty("--director-stack-height",`${stackRect.height}px`);
+        descriptionPanel.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
+      }
     }
   }
   renderLandscapeInterlockedMatrix("tabletWorkbenchMatrix");
+  requestAnimationFrame(fitLandscapeAiDescription);
 }
 
 
@@ -2388,3 +2414,5 @@ window.addEventListener('DOMContentLoaded',()=>{
 $('researchSessionsOpen')?.addEventListener('click',openSessions);$('researchSessionClose')?.addEventListener('click',()=>$('researchSessionDialog')?.close());$('researchSessionNew')?.addEventListener('click',async()=>{const name=prompt('Session name','Research session');if(!name)return;const s=await window.genreactrixResearchSessionEngine.createSession({name});selectedSessionId=s.id;await renderSessionLists()});$('researchSessionList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-session-id]');if(!b)return;selectedSessionId=b.dataset.sessionId;await window.genreactrixResearchSessionEngine.setActive(selectedSessionId);await renderSessionLists()});$('researchSessionSave')?.addEventListener('click',async()=>{if(!selectedSessionId)return;await window.genreactrixResearchSessionEngine.updateSession(selectedSessionId,{name:$('researchSessionName').value,description:$('researchSessionDescription').value,objectives:$('researchSessionObjectives').value,questions:$('researchSessionQuestions').value,conclusions:$('researchSessionConclusions').value});await renderSessionLists()});$('researchSessionSnapshot')?.addEventListener('click',async()=>{const label=prompt('Snapshot label','Manual snapshot');if(label){await window.genreactrixResearchSessionEngine.snapshot(label);await renderSessionLists()}});$('researchSessionRestore')?.addEventListener('click',async()=>{const s=(await window.genreactrixResearchSessionEngine.allSessions()).find(x=>x.id===selectedSessionId);if(s)await window.genreactrixResearchSessionEngine.restoreWorkspace(s.workspace)});$('researchSessionBookmarkImage')?.addEventListener('click',async()=>{const id=window.genreactrixDirectorEngine?.getCurrentImageId?.()||window.currentImageId;if(id){await window.genreactrixResearchSessionEngine.bookmark('image',id,`Image ${id}`,window.genreactrixResearchSessionEngine.captureWorkspace());await renderSessionLists()}});$('researchSessionSearch')?.addEventListener('input',async e=>{const q=e.target.value.trim();if(!q){await renderSessionLists();return}const rows=await window.genreactrixResearchSessionEngine.search(q);$('researchSessionList').innerHTML=rows.map(x=>`<button class="research-session-item" data-session-id="${x.sessionId}"><strong>${esc(x.label)}</strong><div class="research-session-meta">${esc(x.kind)}</div></button>`).join('')||'<p>No matches.</p>'});$('researchSnapshotList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-restore-snapshot]');if(!b)return;const list=await window.genreactrixResearchSessionEngine.snapshots(selectedSessionId),snap=list.find(x=>x.id===b.dataset.restoreSnapshot);if(snap)await window.genreactrixResearchSessionEngine.restoreWorkspace(snap.workspace)});
 });
 })();
+
+window.addEventListener("resize",()=>requestAnimationFrame(fitLandscapeAiDescription));

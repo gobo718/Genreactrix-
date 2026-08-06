@@ -1,3 +1,10 @@
+# v0.9.39.18 — AI Description Panel
+
+- Places the AI Description panel immediately to the right of the AI theme fields.
+- Aligns its top with AI Theme 1 and its bottom with AI Theme 3.
+- Uses a small starting font, shrinks only as needed to the browser minimum, then enables vertical scrolling.
+- Preserves the v0.9.39.17 baseline and all existing behavior.
+
 # v0.9.39.17 — AI Field Alignment and Reaction Ring Sizing
 
 - Aligns the AI theme stack vertically with the existing Director theme stack by measuring their rendered viewport positions.

@@ -3837,3 +3837,37 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     bottom:auto!important;
   }
 }
+
+
+/* v0.9.39.18 — AI Description panel aligned beside the AI theme stack. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face .tablet-ai-description-ghost{
+    position:absolute!important;
+    left:calc(var(--director-stack-width) + var(--ai-description-gap,10px))!important;
+    top:var(--ai-theme-panel-top,0px)!important;
+    right:0!important;
+    width:auto!important;
+    height:var(--director-stack-height)!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:6px 8px!important;
+    box-sizing:border-box!important;
+    border:1px solid var(--line)!important;
+    border-radius:.45em!important;
+    background:var(--panel)!important;
+    color:var(--text)!important;
+    font-size:var(--ai-description-font-size,10px)!important;
+    line-height:1.2!important;
+    white-space:pre-wrap!important;
+    overflow-wrap:anywhere!important;
+    overflow-x:hidden!important;
+    overflow-y:hidden!important;
+    overscroll-behavior:contain!important;
+    z-index:2!important;
+  }
+  .landscape-judgment-face .tablet-ai-description-ghost[hidden]{display:none!important}
+  .landscape-judgment-face .tablet-ai-description-ghost.ai-description-scroll{
+    overflow-y:auto!important;
+  }
+}
