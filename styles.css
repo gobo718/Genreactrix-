@@ -3899,3 +3899,19 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
  .tablet-prims-row.has-custom-reactions .tablet-prim-button{min-width:0}
  .tablet-prim-button.custom-reaction-button .symbol::after{border-color:#32c7c7!important}
 }
+
+
+/* v0.9.39.20 — Customs creation controls and ordered expression editing. */
+.landscape-customs-library section{grid-template-rows:auto 1fr!important}
+.landscape-custom-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.landscape-custom-heading-row strong{font-size:clamp(8px,.82vw,12px);line-height:1.1;letter-spacing:.01em}
+.landscape-custom-heading-row button{min-height:28px;padding:.35em .72em;font-size:clamp(7px,.72vw,11px);white-space:nowrap}
+.landscape-custom-list:empty{display:block}
+.custom-library-status{min-height:1.2em;margin:0;color:#ffb5b5;font-size:.86em}
+.custom-library-actions button:disabled{opacity:.38;filter:grayscale(1);cursor:not-allowed;box-shadow:none}
+.custom-expression-preview{display:flex;flex-wrap:wrap;align-content:flex-start;gap:7px;touch-action:none}
+.custom-expression-preview.empty{min-height:44px}
+.custom-expression-chip{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px;max-width:220px;min-height:38px;padding:5px 8px;text-align:left;touch-action:none;user-select:none}
+.custom-expression-chip span{font-size:1.2em}.custom-expression-chip strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.custom-expression-chip i{font-style:normal;opacity:.72;font-size:1.1em;padding:.15em}
+.custom-expression-chip.reordering{outline:3px solid #32c7c7;outline-offset:2px;transform:scale(1.03);z-index:10}
+.custom-reorder-active,.custom-reorder-active *{cursor:grabbing!important}

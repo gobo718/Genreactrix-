@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.19</title>
-<link href="styles.css?v=0.9.39.18" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.20</title>
+<link href="styles.css?v=0.9.39.20" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.19</span>
+<span>v0.9.39.20</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.19</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.20</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -385,8 +385,14 @@
 <div class="landscape-customs-drawer" id="tabletCustomsDrawer" hidden>
 <label>Search custom themes<input id="tabletCustomSearch" type="search" placeholder="Search customs"/></label>
 <div class="landscape-customs-library">
-<section><strong>Custom Themes</strong><div id="tabletCustomThemeList" class="landscape-custom-list"></div></section>
-<section><strong>Custom Reactions</strong><div id="tabletCustomReactionList" class="landscape-custom-list"></div></section>
+<section>
+<div class="landscape-custom-heading-row"><strong>Custom Themes</strong><button id="tabletAddCustomThemeBtn" type="button">+ Add Custom Theme</button></div>
+<div id="tabletCustomThemeList" class="landscape-custom-list"></div>
+</section>
+<section>
+<div class="landscape-custom-heading-row"><strong>Custom Reactions</strong><button id="tabletAddCustomReactionBtn" type="button">+ Add Custom Reaction</button></div>
+<div id="tabletCustomReactionList" class="landscape-custom-list"></div>
+</section>
 </div>
 </div>
 </div>
@@ -742,7 +748,26 @@
 <script src="maintenance-engine.js?v=0.9.23.0"></script>
 <script src="settings-engine.js?v=0.9.14.0"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
-<script src="app.js?v=0.9.39.18"></script>
+<dialog class="custom-library-dialog" id="customReactionDialog">
+<form class="custom-library-shell" method="dialog" onsubmit="return false;">
+<header><h2>Add Custom Reaction</h2><button aria-label="Close" data-close-custom-dialog="customReactionDialog" type="button">×</button></header>
+<label>Reaction word/name<input id="customReactionLabel" autocomplete="off" type="text"/></label>
+<label>Associated emoji<input id="customReactionEmoji" autocomplete="off" inputmode="text" type="text"/></label>
+<p class="custom-library-status" id="customReactionStatus" aria-live="polite"></p>
+<div class="custom-library-actions"><button data-close-custom-dialog="customReactionDialog" type="button">Cancel</button><button class="primary-action" disabled id="customReactionSaveBtn" type="button">Save</button></div>
+</form>
+</dialog>
+<dialog class="custom-library-dialog" id="customThemeDialog">
+<form class="custom-library-shell" method="dialog" onsubmit="return false;">
+<header><h2>Add Custom Theme</h2><button aria-label="Close" data-close-custom-dialog="customThemeDialog" type="button">×</button></header>
+<label>Theme name<input id="customThemeLabel" autocomplete="off" type="text"/></label>
+<fieldset><legend>Reaction expression</legend><p class="custom-library-note">Choose zero or more canonical or custom reactions. Long-press a selected reaction below, then drag it to reorder.</p><div class="custom-reaction-picker" id="customThemeReactionPicker"></div></fieldset>
+<div class="custom-expression-preview empty" id="customThemeExpressionPreview" aria-label="Selected reaction-expression order"></div>
+<p class="custom-library-status" id="customThemeStatus" aria-live="polite"></p>
+<div class="custom-library-actions"><button data-close-custom-dialog="customThemeDialog" type="button">Cancel</button><button class="primary-action" disabled id="customThemeSaveBtn" type="button">Save</button></div>
+</form>
+</dialog>
+<script src="app.js?v=0.9.39.20"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
 <header><h2>Notifications</h2><button aria-label="Close" id="notificationsClose" type="button">×</button></header>
@@ -922,6 +947,8 @@
 </div></section></dialog>
 <script src="public-research-engine.js?v=0.9.38.0"></script>
 <script src="public-research-ui.js?v=0.9.38.0"></script>
+
+
 
 </body>
 </html>

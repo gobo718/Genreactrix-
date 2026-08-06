@@ -1,4 +1,4 @@
-# v0.9.39.18 — AI Description Panel
+# v0.9.39.20 — AI Description Panel
 
 - Places the AI Description panel immediately to the right of the AI theme fields.
 - Aligns its top with AI Theme 1 and its bottom with AI Theme 3.
@@ -471,3 +471,11 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Added Portrait Add Custom Reaction and Add Custom Theme management dialogs.
 - Added Landscape Customs selection lists.
 - Added custom reactions to Director reaction controls with teal selection semantics.
+
+
+## v0.9.39.20 — Customs creation controls and editor validation
+- Reduced Landscape Customs headings and placed creation buttons on the same heading lines.
+- Empty library areas stay blank until custom records exist.
+- Added working custom-theme and custom-reaction creation dialogs.
+- Added long-press-and-drag ordering for selected reaction-expression members.
+- Save is greyed out for invalid or duplicate records; zero-reaction themes remain valid.
