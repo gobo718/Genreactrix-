@@ -775,6 +775,10 @@ function renderTabletWorkbench(){
     aiPanel.style.setProperty("--director-stack-height",`${stackRect.height}px`);
     aiPanel.style.setProperty("--director-field-width",`${fieldRect.width}px`);
     aiPanel.style.setProperty("--director-field-height",`${fieldRect.height}px`);
+    const drawerRect=$("tabletSlidingDrawer")?.getBoundingClientRect();
+    if(drawerRect){
+      aiPanel.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
+    }
   }
   renderLandscapeInterlockedMatrix("tabletWorkbenchMatrix");
 }

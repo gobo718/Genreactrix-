@@ -1,3 +1,9 @@
+# v0.9.39.17 — AI Field Alignment and Reaction Ring Sizing
+
+- Aligns the AI theme stack vertically with the existing Director theme stack by measuring their rendered viewport positions.
+- Enlarges reaction selection rings while preserving the current emoji size and centering.
+- No other layout or behavior changes.
+
 # v0.9.39.16 — Measured Fields and Explicit Matrix Picker
 
 - AI theme fields copy the exact rendered Director-field width and height.

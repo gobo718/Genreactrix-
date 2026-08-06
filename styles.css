@@ -3820,3 +3820,20 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     z-index:auto!important;
   }
 }
+
+/* v0.9.39.17 — measured AI vertical alignment and larger reaction rings. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    --reaction-ring-size:calc(var(--reaction-glyph-size) + 16px)!important;
+    transform:translateX(2px)!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  .landscape-ai-theme-comparison{
+    top:var(--ai-theme-panel-top,auto)!important;
+    bottom:auto!important;
+  }
+}
