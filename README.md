@@ -1,5 +1,14 @@
 # Genreactrix
 
+## v0.9.39.14 — Instant Classification + Corrected AI Theme Fields
+- Enlarges and slightly right-shifts the foreground reaction rings while reducing the reaction glyph size.
+- Primary reaction changes commit immediately through the Director Classification Engine.
+- PrimFusion assignments commit immediately, then clear the active Director field highlight.
+- Rebuilds the AI Themes drawer as three equal-size Director/AI field pairs; AI results remain confidence-sorted, with AI left, theme centered, and percentage right.
+- The toolbar Save action now marks the image for retention during batch cleanup rather than serving as a metadata commit button.
+- No image generation or repository restructuring.
+
+
 ## v0.9.39.13 — Reaction Geometry, Director Assignment, and AI Theme Drawer
 
 - Makes Judgment reaction emoji smaller while enlarging and centering the foreground red selection rings.

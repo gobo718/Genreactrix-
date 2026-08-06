@@ -717,7 +717,7 @@ function renderTabletWorkbench(){
     b.title=p.name;
     b.setAttribute("aria-pressed",String(state.selectedReactions.includes(primitiveIndex)));
     b.innerHTML=`<span class="symbol" aria-hidden="true">${p.symbol}</span>`;
-    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(primitiveIndex);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(primitiveIndex);saveCurrent();renderAll();});
+    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(primitiveIndex);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(primitiveIndex);saveCurrent("director-reaction-auto");renderAll();});
     prims.appendChild(b);
     if(pctRow){
       const pct=document.createElement("span");
@@ -998,7 +998,7 @@ function selectTheme(themeInput){
   }
   pushHistory();
   state.themes[target]=theme;
-  const saveOk=writeClassificationForKey(sourceKey,classificationState());
+  const saveOk=saveCurrent("director-theme-auto");
   if(!saveOk) return;
   renderThemes();
   renderComparison();
@@ -1655,7 +1655,20 @@ document.getElementById("tabletAiThemesBtn")?.addEventListener("click",()=>{tabl
 document.getElementById("tabletAiDescriptionBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiDescription=!tabletLandscapeView.aiDescription;renderTabletWorkbench();});
 document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=!tabletLandscapeView.customs;renderTabletWorkbench();});
 document.getElementById("tabletFlagBtn")?.addEventListener("click",()=>document.getElementById("directorFlagBtn")?.click());
-document.getElementById("tabletSaveBtn")?.addEventListener("click",()=>{saveCurrent("director-commit");renderAll();setDirectorStatus("Record saved.");});
+document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
+  const id=currentKey();
+  state.retention="keep";
+  saveCurrent("image-retention-keep");
+  try{
+    const record=window.genreactrixImagesEngine?.recordById?.(id);
+    if(record) await window.genreactrixImagesEngine.saveReference(id);
+    renderAll();
+    setDirectorStatus("Image marked to keep during batch cleanup.");
+  }catch(error){
+    console.warn("Image could not be marked for retention",error);
+    setDirectorStatus("Classification is saved, but the image retention flag could not be stored.");
+  }
+});
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{const slot=Number(button.dataset.tabletWorkbenchSlot);state.targetSlot=slot;tabletLandscapeView.activeThemeSlot=slot;renderTabletWorkbench();}));
 
 
