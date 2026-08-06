@@ -3684,7 +3684,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.15 — exact AI-theme placement, no duplicated Director fields,
+/* v0.9.39.16 — exact AI-theme placement, no duplicated Director fields,
    larger reaction rings, and persistent selected Matrix-cell feedback. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* The ring stays above the glyph, grows slightly, and shifts right as requested. */
@@ -3756,5 +3756,67 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     outline:3px solid #5fd4ff!important;
     outline-offset:-3px!important;
     box-shadow:inset 0 0 0 2px rgba(255,255,255,.75),0 0 0 1px rgba(95,212,255,.65)!important;
+  }
+}
+
+
+/* v0.9.39.16 — measured component reuse and explicit matrix-picker state. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* The ring's inner diameter equals the glyph-size variable: it touches the
+     emoji envelope without crossing it. The 4px stroke expands outward. */
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    --reaction-glyph-size:clamp(13px,1.82vw,25px);
+    --reaction-ring-stroke:4px;
+    --reaction-ring-size:calc(var(--reaction-glyph-size) + (2 * var(--reaction-ring-stroke)));
+    position:relative!important;
+    width:var(--reaction-ring-size)!important;
+    height:var(--reaction-ring-size)!important;
+    font-size:var(--reaction-glyph-size)!important;
+    transform:translateX(2px)!important;
+    display:grid!important;
+    place-items:center!important;
+    line-height:1!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    border-width:var(--reaction-ring-stroke)!important;
+    box-sizing:border-box!important;
+    transform:none!important;
+  }
+
+  /* Exact Director component dimensions are measured at runtime and copied
+     directly into the three AI fields. */
+  .landscape-ai-theme-comparison{
+    left:0!important;
+    bottom:0!important;
+    width:var(--director-stack-width)!important;
+    height:var(--director-stack-height)!important;
+  }
+  .landscape-ai-theme-grid{
+    width:var(--director-stack-width)!important;
+    height:var(--director-stack-height)!important;
+    grid-template-columns:var(--director-field-width)!important;
+    grid-template-rows:repeat(3,var(--director-field-height))!important;
+    align-content:space-between!important;
+    gap:0!important;
+  }
+  .landscape-ai-theme-grid .tablet-theme-cell{
+    width:var(--director-field-width)!important;
+    height:var(--director-field-height)!important;
+    min-width:var(--director-field-width)!important;
+    min-height:var(--director-field-height)!important;
+    max-width:var(--director-field-width)!important;
+    max-height:var(--director-field-height)!important;
+    border-radius:.45em!important;
+    padding-inline:2.2em!important;
+  }
+
+  /* No Matrix cell selection/highlight exists in this phase. */
+  .interlocked-cell.interlocked-selected{
+    outline:none!important;
+    box-shadow:none!important;
+    z-index:auto!important;
   }
 }

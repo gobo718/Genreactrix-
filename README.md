@@ -1,6 +1,16 @@
+# v0.9.39.16 — Measured Fields and Explicit Matrix Picker
+
+- AI theme fields copy the exact rendered Director-field width and height.
+- AI fields remain the only new content in the AI drawer and sit at its bottom-left edge beside the Director stack.
+- Reaction rings use a numeric tangent relationship: the ring inner diameter equals the emoji glyph-size variable.
+- Matrix cells do nothing unless a Director theme field is visibly active.
+- Matrix clicks are never remembered or applied later.
+- Matrix-cell highlighting is removed for this phase.
+- Reaction and completed Director-theme assignments continue to save immediately.
+
 # Genreactrix
 
-## v0.9.39.15 — Exact AI Theme Placement + Matrix Selection Feedback
+## v0.9.39.16 — Exact AI Theme Placement + Matrix Selection Feedback
 
 - Removed the duplicated Director-theme fields from the AI drawer.
 - Placed only the three AI theme fields at the bottom-left of the AI drawer, immediately beside the existing Director fields under the image.

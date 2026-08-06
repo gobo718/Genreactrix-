@@ -630,7 +630,8 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
     return match ? match[0].split("|") : null;
   };
   const choosePrimitive=primitive=>{
-    if(!primitive) return;
+    if(!primitive || tabletLandscapeView.activeThemeSlot===null) return;
+    state.targetSlot=tabletLandscapeView.activeThemeSlot;
     selectTheme({id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id});
   };
   const appendAxisButton=(holder,symbol)=>{
@@ -675,7 +676,6 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
       if(primitive){
         const cellTheme={id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id};
         cell.dataset.themeId=cellTheme.id;
-        if(state.themes.some(theme=>normalizeTheme(theme)?.id===cellTheme.id)) cell.classList.add("interlocked-selected");
         cell.title=`Select ${primitive.name}`;
         cell.addEventListener("click",()=>choosePrimitive(primitive));
       }else{
@@ -684,11 +684,11 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
         const cellTheme=primitives.length===2 ? {id:primFusionCellId(primitives[0].id,primitives[1].id),label:entry.value,kind:"primFusion",primitiveIds:[primitives[0].id,primitives[1].id].sort()} : null;
         if(cellTheme){
           cell.dataset.themeId=cellTheme.id;
-          if(state.themes.some(theme=>normalizeTheme(theme)?.id===cellTheme.id)) cell.classList.add("interlocked-selected");
-        }
+          }
         cell.title=primitives.length===2 ? `${primitives[0].symbol}${primitives[1].symbol} ${entry.value}` : entry.value;
         cell.addEventListener("click",()=>{
-          if(!cellTheme) return;
+          if(!cellTheme || tabletLandscapeView.activeThemeSlot===null) return;
+          state.targetSlot=tabletLandscapeView.activeThemeSlot;
           selectTheme(cellTheme);
         });
       }
@@ -761,6 +761,21 @@ function renderTabletWorkbench(){
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+
+  // AI theme fields use the exact rendered width and height of the existing
+  // Director theme fields. The drawer panel is positioned immediately to the
+  // right of that Director stack; no duplicate Director fields are rendered.
+  const directorStack=document.querySelector(".landscape-director-themes");
+  const directorField=directorStack?.querySelector(".tablet-theme-cell");
+  const aiPanel=$("tabletAiThemesPanel");
+  if(directorStack && directorField && aiPanel){
+    const stackRect=directorStack.getBoundingClientRect();
+    const fieldRect=directorField.getBoundingClientRect();
+    aiPanel.style.setProperty("--director-stack-width",`${stackRect.width}px`);
+    aiPanel.style.setProperty("--director-stack-height",`${stackRect.height}px`);
+    aiPanel.style.setProperty("--director-field-width",`${fieldRect.width}px`);
+    aiPanel.style.setProperty("--director-field-height",`${fieldRect.height}px`);
+  }
   renderLandscapeInterlockedMatrix("tabletWorkbenchMatrix");
 }
 
