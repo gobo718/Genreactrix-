@@ -3345,3 +3345,108 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     display:grid!important;
   }
 }
+
+
+/* v0.9.39.11 — fixed Judgment reaction header and independent drawer. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-workstation.face-judgment .landscape-judgment-face{
+    display:grid!important;
+    grid-template-rows:30% minmax(0,1fr)!important;
+    gap:1.2%!important;
+    padding:1.2%!important;
+  }
+  .landscape-judgment-header{
+    display:grid;
+    grid-template-rows:minmax(0,1fr) 24%;
+    gap:2%;
+    min-width:0;
+    min-height:0;
+  }
+  .landscape-judgment-face .tablet-prims-row{
+    display:grid!important;
+    grid-template-columns:repeat(12,minmax(0,1fr))!important;
+    grid-template-rows:1fr!important;
+    gap:1.15%!important;
+    align-items:center!important;
+    width:100%!important;
+    height:100%!important;
+    padding:0!important;
+  }
+  .landscape-judgment-face .tablet-prims-row > *{
+    grid-column:auto!important;
+  }
+  .landscape-judgment-face .tablet-prim-button{
+    display:grid!important;
+    place-items:center!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    overflow:visible!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    position:relative!important;
+    display:grid!important;
+    place-items:center!important;
+    width:min(5.1vw,8.7vh)!important;
+    height:min(5.1vw,8.7vh)!important;
+    aspect-ratio:1!important;
+    box-sizing:border-box!important;
+    border:3px solid transparent!important;
+    border-radius:50%!important;
+    background:transparent!important;
+    font-size:clamp(18px,3.05vw,40px)!important;
+    line-height:1!important;
+    overflow:visible!important;
+  }
+  .landscape-judgment-face .tablet-prim-button.selected .symbol,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"] .symbol{
+    border-color:#ff3030!important;
+    box-shadow:none!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    content:none!important;
+  }
+  .tablet-prims-percent-row{
+    display:grid;
+    grid-template-columns:repeat(12,minmax(0,1fr));
+    gap:1.15%;
+    align-items:center;
+    width:100%;
+    min-width:0;
+    min-height:0;
+  }
+  .tablet-prim-percentage{
+    display:grid;
+    place-items:center;
+    min-width:0;
+    height:100%;
+    color:var(--muted);
+    font-size:clamp(7px,.9vw,13px);
+    line-height:1;
+    text-align:center;
+  }
+  .landscape-sliding-drawer{
+    position:relative;
+    display:grid;
+    grid-template-rows:auto auto minmax(0,1fr);
+    gap:1.4%;
+    min-width:0;
+    min-height:0;
+    padding-top:1%;
+    border-top:1px solid var(--line);
+    overflow:hidden;
+  }
+  .landscape-sliding-drawer .landscape-ai-controls{
+    flex:0 0 auto;
+  }
+  .landscape-sliding-drawer .landscape-customs-drawer{
+    position:absolute!important;
+    inset:auto 0 0 0!important;
+    width:auto!important;
+    height:calc(100% - 16%)!important;
+  }
+}

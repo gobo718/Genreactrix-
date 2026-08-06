@@ -1,5 +1,14 @@
-# Genreactrix v0.9.39.1
-## v0.9.39.10 — Director Theme Alignment + Clean Judgment Face
+# Genreactrix
+
+## v0.9.39.11 — Fixed Judgment Reaction Header
+
+- Rebuilt from the user-supplied v0.9.39.10 archive.
+- Places the Judgment reactions in one evenly spaced fixed row in this exact order: ✨ 🧸 😭 🤣 💥 🌌 🌶️ 🤢 👻 🧠 🎟️ 🌀.
+- Uses a true centered red circular CSS ring around selected reaction emoji.
+- Reserves a fixed percentage row beneath the reactions; values appear only when AI Reactions is enabled.
+- Places the independent sliding-drawer region below the fixed reaction header so drawer changes cannot move, cover, or resize reactions or percentages.
+- Preserves the Matrix side, toolbar, image socket, Director theme fields, Portrait layout, and existing engines.
+
 - Director theme-field numbers are left-aligned while theme words remain centered.
 - Matrix and Judgment faces are now strictly mutually exclusive; the Matrix is fully hidden on the Judgment side.
 - Rebuilt from the verified v0.9.39.9 archive.

@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.10</title>
+<title>Genreactrix v0.9.39.11</title>
 <link href="styles.css?v=0.9.39.10" rel="stylesheet"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.10</span>
+<span>v0.9.39.11</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.10</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.11</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -363,7 +363,11 @@
 <div aria-label="PrimFusion Matrix" class="primfusion-matrix tablet-workbench-matrix" id="tabletWorkbenchMatrix"></div>
 </div>
 <div class="landscape-workspace-face landscape-judgment-face" id="tabletJudgmentFace" aria-hidden="true">
+<div class="landscape-judgment-header" aria-label="Fixed reaction header">
 <div aria-label="Primitive reactions" class="tablet-prims-row" id="tabletWorkbenchPrims"></div>
+<div aria-label="AI reaction percentages" class="tablet-prims-percent-row" id="tabletWorkbenchPrimPcts"></div>
+</div>
+<div class="landscape-sliding-drawer" id="tabletSlidingDrawer" aria-label="Judgment sliding drawer">
 <div class="landscape-ai-controls" aria-label="Optional AI reference controls">
 <button aria-pressed="false" id="tabletAiReactionsBtn" type="button">AI Reactions</button>
 <button aria-pressed="false" id="tabletAiThemesBtn" type="button">AI Themes</button>
@@ -379,6 +383,7 @@
 <div class="landscape-customs-drawer" id="tabletCustomsDrawer" hidden>
 <label>Search custom themes<input id="tabletCustomSearch" type="search" placeholder="Search customs"/></label>
 <div class="landscape-customs-placeholder">Custom themes and reactions connect here after layout approval.</div>
+</div>
 </div>
 </div>
 </section>
