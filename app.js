@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.3";
+const GENREACTRIX_BUILD="v0.9.39.4";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -616,22 +616,38 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   if(!root) return;
   root.innerHTML="";
 
-  const columns=[1,0,3,2,8,12,11]; // Adorable, Beautiful, Funny, Tragic, Zazzly, Celebration, Smart
-  const upperRows=[4,10,9,7,6,5];  // Intense, Eerie, Disgusting, Dreamy, Hell, Weird
-  const shell=document.createElement("div");
-  shell.className="interlocked-matrix-shell";
+  // Exact source of truth: PrimFusion_Interlocked_Matrix_Compact_Screenshot_Match.xlsm, B2:H14.
+  const topSymbols=["🧸","✨","🤣","😭","🌶️","🎉","🧠"];
+  const bottomSymbols=["🌀","🎟️","🌌","🤢","👻","💥","🧠"];
+  const leftSymbols=["💥","👻","🤢","🌌","🎟️","🌀","🧸","🌀","🎟️","🌌","🤢","👻","💥"];
+  const rightSymbols=["💥","👻","🤢","🌌","🎟️","🌀","🧸","✨","🤣","😭","🌶️","🎉","🧠"];
+  const matrixRows=[[{"value":"Spirited","tone":"lavender"},{"value":"Majestic","tone":"lavender"},{"value":"Wild","tone":"lavender"},{"value":"Devastating","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Exhilarating","tone":"lavender"},{"value":"Brilliant","tone":"lavender"}],[{"value":"Haunted","tone":"lavender"},{"value":"Ethereal","tone":"lavender"},{"value":"Macabre","tone":"lavender"},{"value":"Lonesome","tone":"lavender"},{"value":"Carnal","tone":"lavender"},{"value":"Spiritual","tone":"lavender"},{"value":"Mysterious","tone":"lavender"}],[{"value":"Grimy","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Horrific","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Clinical","tone":"lavender"}],[{"value":"Whimsical","tone":"lavender"},{"value":"Sublime","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Liminal","tone":"lavender"},{"value":"Limerence","tone":"lavender"},{"value":"Wonder","tone":"lavender"},{"value":"Visionary","tone":"lavender"}],[{"value":"Camp","tone":"lavender"},{"value":"Irreverent","tone":"lavender"},{"value":"Satirical","tone":"lavender"},{"value":"Dark","tone":"lavender"},{"value":"Risqué","tone":"lavender"},{"value":"Snarky","tone":"lavender"},{"value":"Parodic","tone":"lavender"}],[{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Bonkers","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Madcap","tone":"lavender"}],[{"value":"🧸","tone":"green"},{"value":"Cherubic","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Heartwarming","tone":"lavender"},{"value":"Precocious","tone":"lavender"}],[{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Charming","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Horny","tone":"lavender"},{"value":"Radiant","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],[{"value":"Absurdist","tone":"peach"},{"value":"🎟️","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Ironic","tone":"lavender"},{"value":"Blue Humor","tone":"lavender"},{"value":"Jubilant","tone":"lavender"},{"value":"Witty","tone":"lavender"}],[{"value":"Psychedelic","tone":"peach"},{"value":"Surreal","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"😭","tone":"green"},{"value":"Impotent","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],[{"value":"Mutant","tone":"peach"},{"value":"Tasteless","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],[{"value":"Uncanny","tone":"peach"},{"value":"Unhinged","tone":"peach"},{"value":"Spectral","tone":"peach"},{"value":"Morbid","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Triumphant","tone":"lavender"}],[{"value":"Chaotic","tone":"peach"},{"value":"Outrageous","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Foreboding","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🧠","tone":"green"}]];
 
-  const top=document.createElement("div");
-  top.className="interlocked-axis interlocked-axis-top";
-  columns.forEach(index=>{
-    const primitive=PRIMITIVES[index];
+  const primitiveForSymbol=symbol=>PRIMITIVES.find(p=>p.symbol===symbol);
+  const pairForLabel=(label,rowIndex)=>{
+    if(label==="Surreal") return rowIndex===5 ? ["Beautiful","Weird"] : ["Dreamy","Hell"];
+    const match=Object.entries(CANONICAL_PRIMFUSION_LABELS).find(([,value])=>value===label);
+    return match ? match[0].split("|") : null;
+  };
+  const choosePrimitive=primitive=>{
+    if(!primitive) return;
+    selectTheme({id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id});
+  };
+  const appendAxisButton=(holder,symbol)=>{
+    const primitive=primitiveForSymbol(symbol);
     const button=document.createElement("button");
     button.type="button";
-    button.title=`Select ${primitive.name}`;
-    button.textContent=primitive.symbol;
-    button.addEventListener("click",()=>selectTheme({id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id}));
-    top.appendChild(button);
-  });
+    button.title=primitive?`Select ${primitive.name}`:symbol;
+    button.textContent=symbol;
+    button.addEventListener("click",()=>choosePrimitive(primitive));
+    holder.appendChild(button);
+  };
+
+  const shell=document.createElement("div");
+  shell.className="interlocked-matrix-shell";
+  const top=document.createElement("div");
+  top.className="interlocked-axis interlocked-axis-top";
+  topSymbols.forEach(symbol=>appendAxisButton(top,symbol));
   shell.appendChild(top);
 
   const body=document.createElement("div");
@@ -643,51 +659,26 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const right=document.createElement("div");
   right.className="interlocked-axis interlocked-axis-right";
 
-  const appendPrimitiveButton=(holder,index)=>{
-    const primitive=PRIMITIVES[index];
-    const button=document.createElement("button");
-    button.type="button";
-    button.title=`Select ${primitive.name}`;
-    button.textContent=primitive.symbol;
-    button.addEventListener("click",()=>selectTheme({id:`primitive:${primitive.id}`,label:primitive.name,kind:"primitive",primitiveId:primitive.id}));
-    holder.appendChild(button);
-  };
-
-  upperRows.forEach(rowIndex=>{
-    appendPrimitiveButton(left,rowIndex);
-    appendPrimitiveButton(right,rowIndex);
-    columns.forEach(columnIndex=>{
-      const row=PRIMITIVES[rowIndex], col=PRIMITIVES[columnIndex];
+  matrixRows.forEach((row,rowIndex)=>{
+    appendAxisButton(left,leftSymbols[rowIndex]);
+    appendAxisButton(right,rightSymbols[rowIndex]);
+    row.forEach(entry=>{
       const cell=document.createElement("button");
       cell.type="button";
-      cell.className="interlocked-cell interlocked-upper";
-      cell.textContent=canonicalPrimFusionLabel(row.name,col.name);
-      cell.title=`${row.symbol}${col.symbol} ${cell.textContent}`;
-      cell.addEventListener("click",()=>selectTheme({id:primFusionCellId(row.id,col.id),label:cell.textContent,kind:"primFusion",primitiveIds:[row.id,col.id].sort()}));
-      grid.appendChild(cell);
-    });
-  });
-
-  columns.forEach((rowIndex,rowPosition)=>{
-    appendPrimitiveButton(left,rowIndex);
-    appendPrimitiveButton(right,rowIndex);
-    columns.forEach((columnIndex,columnPosition)=>{
-      if(columnPosition<rowPosition){
-        const spacer=document.createElement("div");
-        spacer.className="interlocked-cell interlocked-spacer";
-        grid.appendChild(spacer);
-        return;
-      }
-      const row=PRIMITIVES[rowIndex], col=PRIMITIVES[columnIndex];
-      const cell=document.createElement("button");
-      cell.type="button";
-      cell.className="interlocked-cell "+(columnPosition===rowPosition?"interlocked-diagonal":"interlocked-lower");
-      cell.textContent=columnPosition===rowPosition?row.symbol:canonicalPrimFusionLabel(row.name,col.name);
-      cell.title=columnPosition===rowPosition?`Select ${row.name}`:`${row.symbol}${col.symbol} ${cell.textContent}`;
-      if(columnPosition===rowPosition){
-        cell.addEventListener("click",()=>selectTheme({id:`primitive:${row.id}`,label:row.name,kind:"primitive",primitiveId:row.id}));
+      cell.className=`interlocked-cell interlocked-${entry.tone}`;
+      cell.textContent=entry.value;
+      const primitive=primitiveForSymbol(entry.value);
+      if(primitive){
+        cell.title=`Select ${primitive.name}`;
+        cell.addEventListener("click",()=>choosePrimitive(primitive));
       }else{
-        cell.addEventListener("click",()=>selectTheme({id:primFusionCellId(row.id,col.id),label:cell.textContent,kind:"primFusion",primitiveIds:[row.id,col.id].sort()}));
+        const pair=pairForLabel(entry.value,rowIndex);
+        const primitives=pair?.map(name=>PRIMITIVE_BY_NAME[name]).filter(Boolean) || [];
+        cell.title=primitives.length===2 ? `${primitives[0].symbol}${primitives[1].symbol} ${entry.value}` : entry.value;
+        cell.addEventListener("click",()=>{
+          if(primitives.length!==2) return;
+          selectTheme({id:primFusionCellId(primitives[0].id,primitives[1].id),label:entry.value,kind:"primFusion",primitiveIds:[primitives[0].id,primitives[1].id].sort()});
+        });
       }
       grid.appendChild(cell);
     });
@@ -695,10 +686,9 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
 
   body.append(left,grid,right);
   shell.appendChild(body);
-
-  const bottom=top.cloneNode(false);
+  const bottom=document.createElement("div");
   bottom.className="interlocked-axis interlocked-axis-bottom";
-  columns.forEach(index=>appendPrimitiveButton(bottom,index));
+  bottomSymbols.forEach(symbol=>appendAxisButton(bottom,symbol));
   shell.appendChild(bottom);
   root.appendChild(shell);
 }

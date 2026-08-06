@@ -2782,9 +2782,9 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .interlocked-axis button{display:grid;place-items:center;min-width:0;min-height:0;padding:0;border:1px solid #45404d;border-radius:.18em;background:#2b2930;color:#fff;font-size:clamp(8px,1.12vw,17px);line-height:1}
   .interlocked-matrix-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(13,minmax(0,1fr));gap:.35%;min-width:0;min-height:0}
   .interlocked-cell{min-width:0;min-height:0;overflow:hidden;padding:0 .18em;border:1px solid rgba(34,29,38,.72);border-radius:.15em;color:#17131b;font-size:clamp(5px,.70vw,10.5px);font-weight:750;line-height:1;text-overflow:ellipsis;white-space:nowrap}
-  .interlocked-upper{background:#d8c9e5}
-  .interlocked-lower{background:#f2cba8}
-  .interlocked-diagonal{background:#65b96d;color:#102313;font-size:clamp(8px,1.15vw,17px)}
+  .interlocked-lavender,.interlocked-upper{background:#d8c9e5}
+  .interlocked-peach,.interlocked-lower{background:#f2cba8}
+  .interlocked-green,.interlocked-diagonal{background:#a9dda5;color:#102313;font-size:clamp(8px,1.15vw,17px)}
   .interlocked-spacer{background:transparent;border-color:transparent;pointer-events:none}
   .interlocked-cell:focus-visible,.interlocked-axis button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 }
@@ -2835,9 +2835,12 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     text-overflow:clip!important;
     white-space:nowrap!important;
   }
-  .interlocked-diagonal{font-size:min(1.35vw,2.95vh)!important}
+  .interlocked-green,.interlocked-diagonal{font-size:min(1.35vw,2.95vh)!important}
   .landscape-flip-button{
     right:.45%;top:.45%;width:5.4%;
     font-size:min(1.55vw,3.4vh);
   }
 }
+
+/* v0.9.39.4 — exact workbook-derived 13×7 interlocked matrix. */
+.interlocked-lavender{background:#d8c9e5}.interlocked-peach{background:#f2cba8}.interlocked-green{background:#a9dda5;color:#102313}
