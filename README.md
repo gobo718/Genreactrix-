@@ -1,4 +1,9 @@
 # Genreactrix v0.9.39.1
+## v0.9.39.10 — Director Theme Alignment + Clean Judgment Face
+- Director theme-field numbers are left-aligned while theme words remain centered.
+- Matrix and Judgment faces are now strictly mutually exclusive; the Matrix is fully hidden on the Judgment side.
+- Rebuilt from the verified v0.9.39.9 archive.
+
 
 ## v0.9.39.1 — Landscape Layout Foundation (Cache-Busting Correction)
 
@@ -382,6 +387,6 @@ Persistent active batches, canonical Image ID membership, readiness validation, 
 - Portrait behavior and existing engines remain unchanged.
 
 
-## v0.9.39.9 — Toolbar Flip Integration
+## v0.9.39.10 — Toolbar Flip Integration
 
 Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment toggle is now the seventh equal-width toolbar button labeled **Flip**. The floating circular flip control has been removed from the matrix workspace. No other layout, matrix, Portrait, or engine behavior was changed.

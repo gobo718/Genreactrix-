@@ -3293,3 +3293,55 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     z-index:auto!important;
   }
 }
+
+/* v0.9.39.10 — Director theme alignment and clean Judgment face.
+   Numbers stay left-aligned while the selected theme remains optically centered.
+   Workspace faces are mutually exclusive so the Matrix cannot bleed through Judgment. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-director-themes .tablet-theme-cell{
+    position:relative!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    place-items:center!important;
+    text-align:center!important;
+    padding-inline:2.2em!important;
+  }
+  .landscape-director-themes .tablet-theme-cell .tablet-slot-number{
+    position:absolute!important;
+    left:.55em!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    width:auto!important;
+    margin:0!important;
+    text-align:left!important;
+  }
+  .landscape-director-themes .tablet-theme-cell strong{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    text-align:center!important;
+  }
+
+  .landscape-workspace-face[aria-hidden="true"]{
+    display:none!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+  .landscape-workspace-face[aria-hidden="false"]{
+    visibility:visible!important;
+    pointer-events:auto!important;
+  }
+  .landscape-workstation:not(.face-judgment) .landscape-matrix-face{
+    display:block!important;
+  }
+  .landscape-workstation:not(.face-judgment) .landscape-judgment-face{
+    display:none!important;
+  }
+  .landscape-workstation.face-judgment .landscape-matrix-face{
+    display:none!important;
+  }
+  .landscape-workstation.face-judgment .landscape-judgment-face{
+    display:grid!important;
+  }
+}
