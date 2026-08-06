@@ -3901,7 +3901,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.20 — Customs creation controls and ordered expression editing. */
+/* v0.9.39.21 — Customs creation controls and ordered expression editing. */
 .landscape-customs-library section{grid-template-rows:auto 1fr!important}
 .landscape-custom-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
 .landscape-custom-heading-row strong{font-size:clamp(8px,.82vw,12px);line-height:1.1;letter-spacing:.01em}
@@ -3915,3 +3915,21 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .custom-expression-chip span{font-size:1.2em}.custom-expression-chip strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.custom-expression-chip i{font-style:normal;opacity:.72;font-size:1.1em;padding:.15em}
 .custom-expression-chip.reordering{outline:3px solid #32c7c7;outline-offset:2px;transform:scale(1.03);z-index:10}
 .custom-reorder-active,.custom-reorder-active *{cursor:grabbing!important}
+
+
+/* v0.9.39.21 — compact unequal Customs libraries, editing, reordering, and version-state UI. */
+.landscape-customs-drawer{font-size:clamp(8px,.72vw,11px)!important}
+.landscape-customs-drawer>label{font-size:clamp(8px,.68vw,10px)!important;gap:3px!important}
+.landscape-customs-drawer>label input{font-size:clamp(8px,.72vw,11px)!important;min-height:28px!important;padding:4px 7px!important}
+.landscape-customs-library{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:minmax(0,2fr) minmax(0,1fr)!important;gap:8px!important;height:100%!important}
+.landscape-customs-library section{min-height:0!important;border-top:1px solid rgba(255,255,255,.08);padding-top:4px}
+.landscape-custom-heading-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important}
+.landscape-custom-heading-row strong{font-size:clamp(8px,.72vw,11px)!important;font-weight:700!important;line-height:1!important}
+.landscape-custom-heading-row button{font-size:clamp(7px,.64vw,10px)!important;min-height:24px!important;padding:3px 7px!important;justify-self:end!important}
+.landscape-custom-list{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-content:stretch!important;gap:4px!important;padding:2px!important;overflow:auto!important}
+.landscape-custom-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center;touch-action:none}
+.landscape-custom-item>.custom-item-main{min-height:28px!important;padding:3px 7px!important;font-size:clamp(8px,.7vw,11px)!important;text-align:left!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.landscape-custom-item>.custom-item-edit{min-width:28px;min-height:28px!important;padding:2px 6px!important;font-size:clamp(8px,.68vw,10px)!important}
+.landscape-custom-item.reordering{outline:2px solid #32c7c7;outline-offset:1px;opacity:.9;z-index:20}
+.custom-library-actions{display:grid!important;grid-template-columns:auto 1fr auto auto!important;align-items:center!important}
+.custom-library-actions .danger-action{background:#5d2027!important;border-color:#b95562!important}
