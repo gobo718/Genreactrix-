@@ -609,7 +609,7 @@ function renderComparison(){
 }
 
 
-const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false};
+const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false,activeThemeSlot:null};
 
 function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const root=$(targetId);
@@ -730,16 +730,26 @@ function renderTabletWorkbench(){
   const customReactionCount=prims.querySelectorAll("[data-custom-reaction]").length;
   prims.classList.toggle("has-custom-reactions",customReactionCount>0);
   prims.classList.toggle("custom-reactions-many",customReactionCount>=3);
-  for(let i=0;i<3;i++) $("tabletWorkbenchTheme"+(i+1)).textContent=themeLabel(state.themes[i]);
   for(let i=0;i<3;i++){
-    const value=currentAiThemes()[i];
-    $("tabletWorkbenchAiTheme"+(i+1)).textContent=value?`${value[0]} ${value[1]}%`:"—";
+    const directorValue=themeLabel(state.themes[i]);
+    $("tabletWorkbenchTheme"+(i+1)).textContent=directorValue;
+    $("tabletAiDirectorTheme"+(i+1)).textContent=directorValue;
+    document.querySelector(`[data-tablet-workbench-slot="${i+1}"]`)?.classList.toggle("active",tabletLandscapeView.activeThemeSlot===i+1);
+  }
+  const sortedAiThemes=currentAiThemes()
+    .map(([label,weight])=>({label,weight:Number(weight)||0}))
+    .sort((a,b)=>b.weight-a.weight)
+    .slice(0,3);
+  for(let i=0;i<3;i++){
+    const value=sortedAiThemes[i];
+    $("tabletWorkbenchAiTheme"+(i+1)).textContent=value?.label||"—";
+    $("tabletWorkbenchAiThemePct"+(i+1)).textContent=value?`${value.weight}%`:"—";
   }
   $("tabletWorkbenchAiDescription").textContent=currentAiRun().description||currentDescription();
   root.classList.toggle("face-judgment",tabletLandscapeView.face==="judgment");
   $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
   $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
-  $("tabletAiThemesPanel").hidden=!tabletLandscapeView.aiThemes;
+  $("tabletAiThemesPanel").hidden=!tabletLandscapeView.aiThemes || tabletLandscapeView.customs;
   $("tabletWorkbenchAiDescription").hidden=!tabletLandscapeView.aiDescription;
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
@@ -992,6 +1002,10 @@ function selectTheme(themeInput){
   if(!saveOk) return;
   renderThemes();
   renderComparison();
+  if(tabletLandscapeView.activeThemeSlot===sourceSlot){
+    tabletLandscapeView.activeThemeSlot=null;
+    renderTabletWorkbench();
+  }
 }
 
 function primFusionAutoFitEntries(root=document){
@@ -1642,7 +1656,7 @@ document.getElementById("tabletAiDescriptionBtn")?.addEventListener("click",()=>
 document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=!tabletLandscapeView.customs;renderTabletWorkbench();});
 document.getElementById("tabletFlagBtn")?.addEventListener("click",()=>document.getElementById("directorFlagBtn")?.click());
 document.getElementById("tabletSaveBtn")?.addEventListener("click",()=>{saveCurrent("director-commit");renderAll();setDirectorStatus("Record saved.");});
-document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{state.targetSlot=Number(button.dataset.tabletWorkbenchSlot);renderTabletWorkbench();}));
+document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{const slot=Number(button.dataset.tabletWorkbenchSlot);state.targetSlot=slot;tabletLandscapeView.activeThemeSlot=slot;renderTabletWorkbench();}));
 
 
 // Canonical Image Record Engine + shared Images Engine.

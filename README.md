@@ -1,5 +1,15 @@
 # Genreactrix
 
+## v0.9.39.13 — Reaction Geometry, Director Assignment, and AI Theme Drawer
+
+- Makes Judgment reaction emoji smaller while enlarging and centering the foreground red selection rings.
+- Director theme fields now use a one-shot assignment workflow: tap a field to highlight it, tap a Matrix cell to fill it, then the highlight clears.
+- AI Themes remain toggle-controlled and appear only in the AI drawer on the Judgment side.
+- The AI drawer shows paired Director-reference and AI theme fields at identical sizes.
+- AI themes are sorted highest confidence to lowest.
+- Each AI field shows “AI” at left, the theme centered, and confidence at right.
+- Customs remains a separate drawer layout.
+
 ## v0.9.39.12 — Canonical Reaction Row and Foreground Rings
 
 - Rebuilt from the verified v0.9.39.11 archive.

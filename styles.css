@@ -3504,3 +3504,85 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     font-size:clamp(14px,2.02vw,28px)!important;
   }
 }
+
+
+/* v0.9.39.13 — reaction geometry, one-shot Director assignment, and AI theme comparison drawer. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Smaller emoji, larger rings, both centered in the same fixed reaction slot. */
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    width:min(4.9vw,8.25vh)!important;
+    height:min(4.9vw,8.25vh)!important;
+    font-size:clamp(14px,2.15vw,29px)!important;
+    display:grid!important;
+    place-items:center!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:-3%!important;
+    border-width:3px!important;
+    transform:none!important;
+  }
+  /* Active Director destination is explicit and clears after one matrix assignment. */
+  .landscape-director-themes .tablet-theme-cell.active{
+    border-color:var(--accent)!important;
+    box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 38%,transparent)!important;
+    background:color-mix(in srgb,var(--panel) 86%,var(--accent) 14%)!important;
+  }
+  /* AI drawer: Director reference and sorted AI result are identical-size paired fields. */
+  .landscape-ai-theme-comparison{
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    gap:4%;
+    min-width:0;
+    min-height:0;
+  }
+  .landscape-ai-theme-comparison[hidden]{display:none!important}
+  .landscape-ai-theme-heading{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:1.2%;
+    color:var(--muted);
+    font-size:clamp(7px,.78vw,11px);
+    text-align:center;
+  }
+  .landscape-ai-theme-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-rows:repeat(3,minmax(0,1fr));
+    gap:4% 1.2%;
+    min-width:0;
+    min-height:0;
+  }
+  .landscape-ai-theme-grid .tablet-theme-cell{
+    position:relative;
+    display:grid!important;
+    place-items:center!important;
+    min-width:0!important;
+    min-height:0!important;
+    height:auto!important;
+    padding-inline:2.5em!important;
+    border-radius:.45em!important;
+    text-align:center!important;
+  }
+  .landscape-ai-theme-grid .tablet-theme-cell strong{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+    font-size:clamp(8px,1vw,14px)!important;
+  }
+  .landscape-ai-theme-grid .tablet-slot-number,
+  .landscape-ai-theme-grid .tablet-ai-label,
+  .landscape-ai-theme-grid .tablet-ai-pct{
+    position:absolute!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    font-size:clamp(7px,.8vw,11px)!important;
+    color:var(--muted)!important;
+  }
+  .landscape-ai-theme-grid .tablet-slot-number,
+  .landscape-ai-theme-grid .tablet-ai-label{left:.65em!important}
+  .landscape-ai-theme-grid .tablet-ai-pct{right:.65em!important}
+}
