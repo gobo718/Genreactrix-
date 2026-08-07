@@ -819,7 +819,12 @@ function renderTabletWorkbench(){
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   $("tabletSlidingDrawer")?.classList.toggle("customs-active",tabletLandscapeView.customs);
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
-  $("tabletCustomsBtn")?.setAttribute("aria-pressed",String(tabletLandscapeView.customs));
+  const contextualCustomsBtn=$("tabletCustomsBtn");
+  if(contextualCustomsBtn){
+    contextualCustomsBtn.setAttribute("aria-pressed",String(tabletLandscapeView.customs));
+    contextualCustomsBtn.textContent=tabletLandscapeView.customs?"AI Analysis":"Customs";
+    contextualCustomsBtn.setAttribute("aria-label",tabletLandscapeView.customs?"Return to AI Analysis":"Open Customs");
+  }
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
   const keepOn=state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
@@ -1825,24 +1830,64 @@ function renderLandscapeImageView(){
   $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
 }
 function openLandscapeImageView(){
-  landscapeImageViewState.open=true;const view=$("landscapeImageView");if(view)view.hidden=false;resetLandscapeImageViewTransform();renderLandscapeImageView();
+  landscapeImageViewState.open=true;
+  const trigger=$("tabletImageViewBtn");if(trigger){trigger.disabled=true;trigger.style.pointerEvents="none";}
+  const view=$("landscapeImageView");if(view)view.hidden=false;
+  resetLandscapeImageViewTransform();renderLandscapeImageView();
 }
 function closeLandscapeImageView(){
-  landscapeImageViewState.open=false;const view=$("landscapeImageView");if(view)view.hidden=true;resetLandscapeImageViewTransform();
+  landscapeImageViewState.open=false;
+  const trigger=$("tabletImageViewBtn");if(trigger){trigger.disabled=true;trigger.style.pointerEvents="none";}
+  const view=$("landscapeImageView");if(view)view.hidden=true;
+  resetLandscapeImageViewTransform();
+  // Keep the underlying normal-view image inert long enough to absorb the
+  // synthetic click that follows pointerup on some Android browsers.
+  setTimeout(()=>{if(trigger){trigger.disabled=false;trigger.style.pointerEvents="";}},420);
 }
 function navigateLandscapeImageView(delta){navigateImage(delta);resetLandscapeImageViewTransform();renderLandscapeImageView()}
 $("tabletImageViewBtn")?.addEventListener("click",openLandscapeImageView);
 $("landscapeImageViewPrevBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(-1)});
 $("landscapeImageViewNextBtn")?.addEventListener("click",e=>{e.stopPropagation();navigateLandscapeImageView(1)});
-const flagHoldState={timer:null,long:false};
-function openFlagAdminDialog(){flagHoldState.long=true;$("flagAdminDialog")?.showModal();}
-function beginFlagHold(e){e.preventDefault();e.stopPropagation();flagHoldState.long=false;clearTimeout(flagHoldState.timer);e.currentTarget?.setPointerCapture?.(e.pointerId);flagHoldState.timer=setTimeout(()=>{navigator.vibrate?.(30);openFlagAdminDialog();},2000);}
-function endFlagHold(e){e?.preventDefault?.();e?.stopPropagation?.();clearTimeout(flagHoldState.timer);flagHoldState.timer=null;if(!flagHoldState.long){$("directorFlagBtn")?.click();renderFlag();renderLandscapeImageView();}try{e.currentTarget?.releasePointerCapture?.(e.pointerId)}catch{}setTimeout(()=>flagHoldState.long=false,0);}
-["landscapeImageViewFlagBtn","tabletFlagBtn"].forEach(id=>{const b=$(id);if(!b)return;b.style.touchAction="none";b.addEventListener("pointerdown",beginFlagHold,{passive:false});b.addEventListener("pointerup",endFlagHold,{passive:false});b.addEventListener("pointercancel",()=>{clearTimeout(flagHoldState.timer);flagHoldState.timer=null;});b.addEventListener("contextmenu",e=>e.preventDefault());});
+const flagHoldState={timer:null,long:false,startedAt:0,button:null,pointerId:null};
+function openFlagAdminDialog(){
+  flagHoldState.long=true;
+  const dialog=$("flagAdminDialog");
+  if(!dialog)return;
+  try{if(typeof dialog.showModal==="function"&&!dialog.open)dialog.showModal();else dialog.setAttribute("open","");}
+  catch{dialog.setAttribute("open","");}
+}
+function beginFlagHold(e){
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  e.preventDefault();e.stopPropagation();
+  clearTimeout(flagHoldState.timer);
+  flagHoldState.long=false;flagHoldState.startedAt=performance.now();flagHoldState.button=e.currentTarget;flagHoldState.pointerId=e.pointerId;
+  flagHoldState.timer=setTimeout(()=>{flagHoldState.timer=null;navigator.vibrate?.(30);openFlagAdminDialog();},2000);
+}
+function finishFlagHold(e,cancelled=false){
+  if(e){e.preventDefault?.();e.stopPropagation?.();}
+  const elapsed=flagHoldState.startedAt?performance.now()-flagHoldState.startedAt:0;
+  clearTimeout(flagHoldState.timer);flagHoldState.timer=null;
+  // Some Android browsers emit pointercancel during a stationary long hold.
+  // Treat a ~2 second cancelled hold as the intended administrative gesture.
+  if(cancelled&&!flagHoldState.long&&elapsed>=1900)openFlagAdminDialog();
+  if(!cancelled&&!flagHoldState.long&&elapsed<1900){$("directorFlagBtn")?.click();renderFlag();renderLandscapeImageView();}
+  flagHoldState.startedAt=0;flagHoldState.button=null;flagHoldState.pointerId=null;
+  setTimeout(()=>flagHoldState.long=false,80);
+}
+["landscapeImageViewFlagBtn","tabletFlagBtn"].forEach(id=>{
+  const b=$(id);if(!b)return;
+  b.style.touchAction="none";
+  b.addEventListener("pointerdown",beginFlagHold,{passive:false});
+  b.addEventListener("pointerup",e=>finishFlagHold(e,false),{passive:false});
+  b.addEventListener("pointercancel",e=>finishFlagHold(e,true),{passive:false});
+  b.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();});
+  b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();},{capture:true});
+});
 $("flagForRejectionAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Image flagged for rejection review.")});
 $("rejectImageAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Reject workflow will be completed in the lifecycle checkpoint.")});
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
+landscapeImageCanvas?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();},{capture:true});
 function landscapePointerDistance(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return 0;return Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y)}
 function landscapePointerMidpoint(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return{x:0,y:0};return{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}}
 landscapeImageCanvas?.addEventListener("pointerdown",e=>{
@@ -2604,6 +2649,14 @@ $("addCustomReactionBtn")?.addEventListener("click",()=>openCustomReactionDialog
 $("addCustomThemeBtn")?.addEventListener("click",()=>openCustomThemeDialog());
 $("tabletAddCustomThemeBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCustomThemeDialog();});
 $("tabletAddCustomReactionBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCustomReactionDialog();});
+let tabletCustomAddOpenedAt=0;
+function openTabletCustomFromPointer(e,kind){
+  e.preventDefault();e.stopPropagation();
+  const now=performance.now();if(now-tabletCustomAddOpenedAt<350)return;tabletCustomAddOpenedAt=now;
+  kind==="theme"?openCustomThemeDialog():openCustomReactionDialog();
+}
+$("tabletAddCustomThemeBtn")?.addEventListener("pointerup",e=>openTabletCustomFromPointer(e,"theme"),{passive:false});
+$("tabletAddCustomReactionBtn")?.addEventListener("pointerup",e=>openTabletCustomFromPointer(e,"reaction"),{passive:false});
 $("tabletCustomsDrawer")?.addEventListener("click",e=>{
   const theme=e.target.closest?.("#tabletAddCustomThemeBtn");
   const reaction=e.target.closest?.("#tabletAddCustomReactionBtn");

@@ -526,3 +526,11 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - A single stationary tap on the image returns to the existing Landscape workstation.
 - Pinch zoom and drag-to-pan are supported; no double-tap gesture is assigned.
 - This checkpoint adds no rejection, archive, queue, or lifecycle persistence changes.
+
+
+## v0.9.39.26 cohesive UI reliability pass
+- AI Analysis: the eight controls are constrained to the existing fixed control band.
+- Customs: AI controls are hidden; the existing Customs button relabels to AI Analysis and the search bar moves directly beneath the reaction divider.
+- Flag: hardened 2-second hold handling for Android pointer cancellation and dialog fallback.
+- Image View: blocks synthetic click-through into the original landscape image hitbox.
+- Customs Add buttons: added pointer-up fallback for mobile.
