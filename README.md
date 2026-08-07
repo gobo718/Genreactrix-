@@ -547,3 +547,11 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Authoritative Image View split: Director theme boxes left, 4–5–4 reactions right.
 - Added independent Customs dialog runtime for picker, validation, close, save, and persistence.
 - Updated visible build number and cache keys.
+
+## v0.9.39.32
+- Synced PrimFusion vocabulary to `PrimFusion_Website_Matrix_Scary_Angry_Completed All fixed.xlsx`.
+- Renamed canonical primitive 👻 Eerie → Scary while preserving P11.
+- Renamed 🎟️ primitive label Hell → Ticket while preserving P07.
+- Added 🤬 Angry as P14 and its finalized 13 PrimFusion labels.
+- Updated the interlocked website matrix with the finalized Scary/Angry vocabulary, including Spirituality, Exploitation, Pride, Greed, Magical, Rejected, and related revisions.
+- Updated Customs and AI-analysis vocabulary lists for the 14 canonical primitives.

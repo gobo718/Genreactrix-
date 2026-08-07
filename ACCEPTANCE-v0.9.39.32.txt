@@ -1,0 +1,16 @@
+Genreactrix v0.9.39.32 — PrimFusion canonical vocabulary sync
+
+[PASS] Website matrix synchronized from PrimFusion_Website_Matrix_Scary_Angry_Completed All fixed.xlsx.
+[PASS] Canonical primitive count is 14.
+[PASS] P07 remains stable and is displayed as Ticket (🎟️).
+[PASS] P11 remains stable and is displayed as Scary (👻).
+[PASS] P14 Angry (🤬) added.
+[PASS] 105 unique unordered/self PrimFusion cells are defined for 14 primitives.
+[PASS] Final Angry fusions are present, including Sadomasochism and Wickedness.
+[PASS] Final semantic revisions include Spirituality, Exploitation, Pride, Greed, Magical, Rejected, Eerie, and the Scary column revisions.
+[PASS] Landscape interlocked matrix is 15 rows × 7 cells and preserves the compact 7-column instrument width.
+[PASS] Customs canonical reaction list includes Ticket, Scary, and Angry.
+[PASS] Worker AI vocabulary includes all 14 current canonical primitive names.
+[PASS] JavaScript syntax checks passed.
+
+Device QA remains required for Fold landscape/portrait visual fit after adding the 14th canonical reaction.

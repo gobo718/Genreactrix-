@@ -1,4 +1,4 @@
-/* Genreactrix v0.9.39.31 — independent Customs dialog runtime.
+/* Genreactrix v0.9.39.32 — independent Customs dialog runtime.
    This module intentionally has no dependency on app.js reaching its late Customs block. */
 (()=>{
   'use strict';
@@ -7,8 +7,8 @@
   const REACTION_KEY='genreactrix-custom-reactions-v1';
   const PRIMS=[
     ['P01','Beautiful','✨'],['P02','Adorable','🧸'],['P03','Tragic','😭'],['P04','Funny','🤣'],
-    ['P05','Intense','💥'],['P06','Weird','🌀'],['P07','Hell','🎟️'],['P08','Dreamy','🌌'],
-    ['P09','Zazzly','🌶️'],['P10','Disgusting','🤢'],['P11','Eerie','👻'],['P12','Smart','🧠'],['P13','Celebration','🎉']
+    ['P05','Intense','💥'],['P06','Weird','🌀'],['P07','Ticket','🎟️'],['P08','Dreamy','🌌'],
+    ['P09','Zazzly','🌶️'],['P10','Disgusting','🤢'],['P11','Scary','👻'],['P12','Smart','🧠'],['P13','Celebration','🎉'],['P14','Angry','🤬']
   ];
   let themeRefs=[];
   let editingThemeId=null;
