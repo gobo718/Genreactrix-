@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.24";
+const GENREACTRIX_BUILD="v0.9.39.30";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -2673,34 +2673,6 @@ $("addCustomReactionBtn")?.addEventListener("click",()=>openCustomReactionDialog
 $("addCustomThemeBtn")?.addEventListener("click",()=>openCustomThemeDialog());
 $("tabletAddCustomThemeBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCustomThemeDialog();});
 $("tabletAddCustomReactionBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCustomReactionDialog();});
-let tabletCustomAddOpenedAt=0;
-function openTabletCustomFromPointer(e,kind){
-  e.preventDefault();e.stopPropagation();
-  const now=performance.now();if(now-tabletCustomAddOpenedAt<350)return;tabletCustomAddOpenedAt=now;
-  kind==="theme"?openCustomThemeDialog():openCustomReactionDialog();
-}
-$("tabletAddCustomThemeBtn")?.addEventListener("pointerup",e=>openTabletCustomFromPointer(e,"theme"),{passive:false});
-$("tabletAddCustomReactionBtn")?.addEventListener("pointerup",e=>openTabletCustomFromPointer(e,"reaction"),{passive:false});
-$("tabletCustomsDrawer")?.addEventListener("click",e=>{
-  const theme=e.target.closest?.("#tabletAddCustomThemeBtn");
-  const reaction=e.target.closest?.("#tabletAddCustomReactionBtn");
-  if(theme){e.preventDefault();e.stopPropagation();openCustomThemeDialog();}
-  if(reaction){e.preventDefault();e.stopPropagation();openCustomReactionDialog();}
-});
-// Earliest mobile fallback: open the Add dialog on pointerdown before drawer layout or synthetic-click handling can steal the gesture.
-document.addEventListener("pointerdown",e=>{
-  const id=e.target?.closest?.("#tabletAddCustomThemeBtn,#tabletAddCustomReactionBtn")?.id;
-  if(!id)return;
-  e.preventDefault();e.stopPropagation();
-  const now=performance.now();if(now-tabletCustomAddOpenedAt<350)return;tabletCustomAddOpenedAt=now;
-  if(id==="tabletAddCustomThemeBtn")openCustomThemeDialog();else openCustomReactionDialog();
-},{capture:true,passive:false});
-// Capture-phase fallback for mobile browsers where nested drawer controls can lose the synthesized click.
-document.addEventListener("click",e=>{
-  const id=e.target?.closest?.("#tabletAddCustomThemeBtn,#tabletAddCustomReactionBtn")?.id;
-  if(!id)return;e.preventDefault();e.stopPropagation();
-  if(id==="tabletAddCustomThemeBtn")openCustomThemeDialog();else openCustomReactionDialog();
-},{capture:true});
 $("customReactionSaveBtn")?.addEventListener("click",saveCustomReactionFromDialog);
 $("customThemeSaveBtn")?.addEventListener("click",saveCustomThemeFromDialog);
 $("customReactionDeleteBtn")?.addEventListener("click",deleteCustomReaction);

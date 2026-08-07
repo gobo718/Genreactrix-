@@ -6,7 +6,7 @@
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
 <title>Genreactrix v0.9.39.27</title>
-<link href="styles.css?v=0.9.39.29" rel="stylesheet"/>
+<link href="styles.css?v=0.9.39.30" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
@@ -390,11 +390,11 @@
 <label class="tablet-custom-search"><span class="visually-hidden">Search custom themes</span><input id="tabletCustomSearch" type="search" aria-label="Search custom themes" placeholder="Search custom themes"/></label>
 <div class="landscape-customs-library">
 <section class="landscape-custom-section landscape-custom-themes-section">
-<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomThemesHeading">Custom Themes</strong><button class="landscape-custom-add" id="tabletAddCustomThemeBtn" type="button" onclick="window.openCustomThemeDialog && window.openCustomThemeDialog(); return false;">+ Add Custom Theme</button></div>
+<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomThemesHeading">Custom Themes</strong><button class="landscape-custom-add" id="tabletAddCustomThemeBtn" type="button" onclick="return window.grxOpenCustomDialog('customThemeDialog','openCustomThemeDialog');">+ Add Custom Theme</button></div>
 <div id="tabletCustomThemeList" class="landscape-custom-list"></div>
 </section>
 <section class="landscape-custom-section landscape-custom-reactions-section">
-<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomReactionsHeading">Custom Reactions</strong><button class="landscape-custom-add" id="tabletAddCustomReactionBtn" type="button" onclick="window.openCustomReactionDialog && window.openCustomReactionDialog(); return false;">+ Add Custom Reaction</button></div>
+<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomReactionsHeading">Custom Reactions</strong><button class="landscape-custom-add" id="tabletAddCustomReactionBtn" type="button" onclick="return window.grxOpenCustomDialog('customReactionDialog','openCustomReactionDialog');">+ Add Custom Reaction</button></div>
 <div id="tabletCustomReactionList" class="landscape-custom-list"></div>
 </section>
 </div>
@@ -800,7 +800,31 @@
 <div class="custom-library-actions"><button class="danger-action" id="customThemeDeleteBtn" hidden type="button">Delete</button><span></span><button data-close-custom-dialog="customThemeDialog" type="button">Cancel</button><button class="primary-action" disabled id="customThemeSaveBtn" type="button">Save</button></div>
 </form>
 </dialog>
-<script src="app.js?v=0.9.39.29"></script>
+<script>
+// v0.9.39.30 — independent Customs opener. This intentionally does not depend on app.js
+// reaching its later Customs initialization block before the Add buttons become usable.
+window.grxOpenCustomDialog=function(dialogId,openerName){
+  try{
+    if(typeof window[openerName]==="function"){
+      window[openerName]();
+      const opened=document.getElementById(dialogId);
+      if(opened && (opened.open || opened.hasAttribute("open"))) return false;
+    }
+  }catch(err){ console.warn("Custom opener fallback",err); }
+  const dialog=document.getElementById(dialogId);
+  if(!dialog) return false;
+  dialog.hidden=false;
+  try{
+    if(typeof dialog.showModal==="function" && !dialog.open) dialog.showModal();
+    if(!dialog.open) dialog.setAttribute("open","");
+  }catch(err){
+    console.warn("Custom dialog native fallback",err);
+    dialog.setAttribute("open","");
+  }
+  return false;
+};
+</script>
+<script src="app.js?v=0.9.39.30"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
 <header><h2>Notifications</h2><button aria-label="Close" id="notificationsClose" type="button">×</button></header>
