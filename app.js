@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.36";
+const GENREACTRIX_BUILD="v0.9.39.37";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -715,7 +715,8 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
       cell.className=`interlocked-cell interlocked-${entry.tone}`;
       if(entry.tone==="green"){
         const nextIsGreen=row[columnIndex+1]?.tone==="green";
-        cell.classList.add(nextIsGreen?"interlocked-diagonal-lower":"interlocked-diagonal-upper");
+        const bottomRightAngry=rowIndex===matrixRows.length-1 && columnIndex===row.length-1 && entry.value==="🤬";
+        cell.classList.add((nextIsGreen||bottomRightAngry)?"interlocked-diagonal-lower":"interlocked-diagonal-upper");
       }
       cell.textContent=entry.value;
       const primitive=primitiveForSymbol(entry.value);

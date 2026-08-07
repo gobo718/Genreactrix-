@@ -557,7 +557,7 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Updated Customs and AI-analysis vocabulary lists for the 14 canonical primitives.
 
 
-## v0.9.39.36
+## v0.9.39.37
 - Numeric Image View correction: height-derived square viewport prevents the square image from extending below short landscape screens.
 - Restored Angry to both landscape reaction-render orders.
 - Reworked 14 canonical reactions to 5–4–5 brick geometry with larger selection rings and dedicated percentage geometry.

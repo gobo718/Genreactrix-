@@ -5130,7 +5130,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .custom-expression-chip{display:grid!important;grid-template-columns:auto auto!important;min-height:32px!important;max-width:64px!important;padding:3px 6px!important;gap:4px!important;touch-action:manipulation!important;}
 .custom-expression-chip strong{display:none!important;}
 
-/* v0.9.39.36 — submitted work order: compact Customs + two-row judgment reactions. */
+/* v0.9.39.37 — submitted work order: compact Customs + two-row judgment reactions. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* Judgment/Home reaction selector: 14 canonicals in two tight brick rows. */
   .landscape-judgment-face .tablet-prims-row,
@@ -5232,7 +5232,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   #tabletCustomsDrawer .custom-item-delete{color:#ff9aa5!important;}
 }
 
-/* v0.9.39.36 — Customs reliability/accessibility correction.
+/* v0.9.39.37 — Customs reliability/accessibility correction.
    Keep every row action physically inside the drawer and easy to reach on Fold landscape. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   #tabletCustomsDrawer,
@@ -5288,7 +5288,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.36 — targeted Fold-landscape polish: compact Customs, main reaction rings, Image View toolbar. */
+/* v0.9.39.37 — targeted Fold-landscape polish: compact Customs, main reaction rings, Image View toolbar. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* Main / judgment screen: keep the approved two-row brick layout, only improve the ring geometry. */
   .landscape-judgment-face .tablet-prim-button .symbol::after{
@@ -5414,4 +5414,81 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     outline:none!important;
     box-shadow:none!important;
   }
+}
+
+
+/* v0.9.39.37 — Report #14 targeted fixes only. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* AI/Judgment page: preserve the approved two-row brick layout. Move/enlarge rings only. */
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:-43%!important;
+    border-width:3px!important;
+    transform:translateX(5px)!important;
+    transform-origin:center!important;
+  }
+
+  /* Image View: move/enlarge the ring only; do not move emoji or layout. */
+  #landscapeImageView .landscape-image-view-prim.selected::before{
+    width:46px!important;
+    height:46px!important;
+    border-width:3px!important;
+    top:50%!important;
+    left:50%!important;
+    transform:translate(calc(-50% + 3px),-50%)!important;
+  }
+
+  /* Keep: normal idle border must match every neighboring toolbar button.
+     The existing green selected state remains intact when Keep is actually active. */
+  #tabletSaveBtn[aria-pressed="false"],
+  #landscapeImageViewSaveBtn[aria-pressed="false"]{
+    background:var(--panel)!important;
+    border:1px solid var(--line)!important;
+    color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+  #landscapeImageViewSaveBtn[aria-pressed="true"],
+  #tabletSaveBtn[aria-pressed="true"]{
+    background:#214c31!important;
+    border-color:#67d789!important;
+    color:#ecfff1!important;
+    outline:2px solid #67d789!important;
+    outline-offset:-2px!important;
+  }
+
+  /* Customs: keep the existing drawer concept but reclaim more usable list space. */
+  #tabletCustomsDrawer.landscape-customs-drawer{
+    grid-template-rows:18px minmax(0,1fr)!important;
+    gap:2px!important;
+  }
+  #tabletCustomsDrawer>.tablet-custom-search,
+  #tabletCustomsDrawer>.tablet-custom-search input{
+    height:18px!important;
+    min-height:18px!important;
+    max-height:18px!important;
+  }
+  #tabletCustomsDrawer>.tablet-custom-search input{font-size:8px!important;padding:0 5px!important;}
+  #tabletCustomsDrawer .landscape-custom-section{grid-template-rows:18px minmax(0,1fr)!important;gap:1px!important;}
+  #tabletCustomsDrawer .landscape-custom-heading-row{height:18px!important;min-height:18px!important;}
+  #tabletCustomsDrawer .landscape-custom-themes-section .landscape-custom-heading-row{margin-top:7px!important;}
+  #tabletCustomsDrawer .landscape-custom-title,
+  #tabletCustomsDrawer #tabletCustomThemesHeading,
+  #tabletCustomsDrawer #tabletCustomReactionsHeading{height:18px!important;min-height:18px!important;font-size:8px!important;}
+  #tabletCustomsDrawer .landscape-custom-add,
+  #tabletCustomsDrawer #tabletAddCustomThemeBtn,
+  #tabletCustomsDrawer #tabletAddCustomReactionBtn{
+    height:18px!important;min-height:18px!important;max-height:18px!important;
+    padding:0 5px!important;font-size:7.5px!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-item{
+    grid-template-columns:minmax(0,1fr) 28px 28px!important;
+    min-height:26px!important;max-height:26px!important;
+  }
+  #tabletCustomsDrawer .custom-item-main,
+  #tabletCustomsDrawer .custom-item-edit,
+  #tabletCustomsDrawer .custom-item-delete{
+    height:26px!important;min-height:26px!important;max-height:26px!important;
+  }
+  #tabletCustomsDrawer .custom-item-edit,
+  #tabletCustomsDrawer .custom-item-delete{z-index:20!important;pointer-events:auto!important;}
 }
