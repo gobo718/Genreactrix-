@@ -541,3 +541,9 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Customs Add controls receive stable unclipped heading rows plus hardened mobile dialog opening.
 - Flag long-hold now captures the pointer, survives release outside the button, and uses Android contextmenu as an additional long-press path.
 - AI controls remain two equal rows contained within their existing fixed band.
+
+## v0.9.39.31
+- Repaired malformed literal \n CSS from .30.
+- Authoritative Image View split: Director theme boxes left, 4–5–4 reactions right.
+- Added independent Customs dialog runtime for picker, validation, close, save, and persistence.
+- Updated visible build number and cache keys.

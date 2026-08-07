@@ -4787,4 +4787,228 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   visibility:visible!important;
   opacity:1!important;
 }
-\n\n/* v0.9.39.30 — final Image View geometry: compact Director fields left, 4–5–4 reactions right. */\n@media (orientation:landscape), (min-width:600px) and (min-height:500px){\n  .landscape-image-view,\n  .landscape-image-view-shell{\n    width:100%!important;\n    height:100%!important;\n    max-height:100%!important;\n    overflow:hidden!important;\n  }\n  .landscape-image-view-shell{\n    grid-template-columns:minmax(320px,49%) minmax(0,51%)!important;\n  }\n  .landscape-image-view-left{\n    min-height:0!important;\n    height:100%!important;\n    overflow:hidden!important;\n  }\n  .landscape-image-view-canvas{\n    height:100%!important;\n    min-height:0!important;\n    overflow:hidden!important;\n  }\n  .landscape-image-view-summary{\n    display:grid!important;\n    grid-template-columns:minmax(145px,38%) minmax(0,62%)!important;\n    grid-template-rows:auto minmax(60px,.56fr) minmax(0,1fr)!important;\n    gap:6px 7px!important;\n    min-height:0!important;\n    height:100%!important;\n    overflow:hidden!important;\n    padding:5px 7px 6px!important;\n  }\n  .landscape-image-view-controls{\n    grid-column:1 / -1!important;\n    grid-row:1!important;\n  }\n  .landscape-image-view-description{\n    grid-column:1 / -1!important;\n    grid-row:2!important;\n    min-height:0!important;\n    overflow:hidden!important;\n    font-size:clamp(7px,.66vw,9px)!important;\n    line-height:1.16!important;\n    padding:5px 7px!important;\n    -webkit-line-clamp:7!important;\n  }\n  .landscape-image-view-themes{\n    grid-column:1!important;\n    grid-row:3!important;\n    align-self:center!important;\n    justify-self:stretch!important;\n    width:100%!important;\n    display:grid!important;\n    grid-template-columns:1fr!important;\n    grid-template-rows:repeat(3,36px)!important;\n    gap:6px!important;\n    padding:0!important;\n    margin:0!important;\n    overflow:hidden!important;\n  }\n  .landscape-image-view-theme{\n    width:100%!important;\n    height:36px!important;\n    min-height:36px!important;\n    padding:5px 8px!important;\n    font-size:10px!important;\n    border-radius:7px!important;\n    box-sizing:border-box!important;\n  }\n  .landscape-image-view-prims{\n    grid-column:2!important;\n    grid-row:3!important;\n    align-self:stretch!important;\n    justify-self:stretch!important;\n    display:grid!important;\n    grid-template-columns:repeat(10,minmax(0,1fr))!important;\n    grid-template-rows:repeat(3,minmax(31px,1fr))!important;\n    grid-auto-rows:minmax(30px,auto)!important;\n    gap:2px 1px!important;\n    align-items:center!important;\n    align-content:center!important;\n    justify-content:stretch!important;\n    overflow:hidden!important;\n    padding:1px 2px!important;\n    min-height:0!important;\n  }\n  .landscape-image-view-prim{\n    min-height:31px!important;\n    font-size:14px!important;\n    padding:0!important;\n  }\n  .landscape-image-view-prim span{\n    width:20px!important;\n    height:20px!important;\n    font-size:14px!important;\n  }\n  .landscape-image-view-prim.selected::before{\n    width:34px!important;\n    height:34px!important;\n    border-width:2.5px!important;\n  }\n  #tabletCustomsDrawer .landscape-custom-add{\n    position:relative!important;\n    z-index:20!important;\n    pointer-events:auto!important;\n    touch-action:manipulation!important;\n  }\n}\n
+
+
+/* v0.9.39.30 — final Image View geometry: compact Director fields left, 4–5–4 reactions right. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-image-view,
+  .landscape-image-view-shell{
+    width:100%!important;
+    height:100%!important;
+    max-height:100%!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-view-shell{
+    grid-template-columns:minmax(320px,49%) minmax(0,51%)!important;
+  }
+  .landscape-image-view-left{
+    min-height:0!important;
+    height:100%!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-view-canvas{
+    height:100%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-view-summary{
+    display:grid!important;
+    grid-template-columns:minmax(145px,38%) minmax(0,62%)!important;
+    grid-template-rows:auto minmax(60px,.56fr) minmax(0,1fr)!important;
+    gap:6px 7px!important;
+    min-height:0!important;
+    height:100%!important;
+    overflow:hidden!important;
+    padding:5px 7px 6px!important;
+  }
+  .landscape-image-view-controls{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+  }
+  .landscape-image-view-description{
+    grid-column:1 / -1!important;
+    grid-row:2!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    font-size:clamp(7px,.66vw,9px)!important;
+    line-height:1.16!important;
+    padding:5px 7px!important;
+    -webkit-line-clamp:7!important;
+  }
+  .landscape-image-view-themes{
+    grid-column:1!important;
+    grid-row:3!important;
+    align-self:center!important;
+    justify-self:stretch!important;
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:repeat(3,36px)!important;
+    gap:6px!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-view-theme{
+    width:100%!important;
+    height:36px!important;
+    min-height:36px!important;
+    padding:5px 8px!important;
+    font-size:10px!important;
+    border-radius:7px!important;
+    box-sizing:border-box!important;
+  }
+  .landscape-image-view-prims{
+    grid-column:2!important;
+    grid-row:3!important;
+    align-self:stretch!important;
+    justify-self:stretch!important;
+    display:grid!important;
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
+    grid-template-rows:repeat(3,minmax(31px,1fr))!important;
+    grid-auto-rows:minmax(30px,auto)!important;
+    gap:2px 1px!important;
+    align-items:center!important;
+    align-content:center!important;
+    justify-content:stretch!important;
+    overflow:hidden!important;
+    padding:1px 2px!important;
+    min-height:0!important;
+  }
+  .landscape-image-view-prim{
+    min-height:31px!important;
+    font-size:14px!important;
+    padding:0!important;
+  }
+  .landscape-image-view-prim span{
+    width:20px!important;
+    height:20px!important;
+    font-size:14px!important;
+  }
+  .landscape-image-view-prim.selected::before{
+    width:34px!important;
+    height:34px!important;
+    border-width:2.5px!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-add{
+    position:relative!important;
+    z-index:20!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+}
+
+
+/* v0.9.39.31 — authoritative Image View geometry. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #landscapeImageView,
+  #landscapeImageView .landscape-image-view-shell{
+    width:100%!important;
+    height:100%!important;
+    max-height:100dvh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  #landscapeImageView .landscape-image-view-shell{
+    display:grid!important;
+    grid-template-columns:minmax(320px,49%) minmax(0,51%)!important;
+    gap:0!important;
+  }
+  #landscapeImageView .landscape-image-view-left,
+  #landscapeImageView .landscape-image-view-canvas{
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  #landscapeImageView .landscape-image-view-summary{
+    display:grid!important;
+    grid-template-columns:minmax(150px,36%) minmax(0,64%)!important;
+    grid-template-rows:auto minmax(64px,.62fr) minmax(0,1fr)!important;
+    gap:6px 8px!important;
+    height:100%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    padding:5px 8px 7px!important;
+    box-sizing:border-box!important;
+  }
+  #landscapeImageView .landscape-image-view-controls{
+    grid-column:1/-1!important;
+    grid-row:1!important;
+  }
+  #landscapeImageView .landscape-image-view-description{
+    grid-column:1/-1!important;
+    grid-row:2!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    font-size:clamp(8px,.7vw,10px)!important;
+    line-height:1.18!important;
+    padding:6px 8px!important;
+    -webkit-line-clamp:6!important;
+  }
+  #landscapeImageView .landscape-image-view-themes{
+    grid-column:1!important;
+    grid-row:3!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:repeat(3,42px)!important;
+    gap:7px!important;
+    width:100%!important;
+    align-self:center!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:hidden!important;
+  }
+  #landscapeImageView .landscape-image-view-theme{
+    width:100%!important;
+    height:42px!important;
+    min-height:42px!important;
+    padding:6px 9px!important;
+    font-size:11px!important;
+    border-radius:8px!important;
+    box-sizing:border-box!important;
+  }
+  #landscapeImageView .landscape-image-view-prims{
+    grid-column:2!important;
+    grid-row:3!important;
+    display:grid!important;
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
+    grid-template-rows:repeat(3,minmax(0,1fr))!important;
+    gap:3px 1px!important;
+    align-items:center!important;
+    align-content:center!important;
+    justify-content:stretch!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    padding:1px 2px!important;
+  }
+  #landscapeImageView .landscape-image-view-prim{
+    min-width:0!important;
+    min-height:30px!important;
+    font-size:13px!important;
+    padding:0!important;
+  }
+  #landscapeImageView .landscape-image-view-prim span{
+    width:18px!important;
+    height:18px!important;
+    font-size:13px!important;
+  }
+  #landscapeImageView .landscape-image-view-prim.selected::before{
+    width:31px!important;
+    height:31px!important;
+    border-width:2.25px!important;
+  }
+  #landscapeImageView .landscape-image-view-prim:nth-child(1){grid-column:2 / span 2!important;grid-row:1!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(2){grid-column:4 / span 2!important;grid-row:1!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(3){grid-column:6 / span 2!important;grid-row:1!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(4){grid-column:8 / span 2!important;grid-row:1!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(5){grid-column:1 / span 2!important;grid-row:2!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(6){grid-column:3 / span 2!important;grid-row:2!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(7){grid-column:5 / span 2!important;grid-row:2!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(8){grid-column:7 / span 2!important;grid-row:2!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(9){grid-column:9 / span 2!important;grid-row:2!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(10){grid-column:2 / span 2!important;grid-row:3!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(11){grid-column:4 / span 2!important;grid-row:3!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(12){grid-column:6 / span 2!important;grid-row:3!important}
+  #landscapeImageView .landscape-image-view-prim:nth-child(13){grid-column:8 / span 2!important;grid-row:3!important}
+}
