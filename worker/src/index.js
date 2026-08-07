@@ -13,7 +13,7 @@ const validateResult=(result,requested)=>{if(!result||typeof result!=='object'||
 const promptFor=components=>`You are Genreactrix, a rigorous visual-research analyst. Analyze only visible evidence in the image. Do not infer hidden identity or backstory. Return only one JSON object with top-level shape {"components":{...},"promptVersions":{...}}. Include only requested components: ${components.join(', ')}.
 
 Component contracts:
-- reactions: object keyed by these reaction names: Beautiful, Adorable, Tragic, Funny, Intense, Weird, Hell, Dreamy, Zazzly, Disgusting, Eerie, Smart, Celebration. Each value is {"confidence":0-100,"reason":"visual evidence and emotional mechanism"}.
+- reactions: object keyed by these reaction names: Beautiful, Adorable, Tragic, Funny, Intense, Weird, Ticket, Dreamy, Zazzly, Disgusting, Scary, Smart, Celebration, Angry. Each value is {"confidence":0-100,"reason":"visual evidence and emotional mechanism"}.
 - themes: array of {"theme":"string","confidence":0-100,"evidence":"string","role":"primary|secondary|ambiguous"}.
 - description: detailed factual description of subjects, objects, actions, setting, composition, style, visible text, and unusual juxtapositions.
 - emotion: {"dominant":[],"secondary":[],"tone":"string","intensity":0-100,"contrasts":[],"causes":[]}.
