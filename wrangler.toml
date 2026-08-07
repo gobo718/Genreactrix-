@@ -1,0 +1,9 @@
+name = "genreactrix-ai"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+[ai]
+binding = "AI"
+
+[vars]
+WORKERS_AI_VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct"
