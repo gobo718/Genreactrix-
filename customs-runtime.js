@@ -71,7 +71,14 @@
     rows.push({id,label,emoji,kind:'customReaction',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});write(REACTION_KEY,rows);close('customReactionDialog');location.reload();
   }
   function init(){
-    // Own the two landscape Add buttons in capture phase so stale handlers cannot block them.
+    // v0.9.39.34: when the canonical app Customs implementation loaded successfully,
+    // do not intercept its buttons in capture phase. The earlier shim caused saves to
+    // reload the page and prevented the app's edit/delete workflow from owning state.
+    if(typeof window.openCustomThemeDialog==='function' && typeof window.openCustomReactionDialog==='function'){
+      validate();
+      return;
+    }
+    // Fallback only: own the two landscape Add buttons if the canonical app did not load.
     [['tabletAddCustomThemeBtn',()=>openTheme()],['tabletAddCustomReactionBtn',()=>openReaction()]].forEach(([id,fn])=>{
       const el=$(id);if(el)el.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();fn();},true);
     });
