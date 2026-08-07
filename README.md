@@ -1,4 +1,4 @@
-# v0.9.39.25 — Cohesive Landscape Interaction Pass
+# v0.9.39.27 — Workflow Completion Pass
 
 - Repaired the escaped-newline CSS defect that prevented part of the v0.9.39.24 mobile/landscape patch from parsing correctly.
 - Rebuilt the Landscape AI control strip as the canonical 2×4 panel: AI Reactions, AI Themes, AI Description, Customs / AI Rerun Reactions, AI Rerun Themes, AI Rerun Description, AI Rerun Lock.
@@ -534,3 +534,10 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Flag: hardened 2-second hold handling for Android pointer cancellation and dialog fallback.
 - Image View: blocks synthetic click-through into the original landscape image hitbox.
 - Customs Add buttons: added pointer-up fallback for mobile.
+
+
+## v0.9.39.27 workflow completion pass
+- Image View redesigned for quick verification: large image, three stacked Director themes, 4–5–4 Director reactions, larger selection rings, and compact ellipsized AI freeform context.
+- Customs Add controls receive stable unclipped heading rows plus hardened mobile dialog opening.
+- Flag long-hold now captures the pointer, survives release outside the button, and uses Android contextmenu as an additional long-press path.
+- AI controls remain two equal rows contained within their existing fixed band.

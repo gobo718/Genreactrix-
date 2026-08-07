@@ -4495,3 +4495,208 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 /* Prevent the normal-view image hitbox from accepting the Android synthetic click
    immediately after Image View closes. */
 #tabletImageViewBtn:disabled{pointer-events:none!important}
+
+/* v0.9.39.27 — verified workflow completion pass: AI band, Customs controls, Image View. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* AI controls: two equal rows fully contained inside the existing band. */
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls{
+    height:54px!important;
+    min-height:54px!important;
+    max-height:54px!important;
+    grid-template-rows:repeat(2,25px)!important;
+    gap:4px!important;
+    overflow:visible!important;
+  }
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls button{
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+    padding:2px 5px!important;
+    line-height:1.05!important;
+  }
+
+  /* Customs: heading bars are stable, unclipped and aligned; controls stay above lists. */
+  #tabletCustomsDrawer .landscape-customs-library{
+    grid-template-rows:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:8px!important;
+    padding:3px 0 0!important;
+    overflow:hidden!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-section{
+    display:grid!important;
+    grid-template-rows:32px minmax(0,1fr)!important;
+    gap:4px!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    padding:0!important;
+    border-top:0!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-heading-row{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(122px,34%)!important;
+    align-items:center!important;
+    gap:8px!important;
+    height:32px!important;
+    min-height:32px!important;
+    padding:0!important;
+    overflow:visible!important;
+    position:relative!important;
+    z-index:20!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-title{
+    display:flex!important;
+    align-items:center!important;
+    height:30px!important;
+    min-width:0!important;
+    padding:0 8px!important;
+    border:1px solid #4c4059!important;
+    border-radius:6px!important;
+    background:#211a29!important;
+    color:#f3edf7!important;
+    font-size:10px!important;
+    box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-add,
+  #tabletCustomsDrawer #tabletAddCustomThemeBtn,
+  #tabletCustomsDrawer #tabletAddCustomReactionBtn{
+    display:block!important;
+    position:relative!important;
+    z-index:30!important;
+    width:100%!important;
+    height:30px!important;
+    min-height:30px!important;
+    max-height:30px!important;
+    margin:0!important;
+    padding:3px 7px!important;
+    overflow:visible!important;
+    white-space:nowrap!important;
+    font-size:9px!important;
+    line-height:1!important;
+    box-sizing:border-box!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-list{
+    min-height:0!important;
+    overflow:auto!important;
+    position:relative!important;
+    z-index:1!important;
+  }
+}
+
+/* Image View is a quick-verification screen: image + Director themes on the left,
+   AI freeform context above a 4–5–4 Director reaction scorecard on the right. */
+.landscape-image-view-shell{
+  grid-template-columns:minmax(280px,48%) minmax(0,52%)!important;
+  gap:0!important;
+}
+.landscape-image-view-left{
+  min-width:0!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-rows:minmax(0,1fr) auto!important;
+  gap:5px!important;
+  padding:0 5px 5px 0!important;
+  background:#070609!important;
+}
+.landscape-image-view-canvas{
+  min-width:0!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+.landscape-image-view-summary{
+  min-width:0!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr) auto!important;
+  gap:6px!important;
+  padding:5px 7px 7px!important;
+  overflow:hidden!important;
+}
+.landscape-image-view-description{
+  min-width:0!important;
+  min-height:0!important;
+  padding:6px 8px!important;
+  border:1px solid #42394c!important;
+  border-radius:7px!important;
+  background:#19141f!important;
+  color:#cfc6d5!important;
+  font-size:clamp(7px,.72vw,10px)!important;
+  line-height:1.22!important;
+  overflow:hidden!important;
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:8!important;
+  text-overflow:ellipsis!important;
+}
+.landscape-image-view-themes{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:repeat(3,30px)!important;
+  gap:4px!important;
+  padding:0!important;
+}
+.landscape-image-view-theme{
+  min-height:30px!important;
+  height:30px!important;
+  grid-template-columns:18px minmax(0,1fr)!important;
+  gap:6px!important;
+  padding:4px 8px!important;
+  font-size:10px!important;
+  box-sizing:border-box!important;
+}
+.landscape-image-view-prims{
+  display:grid!important;
+  grid-template-columns:repeat(10,minmax(0,1fr))!important;
+  grid-template-rows:repeat(3,minmax(42px,1fr))!important;
+  grid-auto-rows:minmax(38px,auto)!important;
+  gap:4px 2px!important;
+  align-items:center!important;
+  align-content:end!important;
+  overflow:auto!important;
+  padding:3px 4px!important;
+}
+.landscape-image-view-prim{
+  grid-column:span 2!important;
+  min-width:0!important;
+  min-height:42px!important;
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  font-size:19px!important;
+  padding:0!important;
+}
+/* Centered 4–5–4 primitive layout. */
+.landscape-image-view-prim:nth-child(1){grid-column:2 / span 2!important;grid-row:1!important}
+.landscape-image-view-prim:nth-child(2){grid-column:4 / span 2!important;grid-row:1!important}
+.landscape-image-view-prim:nth-child(3){grid-column:6 / span 2!important;grid-row:1!important}
+.landscape-image-view-prim:nth-child(4){grid-column:8 / span 2!important;grid-row:1!important}
+.landscape-image-view-prim:nth-child(5){grid-column:1 / span 2!important;grid-row:2!important}
+.landscape-image-view-prim:nth-child(6){grid-column:3 / span 2!important;grid-row:2!important}
+.landscape-image-view-prim:nth-child(7){grid-column:5 / span 2!important;grid-row:2!important}
+.landscape-image-view-prim:nth-child(8){grid-column:7 / span 2!important;grid-row:2!important}
+.landscape-image-view-prim:nth-child(9){grid-column:9 / span 2!important;grid-row:2!important}
+.landscape-image-view-prim:nth-child(10){grid-column:2 / span 2!important;grid-row:3!important}
+.landscape-image-view-prim:nth-child(11){grid-column:4 / span 2!important;grid-row:3!important}
+.landscape-image-view-prim:nth-child(12){grid-column:6 / span 2!important;grid-row:3!important}
+.landscape-image-view-prim:nth-child(13){grid-column:8 / span 2!important;grid-row:3!important}
+/* Custom reactions continue below the canonical 13 without disturbing 4–5–4. */
+.landscape-image-view-prim.custom{grid-column:span 2!important;grid-row:auto!important}
+.landscape-image-view-prim span{
+  display:grid!important;
+  place-items:center!important;
+  width:28px!important;
+  height:28px!important;
+  font-size:19px!important;
+  line-height:1!important;
+}
+.landscape-image-view-prim.selected::before{
+  width:39px!important;
+  height:39px!important;
+  border-width:3px!important;
+  inset:auto!important;
+  top:50%!important;
+  left:50%!important;
+  transform:translate(-50%,-50%)!important;
+}
+.landscape-image-view-prim.custom.selected::before{border-color:#26c9c9!important}

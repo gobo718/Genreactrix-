@@ -1810,6 +1810,10 @@ function landscapeImageViewReactionSelected(value){return state.selectedReaction
 function renderLandscapeImageView(){
   if(!landscapeImageViewState.open)return;
   const image=$("landscapeImageViewImage");if(image)image.src=currentSource();
+  const description=$("landscapeImageViewDescription");if(description){
+    description.textContent=currentAiRun().description||currentDescription()||"";
+    description.title=description.textContent;
+  }
   const primRoot=$("landscapeImageViewPrims");if(primRoot){
     primRoot.innerHTML="";
     const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀"];
@@ -1861,6 +1865,7 @@ function beginFlagHold(e){
   e.preventDefault();e.stopPropagation();
   clearTimeout(flagHoldState.timer);
   flagHoldState.long=false;flagHoldState.startedAt=performance.now();flagHoldState.button=e.currentTarget;flagHoldState.pointerId=e.pointerId;
+  try{e.currentTarget?.setPointerCapture?.(e.pointerId);}catch{}
   flagHoldState.timer=setTimeout(()=>{flagHoldState.timer=null;navigator.vibrate?.(30);openFlagAdminDialog();},2000);
 }
 function finishFlagHold(e,cancelled=false){
@@ -1880,9 +1885,13 @@ function finishFlagHold(e,cancelled=false){
   b.addEventListener("pointerdown",beginFlagHold,{passive:false});
   b.addEventListener("pointerup",e=>finishFlagHold(e,false),{passive:false});
   b.addEventListener("pointercancel",e=>finishFlagHold(e,true),{passive:false});
-  b.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();});
+  b.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();openFlagAdminDialog();});
   b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();},{capture:true});
 });
+
+// Finish a Flag hold even if Android releases the pointer outside the button.
+document.addEventListener("pointerup",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,false);},{passive:false});
+document.addEventListener("pointercancel",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,true);},{passive:false});
 $("flagForRejectionAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Image flagged for rejection review.")});
 $("rejectImageAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Reject workflow will be completed in the lifecycle checkpoint.")});
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
@@ -2636,8 +2645,14 @@ function moveDraftReaction(chip,target){const from=Number(chip.dataset.index),to
 function wireLongPressReorder(chip){let timer=0,active=false,pointerId=null;const stop=()=>{clearTimeout(timer);timer=0;if(active){active=false;chip.classList.remove("reordering");document.body.classList.remove("custom-reorder-active");}if(pointerId!==null&&chip.hasPointerCapture?.(pointerId))chip.releasePointerCapture(pointerId);pointerId=null;};chip.addEventListener("pointerdown",e=>{if(e.button!==undefined&&e.button!==0)return;pointerId=e.pointerId;timer=setTimeout(()=>{active=true;chip.classList.add("reordering");document.body.classList.add("custom-reorder-active");chip.setPointerCapture?.(e.pointerId);navigator.vibrate?.(25);},CUSTOM_REORDER_HOLD_MS);});chip.addEventListener("pointermove",e=>{if(!active)return;e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(".custom-expression-chip");if(target&&target!==chip)moveDraftReaction(chip,target);});chip.addEventListener("pointerup",stop);chip.addEventListener("pointercancel",stop);chip.addEventListener("lostpointercapture",stop);}
 function renderCustomExpressionPreview(){const preview=$("customThemeExpressionPreview");if(!preview)return;preview.innerHTML="";if(!customThemeDraft.reactionRefs.length){preview.classList.add("empty");return;}preview.classList.remove("empty");customThemeDraft.reactionRefs.forEach((ref,index)=>{const record=reactionRecordFromRef(ref);const chip=document.createElement("button");chip.type="button";chip.className="custom-expression-chip";chip.dataset.index=String(index);chip.title="Long-press and drag to reorder";chip.innerHTML=`<span aria-hidden="true">${record?.emoji||"?"}</span><strong>${record?.label||"Missing reaction"}</strong><i aria-hidden="true">×</i>`;chip.querySelector("i")?.addEventListener("click",e=>{e.stopPropagation();customThemeDraft.reactionRefs.splice(index,1);renderCustomThemePicker();});wireLongPressReorder(chip);preview.appendChild(chip);});}
 function renderCustomThemePicker(){const root=$("customThemeReactionPicker");if(!root)return;root.innerHTML="";allReactionRecords().forEach(record=>{const ref={type:record.type,id:record.id},key=reactionRefKey(ref),selected=customThemeDraft.reactionRefs.some(item=>reactionRefKey(item)===key);const b=document.createElement("button");b.type="button";b.className="custom-reaction-choice"+(selected?" selected":"");b.innerHTML=`<span>${record.emoji}</span><strong>${record.label}</strong>`;b.addEventListener("click",()=>{const index=customThemeDraft.reactionRefs.findIndex(item=>reactionRefKey(item)===key);if(index>=0)customThemeDraft.reactionRefs.splice(index,1);else customThemeDraft.reactionRefs.push(ref);renderCustomThemePicker();});root.appendChild(b);});renderCustomExpressionPreview();updateCustomDialogValidation();}
-function openCustomReactionDialog(record=null){customReactionDraft.editingId=record?.id||null;if($("customReactionDialogTitle"))$("customReactionDialogTitle").textContent=record?"Edit Custom Reaction":"Add Custom Reaction";if($("customReactionLabel"))$("customReactionLabel").value=record?.label||"";if($("customReactionEmoji"))$("customReactionEmoji").value=record?.emoji||"";if($("customReactionDeleteBtn"))$("customReactionDeleteBtn").hidden=!record;if($("customReactionStatus"))$("customReactionStatus").textContent="";updateCustomDialogValidation();$("customReactionDialog")?.showModal();$("customReactionLabel")?.focus();}
-function openCustomThemeDialog(record=null){customThemeDraft.editingId=record?.id||null;customThemeDraft.reactionRefs=normalizedReactionRefs(record||{});if($("customThemeDialogTitle"))$("customThemeDialogTitle").textContent=record?"Edit Custom Theme":"Add Custom Theme";if($("customThemeLabel"))$("customThemeLabel").value=record?.label||"";if($("customThemeDeleteBtn"))$("customThemeDeleteBtn").hidden=!record;if($("customThemeStatus"))$("customThemeStatus").textContent="";renderCustomThemePicker();$("customThemeDialog")?.showModal();$("customThemeLabel")?.focus();}
+function safelyShowDialog(dialog){
+  if(!dialog)return false;
+  try{if(!dialog.open&&typeof dialog.showModal==="function")dialog.showModal();else if(!dialog.open)dialog.setAttribute("open","");return true;}
+  catch(error){console.warn("Dialog fallback",error);dialog.setAttribute("open","");return true;}
+}
+function openCustomReactionDialog(record=null){customReactionDraft.editingId=record?.id||null;if($("customReactionDialogTitle"))$("customReactionDialogTitle").textContent=record?"Edit Custom Reaction":"Add Custom Reaction";if($("customReactionLabel"))$("customReactionLabel").value=record?.label||"";if($("customReactionEmoji"))$("customReactionEmoji").value=record?.emoji||"";if($("customReactionDeleteBtn"))$("customReactionDeleteBtn").hidden=!record;if($("customReactionStatus"))$("customReactionStatus").textContent="";updateCustomDialogValidation();const dialog=$("customReactionDialog");safelyShowDialog(dialog);requestAnimationFrame(()=>$("customReactionLabel")?.focus());}
+function openCustomThemeDialog(record=null){customThemeDraft.editingId=record?.id||null;customThemeDraft.reactionRefs=normalizedReactionRefs(record||{});if($("customThemeDialogTitle"))$("customThemeDialogTitle").textContent=record?"Edit Custom Theme":"Add Custom Theme";if($("customThemeLabel"))$("customThemeLabel").value=record?.label||"";if($("customThemeDeleteBtn"))$("customThemeDeleteBtn").hidden=!record;if($("customThemeStatus"))$("customThemeStatus").textContent="";renderCustomThemePicker();const dialog=$("customThemeDialog");safelyShowDialog(dialog);requestAnimationFrame(()=>$("customThemeLabel")?.focus());}
+window.openCustomReactionDialog=openCustomReactionDialog;window.openCustomThemeDialog=openCustomThemeDialog;
 async function saveCustomReactionFromDialog(){const validation=customReactionValidation();if(!validation.valid){updateCustomDialogValidation(true);return;}const label=$("customReactionLabel").value.trim(),emoji=$("customReactionEmoji").value.trim(),id=`custom-reaction:${slugifyCustom(label)}`,before=(state.customReactions||[]).find(x=>x.id===customReactionDraft.editingId);const record=normalizeCustomReaction({...(before||{}),id,label,emoji,updatedAt:new Date().toISOString()});saveCustomReactions([...(state.customReactions||[]).filter(x=>x.id!==customReactionDraft.editingId),record]);if(before)await registerVocabularyMutation("major","custom reaction edited");else if(taxonomyHasBeenUsed())await registerVocabularyMutation("major","custom reaction added");$("customReactionDialog")?.close();renderAll();renderCustomThemePicker();}
 async function saveCustomThemeFromDialog(){const validation=customThemeValidation();if(!validation.valid){updateCustomDialogValidation(true);return;}const label=$("customThemeLabel").value.trim(),id=`custom-theme:${slugifyCustom(label)}`,before=(state.customThemes||[]).find(x=>x.id===customThemeDraft.editingId);const record=normalizeCustomThemeRecord({...(before||{}),id,label,reactionRefs:customThemeDraft.reactionRefs,updatedAt:new Date().toISOString()});saveCustomThemes([...(state.customThemes||[]).filter(x=>x.id!==customThemeDraft.editingId),record]);if(before)await registerVocabularyMutation("patch","custom theme edited");else if(taxonomyHasBeenUsed())await registerVocabularyMutation("minor","custom theme added");$("customThemeDialog")?.close();renderWriteIns();renderAll();}
 async function deleteCustomTheme(){const id=customThemeDraft.editingId,record=(state.customThemes||[]).find(x=>x.id===id);if(!record||!confirm(`Delete custom theme “${record.label}”?`))return;saveCustomThemes((state.customThemes||[]).filter(x=>x.id!==id));if(taxonomyHasBeenUsed())await registerVocabularyMutation("minor","custom theme deleted");$("customThemeDialog")?.close();renderAll();}
@@ -2663,6 +2678,14 @@ $("tabletCustomsDrawer")?.addEventListener("click",e=>{
   if(theme){e.preventDefault();e.stopPropagation();openCustomThemeDialog();}
   if(reaction){e.preventDefault();e.stopPropagation();openCustomReactionDialog();}
 });
+// Earliest mobile fallback: open the Add dialog on pointerdown before drawer layout or synthetic-click handling can steal the gesture.
+document.addEventListener("pointerdown",e=>{
+  const id=e.target?.closest?.("#tabletAddCustomThemeBtn,#tabletAddCustomReactionBtn")?.id;
+  if(!id)return;
+  e.preventDefault();e.stopPropagation();
+  const now=performance.now();if(now-tabletCustomAddOpenedAt<350)return;tabletCustomAddOpenedAt=now;
+  if(id==="tabletAddCustomThemeBtn")openCustomThemeDialog();else openCustomReactionDialog();
+},{capture:true,passive:false});
 // Capture-phase fallback for mobile browsers where nested drawer controls can lose the synthesized click.
 document.addEventListener("click",e=>{
   const id=e.target?.closest?.("#tabletAddCustomThemeBtn,#tabletAddCustomReactionBtn")?.id;
