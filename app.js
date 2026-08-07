@@ -2647,8 +2647,17 @@ function renderCustomExpressionPreview(){const preview=$("customThemeExpressionP
 function renderCustomThemePicker(){const root=$("customThemeReactionPicker");if(!root)return;root.innerHTML="";allReactionRecords().forEach(record=>{const ref={type:record.type,id:record.id},key=reactionRefKey(ref),selected=customThemeDraft.reactionRefs.some(item=>reactionRefKey(item)===key);const b=document.createElement("button");b.type="button";b.className="custom-reaction-choice"+(selected?" selected":"");b.innerHTML=`<span>${record.emoji}</span><strong>${record.label}</strong>`;b.addEventListener("click",()=>{const index=customThemeDraft.reactionRefs.findIndex(item=>reactionRefKey(item)===key);if(index>=0)customThemeDraft.reactionRefs.splice(index,1);else customThemeDraft.reactionRefs.push(ref);renderCustomThemePicker();});root.appendChild(b);});renderCustomExpressionPreview();updateCustomDialogValidation();}
 function safelyShowDialog(dialog){
   if(!dialog)return false;
-  try{if(!dialog.open&&typeof dialog.showModal==="function")dialog.showModal();else if(!dialog.open)dialog.setAttribute("open","");return true;}
-  catch(error){console.warn("Dialog fallback",error);dialog.setAttribute("open","");return true;}
+  dialog.hidden=false;
+  dialog.style.removeProperty("display");
+  try{
+    if(!dialog.open&&typeof dialog.showModal==="function")dialog.showModal();
+    if(!dialog.open)dialog.setAttribute("open","");
+  }catch(error){
+    console.warn("Dialog fallback",error);
+    dialog.setAttribute("open","");
+  }
+  dialog.style.zIndex="2147483000";
+  return true;
 }
 function openCustomReactionDialog(record=null){customReactionDraft.editingId=record?.id||null;if($("customReactionDialogTitle"))$("customReactionDialogTitle").textContent=record?"Edit Custom Reaction":"Add Custom Reaction";if($("customReactionLabel"))$("customReactionLabel").value=record?.label||"";if($("customReactionEmoji"))$("customReactionEmoji").value=record?.emoji||"";if($("customReactionDeleteBtn"))$("customReactionDeleteBtn").hidden=!record;if($("customReactionStatus"))$("customReactionStatus").textContent="";updateCustomDialogValidation();const dialog=$("customReactionDialog");safelyShowDialog(dialog);requestAnimationFrame(()=>$("customReactionLabel")?.focus());}
 function openCustomThemeDialog(record=null){customThemeDraft.editingId=record?.id||null;customThemeDraft.reactionRefs=normalizedReactionRefs(record||{});if($("customThemeDialogTitle"))$("customThemeDialogTitle").textContent=record?"Edit Custom Theme":"Add Custom Theme";if($("customThemeLabel"))$("customThemeLabel").value=record?.label||"";if($("customThemeDeleteBtn"))$("customThemeDeleteBtn").hidden=!record;if($("customThemeStatus"))$("customThemeStatus").textContent="";renderCustomThemePicker();const dialog=$("customThemeDialog");safelyShowDialog(dialog);requestAnimationFrame(()=>$("customThemeLabel")?.focus());}
