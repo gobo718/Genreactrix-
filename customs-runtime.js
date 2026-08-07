@@ -71,24 +71,48 @@
     rows.push({id,label,emoji,kind:'customReaction',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});write(REACTION_KEY,rows);close('customReactionDialog');location.reload();
   }
   function init(){
-    // v0.9.39.34: when the canonical app Customs implementation loaded successfully,
-    // do not intercept its buttons in capture phase. The earlier shim caused saves to
-    // reload the page and prevented the app's edit/delete workflow from owning state.
-    if(typeof window.openCustomThemeDialog==='function' && typeof window.openCustomReactionDialog==='function'){
-      validate();
-      return;
-    }
-    // Fallback only: own the two landscape Add buttons if the canonical app did not load.
-    [['tabletAddCustomThemeBtn',()=>openTheme()],['tabletAddCustomReactionBtn',()=>openReaction()]].forEach(([id,fn])=>{
+    // v0.9.39.36: make Customs entry points deterministic. The landscape Add buttons
+    // always route to the canonical app dialog functions when they exist; fallback
+    // behavior is used only when the main app's late Customs block is unavailable.
+    const openThemeRouted=()=>{
+      if(typeof window.openCustomThemeDialog==='function') window.openCustomThemeDialog();
+      else openTheme();
+    };
+    const openReactionRouted=()=>{
+      if(typeof window.openCustomReactionDialog==='function') window.openCustomReactionDialog();
+      else openReaction();
+    };
+    [['tabletAddCustomThemeBtn',openThemeRouted],['tabletAddCustomReactionBtn',openReactionRouted]].forEach(([id,fn])=>{
       const el=$(id);if(el)el.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();fn();},true);
     });
-    window.addEventListener('genreactrix:open-custom-dialog',e=>{const id=e.detail?.dialogId;if(id==='customThemeDialog')openTheme();else if(id==='customReactionDialog')openReaction();});
-    document.querySelectorAll('[data-close-custom-dialog]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();close(btn.dataset.closeCustomDialog);},true));
-    $('customThemeLabel')?.addEventListener('input',validate,true);$('customReactionLabel')?.addEventListener('input',validate,true);$('customReactionEmoji')?.addEventListener('input',validate,true);
-    $('customThemeSaveBtn')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();saveTheme();},true);
-    $('customReactionSaveBtn')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();saveReaction();},true);
-    // If the original app opens either dialog, make sure the picker/validation are still present.
-    $('customThemeDialog')?.addEventListener('toggle',()=>{if($('customThemeDialog').open)renderPicker();});
+    window.addEventListener('genreactrix:open-custom-dialog',e=>{
+      const id=e.detail?.dialogId;
+      if(id==='customThemeDialog')openThemeRouted();
+      else if(id==='customReactionDialog')openReactionRouted();
+    });
+    document.querySelectorAll('[data-close-custom-dialog]').forEach(btn=>btn.addEventListener('click',e=>{
+      e.preventDefault();e.stopImmediatePropagation();close(btn.dataset.closeCustomDialog);
+    },true));
+    $('customThemeLabel')?.addEventListener('input',()=>{
+      if(typeof window.updateCustomDialogValidation==='function')window.updateCustomDialogValidation();else validate();
+    },true);
+    $('customReactionLabel')?.addEventListener('input',()=>{
+      if(typeof window.updateCustomDialogValidation==='function')window.updateCustomDialogValidation();else validate();
+    },true);
+    $('customReactionEmoji')?.addEventListener('input',()=>{
+      if(typeof window.updateCustomDialogValidation==='function')window.updateCustomDialogValidation();else validate();
+    },true);
+    // Save buttons are also routed deterministically so a stale/shim listener cannot
+    // leave them apparently clickable but inert.
+    $('customThemeSaveBtn')?.addEventListener('click',e=>{
+      e.preventDefault();e.stopImmediatePropagation();
+      if(typeof window.saveCustomThemeFromDialog==='function')window.saveCustomThemeFromDialog();else saveTheme();
+    },true);
+    $('customReactionSaveBtn')?.addEventListener('click',e=>{
+      e.preventDefault();e.stopImmediatePropagation();
+      if(typeof window.saveCustomReactionFromDialog==='function')window.saveCustomReactionFromDialog();else saveReaction();
+    },true);
+    $('customThemeDialog')?.addEventListener('toggle',()=>{if($('customThemeDialog').open&&typeof window.openCustomThemeDialog!=='function')renderPicker();});
     validate();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

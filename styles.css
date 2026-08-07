@@ -5130,7 +5130,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .custom-expression-chip{display:grid!important;grid-template-columns:auto auto!important;min-height:32px!important;max-width:64px!important;padding:3px 6px!important;gap:4px!important;touch-action:manipulation!important;}
 .custom-expression-chip strong{display:none!important;}
 
-/* v0.9.39.34 — submitted work order: compact Customs + two-row judgment reactions. */
+/* v0.9.39.36 — submitted work order: compact Customs + two-row judgment reactions. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* Judgment/Home reaction selector: 14 canonicals in two tight brick rows. */
   .landscape-judgment-face .tablet-prims-row,
@@ -5230,4 +5230,188 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   #tabletCustomsDrawer .custom-item-edit,
   #tabletCustomsDrawer .custom-item-delete{width:24px!important;min-width:24px!important;height:24px!important;min-height:24px!important;padding:0!important;font-size:15px!important;line-height:1!important;border-radius:5px!important;}
   #tabletCustomsDrawer .custom-item-delete{color:#ff9aa5!important;}
+}
+
+/* v0.9.39.36 — Customs reliability/accessibility correction.
+   Keep every row action physically inside the drawer and easy to reach on Fold landscape. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletCustomsDrawer,
+  #tabletCustomsDrawer *{box-sizing:border-box!important;}
+  #tabletCustomsDrawer .landscape-customs-library,
+  #tabletCustomsDrawer .landscape-custom-section,
+  #tabletCustomsDrawer .landscape-custom-list{width:100%!important;min-width:0!important;max-width:100%!important;}
+  #tabletCustomsDrawer .landscape-custom-list{padding:2px 4px 4px 2px!important;overflow-x:hidden!important;overflow-y:auto!important;}
+  #tabletCustomsDrawer .landscape-custom-item{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    grid-template-columns:minmax(0,1fr) 28px 28px!important;
+    gap:3px!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:visible!important;
+  }
+  #tabletCustomsDrawer .custom-item-main{
+    width:100%!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  #tabletCustomsDrawer .custom-item-edit,
+  #tabletCustomsDrawer .custom-item-delete{
+    display:grid!important;
+    place-items:center!important;
+    position:relative!important;
+    inset:auto!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:26px!important;
+    min-height:26px!important;
+    max-height:26px!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:visible!important;
+    z-index:5!important;
+    touch-action:manipulation!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-heading-row{
+    grid-template-columns:minmax(0,1fr) auto!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-add{
+    width:auto!important;
+    min-width:104px!important;
+    max-width:132px!important;
+  }
+}
+
+/* v0.9.39.36 — targeted Fold-landscape polish: compact Customs, main reaction rings, Image View toolbar. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Main / judgment screen: keep the approved two-row brick layout, only improve the ring geometry. */
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:-28%!important;
+    border-width:3px!important;
+    transform:translateX(3px)!important;
+    transform-origin:center!important;
+  }
+
+  /* Customs drawer: reclaim the drawer for actual custom items. No workflow redesign here. */
+  #tabletCustomsDrawer.landscape-customs-drawer{
+    grid-template-rows:22px minmax(0,1fr)!important;
+    gap:2px!important;
+    padding:0!important;
+  }
+  #tabletCustomsDrawer>.tablet-custom-search{
+    display:block!important;
+    width:74.5%!important;
+    height:22px!important;
+    min-height:22px!important;
+    max-height:22px!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  #tabletCustomsDrawer>.tablet-custom-search input{
+    width:100%!important;
+    height:22px!important;
+    min-height:22px!important;
+    max-height:22px!important;
+    padding:1px 6px!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+  #tabletCustomsDrawer .landscape-customs-library{
+    grid-template-rows:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:3px!important;
+    padding:0!important;
+    min-height:0!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-section{
+    grid-template-rows:20px minmax(0,1fr)!important;
+    gap:1px!important;
+    padding:0!important;
+    min-height:0!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-heading-row{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    height:20px!important;
+    min-height:20px!important;
+    gap:4px!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-title,
+  #tabletCustomsDrawer #tabletCustomThemesHeading,
+  #tabletCustomsDrawer #tabletCustomReactionsHeading{
+    display:flex!important;
+    align-items:center!important;
+    height:20px!important;
+    min-height:20px!important;
+    padding:0 3px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-add,
+  #tabletCustomsDrawer #tabletAddCustomThemeBtn,
+  #tabletCustomsDrawer #tabletAddCustomReactionBtn{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:20px!important;
+    min-height:20px!important;
+    max-height:20px!important;
+    padding:1px 6px!important;
+    margin:0!important;
+    font-size:8px!important;
+    line-height:1!important;
+    border-radius:5px!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-list{
+    gap:1px!important;
+    padding:1px 2px 2px 1px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    min-height:0!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-item{
+    grid-template-columns:minmax(0,1fr) 26px 26px!important;
+    gap:2px!important;
+    min-height:24px!important;
+    max-height:24px!important;
+  }
+  #tabletCustomsDrawer .custom-item-main{
+    height:24px!important;
+    min-height:24px!important;
+    max-height:24px!important;
+    padding:1px 5px!important;
+    font-size:9px!important;
+  }
+  #tabletCustomsDrawer .custom-item-edit,
+  #tabletCustomsDrawer .custom-item-delete{
+    width:26px!important;
+    min-width:26px!important;
+    max-width:26px!important;
+    height:24px!important;
+    min-height:24px!important;
+    max-height:24px!important;
+  }
+
+  /* Image View: Keep is a normal toolbar button; selected-image state must not recolor it. */
+  #landscapeImageViewSaveBtn,
+  #landscapeImageViewSaveBtn[aria-pressed="true"],
+  #landscapeImageViewSaveBtn[aria-pressed="false"]{
+    background:var(--button-bg,#242029)!important;
+    border-color:var(--border,#51485a)!important;
+    color:var(--text,#f4eef8)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
 }

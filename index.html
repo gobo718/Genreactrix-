@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.34</title>
-<link href="styles.css?v=0.9.39.34" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.36</title>
+<link href="styles.css?v=0.9.39.36" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.34</span>
+<span>v0.9.39.36</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.34</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.36</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -390,11 +390,11 @@
 <label class="tablet-custom-search"><span class="visually-hidden">Search custom themes</span><input id="tabletCustomSearch" type="search" aria-label="Search custom themes" placeholder="Search custom themes"/></label>
 <div class="landscape-customs-library">
 <section class="landscape-custom-section landscape-custom-themes-section">
-<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomThemesHeading">Custom Themes</strong><button class="landscape-custom-add" id="tabletAddCustomThemeBtn" type="button" onclick="return window.grxOpenCustomDialog('customThemeDialog','openCustomThemeDialog');">+ Add Custom Theme</button></div>
+<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomThemesHeading">Custom Themes</strong><button class="landscape-custom-add" id="tabletAddCustomThemeBtn" type="button">+ Add Custom Theme</button></div>
 <div id="tabletCustomThemeList" class="landscape-custom-list"></div>
 </section>
 <section class="landscape-custom-section landscape-custom-reactions-section">
-<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomReactionsHeading">Custom Reactions</strong><button class="landscape-custom-add" id="tabletAddCustomReactionBtn" type="button" onclick="return window.grxOpenCustomDialog('customReactionDialog','openCustomReactionDialog');">+ Add Custom Reaction</button></div>
+<div class="landscape-custom-heading-row"><strong class="landscape-custom-title" id="tabletCustomReactionsHeading">Custom Reactions</strong><button class="landscape-custom-add" id="tabletAddCustomReactionBtn" type="button">+ Add Custom Reaction</button></div>
 <div id="tabletCustomReactionList" class="landscape-custom-list"></div>
 </section>
 </div>
@@ -801,14 +801,16 @@
 </form>
 </dialog>
 <script>
-// v0.9.39.34 Customs entry shim; full behavior is in customs-runtime.js.
+// v0.9.39.36 Customs entry router. Canonical app handlers own state; the runtime is fallback only.
 window.grxOpenCustomDialog=function(dialogId){
-  window.dispatchEvent(new CustomEvent("genreactrix:open-custom-dialog",{detail:{dialogId}}));
+  const fn=dialogId==='customThemeDialog'?window.openCustomThemeDialog:window.openCustomReactionDialog;
+  if(typeof fn==='function') fn();
+  else window.dispatchEvent(new CustomEvent("genreactrix:open-custom-dialog",{detail:{dialogId}}));
   return false;
 };
 </script>
-<script src="app.js?v=0.9.39.34"></script>
-<script src="customs-runtime.js?v=0.9.39.34"></script>
+<script src="app.js?v=0.9.39.36"></script>
+<script src="customs-runtime.js?v=0.9.39.36"></script>
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
 <header><h2>Notifications</h2><button aria-label="Close" id="notificationsClose" type="button">×</button></header>
