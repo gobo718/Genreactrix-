@@ -1,4 +1,4 @@
-# v0.9.39.46 — Single-Slot Reaction Geometry
+# v0.9.39.47 — Canonical Interleaved Judgment Order
 
 - Main Judgment reaction strip only.
 - Ring, emoji, and AI percentage now live in one primitive slot.
@@ -609,3 +609,9 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - AI percentage cells share the exact same horizontal slot coordinates as their primitive.
 - Applied one shared ring optical correction (+4px X, +3px Y) and one whole-group vertical correction (+6px Y); no per-emoji offsets.
 - No Customs CRUD, Image View, PrimFusion, AI, or unrelated UI behavior changed.
+
+## v0.9.39.47 — canonical interleaved Judgment order
+- Judgment reaction geometry now preserves primitive sequence across the brick layout: #1 top, #2 bottom, #3 top, #4 bottom, continuing through canonical and custom reactions.
+- Bottom-row centers remain exact midpoints between adjacent top-row centers.
+- Existing shared-center ring/emoji geometry and AI percentage anchoring are unchanged.
+- Image View and Customs behavior were not modified in this pass.

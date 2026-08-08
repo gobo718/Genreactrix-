@@ -778,13 +778,14 @@ function fitLandscapeAiDescription(){
    One slot center owns the ring, emoji, and percentage. The bottom row uses
    the exact midpoint X between adjacent top-row centers. */
 function judgmentReactionGridPosition(index){
-  if(index < 7) return {row:1,start:1 + (index * 2)};
-  if(index < 14) return {row:2,start:2 + ((index - 7) * 2)};
-  const customIndex=index - 14;
-  const pair=Math.floor(customIndex / 2);
-  return customIndex % 2 === 0
-    ? {row:1,start:15 + (pair * 2)}
-    : {row:2,start:16 + (pair * 2)};
+  /* v0.9.39.47 — canonical primitive order is interleaved across the two
+     brick rows: 1 top, 2 bottom, 3 top, 4 bottom, and so on.  Every
+     bottom-row center therefore lands exactly halfway between its adjacent
+     top-row centers.  Custom reactions continue the same sequence. */
+  const pair=Math.floor(index / 2);
+  return index % 2 === 0
+    ? {row:1,start:1 + (pair * 2)}
+    : {row:2,start:2 + (pair * 2)};
 }
 function applyJudgmentReactionGeometry(prims,pctRow){
   if(!prims) return;
