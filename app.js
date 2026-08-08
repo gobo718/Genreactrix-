@@ -1886,8 +1886,12 @@ function landscapeImageViewGridPosition(index,custom=false){
 }
 function applyLandscapeImageViewGridPosition(item,index,custom=false){
   const pos=landscapeImageViewGridPosition(index,custom);
-  item.style.gridColumn=`${pos.start} / span 2`;
-  item.style.gridRow=String(pos.row);
+  /* v0.9.39.51 — make the slot engine the sole placement authority.
+     Historical Image View nth-child rules use !important, so ordinary inline
+     declarations were being ignored. Inline !important outranks those legacy
+     selectors without disturbing their unrelated styling. */
+  item.style.setProperty("grid-column",`${pos.start} / span 2`,"important");
+  item.style.setProperty("grid-row",String(pos.row),"important");
 }
 function renderLandscapeImageView(){
   if(!landscapeImageViewState.open)return;

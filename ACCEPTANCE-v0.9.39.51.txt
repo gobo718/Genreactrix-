@@ -1,0 +1,11 @@
+Genreactrix v0.9.39.51 — Image View Slot Authority Recovery
+
+Scope:
+- Image View reaction geometry only.
+- Preserve v0.9.39.50 canonical/custom 4-row continuous brick algorithm.
+- Prevent legacy nth-child !important placement rules from overriding slot positions.
+
+Verification:
+- applyLandscapeImageViewGridPosition now writes grid-column and grid-row as inline !important declarations.
+- This outranks historical stylesheet !important nth-child placement rules.
+- No Judgment, Customs CRUD, PrimFusion, AI percentage, or unrelated UI logic changed.

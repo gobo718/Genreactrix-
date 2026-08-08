@@ -1,4 +1,4 @@
-# v0.9.39.50 — Image View Continuous Reaction Field
+# v0.9.39.51 — Image View Continuous Reaction Field
 
 - Image View now mirrors Judgment's canonical interleaved brick order.
 - Canonical primitives occupy rows 1–2; custom reactions continue immediately in rows 3–4 with no section gap.
