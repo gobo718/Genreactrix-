@@ -5632,14 +5632,13 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.42 — canonical, formula-driven Judgment reaction geometry.
+/* v0.9.39.43 — canonical shared-center Judgment reaction geometry.
    This block intentionally supersedes the historical nth-child nudges above.
    Geometry rules:
    - top-row centers occupy alternating half-columns;
    - bottom-row centers occupy the half-columns exactly between them;
    - reaction and percentage grids share the same coordinates;
-   - the ring uses one shared optical correction because every glyph/ring pair
-     was offset the same way in the approved Fold reference;
+   - ring and emoji use the exact same slot center;
    - the complete two-row reaction group is lowered as one unit to center it
      in the fixed reaction band. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
@@ -5670,7 +5669,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 
   /* Keep the accepted compact symbol size. Ring and glyph are one slot;
-     the ring receives the single shared optical correction, not per-glyph hacks. */
+     ring and glyph share the exact same center point; no independent ring offset. */
   .landscape-judgment-face .tablet-prim-button .symbol{
     position:relative!important;
     width:clamp(22px,2.7vw,32px)!important;
@@ -5691,7 +5690,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     inset:auto!important;
     border:3px solid transparent!important;
     border-radius:50%!important;
-    transform:translate(calc(-50% + 4px),calc(-50% + 3px))!important;
+    transform:translate(-50%,-50%)!important;
     transform-origin:center center!important;
     pointer-events:none!important;
   }

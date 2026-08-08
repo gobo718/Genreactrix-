@@ -1,3 +1,13 @@
+# v0.9.39.43 — Shared-Center Reaction Completion
+
+- Completes the interrupted Judgment reaction geometry pass.
+- Red/teal selection rings and emoji now use the exact same primitive-slot center coordinates.
+- Removes the previous independent +4px/+3px ring offset.
+- Preserves the formula-driven 7-over-7 two-row brick geometry: each bottom-row center is the exact midpoint between adjacent top-row centers.
+- AI reaction percentages remain mapped to the same horizontal primitive-slot coordinates.
+- Preserves the existing +6px whole reaction-group vertical placement and all Customs/Image View behavior.
+- No Image View, Customs CRUD, PrimFusion, or AI workflow changes.
+
 # v0.9.39.27 — Workflow Completion Pass
 
 - Repaired the escaped-newline CSS defect that prevented part of the v0.9.39.24 mobile/landscape patch from parsing correctly.
