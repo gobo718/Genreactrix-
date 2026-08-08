@@ -5417,7 +5417,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.37 — Report #14 targeted fixes only. */
+/* v0.9.39.37 — prior targeted fixes. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* AI/Judgment page: preserve the approved two-row brick layout. Move/enlarge rings only. */
   .landscape-judgment-face .tablet-prim-button .symbol::after{
@@ -5491,4 +5491,62 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
   #tabletCustomsDrawer .custom-item-edit,
   #tabletCustomsDrawer .custom-item-delete{z-index:20!important;pointer-events:auto!important;}
+}
+
+
+/* v0.9.39.38 — exact QA punch-list fixes; no layout redesign. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Judgment/Home: preserve the approved two-row brick wall. Move/enlarge circles only.
+     Ring center is derived from the symbol box center, then optically corrected for emoji baseline. */
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:auto!important;
+    width:calc(100% + 18px)!important;
+    height:calc(100% + 18px)!important;
+    left:50%!important;
+    top:50%!important;
+    border-width:3px!important;
+    transform:translate(calc(-50% + 3px),calc(-50% + 8px))!important;
+    transform-origin:center!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Keep idle state: exactly the ordinary toolbar treatment. Selected Keep stays green. */
+  #tabletSaveBtn[aria-pressed="false"]{
+    background:var(--panel)!important;
+    border:1px solid var(--line)!important;
+    color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+  #landscapeImageViewSaveBtn[aria-pressed="false"]{
+    background:var(--panel)!important;
+    border:1px solid var(--line)!important;
+    color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+
+  /* Customs: the return-to-AI control owns the top-right 30px. Put Add Theme fully below it. */
+  #tabletCustomsDrawer .landscape-custom-themes-section{
+    padding-top:13px!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-heading-row,
+  #tabletCustomsDrawer .landscape-custom-add,
+  #tabletCustomsDrawer .custom-item-edit,
+  #tabletCustomsDrawer .custom-item-delete{
+    pointer-events:auto!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-add{
+    position:relative!important;
+    z-index:5!important;
+  }
+
+  /* Canonical bottom-right Angry diagonal marker follows the green diagonal: bottom-left. */
+  .interlocked-bottom-right-angry{
+    display:grid!important;
+    justify-items:start!important;
+    align-items:end!important;
+    padding:0 0 .04em .16em!important;
+    text-align:left!important;
+  }
 }

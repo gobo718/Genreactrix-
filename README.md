@@ -557,9 +557,11 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Updated Customs and AI-analysis vocabulary lists for the 14 canonical primitives.
 
 
-## v0.9.39.37
-- Numeric Image View correction: height-derived square viewport prevents the square image from extending below short landscape screens.
-- Restored Angry to both landscape reaction-render orders.
-- Reworked 14 canonical reactions to 5–4–5 brick geometry with larger selection rings and dedicated percentage geometry.
-- Fixed custom reaction rings so teal appears only while selected.
-- Simplified the Custom Theme primitive picker to emoji-only selection and removed drag instructions.
+## v0.9.39.38
+- Preserved the approved two-row brick-wall reaction arrangement; changed only selection-circle geometry.
+- Re-anchored reaction circles to the emoji center with substantially more clearance and optical right/down correction; emoji positions are unchanged.
+- Restored ordinary idle toolbar styling to Keep on Judgment and Image View while preserving the green selected state.
+- Moved Add Custom Theme fully below the AI Analysis return control so the buttons do not overlap.
+- Hardened Add Theme/Add Reaction entry handlers and kept Customs open after saves.
+- Custom theme/reaction lists refresh immediately after save; existing edit/delete controls remain available in the drawer.
+- Explicitly bottom-left aligned the bottom-right Angry marker in the green PrimFusion diagonal.
