@@ -1,9 +1,11 @@
-# v0.9.39.54 — Image View Ring Clearance Calibration
+# v0.9.39.55 — Image View Ring Center + Touch Calibration (Cache-Busted)
 
-Visual-only continuation of v0.9.39.52.
+Continuation of v0.9.39.54 with the deployment/version defect corrected.
 
-- Image View reaction ordering and four-row slot geometry are unchanged.
-- Ring and emoji continue to share the same center point.
-- Image View ring/glyph geometry now uses the accepted Judgment-page clearance ratio, uniformly scaled to 85%: 34px ring, 17.85px glyph, 27.2px symbol box.
-- Row pitch increases to 35px so the larger rings retain clean vertical clearance.
-- No Judgment, Customs, AI percentage, Image View theme, or navigation logic was changed.
+Changes in this build:
+- Bumps every visible/internal page build marker to v0.9.39.55.
+- Bumps `styles.css` and `app.js` cache-busting query strings to v0.9.39.55 so the browser must load the new Image View geometry.
+- Preserves the v0.9.39.54 Image View calibration: 50px rings, 17px glyphs, one shared 50px center box, and ring/emoji `50%/50%` centering.
+- Preserves the accepted canonical/custom four-row slot engine and all unrelated UI.
+
+The previous v0.9.39.54 archive contained the CSS calibration but still referenced v0.9.39.53 in `index.html`, allowing the browser to reuse the old cached stylesheet.
