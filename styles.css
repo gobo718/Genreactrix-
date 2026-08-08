@@ -6311,6 +6311,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     margin:0!important;
     padding:0!important;
     overflow:visible!important;
+    transform:scale(var(--iv-field-scale,1))!important;
+    transform-origin:center center!important;
   }
   #landscapeImageView .landscape-image-view-reaction-field .landscape-image-view-prim{
     position:absolute!important;
