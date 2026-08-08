@@ -1,0 +1,14 @@
+Genreactrix v0.9.39.63 — Folded-Landscape Customs Workspace
+
+Acceptance criteria
+- Opening Customs lands on Custom Search with an empty search query.
+- The top control row reads Custom Search / Custom Reactions / Custom Themes / AI Analysis.
+- Search, Reactions, and Themes panels remain mounted but only the active panel participates in layout/painting.
+- Search results are separated into Custom Reactions and Custom Themes.
+- Custom Reaction chips show emoji + label + pencil; Custom Theme chips show label + pencil; no delete control is shown on chips.
+- Tapping a custom retains the existing selection behavior; pencil opens the existing Edit dialog, where Delete remains available.
+- Reactions and Themes each offer A-Z, Date, and Top (usage count) sorting plus an ascending/descending arrow and independent scrolling.
+- Custom chips size to their contents and wrap instead of stretching to full rows.
+- Focusing Custom Search promotes the Customs workspace over the visual viewport above the Android keyboard; unused Image View content is not shown or visibly compressed.
+- Leaving search focus restores the normal folded-landscape layout.
+- Existing creation/edit/delete logic, vocabulary versioning, AI Analysis drawer behavior, and Image View centering remain unchanged.
