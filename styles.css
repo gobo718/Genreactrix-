@@ -6221,3 +6221,27 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     border-color:#26c9c9!important;
   }
 }
+
+/* v0.9.39.53 — Image View ring clearance calibration.
+   Match the accepted Judgment-page visual clearance by scaling its 40px ring / 21px glyph
+   geometry to 85% as one shared-center pair. Slot/order authority from v0.9.39.52 is unchanged. */
+@media (orientation:landscape){
+  #landscapeImageView .landscape-image-view-prims{
+    --iv-ring-size:34px!important;
+    --iv-glyph-size:17.85px!important;
+    --iv-symbol-box:27.2px!important;
+    --iv-ring-stroke:2.55px!important;
+    grid-template-rows:repeat(4,35px)!important;
+    grid-auto-rows:35px!important;
+  }
+  #landscapeImageView .landscape-image-view-prim{
+    height:35px!important;
+    min-height:35px!important;
+  }
+  #landscapeImageView .landscape-image-view-prim span{
+    width:var(--iv-symbol-box)!important;
+    height:var(--iv-symbol-box)!important;
+    font-size:var(--iv-glyph-size)!important;
+    line-height:var(--iv-symbol-box)!important;
+  }
+}

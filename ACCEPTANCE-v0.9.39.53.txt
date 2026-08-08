@@ -1,0 +1,15 @@
+Genreactrix v0.9.39.53 — Image View Ring Clearance Calibration
+
+Scope
+- Image View reaction field only.
+
+Acceptance
+- Preserve v0.9.39.52 canonical/custom ordering and four-row brick geometry.
+- Preserve shared ring/emoji center points.
+- Increase ring clearance around emoji to approximate the accepted Judgment-page visual ratio.
+- Ring diameter: 34px.
+- Emoji font size: 17.85px.
+- Symbol box: 27.2px.
+- Ring stroke: 2.55px.
+- Row pitch: 35px.
+- Do not modify Judgment page, Customs behavior, AI percentages, or unrelated UI.
