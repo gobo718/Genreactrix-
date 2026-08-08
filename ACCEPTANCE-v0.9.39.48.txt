@@ -1,0 +1,10 @@
+Genreactrix v0.9.39.48 — ordered Judgment slots + custom AI percentages
+
+Scope:
+- Judgment reaction strip only.
+- Stable canonical order uses primitive IDs rather than emoji symbol matching.
+- Historical nth-child placement/transform rules are explicitly neutralized for the current slot engine.
+- Custom reactions append only after all 14 canonical primitives.
+- When AI Reactions is shown, every custom primitive displays a percentage; missing AI weights display 0%.
+- Future AI results can populate a custom reaction by storing its score under the custom reaction ID or its custom: token.
+- No Image View redesign in this build.

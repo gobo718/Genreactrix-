@@ -822,9 +822,12 @@ function renderTabletWorkbench(){
   prims.innerHTML="";
   if(pctRow) pctRow.innerHTML="";
   const weights=currentAiWeights();
-  const judgmentReactionOrder=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀","🤬"];
-  judgmentReactionOrder.forEach(symbol=>{
-    const primitiveIndex=PRIMITIVES.findIndex(item=>item.symbol===symbol);
+  /* v0.9.39.48 — explicit canonical Judgment order by stable primitive ID.
+     Avoid symbol matching so variation-selector differences can never create
+     empty slots or shift later canonical/custom reactions. */
+  const judgmentReactionOrder=["P02","P01","P03","P04","P09","P13","P12","P05","P11","P10","P08","P07","P06","P14"];
+  judgmentReactionOrder.forEach(primitiveId=>{
+    const primitiveIndex=PRIMITIVES.findIndex(item=>item.id===primitiveId);
     const p=PRIMITIVES[primitiveIndex];
     if(!p) return;
     const b=document.createElement("button");
@@ -840,7 +843,17 @@ function renderTabletWorkbench(){
 
   (state.customReactions||[]).forEach(record=>{
     const token=customReactionSelectionToken(record.id);
-    const b=document.createElement("button");b.type="button";b.className="tablet-prim-button custom-reaction-button"+(state.selectedReactions.includes(token)?" selected":"");b.title=record.label;b.dataset.customReaction=record.id;b.setAttribute("aria-pressed",String(state.selectedReactions.includes(token)));b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${record.emoji}</span></span><span class="pct custom" aria-hidden="true"></span>`;b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});prims.appendChild(b);
+    const b=document.createElement("button");
+    const rawCustomWeight=weights[record.id] ?? weights[token] ?? 0;
+    const customPctText=tabletLandscapeView.aiReactions?`${Number(rawCustomWeight)||0}%`:"";
+    b.type="button";
+    b.className="tablet-prim-button custom-reaction-button"+(state.selectedReactions.includes(token)?" selected":"");
+    b.title=record.label;
+    b.dataset.customReaction=record.id;
+    b.setAttribute("aria-pressed",String(state.selectedReactions.includes(token)));
+    b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${record.emoji}</span></span><span class="pct custom" aria-hidden="${String(!tabletLandscapeView.aiReactions)}">${customPctText}</span>`;
+    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});
+    prims.appendChild(b);
   });
   renderLandscapeCustoms();
   applyJudgmentReactionGeometry(prims,pctRow);

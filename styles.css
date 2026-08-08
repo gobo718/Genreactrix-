@@ -6051,3 +6051,16 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     pointer-events:none!important;
   }
 }
+
+
+/* v0.9.39.48 — retire historical nth-child Judgment placement.
+   The slot engine is the sole authority for canonical + custom positioning. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face #tabletWorkbenchPrims > .tablet-prim-button,
+  .landscape-judgment-face #tabletWorkbenchPrims > .tablet-prim-button.selected,
+  .landscape-judgment-face #tabletWorkbenchPrims > .tablet-prim-button[aria-pressed="true"]{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    transform:translate(-50%,-50%)!important;
+  }
+}
