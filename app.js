@@ -803,7 +803,7 @@ function applyJudgmentReactionGeometry(prims,pctRow){
     const x=(centerUnit/halfColumns)*100;
     /* Two-row V1 only. These are symbol-center coordinates inside the fixed
        reaction band, leaving the percentage beneath the symbol. */
-    const y=pos.row===1?32:68;
+    const y=pos.row===1?30:60;
     button.style.setProperty('--reaction-slot-x',`${x}%`);
     button.style.setProperty('--reaction-slot-y',`${y}%`);
     button.style.removeProperty('grid-column');
@@ -832,14 +832,14 @@ function renderTabletWorkbench(){
     b.title=p.name;
     b.setAttribute("aria-pressed",String(state.selectedReactions.includes(primitiveIndex)));
     const pctText=tabletLandscapeView.aiReactions?`${weights[p.id]??0}%`:"";
-    b.innerHTML=`<span class="symbol" aria-hidden="true">${p.symbol}</span><span class="pct" aria-hidden="${String(!tabletLandscapeView.aiReactions)}">${pctText}</span>`;
+    b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${p.symbol}</span></span><span class="pct" aria-hidden="${String(!tabletLandscapeView.aiReactions)}">${pctText}</span>`;
     b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(primitiveIndex);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(primitiveIndex);saveCurrent("director-reaction-auto");renderAll();});
     prims.appendChild(b);
   });
 
   (state.customReactions||[]).forEach(record=>{
     const token=customReactionSelectionToken(record.id);
-    const b=document.createElement("button");b.type="button";b.className="tablet-prim-button custom-reaction-button"+(state.selectedReactions.includes(token)?" selected":"");b.title=record.label;b.dataset.customReaction=record.id;b.setAttribute("aria-pressed",String(state.selectedReactions.includes(token)));b.innerHTML=`<span class="symbol" aria-hidden="true">${record.emoji}</span><span class="pct custom" aria-hidden="true"></span>`;b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});prims.appendChild(b);
+    const b=document.createElement("button");b.type="button";b.className="tablet-prim-button custom-reaction-button"+(state.selectedReactions.includes(token)?" selected":"");b.title=record.label;b.dataset.customReaction=record.id;b.setAttribute("aria-pressed",String(state.selectedReactions.includes(token)));b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${record.emoji}</span></span><span class="pct custom" aria-hidden="true"></span>`;b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});prims.appendChild(b);
   });
   renderLandscapeCustoms();
   applyJudgmentReactionGeometry(prims,pctRow);

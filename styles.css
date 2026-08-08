@@ -5929,3 +5929,125 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     transform:none!important;
   }
 }
+
+/* v0.9.39.46 — canonical Judgment reaction core.
+   This deliberately retires all legacy pseudo-element ring geometry.
+   Each button is positioned by one slot center. An explicit reaction-core
+   sits on that center; the ring and emoji are absolute children of the core
+   and therefore cannot acquire different coordinates. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face .tablet-prim-button,
+  .landscape-judgment-face .tablet-prim-button.selected,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"]{
+    position:absolute!important;
+    left:var(--reaction-slot-x,50%)!important;
+    top:var(--reaction-slot-y,50%)!important;
+    width:calc(200% / var(--reaction-half-columns,20))!important;
+    height:1px!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    transform:translate(-50%,-50%)!important;
+    display:block!important;
+    border:0!important;
+    background:transparent!important;
+    outline:none!important;
+    box-shadow:none!important;
+    overflow:visible!important;
+  }
+
+  /* Kill every historical ring implementation. */
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    content:none!important;
+    display:none!important;
+    border:0!important;
+  }
+
+  .landscape-judgment-face .tablet-prim-button .reaction-core{
+    position:absolute!important;
+    left:50%!important;
+    top:0!important;
+    width:40px!important;
+    height:40px!important;
+    transform:translate(-50%,-50%)!important;
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+    pointer-events:none!important;
+    overflow:visible!important;
+  }
+
+  .landscape-judgment-face .tablet-prim-button .reaction-ring{
+    position:absolute!important;
+    left:50%!important;
+    top:50%!important;
+    width:40px!important;
+    height:40px!important;
+    box-sizing:border-box!important;
+    transform:translate(-50%,-50%)!important;
+    border:3px solid transparent!important;
+    border-radius:50%!important;
+    margin:0!important;
+    padding:0!important;
+    background:transparent!important;
+    pointer-events:none!important;
+    z-index:1!important;
+  }
+
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    position:absolute!important;
+    left:50%!important;
+    top:50%!important;
+    width:32px!important;
+    height:32px!important;
+    min-width:32px!important;
+    min-height:32px!important;
+    transform:translate(-50%,-50%)!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    font-size:21px!important;
+    line-height:32px!important;
+    text-align:center!important;
+    pointer-events:none!important;
+    z-index:2!important;
+    overflow:visible!important;
+  }
+
+  .landscape-judgment-face .tablet-prim-button.selected .reaction-ring,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"] .reaction-ring{
+    border-color:#ff3030!important;
+  }
+  .landscape-judgment-face .tablet-prim-button[data-custom-reaction][aria-pressed="true"] .reaction-ring,
+  .landscape-judgment-face .tablet-prim-button.custom-selected .reaction-ring{
+    border-color:#20c9c3!important;
+  }
+
+  /* Percentage owns the same X center as the core, with one fixed Y offset. */
+  .landscape-judgment-face .tablet-prim-button .pct{
+    position:absolute!important;
+    left:50%!important;
+    top:23px!important;
+    width:max-content!important;
+    min-width:28px!important;
+    height:12px!important;
+    min-height:12px!important;
+    transform:translateX(-50%)!important;
+    display:block!important;
+    visibility:visible!important;
+    margin:0!important;
+    padding:0!important;
+    color:var(--muted)!important;
+    font-size:clamp(6px,.7vw,10px)!important;
+    line-height:12px!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+    pointer-events:none!important;
+  }
+}
