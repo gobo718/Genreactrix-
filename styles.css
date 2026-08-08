@@ -6311,6 +6311,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     margin:0!important;
     padding:0!important;
     overflow:visible!important;
+    transform:scale(var(--iv-field-scale,1))!important;
+    transform-origin:center center!important;
   }
   #landscapeImageView .landscape-image-view-reaction-field .landscape-image-view-prim{
     position:absolute!important;
@@ -6379,20 +6381,16 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.57 — Image View reaction formation centering correction.
-   Preserve every reaction coordinate, ring/glyph size, and inter-item spacing.
-   Center the completed reaction field explicitly against the full reaction
-   region instead of relying on inherited/grid self-alignment. */
+/* v0.9.39.58 — Image View horizontal field centering authority.
+   Preserve the accepted v0.9.39.57 geometry, scale, vertical position, ring/glyph
+   relationship, and slot coordinates. Anchor the finished field's own midpoint
+   to the exact horizontal midpoint of the available reaction region instead of
+   relying on grid justify-self centering. */
 @media (orientation:landscape){
-  #landscapeImageView .landscape-image-view-prims{
-    position:relative!important;
-  }
   #landscapeImageView .landscape-image-view-reaction-field{
-    position:absolute!important;
+    justify-self:start!important;
     left:50%!important;
-    top:50%!important;
-    transform:translate(-50%,-50%)!important;
-    justify-self:auto!important;
-    align-self:auto!important;
+    transform:translateX(-50%) scale(var(--iv-field-scale,1))!important;
+    transform-origin:center center!important;
   }
 }
