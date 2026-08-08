@@ -1877,21 +1877,50 @@ function landscapeImageViewReactionSelected(value){return state.selectedReaction
    continue immediately beneath them in rows three and four using the same
    top/bottom sequence. Each item owns one slot center; CSS centers both the
    glyph and selection ring on that slot. */
-function landscapeImageViewGridPosition(index,custom=false){
-  const pair=Math.floor(index/2);
-  const topRow=custom?3:1;
-  return index%2===0
-    ? {row:topRow,start:1+(pair*2)}
-    : {row:topRow+1,start:2+(pair*2)};
+/* v0.9.39.56 — Image View uses one explicit reaction field.
+   Each item owns one center point. Ring and emoji are siblings inside a
+   reaction-core and therefore cannot drift onto separate coordinate systems.
+   The finished field has an explicit bounding box and is centered as a unit. */
+const LANDSCAPE_IMAGE_REACTION_GEOMETRY={
+  ring:44,
+  glyph:17,
+  stroke:2.6,
+  stepX:60,
+  stepY:38
+};
+function landscapeImageViewCenter(index,custom=false){
+  const g=LANDSCAPE_IMAGE_REACTION_GEOMETRY;
+  if(!custom){
+    const col=Math.floor(index/2);
+    return index%2===0
+      ? {x:col*g.stepX,y:0}
+      : {x:(col+.5)*g.stepX,y:g.stepY};
+  }
+  /* Customs continue as rows 3/4 without a section gap:
+     #1,#2,#4,#6... on row 3; #3,#5,#7... on row 4. */
+  if(index===0)return{x:0,y:g.stepY*2};
+  if(index===1)return{x:g.stepX,y:g.stepY*2};
+  const n=index-2;
+  return n%2===0
+    ? {x:(Math.floor(n/2)+.5)*g.stepX,y:g.stepY*3}
+    : {x:(Math.floor(n/2)+2)*g.stepX,y:g.stepY*2};
 }
-function applyLandscapeImageViewGridPosition(item,index,custom=false){
-  const pos=landscapeImageViewGridPosition(index,custom);
-  /* v0.9.39.51 — make the slot engine the sole placement authority.
-     Historical Image View nth-child rules use !important, so ordinary inline
-     declarations were being ignored. Inline !important outranks those legacy
-     selectors without disturbing their unrelated styling. */
-  item.style.setProperty("grid-column",`${pos.start} / span 2`,"important");
-  item.style.setProperty("grid-row",String(pos.row),"important");
+function finalizeLandscapeImageReactionField(field,points){
+  const g=LANDSCAPE_IMAGE_REACTION_GEOMETRY;
+  if(!points.length){field.style.width='0px';field.style.height='0px';return;}
+  const r=g.ring/2;
+  const minX=Math.min(...points.map(p=>p.x))-r;
+  const maxX=Math.max(...points.map(p=>p.x))+r;
+  const minY=Math.min(...points.map(p=>p.y))-r;
+  const maxY=Math.max(...points.map(p=>p.y))+r;
+  field.style.width=`${maxX-minX}px`;
+  field.style.height=`${maxY-minY}px`;
+  field.style.setProperty('--iv-origin-x',`${-minX}px`);
+  field.style.setProperty('--iv-origin-y',`${-minY}px`);
+}
+function placeLandscapeImageReaction(item,point){
+  item.style.left=`calc(var(--iv-origin-x) + ${point.x}px)`;
+  item.style.top=`calc(var(--iv-origin-y) + ${point.y}px)`;
 }
 function renderLandscapeImageView(){
   if(!landscapeImageViewState.open)return;
@@ -1902,14 +1931,23 @@ function renderLandscapeImageView(){
   }
   const primRoot=$("landscapeImageViewPrims");if(primRoot){
     primRoot.innerHTML="";
+    const field=document.createElement("div");field.className="landscape-image-view-reaction-field";primRoot.appendChild(field);
+    const points=[];
     const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀","🤬"];
     order.forEach((symbol,displayIndex)=>{
       const index=PRIMITIVES.findIndex(item=>item.symbol===symbol);const primitive=PRIMITIVES[index];if(!primitive)return;
-      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);item.innerHTML=`<span>${primitive.symbol}</span>`;applyLandscapeImageViewGridPosition(item,displayIndex,false);primRoot.appendChild(item);
+      const point=landscapeImageViewCenter(displayIndex,false);points.push(point);
+      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);
+      item.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${primitive.symbol}</span></span>`;
+      placeLandscapeImageReaction(item,point);field.appendChild(item);
     });
     (state.customReactions||[]).forEach((record,customIndex)=>{
-      const token=customReactionSelectionToken(record.id);const item=document.createElement("div");item.className="landscape-image-view-prim custom"+(landscapeImageViewReactionSelected(token)?" selected":"");item.title=record.label;item.setAttribute("aria-label",`${record.label}${landscapeImageViewReactionSelected(token)?", selected":""}`);item.innerHTML=`<span>${record.emoji}</span>`;applyLandscapeImageViewGridPosition(item,customIndex,true);primRoot.appendChild(item);
+      const token=customReactionSelectionToken(record.id);const point=landscapeImageViewCenter(customIndex,true);points.push(point);
+      const item=document.createElement("div");item.className="landscape-image-view-prim custom"+(landscapeImageViewReactionSelected(token)?" selected":"");item.title=record.label;item.setAttribute("aria-label",`${record.label}${landscapeImageViewReactionSelected(token)?", selected":""}`);
+      item.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${record.emoji}</span></span>`;
+      placeLandscapeImageReaction(item,point);field.appendChild(item);
     });
+    finalizeLandscapeImageReactionField(field,points);
   }
   const themeRoot=$("landscapeImageViewThemes");if(themeRoot){
     themeRoot.innerHTML="";

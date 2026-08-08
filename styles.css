@@ -6280,3 +6280,101 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     transform:translate(-50%,-50%)!important;
   }
 }
+
+/* v0.9.39.56 — authoritative Image View reaction-core geometry.
+   Retires pseudo-element/grid positioning for the rendered reaction field.
+   The outer reaction region centers one explicit bounding box; every item is
+   absolutely positioned by one center; ring and glyph share the same core. */
+@media (orientation:landscape){
+  #landscapeImageView .landscape-image-view-prims{
+    --iv-ring-size:44px!important;
+    --iv-glyph-size:17px!important;
+    --iv-ring-stroke:2.6px!important;
+    display:grid!important;
+    place-items:center!important;
+    width:100%!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:visible!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:1fr!important;
+    gap:0!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field{
+    position:relative!important;
+    display:block!important;
+    justify-self:center!important;
+    align-self:center!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .landscape-image-view-prim{
+    position:absolute!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    width:var(--iv-ring-size)!important;
+    height:var(--iv-ring-size)!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    background:transparent!important;
+    transform:translate(-50%,-50%)!important;
+    display:block!important;
+    pointer-events:none!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .landscape-image-view-prim::before{
+    content:none!important;
+    display:none!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .reaction-core{
+    position:absolute!important;
+    inset:0!important;
+    width:var(--iv-ring-size)!important;
+    height:var(--iv-ring-size)!important;
+    transform:none!important;
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .reaction-ring{
+    position:absolute!important;
+    left:50%!important;
+    top:50%!important;
+    width:var(--iv-ring-size)!important;
+    height:var(--iv-ring-size)!important;
+    transform:translate(-50%,-50%)!important;
+    border:var(--iv-ring-stroke) solid transparent!important;
+    border-radius:50%!important;
+    box-sizing:border-box!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .selected .reaction-ring{
+    border-color:#ff3b47!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .custom.selected .reaction-ring{
+    border-color:#26c9c9!important;
+  }
+  #landscapeImageView .landscape-image-view-reaction-field .symbol{
+    position:absolute!important;
+    left:50%!important;
+    top:50%!important;
+    width:100%!important;
+    height:100%!important;
+    transform:translate(-50%,-50%)!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:var(--iv-glyph-size)!important;
+    line-height:1!important;
+    text-align:center!important;
+    margin:0!important;
+    padding:0!important;
+  }
+}
