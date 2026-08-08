@@ -1,3 +1,9 @@
+## v0.9.39.58 — Image View horizontal field centering
+- Preserves the completed v0.9.39.57 reaction geometry, scale, vertical position, ring/emoji centering, spacing, and custom continuation.
+- Replaces grid `justify-self` as the horizontal positioning authority for the finished reaction field.
+- Anchors the field at `left: 50%` of the available reaction region and translates it by exactly half of its own width, so the finished formation is horizontally centered as one rigid object.
+- No ring, emoji, row, scale, vertical, or unrelated UI changes.
+
 ## v0.9.39.57 — Image View bounded field scaling
 - Preserves the completed v0.9.39.56 reaction geometry exactly: shared ring/emoji centers, ring-to-emoji ratio, brick stagger, custom continuation, and relative spacing are unchanged.
 - Measures the finished reaction field bounding box against the actual Image View reaction region.

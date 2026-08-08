@@ -6380,3 +6380,17 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     padding:0!important;
   }
 }
+
+/* v0.9.39.58 — Image View horizontal field centering authority.
+   Preserve the accepted v0.9.39.57 geometry, scale, vertical position, ring/glyph
+   relationship, and slot coordinates. Anchor the finished field's own midpoint
+   to the exact horizontal midpoint of the available reaction region instead of
+   relying on grid justify-self centering. */
+@media (orientation:landscape){
+  #landscapeImageView .landscape-image-view-reaction-field{
+    justify-self:start!important;
+    left:50%!important;
+    transform:translateX(-50%) scale(var(--iv-field-scale,1))!important;
+    transform-origin:center center!important;
+  }
+}
