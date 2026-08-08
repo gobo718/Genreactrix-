@@ -1907,31 +1907,16 @@ function landscapeImageViewCenter(index,custom=false){
 }
 function finalizeLandscapeImageReactionField(field,points){
   const g=LANDSCAPE_IMAGE_REACTION_GEOMETRY;
-  if(!points.length){
-    field.style.width='0px';field.style.height='0px';field.style.transform='none';return;
-  }
+  if(!points.length){field.style.width='0px';field.style.height='0px';return;}
   const r=g.ring/2;
   const minX=Math.min(...points.map(p=>p.x))-r;
   const maxX=Math.max(...points.map(p=>p.x))+r;
   const minY=Math.min(...points.map(p=>p.y))-r;
   const maxY=Math.max(...points.map(p=>p.y))+r;
-  const fieldWidth=maxX-minX;
-  const fieldHeight=maxY-minY;
-  field.style.width=`${fieldWidth}px`;
-  field.style.height=`${fieldHeight}px`;
+  field.style.width=`${maxX-minX}px`;
+  field.style.height=`${maxY-minY}px`;
   field.style.setProperty('--iv-origin-x',`${-minX}px`);
   field.style.setProperty('--iv-origin-y',`${-minY}px`);
-
-  /* v0.9.39.57 — preserve the completed geometry and scale the finished
-     reaction field as one object only when its bounding box exceeds the
-     available Image View reaction region. Ring/glyph ratio, slot spacing,
-     stagger, and relative placement remain unchanged. */
-  const root=field.parentElement;
-  const inset=8;
-  const availableWidth=Math.max(0,(root?.clientWidth||fieldWidth)-inset);
-  const availableHeight=Math.max(0,(root?.clientHeight||fieldHeight)-inset);
-  const scale=Math.min(1,availableWidth/fieldWidth,availableHeight/fieldHeight);
-  field.style.setProperty('--iv-field-scale',String(Number.isFinite(scale)&&scale>0?scale:1));
 }
 function placeLandscapeImageReaction(item,point){
   item.style.left=`calc(var(--iv-origin-x) + ${point.x}px)`;
