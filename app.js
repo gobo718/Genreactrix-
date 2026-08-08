@@ -1932,10 +1932,12 @@ function finalizeLandscapeImageReactionField(field,points){
   const availableHeight=Math.max(0,(root?.clientHeight||fieldHeight)-inset);
   const scale=Math.min(1,availableWidth/fieldWidth,availableHeight/fieldHeight);
   field.style.setProperty('--iv-field-scale',String(Number.isFinite(scale)&&scale>0?scale:1));
-  const offsetX=(availableWidth-fieldWidth*scale)/2;
-  const offsetY=(availableHeight-fieldHeight*scale)/2;
-  field.style.marginLeft=`${Math.max(0,offsetX)}px`;
-  field.style.marginTop=`${Math.max(0,offsetY)}px`;
+  /* v0.9.39.60 — centering is owned by the parent layout, not by JS offsets.
+     The field keeps its true unscaled bounding box; scaling happens around its
+     own center, so CSS can center the whole rigid formation without double
+     accounting for available space. */
+  field.style.marginLeft='0px';
+  field.style.marginTop='0px';
 }
 function placeLandscapeImageReaction(item,point){
   item.style.left=`calc(var(--iv-origin-x) + ${point.x}px)`;

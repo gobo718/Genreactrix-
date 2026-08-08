@@ -1,0 +1,7 @@
+Genreactrix v0.9.39.60 — Image View Reaction Field Centering
+
+1. In Image View, the complete emoji/ring formation is centered horizontally and vertically inside its reaction region.
+2. No ring, emoji, spacing, row, stagger, custom-reaction, or relative-position geometry changes.
+3. Formation fitting remains uniform scaling of the finished field only when required.
+4. No positional margins or `left:50%` translation are used to center the field.
+5. No layout behavior outside Image View is changed.
