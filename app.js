@@ -1928,7 +1928,7 @@ function finalizeLandscapeImageReactionField(field,points){
   field.style.setProperty('--iv-center-x','0px');
   field.style.setProperty('--iv-center-y','0px');
 
-  /* v0.9.39.61 — fit and center from rendered geometry, not assumed layout.
+  /* v0.9.39.62 — fit and center from rendered geometry, not assumed layout.
      The reaction field remains one rigid object. After the browser resolves the
      actual Image View grid, measure both the available reaction region and the
      transformed field, then translate only the field by the exact center delta.

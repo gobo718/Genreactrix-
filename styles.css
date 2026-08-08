@@ -6399,7 +6399,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.61 — rendered-bounds Image View centering.
+/* v0.9.39.62 — rendered-bounds Image View centering.
    The field is laid out normally, then receives only the measured center delta.
    This is scoped to Image View and does not alter reaction geometry elsewhere. */
 @media (orientation:landscape){

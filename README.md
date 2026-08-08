@@ -1,4 +1,4 @@
-## v0.9.39.61 — Image View rendered-bounds centering
+## v0.9.39.62 — Image View rendered-bounds centering
 
 - Centers the complete emoji/ring formation from the browser's actual rendered bounds after layout.
 - Uses the exact delta between the reaction-region center and the transformed formation center.
