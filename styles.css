@@ -5550,3 +5550,47 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     text-align:left!important;
   }
 }
+
+
+/* v0.9.39.39 — targeted regression repairs only. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Main/Judgment: preserve the approved two-row brick wall and emoji positions.
+     Only the selection circle moves/scales. 38px symbol box -> 50px ring, centered with
+     a small optical correction right/down. */
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    inset:auto!important;
+    width:50px!important;
+    height:50px!important;
+    left:50%!important;
+    top:50%!important;
+    transform:translate(calc(-50% + 3px),calc(-50% + 2px))!important;
+    transform-origin:center center!important;
+    border-width:3px!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Image View + judgment idle Keep must use the exact ordinary button colors.
+     Active/pressed Keep remains governed by the existing green selected rule. */
+  #landscapeImageViewSaveBtn[aria-pressed="false"],
+  #tabletSaveBtn[aria-pressed="false"]{
+    background:var(--panel-2)!important;
+    border:1px solid var(--line)!important;
+    color:inherit!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+
+  /* Customs: keep the compact half-step layout, but guarantee the Add Theme control
+     clears the AI Analysis button instead of sitting underneath it. */
+  #tabletCustomsDrawer .landscape-custom-themes-section .landscape-custom-heading-row{
+    margin-top:10px!important;
+  }
+  #tabletCustomsDrawer .landscape-custom-add,
+  #tabletCustomsDrawer .custom-item-edit,
+  #tabletCustomsDrawer .custom-item-delete{
+    position:relative!important;
+    z-index:30!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+}

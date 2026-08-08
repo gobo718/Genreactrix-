@@ -565,3 +565,12 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Hardened Add Theme/Add Reaction entry handlers and kept Customs open after saves.
 - Custom theme/reaction lists refresh immediately after save; existing edit/delete controls remain available in the drawer.
 - Explicitly bottom-left aligned the bottom-right Angry marker in the green PrimFusion diagonal.
+
+
+## v0.9.39.39
+- Repaired Customs Add/Save/Edit/Delete flow so persistence/rendering is not blocked by vocabulary-log failures.
+- Added direct and capture-phase routing for the landscape Add Custom Theme/Reaction controls.
+- Keeps the user in Customs and refreshes the lists after save/delete.
+- Restored main/Judgment ring geometry to a 50px circle with only a small optical circle offset; brick layout and emoji positions are untouched.
+- Image View and Judgment idle Keep buttons now use the same ordinary button background/border as neighboring controls.
+- Moved Add Custom Theme below the AI Analysis overlap zone.
