@@ -6381,35 +6381,310 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.58 — Image View final horizontal centering + compact control row.
-   The completed reaction geometry and bounded scaling remain unchanged.
-   The finished field is now anchored to the literal center of its reaction
-   region instead of relying on grid self-alignment. Image View controls use
-   the accepted 25px AI-drawer button height while preserving their row bottom. */
+/* v0.9.39.60 — Image View reaction-field centering authority.
+   The reaction region owns centering. The finished formation keeps one intrinsic
+   bounding box and one uniform scale; no JS margin offsets and no positional
+   left/translate correction are layered on top. Because transform-origin is the
+   field center, centering the unscaled box also centers the scaled visual box. */
 @media (orientation:landscape){
-  #landscapeImageView .landscape-image-view-prims{
-    position:relative!important;
-  }
   #landscapeImageView .landscape-image-view-reaction-field{
-    position:absolute!important;
-    left:50%!important;
-    top:50%!important;
-    justify-self:auto!important;
-    align-self:auto!important;
-    transform:translate(-50%,-50%) scale(var(--iv-field-scale,1))!important;
+    justify-self:center!important;
+    align-self:center!important;
+    left:auto!important;
+    top:auto!important;
+    margin:0!important;
+    transform:scale(var(--iv-field-scale,1))!important;
     transform-origin:center center!important;
   }
-  #landscapeImageView .landscape-image-view-controls{
-    height:29px!important;
-    min-height:29px!important;
-    max-height:29px!important;
-    align-items:end!important;
+}
+
+
+/* v0.9.39.62 — rendered-bounds Image View centering.
+   The field is laid out normally, then receives only the measured center delta.
+   This is scoped to Image View and does not alter reaction geometry elsewhere. */
+@media (orientation:landscape){
+  #landscapeImageView .landscape-image-view-reaction-field{
+    transform:translate(var(--iv-center-x,0px),var(--iv-center-y,0px)) scale(var(--iv-field-scale,1))!important;
+    transform-origin:center center!important;
   }
-  #landscapeImageView .landscape-image-view-controls button{
-    height:25px!important;
-    min-height:25px!important;
-    max-height:25px!important;
-    padding:2px 5px!important;
-    line-height:1.05!important;
+}
+
+/* v0.9.39.63 — folded-landscape Customs workspace tabs.
+   Scope is intentionally limited to the existing Customs drawer. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletCustomsDrawer.customs-workspace-v63{
+    position:absolute!important;
+    inset:0!important;
+    display:grid!important;
+    grid-template-rows:30px minmax(0,1fr)!important;
+    gap:5px!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    contain:layout paint!important;
+    background:#17131d!important;
   }
+  #tabletCustomsDrawer.customs-workspace-v63[hidden]{display:none!important}
+  #tabletCustomsDrawer .customs-tab-strip{
+    grid-row:1;
+    width:74.5%!important;
+    height:30px!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:4px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+    z-index:45!important;
+  }
+  #tabletCustomsDrawer .customs-tab{
+    height:30px!important;
+    min-height:30px!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:3px 5px!important;
+    font-size:clamp(8px,.78vw,10.5px)!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  #tabletCustomsDrawer .customs-tab.active{
+    border-color:#8e75a8!important;
+    background:#3a2f47!important;
+    color:#fff!important;
+  }
+  #tabletCustomsDrawer .customs-panel-viewport{
+    grid-row:2;
+    position:relative!important;
+    min-width:0!important;
+    min-height:0!important;
+    height:100%!important;
+    overflow:hidden!important;
+    contain:layout paint!important;
+  }
+  #tabletCustomsDrawer .customs-panel{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer .customs-panel[hidden]{display:none!important}
+  #tabletCustomsDrawer #tabletCustomReactionsPanel,
+  #tabletCustomsDrawer #tabletCustomThemesPanel{
+    display:grid!important;
+    grid-template-rows:30px minmax(0,1fr)!important;
+    gap:5px!important;
+  }
+  #tabletCustomsDrawer #tabletCustomReactionsPanel[hidden],
+  #tabletCustomsDrawer #tabletCustomThemesPanel[hidden]{display:none!important}
+  #tabletCustomsDrawer .customs-utility-strip{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    min-width:0!important;
+    height:30px!important;
+    overflow:hidden!important;
+  }
+  #tabletCustomsDrawer .customs-utility-strip .landscape-custom-add{
+    width:auto!important;
+    max-width:none!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:3px 8px!important;
+    margin:0!important;
+    font-size:9px!important;
+    white-space:nowrap!important;
+  }
+  #tabletCustomsDrawer .customs-sort-control{
+    display:flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    height:28px!important;
+    flex:0 0 auto!important;
+  }
+  #tabletCustomsDrawer .customs-sort-control select,
+  #tabletCustomsDrawer .customs-sort-direction{
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+    padding:2px 7px!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+  #tabletCustomsDrawer .customs-sort-control select{width:auto!important;min-width:62px!important}
+  #tabletCustomsDrawer .customs-sort-direction{width:30px!important;min-width:30px!important;padding:0!important;font-size:15px!important}
+  #tabletCustomsDrawer .customs-chip-list{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-content:flex-start!important;
+    align-items:flex-start!important;
+    gap:5px!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:2px!important;
+    overflow:visible!important;
+  }
+  #tabletCustomsDrawer .customs-library-scroll{
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    touch-action:pan-y!important;
+    scrollbar-gutter:stable!important;
+  }
+  #tabletCustomsDrawer .customs-chip{
+    display:inline-flex!important;
+    align-items:stretch!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:28px!important;
+    border:1px solid #554661!important;
+    border-radius:6px!important;
+    background:#211a29!important;
+    overflow:hidden!important;
+  }
+  #tabletCustomsDrawer .customs-chip-main,
+  #tabletCustomsDrawer .customs-chip-edit{
+    width:auto!important;
+    min-width:0!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    color:#f5eef9!important;
+    box-shadow:none!important;
+  }
+  #tabletCustomsDrawer .customs-chip-main{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:5px!important;
+    padding:3px 7px!important;
+    font-size:10px!important;
+    white-space:nowrap!important;
+    max-width:240px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  #tabletCustomsDrawer .customs-chip-main.selected{background:#25464a!important;color:#fff!important}
+  #tabletCustomsDrawer .customs-chip-emoji{font-size:17px!important;line-height:1!important}
+  #tabletCustomsDrawer .customs-chip-edit{
+    flex:0 0 28px!important;
+    width:28px!important;
+    min-width:28px!important;
+    padding:0!important;
+    border-left:1px solid #554661!important;
+    font-size:12px!important;
+  }
+  #tabletCustomsDrawer .customs-search-panel{
+    display:grid!important;
+    grid-template-rows:30px minmax(0,1fr)!important;
+    gap:5px!important;
+  }
+  #tabletCustomsDrawer .customs-search-panel[hidden]{display:none!important}
+  #tabletCustomsDrawer .tablet-custom-search{
+    display:block!important;
+    width:min(360px,52%)!important;
+    height:30px!important;
+    min-height:30px!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  #tabletCustomsDrawer .tablet-custom-search input{
+    width:100%!important;
+    height:30px!important;
+    min-height:30px!important;
+    margin:0!important;
+    padding:4px 8px!important;
+    box-sizing:border-box!important;
+    font-size:10px!important;
+  }
+  #tabletCustomsDrawer .customs-search-results{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:7px!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    scrollbar-gutter:stable!important;
+    padding:1px 2px 4px!important;
+  }
+  #tabletCustomsDrawer .customs-search-group{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:flex-start!important;
+    gap:5px!important;
+    min-width:0!important;
+  }
+  #tabletCustomsDrawer .customs-inline-label{
+    display:inline-flex!important;
+    align-items:center!important;
+    width:auto!important;
+    height:28px!important;
+    flex:0 0 auto!important;
+    padding:3px 7px!important;
+    border:1px solid #403649!important;
+    border-radius:6px!important;
+    background:#17131d!important;
+    color:#bfb3c8!important;
+    font-size:8.5px!important;
+    font-weight:700!important;
+    white-space:nowrap!important;
+  }
+  #tabletCustomsDrawer .customs-search-group>.customs-chip-list{
+    flex:1 1 280px!important;
+  }
+
+  /* Search focus is a temporary workspace presentation mode. The Customs drawer
+     occupies only the visual viewport above Android's keyboard; the normal page
+     remains intact underneath and is restored on blur. */
+  html.customs-search-focused body{overflow:hidden!important}
+  html.customs-search-focused #tabletCustomsDrawer.customs-workspace-v63{
+    position:fixed!important;
+    left:var(--visual-viewport-offset-left,0px)!important;
+    right:auto!important;
+    top:var(--visual-viewport-offset-top,0px)!important;
+    bottom:auto!important;
+    width:100vw!important;
+    height:var(--visual-viewport-height,100dvh)!important;
+    max-height:var(--visual-viewport-height,100dvh)!important;
+    z-index:3000!important;
+    padding:6px 8px 8px!important;
+    box-sizing:border-box!important;
+    grid-template-rows:32px minmax(0,1fr)!important;
+    background:#17131d!important;
+  }
+  html.customs-search-focused .landscape-sliding-drawer.customs-active .landscape-ai-controls{
+    position:fixed!important;
+    top:calc(var(--visual-viewport-offset-top,0px) + 6px)!important;
+    right:8px!important;
+    left:auto!important;
+    width:24.5vw!important;
+    height:30px!important;
+    z-index:3010!important;
+  }
+  html.customs-search-focused #tabletCustomsDrawer .customs-tab-strip{width:74.5%!important}
+  html.customs-search-focused #tabletCustomsDrawer .customs-search-panel{
+    grid-template-rows:34px minmax(0,1fr)!important;
+  }
+  html.customs-search-focused #tabletCustomsDrawer .tablet-custom-search{
+    width:min(440px,72%)!important;
+    height:34px!important;
+  }
+  html.customs-search-focused #tabletCustomsDrawer .tablet-custom-search input{
+    height:34px!important;
+    min-height:34px!important;
+    font-size:12px!important;
+  }
+
+}
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletCustomsDrawer .customs-search-group[hidden]{display:none!important}
 }
