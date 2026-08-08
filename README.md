@@ -567,7 +567,7 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Explicitly bottom-left aligned the bottom-right Angry marker in the green PrimFusion diagonal.
 
 
-## v0.9.39.39
+## v0.9.39.40
 - Repaired Customs Add/Save/Edit/Delete flow so persistence/rendering is not blocked by vocabulary-log failures.
 - Added direct and capture-phase routing for the landscape Add Custom Theme/Reaction controls.
 - Keeps the user in Customs and refreshes the lists after save/delete.

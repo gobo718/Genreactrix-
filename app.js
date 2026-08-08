@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.39";
+const GENREACTRIX_BUILD="v0.9.39.40";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -2689,7 +2689,7 @@ $("addCustomReactionBtn")?.addEventListener("click",()=>openCustomReactionDialog
 $("addCustomThemeBtn")?.addEventListener("click",()=>openCustomThemeDialog());
 if($("tabletAddCustomThemeBtn")) $("tabletAddCustomThemeBtn").onclick=e=>{e.preventDefault();e.stopPropagation();openCustomThemeDialog();};
 if($("tabletAddCustomReactionBtn")) $("tabletAddCustomReactionBtn").onclick=e=>{e.preventDefault();e.stopPropagation();openCustomReactionDialog();};
-// v0.9.39.39: hard entry routing for Customs controls on mobile/Fold.
+// v0.9.39.40: hard entry routing for Customs controls on mobile/Fold.
 document.addEventListener("click",e=>{const target=e.target?.closest?.("#tabletAddCustomThemeBtn,#tabletAddCustomReactionBtn");if(!target)return;e.preventDefault();e.stopImmediatePropagation();if(target.id==="tabletAddCustomThemeBtn")openCustomThemeDialog();else openCustomReactionDialog();},true);
 $("customReactionSaveBtn")?.addEventListener("click",saveCustomReactionFromDialog);
 $("customThemeSaveBtn")?.addEventListener("click",saveCustomThemeFromDialog);

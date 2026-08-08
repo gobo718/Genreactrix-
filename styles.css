@@ -5594,3 +5594,39 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     touch-action:manipulation!important;
   }
 }
+
+/* v0.9.39.40 — visual-only main Judgment corrections.
+   Scope: shrink/separate reaction emoji + rings so percentages stay clear,
+   and make inactive Keep exactly match the neighboring toolbar buttons.
+   Image View and Customs behavior are intentionally untouched. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Preserve the approved two-row brick-wall placement. */
+  .landscape-judgment-face .tablet-prims-row,
+  .landscape-judgment-face .tablet-prims-percent-row{
+    column-gap:2.2%!important;
+  }
+
+  /* Smaller reaction glyphs and proportionally smaller rings. */
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    width:clamp(22px,2.7vw,32px)!important;
+    height:clamp(22px,2.7vw,32px)!important;
+    font-size:clamp(14px,1.85vw,21px)!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    width:40px!important;
+    height:40px!important;
+    left:50%!important;
+    top:50%!important;
+    transform:translate(-50%,-50%)!important;
+    border-width:3px!important;
+  }
+
+  /* Main workbench Keep: inactive state is literally the same as its toolbar siblings. */
+  #tabletSaveBtn[aria-pressed="false"]{
+    background:var(--panel)!important;
+    border:1px solid var(--line)!important;
+    color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+}
