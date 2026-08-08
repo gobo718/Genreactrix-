@@ -1,4 +1,4 @@
-# v0.9.39.53 — Image View Ring Clearance Calibration
+# v0.9.39.54 — Image View Ring Clearance Calibration
 
 Visual-only continuation of v0.9.39.52.
 

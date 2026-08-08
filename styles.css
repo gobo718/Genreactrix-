@@ -6245,3 +6245,38 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     line-height:var(--iv-symbol-box)!important;
   }
 }
+
+/* v0.9.39.54 — Image View ring clearance + shared-center lock.
+   Preserve the v0.9.39.52 slot engine. Adjacent staggered rows use centers
+   approximately 50px apart diagonally, so a 50px ring makes neighboring
+   rings just meet without entering each other's interiors. The emoji and
+   ring now use the exact same centered 50px box; glyph size stays compact. */
+@media (orientation:landscape){
+  #landscapeImageView .landscape-image-view-prims{
+    --iv-ring-size:50px!important;
+    --iv-glyph-size:17px!important;
+    --iv-symbol-box:50px!important;
+    --iv-ring-stroke:2.7px!important;
+  }
+  #landscapeImageView .landscape-image-view-prim span{
+    left:50%!important;
+    top:50%!important;
+    width:var(--iv-symbol-box)!important;
+    height:var(--iv-symbol-box)!important;
+    transform:translate(-50%,-50%)!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    place-items:unset!important;
+    font-size:var(--iv-glyph-size)!important;
+    line-height:1!important;
+    text-align:center!important;
+  }
+  #landscapeImageView .landscape-image-view-prim.selected::before{
+    left:50%!important;
+    top:50%!important;
+    width:var(--iv-ring-size)!important;
+    height:var(--iv-ring-size)!important;
+    transform:translate(-50%,-50%)!important;
+  }
+}
