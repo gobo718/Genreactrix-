@@ -6064,3 +6064,72 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     transform:translate(-50%,-50%)!important;
   }
 }
+
+/* v0.9.39.50 — Image View canonical + custom reaction field.
+   One continuous four-row brick formation: canonical rows 1–2, customs rows
+   3–4 with identical row spacing. Ring and glyph share the same slot center.
+   The current ring:glyph proportion (34:24) is preserved while uniformly
+   scaling the pair down for additional reactions. */
+@media (orientation:landscape){
+  .landscape-image-view-prims{
+    --iv-glyph-size:20px;
+    --iv-scale:0.8333333333;
+    --iv-ring-size:calc(34px * var(--iv-scale));
+    --iv-ring-stroke:calc(3px * var(--iv-scale));
+    width:min(100%,300px);
+    justify-self:center;
+    align-self:stretch;
+    align-content:center;
+    justify-content:stretch;
+    grid-template-columns:repeat(15,minmax(0,1fr));
+    grid-template-rows:repeat(4,34px);
+    grid-auto-rows:34px;
+    gap:4px 0;
+    padding:0;
+    overflow:hidden;
+  }
+  .landscape-image-view-prim{
+    position:relative;
+    width:100%;
+    height:34px;
+    min-width:0;
+    min-height:0;
+    padding:0;
+    display:grid;
+    place-items:center;
+    border:0;
+    background:transparent;
+    font-size:var(--iv-glyph-size);
+    line-height:1;
+    pointer-events:none;
+  }
+  .landscape-image-view-prim span{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    display:grid;
+    place-items:center;
+    width:var(--iv-ring-size);
+    height:var(--iv-ring-size);
+    font-size:var(--iv-glyph-size);
+    line-height:1;
+    text-align:center;
+    z-index:1;
+  }
+  .landscape-image-view-prim.selected::before{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:var(--iv-ring-size);
+    height:var(--iv-ring-size);
+    transform:translate(-50%,-50%);
+    border:var(--iv-ring-stroke) solid #ff3b47;
+    border-radius:50%;
+    box-sizing:border-box;
+    z-index:2;
+    pointer-events:none;
+  }
+  .landscape-image-view-prim.custom.selected::before{border-color:#26c9c9}
+}

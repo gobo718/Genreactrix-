@@ -1871,6 +1871,24 @@ function applyLandscapeImageViewTransform(){
   image.style.transform=`translate(${landscapeImageViewState.x}px, ${landscapeImageViewState.y}px) scale(${landscapeImageViewState.scale})`;
 }
 function landscapeImageViewReactionSelected(value){return state.selectedReactions.includes(value)}
+
+/* v0.9.39.50 — Image View reaction geometry.
+   Canonical primitives occupy the first two interleaved brick rows; customs
+   continue immediately beneath them in rows three and four using the same
+   top/bottom sequence. Each item owns one slot center; CSS centers both the
+   glyph and selection ring on that slot. */
+function landscapeImageViewGridPosition(index,custom=false){
+  const pair=Math.floor(index/2);
+  const topRow=custom?3:1;
+  return index%2===0
+    ? {row:topRow,start:1+(pair*2)}
+    : {row:topRow+1,start:2+(pair*2)};
+}
+function applyLandscapeImageViewGridPosition(item,index,custom=false){
+  const pos=landscapeImageViewGridPosition(index,custom);
+  item.style.gridColumn=`${pos.start} / span 2`;
+  item.style.gridRow=String(pos.row);
+}
 function renderLandscapeImageView(){
   if(!landscapeImageViewState.open)return;
   const image=$("landscapeImageViewImage");if(image)image.src=currentSource();
@@ -1881,12 +1899,12 @@ function renderLandscapeImageView(){
   const primRoot=$("landscapeImageViewPrims");if(primRoot){
     primRoot.innerHTML="";
     const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀","🤬"];
-    order.forEach(symbol=>{
+    order.forEach((symbol,displayIndex)=>{
       const index=PRIMITIVES.findIndex(item=>item.symbol===symbol);const primitive=PRIMITIVES[index];if(!primitive)return;
-      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);item.innerHTML=`<span>${primitive.symbol}</span>`;primRoot.appendChild(item);
+      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);item.innerHTML=`<span>${primitive.symbol}</span>`;applyLandscapeImageViewGridPosition(item,displayIndex,false);primRoot.appendChild(item);
     });
-    (state.customReactions||[]).forEach(record=>{
-      const token=customReactionSelectionToken(record.id);const item=document.createElement("div");item.className="landscape-image-view-prim custom"+(landscapeImageViewReactionSelected(token)?" selected":"");item.title=record.label;item.setAttribute("aria-label",`${record.label}${landscapeImageViewReactionSelected(token)?", selected":""}`);item.innerHTML=`<span>${record.emoji}</span>`;primRoot.appendChild(item);
+    (state.customReactions||[]).forEach((record,customIndex)=>{
+      const token=customReactionSelectionToken(record.id);const item=document.createElement("div");item.className="landscape-image-view-prim custom"+(landscapeImageViewReactionSelected(token)?" selected":"");item.title=record.label;item.setAttribute("aria-label",`${record.label}${landscapeImageViewReactionSelected(token)?", selected":""}`);item.innerHTML=`<span>${record.emoji}</span>`;applyLandscapeImageViewGridPosition(item,customIndex,true);primRoot.appendChild(item);
     });
   }
   const themeRoot=$("landscapeImageViewThemes");if(themeRoot){

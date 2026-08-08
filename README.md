@@ -1,3 +1,12 @@
+# v0.9.39.50 — Image View Continuous Reaction Field
+
+- Image View now mirrors Judgment's canonical interleaved brick order.
+- Canonical primitives occupy rows 1–2; custom reactions continue immediately in rows 3–4 with no section gap.
+- Ring and emoji share one slot center.
+- Ring:glyph ratio is preserved while the pair is uniformly reduced for density.
+- The complete four-row field is centered within the available Image View reaction area.
+- No AI percentages are added to Image View.
+
 # v0.9.39.49 — Reaction Strip Vertical Clearance
 
 - Keeps the v0.9.39.48 reaction ordering and geometry intact.

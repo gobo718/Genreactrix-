@@ -1,0 +1,14 @@
+Genreactrix v0.9.39.50 — Image View Continuous Reaction Field
+
+Scope: Image View reaction field only.
+
+Acceptance:
+- Canonical order: row 1 = 🧸 😭 🌶️ 🧠 👻 🌌 🌀
+- Canonical order: row 2 = ✨ 🤣 🎉 💥 🤢 🎟️ 🤬, half-slot offset
+- Customs continue in rows 3–4 using the same interleaved sequence
+- No extra gap between canonical and custom rows
+- Ring and emoji share exact slot center
+- Ring:glyph size ratio preserved while scaled down
+- Complete field centered horizontally and vertically in available Image View prim area
+- No AI percentages on Image View
+- No unrelated UI changes
