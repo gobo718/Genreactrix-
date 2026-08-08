@@ -5709,3 +5709,111 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     text-align:center!important;
   }
 }
+
+
+/* v0.9.39.44 — single-slot reaction geometry.
+   Each primitive button owns its symbol, selection ring, and AI percentage.
+   One grid slot therefore defines the shared X center for all three. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-header{
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:0!important;
+  }
+  #tabletWorkbenchPrimPcts{
+    display:none!important;
+  }
+  .landscape-judgment-face .tablet-prims-row{
+    display:grid!important;
+    grid-template-columns:repeat(var(--reaction-half-columns,20),minmax(0,1fr))!important;
+    grid-template-rows:repeat(2,minmax(0,1fr))!important;
+    column-gap:0!important;
+    row-gap:0!important;
+    align-items:stretch!important;
+    align-content:center!important;
+    width:100%!important;
+    height:100%!important;
+    padding:2px 1.2%!important;
+    transform:none!important;
+    overflow:visible!important;
+  }
+  .landscape-judgment-face .tablet-prim-button,
+  .landscape-judgment-face .tablet-prim-button.selected,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"]{
+    position:relative!important;
+    display:grid!important;
+    grid-template-rows:minmax(40px,1fr) 12px!important;
+    place-items:center!important;
+    align-content:center!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    transform:none!important;
+    border:0!important;
+    background:transparent!important;
+    outline:none!important;
+    box-shadow:none!important;
+    overflow:visible!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    grid-row:1!important;
+    position:relative!important;
+    display:grid!important;
+    place-items:center!important;
+    justify-self:center!important;
+    align-self:center!important;
+    width:32px!important;
+    height:32px!important;
+    font-size:21px!important;
+    line-height:1!important;
+    border:0!important;
+    background:transparent!important;
+    overflow:visible!important;
+    transform:none!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    content:""!important;
+    position:absolute!important;
+    box-sizing:border-box!important;
+    width:40px!important;
+    height:40px!important;
+    left:50%!important;
+    top:50%!important;
+    inset:auto!important;
+    transform:translate(-50%,-50%)!important;
+    transform-origin:center center!important;
+    border:3px solid transparent!important;
+    border-radius:50%!important;
+    pointer-events:none!important;
+  }
+  .landscape-judgment-face .tablet-prim-button.selected .symbol::after,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"] .symbol::after{
+    border-color:#ff3030!important;
+  }
+  .landscape-judgment-face .tablet-prim-button[data-custom-reaction][aria-pressed="true"] .symbol::after,
+  .landscape-judgment-face .tablet-prim-button.custom-selected .symbol::after{
+    border-color:#20c9c3!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .pct{
+    grid-row:2!important;
+    display:block!important;
+    visibility:visible!important;
+    justify-self:stretch!important;
+    align-self:start!important;
+    width:100%!important;
+    height:12px!important;
+    margin:0!important;
+    padding:0!important;
+    transform:none!important;
+    color:var(--muted)!important;
+    font-size:clamp(6px,.7vw,10px)!important;
+    line-height:12px!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+    overflow:visible!important;
+  }
+}

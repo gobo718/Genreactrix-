@@ -1,3 +1,12 @@
+# v0.9.39.44 — Single-Slot Reaction Geometry
+
+- Main Judgment reaction strip only.
+- Ring, emoji, and AI percentage now live in one primitive slot.
+- Ring and emoji share the exact same center by construction.
+- Bottom row uses midpoint half-column positions from the existing geometry function.
+- Separate percentage grid is retired for this screen.
+- No Image View or Customs changes.
+
 # v0.9.39.43 — Shared-Center Reaction Completion
 
 - Completes the interrupted Judgment reaction geometry pass.
