@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.40";
+const GENREACTRIX_BUILD="v0.9.39.41";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -32,6 +32,7 @@ function readJsonArray(key){try{const value=JSON.parse(localStorage.getItem(key)
 function writeJsonArray(key,value){localStorage.setItem(key,JSON.stringify(Array.isArray(value)?value:[]));}
 function dedupeReactionRefs(refs){const seen=new Set();return (Array.isArray(refs)?refs:[]).filter(ref=>{if(!ref?.id)return false;const key=`${ref.type||"canonical"}:${ref.id}`;if(seen.has(key))return false;seen.add(key);return true;}).map(ref=>({type:ref.type==="custom"?"custom":"canonical",id:String(ref.id)}));}
 function normalizedReactionRefs(theme){if(!theme)return[];if(Array.isArray(theme.reactionRefs))return dedupeReactionRefs(theme.reactionRefs);if(Array.isArray(theme.primitiveIds))return dedupeReactionRefs(theme.primitiveIds.map(id=>({type:"canonical",id})));if(theme.primitiveId)return[{type:"canonical",id:theme.primitiveId}];return[];}
+function reactionRefKey(ref){if(!ref?.id)return"";return`${ref.type==="custom"?"custom":"canonical"}:${String(ref.id)}`;}
 function normalizeCustomReaction(value){if(!value)return null;const label=String(value.label||value.name||"").trim();const emoji=String(value.emoji||value.symbol||"").trim();if(!label||!emoji)return null;return{id:String(value.id||`custom-reaction:${slugifyCustom(label)}`),label,emoji,kind:"customReaction",createdAt:value.createdAt||new Date().toISOString(),updatedAt:value.updatedAt||new Date().toISOString()};}
 function normalizeCustomThemeRecord(value){if(!value)return null;if(typeof value==="string")value={label:value};const label=String(value.label||value.name||"").trim();if(!label)return null;return{id:String(value.id||`custom-theme:${slugifyCustom(label)}`),label,kind:"customTheme",reactionRefs:normalizedReactionRefs(value),createdAt:value.createdAt||new Date().toISOString(),updatedAt:value.updatedAt||new Date().toISOString()};}
 function loadCustomReactions(){return readJsonArray(CUSTOM_REACTION_LIBRARY_KEY).map(normalizeCustomReaction).filter(Boolean);}
@@ -222,6 +223,7 @@ const state = {
 };
 
 const $ = id => document.getElementById(id);
+const $$ = selector => document.querySelectorAll(selector);
 const currentKey = () => state.files.length ? (state.files[state.index].id || state.files[state.index].name) : `demo-${state.demoIndex}`;
 const currentDemo = () => DEMOS[state.demoIndex % DEMOS.length];
 

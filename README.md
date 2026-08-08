@@ -574,3 +574,10 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Restored main/Judgment ring geometry to a 50px circle with only a small optical circle offset; brick layout and emoji positions are untouched.
 - Image View and Judgment idle Keep buttons now use the same ordinary button background/border as neighboring controls.
 - Moved Add Custom Theme below the AI Analysis overlap zone.
+
+
+## v0.9.39.41 — Customs execution recovery
+
+- Restores the missing `reactionRefKey()` helper used by both Custom Theme and Custom Reaction dialog validation. Its absence caused both Add dialogs to fail before opening.
+- Restores the missing `$$()` selector helper referenced immediately after Customs event wiring. Its absence stopped the remainder of `app.js` initialization.
+- No UI redesign or unrelated layout changes.
