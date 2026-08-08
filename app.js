@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.41";
+const GENREACTRIX_BUILD="v0.9.39.42";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -774,6 +774,44 @@ function fitLandscapeAiDescription(){
   }
 }
 
+/* v0.9.39.42 — canonical Judgment reaction geometry.
+   One coordinate system owns reaction buttons and AI percentages.
+   Canonicals: 7 top + 7 bottom. Bottom centers are exact midpoints between
+   adjacent top centers. Customs continue the same two-row brick sequence. */
+function judgmentReactionGridPosition(index){
+  if(index < 7) return {row:1,start:1 + (index * 2)};
+  if(index < 14) return {row:2,start:2 + ((index - 7) * 2)};
+  const customIndex=index - 14;
+  const pair=Math.floor(customIndex / 2);
+  return customIndex % 2 === 0
+    ? {row:1,start:15 + (pair * 2)}
+    : {row:2,start:16 + (pair * 2)};
+}
+function applyJudgmentReactionGeometry(prims,pctRow){
+  if(!prims) return;
+  const buttons=[...prims.children];
+  const percentages=pctRow?[...pctRow.children]:[];
+  let requiredHalfColumns=15;
+  buttons.forEach((button,index)=>{
+    const pos=judgmentReactionGridPosition(index);
+    requiredHalfColumns=Math.max(requiredHalfColumns,pos.start+1);
+    button.style.setProperty('grid-column',`${pos.start} / span 2`,'important');
+    button.style.setProperty('grid-row',String(pos.row),'important');
+    button.style.setProperty('transform','none','important');
+    const pct=percentages[index];
+    if(pct){
+      pct.style.setProperty('grid-column',`${pos.start} / span 2`,'important');
+      pct.style.setProperty('grid-row',String(pos.row),'important');
+      pct.style.setProperty('transform','none','important');
+    }
+  });
+  /* Reserve the original right-side expansion capacity. Only add columns once
+     customs actually need them, so today's 14-primitive geometry stays stable. */
+  const halfColumns=Math.max(20,requiredHalfColumns);
+  prims.style.setProperty('--reaction-half-columns',String(halfColumns));
+  if(pctRow) pctRow.style.setProperty('--reaction-half-columns',String(halfColumns));
+}
+
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
@@ -811,6 +849,7 @@ function renderTabletWorkbench(){
     if(pctRow){const pct=document.createElement("span");pct.className="tablet-prim-percentage custom";pct.textContent="";pctRow.appendChild(pct);}
   });
   renderLandscapeCustoms();
+  applyJudgmentReactionGeometry(prims,pctRow);
   const customReactionCount=prims.querySelectorAll("[data-custom-reaction]").length;
   prims.classList.toggle("has-custom-reactions",customReactionCount>0);
   prims.classList.toggle("custom-reactions-many",customReactionCount>=3);

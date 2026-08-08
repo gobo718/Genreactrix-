@@ -581,3 +581,12 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Restores the missing `reactionRefKey()` helper used by both Custom Theme and Custom Reaction dialog validation. Its absence caused both Add dialogs to fail before opening.
 - Restores the missing `$$()` selector helper referenced immediately after Customs event wiring. Its absence stopped the remainder of `app.js` initialization.
 - No UI redesign or unrelated layout changes.
+
+
+## v0.9.39.42 — Canonical reaction geometry
+- Replaced accumulated Judgment reaction nth-child positioning with one formula-driven two-row coordinate system.
+- Canonical top row occupies seven alternating half-columns; the bottom row is mathematically centered between adjacent top-row slots.
+- Custom reactions continue the same two-row sequence to the right.
+- AI percentage cells share the exact same horizontal slot coordinates as their primitive.
+- Applied one shared ring optical correction (+4px X, +3px Y) and one whole-group vertical correction (+6px Y); no per-emoji offsets.
+- No Customs CRUD, Image View, PrimFusion, AI, or unrelated UI behavior changed.

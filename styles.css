@@ -5630,3 +5630,83 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     box-shadow:none!important;
   }
 }
+
+
+/* v0.9.39.42 — canonical, formula-driven Judgment reaction geometry.
+   This block intentionally supersedes the historical nth-child nudges above.
+   Geometry rules:
+   - top-row centers occupy alternating half-columns;
+   - bottom-row centers occupy the half-columns exactly between them;
+   - reaction and percentage grids share the same coordinates;
+   - the ring uses one shared optical correction because every glyph/ring pair
+     was offset the same way in the approved Fold reference;
+   - the complete two-row reaction group is lowered as one unit to center it
+     in the fixed reaction band. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face .tablet-prims-row,
+  .landscape-judgment-face .tablet-prims-percent-row{
+    grid-template-columns:repeat(var(--reaction-half-columns,20),minmax(0,1fr))!important;
+    grid-template-rows:repeat(2,minmax(0,1fr))!important;
+    column-gap:0!important;
+    row-gap:0!important;
+    padding-inline:1.2%!important;
+    overflow:visible!important;
+  }
+
+  /* Move only the reaction group, as a unit. Percentages remain in their
+     dedicated band and share the exact X slot of their primitive. */
+  .landscape-judgment-face .tablet-prims-row{
+    transform:translateY(6px)!important;
+  }
+
+  .landscape-judgment-face .tablet-prim-button,
+  .landscape-judgment-face .tablet-prim-button.selected,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"]{
+    transform:none!important;
+    background:transparent!important;
+    outline:none!important;
+    box-shadow:none!important;
+    border:0!important;
+  }
+
+  /* Keep the accepted compact symbol size. Ring and glyph are one slot;
+     the ring receives the single shared optical correction, not per-glyph hacks. */
+  .landscape-judgment-face .tablet-prim-button .symbol{
+    position:relative!important;
+    width:clamp(22px,2.7vw,32px)!important;
+    height:clamp(22px,2.7vw,32px)!important;
+    font-size:clamp(14px,1.85vw,21px)!important;
+    display:grid!important;
+    place-items:center!important;
+    overflow:visible!important;
+  }
+  .landscape-judgment-face .tablet-prim-button .symbol::after{
+    content:""!important;
+    position:absolute!important;
+    box-sizing:border-box!important;
+    width:40px!important;
+    height:40px!important;
+    left:50%!important;
+    top:50%!important;
+    inset:auto!important;
+    border:3px solid transparent!important;
+    border-radius:50%!important;
+    transform:translate(calc(-50% + 4px),calc(-50% + 3px))!important;
+    transform-origin:center center!important;
+    pointer-events:none!important;
+  }
+  .landscape-judgment-face .tablet-prim-button.selected .symbol::after,
+  .landscape-judgment-face .tablet-prim-button[aria-pressed="true"] .symbol::after{
+    border-color:#ff3030!important;
+  }
+  .landscape-judgment-face .tablet-prim-button[data-custom-reaction][aria-pressed="true"] .symbol::after,
+  .landscape-judgment-face .tablet-prim-button.custom-selected .symbol::after{
+    border-color:#20c9c3!important;
+  }
+
+  .landscape-judgment-face .tablet-prim-percentage{
+    transform:none!important;
+    justify-self:stretch!important;
+    text-align:center!important;
+  }
+}
