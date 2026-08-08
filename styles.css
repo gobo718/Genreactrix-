@@ -6688,3 +6688,27 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   #tabletCustomsDrawer .customs-search-group[hidden]{display:none!important}
 }
+
+/* v0.9.39.64 — Customs tab band matches the AI drawer's 28px controls.
+   Keep the existing 30px band footprint: 2px breathing room above + 28px buttons,
+   so the workspace below does not move. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletCustomsDrawer .customs-tab-strip{
+    height:28px!important;
+    align-self:end!important;
+  }
+  #tabletCustomsDrawer .customs-tab{
+    height:28px!important;
+    min-height:28px!important;
+  }
+  .landscape-sliding-drawer.customs-active .landscape-ai-controls{
+    top:2px!important;
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+  }
+  .landscape-sliding-drawer.customs-active .landscape-ai-controls #tabletCustomsBtn{
+    height:28px!important;
+    min-height:28px!important;
+  }
+}

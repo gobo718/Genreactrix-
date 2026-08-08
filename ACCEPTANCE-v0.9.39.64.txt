@@ -1,0 +1,7 @@
+Genreactrix v0.9.39.64 — Customs control-band polish
+
+- Custom Search, Custom Reactions, Custom Themes, and AI Analysis are 28px tall in folded landscape, matching the AI drawer buttons.
+- The existing 30px control-band footprint is preserved.
+- The 2px released by compressing the buttons becomes breathing room beneath the drawer border/divider.
+- The Customs workspace below begins at the same position as v0.9.39.63; no workspace geometry is changed.
+- No Customs behavior, data, search, sorting, editing, keyboard handling, or drawer switching logic is changed.
