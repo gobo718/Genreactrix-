@@ -804,7 +804,7 @@ function applyJudgmentReactionGeometry(prims,pctRow){
     const x=(centerUnit/halfColumns)*100;
     /* Two-row V1 only. These are symbol-center coordinates inside the fixed
        reaction band, leaving the percentage beneath the symbol. */
-    const y=pos.row===1?30:60;
+    const y=pos.row===1?28:58;
     button.style.setProperty('--reaction-slot-x',`${x}%`);
     button.style.setProperty('--reaction-slot-y',`${y}%`);
     button.style.removeProperty('grid-column');
@@ -822,7 +822,7 @@ function renderTabletWorkbench(){
   prims.innerHTML="";
   if(pctRow) pctRow.innerHTML="";
   const weights=currentAiWeights();
-  /* v0.9.39.48 — explicit canonical Judgment order by stable primitive ID.
+  /* v0.9.39.49 — explicit canonical Judgment order by stable primitive ID.
      Avoid symbol matching so variation-selector differences can never create
      empty slots or shift later canonical/custom reactions. */
   const judgmentReactionOrder=["P02","P01","P03","P04","P09","P13","P12","P05","P11","P10","P08","P07","P06","P14"];

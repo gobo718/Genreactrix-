@@ -1,3 +1,10 @@
+# v0.9.39.49 — Reaction Strip Vertical Clearance
+
+- Keeps the v0.9.39.48 reaction ordering and geometry intact.
+- Moves every AI percentage 3px upward relative to its primitive slot.
+- Moves the complete primitive/ring/percentage array upward by the same shared slot geometry (2 percentage points of the reaction band, roughly 3px at the target viewport).
+- No Customs logic, ordering, ring sizing, horizontal placement, or Image View changes.
+
 # v0.9.39.48 — Canonical Interleaved Judgment Order
 
 - Main Judgment reaction strip only.
@@ -610,7 +617,7 @@ Rebuilt from the user-supplied v0.9.39.8 release. The existing Matrix/Judgment t
 - Applied one shared ring optical correction (+4px X, +3px Y) and one whole-group vertical correction (+6px Y); no per-emoji offsets.
 - No Customs CRUD, Image View, PrimFusion, AI, or unrelated UI behavior changed.
 
-## v0.9.39.48 — canonical interleaved Judgment order
+## v0.9.39.49 — canonical interleaved Judgment order
 - Judgment reaction geometry now preserves primitive sequence across the brick layout: #1 top, #2 bottom, #3 top, #4 bottom, continuing through canonical and custom reactions.
 - Bottom-row centers remain exact midpoints between adjacent top-row centers.
 - Existing shared-center ring/emoji geometry and AI percentage anchoring are unchanged.

@@ -6033,7 +6033,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .landscape-judgment-face .tablet-prim-button .pct{
     position:absolute!important;
     left:50%!important;
-    top:23px!important;
+    top:20px!important;
     width:max-content!important;
     min-width:28px!important;
     height:12px!important;
@@ -6053,7 +6053,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.39.48 — retire historical nth-child Judgment placement.
+/* v0.9.39.49 — retire historical nth-child Judgment placement.
    The slot engine is the sole authority for canonical + custom positioning. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .landscape-judgment-face #tabletWorkbenchPrims > .tablet-prim-button,
