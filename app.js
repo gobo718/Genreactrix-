@@ -1908,7 +1908,11 @@ function landscapeImageViewCenter(index,custom=false){
 function finalizeLandscapeImageReactionField(field,points){
   const g=LANDSCAPE_IMAGE_REACTION_GEOMETRY;
   if(!points.length){
-    field.style.width='0px';field.style.height='0px';field.style.transform='none';return;
+    field.style.width='0px';field.style.height='0px';
+    field.style.setProperty('--iv-field-scale','1');
+    field.style.setProperty('--iv-center-x','0px');
+    field.style.setProperty('--iv-center-y','0px');
+    return;
   }
   const r=g.ring/2;
   const minX=Math.min(...points.map(p=>p.x))-r;
@@ -1921,23 +1925,38 @@ function finalizeLandscapeImageReactionField(field,points){
   field.style.height=`${fieldHeight}px`;
   field.style.setProperty('--iv-origin-x',`${-minX}px`);
   field.style.setProperty('--iv-origin-y',`${-minY}px`);
+  field.style.setProperty('--iv-center-x','0px');
+  field.style.setProperty('--iv-center-y','0px');
 
-  /* v0.9.39.57 — preserve the completed geometry and scale the finished
-     reaction field as one object only when its bounding box exceeds the
-     available Image View reaction region. Ring/glyph ratio, slot spacing,
-     stagger, and relative placement remain unchanged. */
+  /* v0.9.39.61 — fit and center from rendered geometry, not assumed layout.
+     The reaction field remains one rigid object. After the browser resolves the
+     actual Image View grid, measure both the available reaction region and the
+     transformed field, then translate only the field by the exact center delta.
+     No ring, glyph, slot, stagger, or custom-reaction geometry is changed. */
   const root=field.parentElement;
-  const inset=8;
-  const availableWidth=Math.max(0,(root?.clientWidth||fieldWidth)-inset);
-  const availableHeight=Math.max(0,(root?.clientHeight||fieldHeight)-inset);
-  const scale=Math.min(1,availableWidth/fieldWidth,availableHeight/fieldHeight);
-  field.style.setProperty('--iv-field-scale',String(Number.isFinite(scale)&&scale>0?scale:1));
-  /* v0.9.39.60 — centering is owned by the parent layout, not by JS offsets.
-     The field keeps its true unscaled bounding box; scaling happens around its
-     own center, so CSS can center the whole rigid formation without double
-     accounting for available space. */
-  field.style.marginLeft='0px';
-  field.style.marginTop='0px';
+  const settle=()=>{
+    if(!root||!field.isConnected)return;
+    const inset=8;
+    const rootRect=root.getBoundingClientRect();
+    if(rootRect.width<=0||rootRect.height<=0)return;
+    const availableWidth=Math.max(1,rootRect.width-inset);
+    const availableHeight=Math.max(1,rootRect.height-inset);
+    const scale=Math.min(1,availableWidth/fieldWidth,availableHeight/fieldHeight);
+    field.style.setProperty('--iv-field-scale',String(Number.isFinite(scale)&&scale>0?scale:1));
+    field.style.setProperty('--iv-center-x','0px');
+    field.style.setProperty('--iv-center-y','0px');
+
+    requestAnimationFrame(()=>{
+      if(!field.isConnected)return;
+      const rr=root.getBoundingClientRect();
+      const fr=field.getBoundingClientRect();
+      const dx=(rr.left+rr.width/2)-(fr.left+fr.width/2);
+      const dy=(rr.top+rr.height/2)-(fr.top+fr.height/2);
+      field.style.setProperty('--iv-center-x',`${dx}px`);
+      field.style.setProperty('--iv-center-y',`${dy}px`);
+    });
+  };
+  requestAnimationFrame(settle);
 }
 function placeLandscapeImageReaction(item,point){
   item.style.left=`calc(var(--iv-origin-x) + ${point.x}px)`;
