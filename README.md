@@ -1,4 +1,4 @@
-# v0.9.39.44 — Single-Slot Reaction Geometry
+# v0.9.39.45 — Single-Slot Reaction Geometry
 
 - Main Judgment reaction strip only.
 - Ring, emoji, and AI percentage now live in one primitive slot.

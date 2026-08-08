@@ -774,10 +774,9 @@ function fitLandscapeAiDescription(){
   }
 }
 
-/* v0.9.39.43 — canonical Judgment reaction geometry.
-   One coordinate system owns reaction buttons and AI percentages.
-   Canonicals: 7 top + 7 bottom. Bottom centers are exact midpoints between
-   adjacent top centers. Customs continue the same two-row brick sequence. */
+/* v0.9.39.45 — deterministic Judgment reaction geometry.
+   One slot center owns the ring, emoji, and percentage. The bottom row uses
+   the exact midpoint X between adjacent top-row centers. */
 function judgmentReactionGridPosition(index){
   if(index < 7) return {row:1,start:1 + (index * 2)};
   if(index < 14) return {row:2,start:2 + ((index - 7) * 2)};
@@ -790,25 +789,26 @@ function judgmentReactionGridPosition(index){
 function applyJudgmentReactionGeometry(prims,pctRow){
   if(!prims) return;
   const buttons=[...prims.children];
-  const percentages=pctRow?[...pctRow.children]:[];
   let requiredHalfColumns=15;
-  buttons.forEach((button,index)=>{
+  const positions=buttons.map((button,index)=>{
     const pos=judgmentReactionGridPosition(index);
     requiredHalfColumns=Math.max(requiredHalfColumns,pos.start+1);
-    button.style.setProperty('grid-column',`${pos.start} / span 2`,'important');
-    button.style.setProperty('grid-row',String(pos.row),'important');
-    button.style.setProperty('transform','none','important');
-    const pct=percentages[index];
-    if(pct){
-      pct.style.setProperty('grid-column',`${pos.start} / span 2`,'important');
-      pct.style.setProperty('grid-row',String(pos.row),'important');
-      pct.style.setProperty('transform','none','important');
-    }
+    return {button,pos};
   });
-  /* Reserve the original right-side expansion capacity. Only add columns once
-     customs actually need them, so today's 14-primitive geometry stays stable. */
   const halfColumns=Math.max(20,requiredHalfColumns);
   prims.style.setProperty('--reaction-half-columns',String(halfColumns));
+  /* Slot center is the center of the historical two-half-column span. */
+  positions.forEach(({button,pos})=>{
+    const centerUnit=pos.start+1;
+    const x=(centerUnit/halfColumns)*100;
+    /* Two-row V1 only. These are symbol-center coordinates inside the fixed
+       reaction band, leaving the percentage beneath the symbol. */
+    const y=pos.row===1?32:68;
+    button.style.setProperty('--reaction-slot-x',`${x}%`);
+    button.style.setProperty('--reaction-slot-y',`${y}%`);
+    button.style.removeProperty('grid-column');
+    button.style.removeProperty('grid-row');
+  });
   if(pctRow) pctRow.style.setProperty('--reaction-half-columns',String(halfColumns));
 }
 
