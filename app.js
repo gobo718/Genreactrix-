@@ -651,12 +651,7 @@ function renderComparison(){
 }
 
 
-const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false,activeThemeSlot:null,customsTab:"search"};
-const landscapeCustomSort={
-  reactions:{mode:"alpha",direction:"asc"},
-  themes:{mode:"alpha",direction:"asc"}
-};
-const landscapeCustomScroll={reactions:0,themes:0,search:0};
+const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false,activeThemeSlot:null};
 const AI_RERUN_LOCK_KEY="genreactrix-ai-rerun-lock-v1";
 let tabletAiRerunLocked=localStorage.getItem(AI_RERUN_LOCK_KEY)!=="0";
 function syncTabletAiRerunControls(){
@@ -1825,17 +1820,7 @@ document.getElementById("tabletWorkspaceFlipBtn")?.addEventListener("click",()=>
 document.getElementById("tabletAiReactionsBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiReactions=!tabletLandscapeView.aiReactions;renderTabletWorkbench();});
 document.getElementById("tabletAiThemesBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiThemes=!tabletLandscapeView.aiThemes;renderTabletWorkbench();});
 document.getElementById("tabletAiDescriptionBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiDescription=!tabletLandscapeView.aiDescription;renderTabletWorkbench();});
-document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{
-  const opening=!tabletLandscapeView.customs;
-  tabletLandscapeView.customs=opening;
-  if(opening){
-    tabletLandscapeView.customsTab="search";
-    if($("tabletCustomSearch"))$("tabletCustomSearch").value="";
-    landscapeCustomScroll.search=0;
-  }
-  renderTabletWorkbench();
-  if(opening)renderLandscapeCustoms();
-});
+document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=!tabletLandscapeView.customs;renderTabletWorkbench();});
 
 function createComponentAiRerun(component){
   if(tabletAiRerunLocked)return;
@@ -1923,11 +1908,7 @@ function landscapeImageViewCenter(index,custom=false){
 function finalizeLandscapeImageReactionField(field,points){
   const g=LANDSCAPE_IMAGE_REACTION_GEOMETRY;
   if(!points.length){
-    field.style.width='0px';field.style.height='0px';
-    field.style.setProperty('--iv-field-scale','1');
-    field.style.setProperty('--iv-center-x','0px');
-    field.style.setProperty('--iv-center-y','0px');
-    return;
+    field.style.width='0px';field.style.height='0px';field.style.transform='none';return;
   }
   const r=g.ring/2;
   const minX=Math.min(...points.map(p=>p.x))-r;
@@ -1940,38 +1921,17 @@ function finalizeLandscapeImageReactionField(field,points){
   field.style.height=`${fieldHeight}px`;
   field.style.setProperty('--iv-origin-x',`${-minX}px`);
   field.style.setProperty('--iv-origin-y',`${-minY}px`);
-  field.style.setProperty('--iv-center-x','0px');
-  field.style.setProperty('--iv-center-y','0px');
 
-  /* v0.9.39.62 — fit and center from rendered geometry, not assumed layout.
-     The reaction field remains one rigid object. After the browser resolves the
-     actual Image View grid, measure both the available reaction region and the
-     transformed field, then translate only the field by the exact center delta.
-     No ring, glyph, slot, stagger, or custom-reaction geometry is changed. */
+  /* v0.9.39.57 — preserve the completed geometry and scale the finished
+     reaction field as one object only when its bounding box exceeds the
+     available Image View reaction region. Ring/glyph ratio, slot spacing,
+     stagger, and relative placement remain unchanged. */
   const root=field.parentElement;
-  const settle=()=>{
-    if(!root||!field.isConnected)return;
-    const inset=8;
-    const rootRect=root.getBoundingClientRect();
-    if(rootRect.width<=0||rootRect.height<=0)return;
-    const availableWidth=Math.max(1,rootRect.width-inset);
-    const availableHeight=Math.max(1,rootRect.height-inset);
-    const scale=Math.min(1,availableWidth/fieldWidth,availableHeight/fieldHeight);
-    field.style.setProperty('--iv-field-scale',String(Number.isFinite(scale)&&scale>0?scale:1));
-    field.style.setProperty('--iv-center-x','0px');
-    field.style.setProperty('--iv-center-y','0px');
-
-    requestAnimationFrame(()=>{
-      if(!field.isConnected)return;
-      const rr=root.getBoundingClientRect();
-      const fr=field.getBoundingClientRect();
-      const dx=(rr.left+rr.width/2)-(fr.left+fr.width/2);
-      const dy=(rr.top+rr.height/2)-(fr.top+fr.height/2);
-      field.style.setProperty('--iv-center-x',`${dx}px`);
-      field.style.setProperty('--iv-center-y',`${dy}px`);
-    });
-  };
-  requestAnimationFrame(settle);
+  const inset=8;
+  const availableWidth=Math.max(0,(root?.clientWidth||fieldWidth)-inset);
+  const availableHeight=Math.max(0,(root?.clientHeight||fieldHeight)-inset);
+  const scale=Math.min(1,availableWidth/fieldWidth,availableHeight/fieldHeight);
+  field.style.setProperty('--iv-field-scale',String(Number.isFinite(scale)&&scale>0?scale:1));
 }
 function placeLandscapeImageReaction(item,point){
   item.style.left=`calc(var(--iv-origin-x) + ${point.x}px)`;
@@ -2847,89 +2807,7 @@ async function deleteCustomTheme(){const id=customThemeDraft.editingId,record=(s
 async function deleteCustomReaction(){const id=customReactionDraft.editingId,record=(state.customReactions||[]).find(x=>x.id===id);if(!record||!confirm(`Delete custom reaction “${record.label}”? Themes using it will retain a missing-reference marker until edited.`))return;saveCustomReactions((state.customReactions||[]).filter(x=>x.id!==id));state.selectedReactions=state.selectedReactions.filter(x=>x!==customReactionSelectionToken(id));saveCurrent("director-custom-reaction-delete");try{if(taxonomyHasBeenUsed())await registerVocabularyMutation("major","custom reaction deleted");}catch(error){console.warn("Custom reaction delete log failed",error);}$("customReactionDialog")?.close();tabletLandscapeView.face="judgment";tabletLandscapeView.customs=true;renderAll();renderLandscapeCustoms();renderCustomThemePicker();}
 function reorderCustomLibrary(kind,fromId,toId){const isTheme=kind==="theme",items=[...(isTheme?state.customThemes:state.customReactions)],from=items.findIndex(x=>x.id===fromId),to=items.findIndex(x=>x.id===toId);if(from<0||to<0||from===to)return;const[item]=items.splice(from,1);items.splice(to,0,item);isTheme?saveCustomThemes(items):saveCustomReactions(items);renderLandscapeCustoms();}
 function wireLibraryReorder(node,kind,id){let timer=0,active=false,pointerId=null,moved=false,suppressClick=false;const list=node.parentElement;const saveDomOrder=()=>{if(!list)return;const ids=[...list.querySelectorAll(`.landscape-custom-item[data-kind="${kind}"]`)].map(item=>item.dataset.id);const source=kind==="theme"?(state.customThemes||[]):(state.customReactions||[]);const byId=new Map(source.map(item=>[item.id,item]));const ordered=ids.map(key=>byId.get(key)).filter(Boolean);source.forEach(item=>{if(!ids.includes(item.id))ordered.push(item);});kind==="theme"?saveCustomThemes(ordered):saveCustomReactions(ordered);};const finish=e=>{clearTimeout(timer);timer=0;if(active){active=false;node.classList.remove("reordering");document.body.classList.remove("custom-reorder-active");if(moved)saveDomOrder();suppressClick=true;setTimeout(()=>{suppressClick=false;},0);}if(pointerId!==null&&node.hasPointerCapture?.(pointerId))node.releasePointerCapture(pointerId);pointerId=null;moved=false;};node.addEventListener("click",e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();}},true);node.addEventListener("pointerdown",e=>{if(e.button!==undefined&&e.button!==0)return;pointerId=e.pointerId;moved=false;timer=setTimeout(()=>{active=true;node.classList.add("reordering");document.body.classList.add("custom-reorder-active");node.setPointerCapture?.(e.pointerId);navigator.vibrate?.(25);},CUSTOM_REORDER_HOLD_MS);});node.addEventListener("pointermove",e=>{if(!active)return;e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(`.landscape-custom-item[data-kind="${kind}"]`);if(!target||target===node||target.parentElement!==list)return;const rect=target.getBoundingClientRect();const after=e.clientY>rect.top+rect.height/2;list.insertBefore(node,after?target.nextSibling:target);moved=true;});node.addEventListener("pointerup",finish);node.addEventListener("pointercancel",finish);node.addEventListener("lostpointercapture",finish);}
-function customUsageCounts(){
-  const reactionCounts=new Map(),themeCounts=new Map();
-  const countRecord=record=>{
-    (record?.selectedReactions||record?.reactions||[]).forEach(value=>{
-      if(typeof value!=="string"||!value.startsWith("custom:"))return;
-      const id=value.slice(7);reactionCounts.set(id,(reactionCounts.get(id)||0)+1);
-    });
-    (record?.themes||[]).forEach(value=>{
-      const theme=normalizeTheme(value);if(!theme?.id||!(theme.kind==="customTheme"||String(theme.id).startsWith("custom-theme:")))return;
-      themeCounts.set(theme.id,(themeCounts.get(theme.id)||0)+1);
-    });
-  };
-  Object.values(state.records||{}).forEach(countRecord);
-  return {reactionCounts,themeCounts};
-}
-function sortLandscapeCustoms(items,kind){
-  const cfg=landscapeCustomSort[kind],usage=customUsageCounts(),counts=kind==="reactions"?usage.reactionCounts:usage.themeCounts;
-  const direction=cfg.direction==="desc"?-1:1;
-  return [...items].sort((a,b)=>{
-    let result=0;
-    if(cfg.mode==="date") result=String(a.createdAt||"").localeCompare(String(b.createdAt||""));
-    else if(cfg.mode==="top") result=(counts.get(a.id)||0)-(counts.get(b.id)||0);
-    else result=String(a.label||"").localeCompare(String(b.label||""),undefined,{sensitivity:"base"});
-    if(result===0) result=String(a.label||"").localeCompare(String(b.label||""),undefined,{sensitivity:"base"});
-    return result*direction;
-  });
-}
-function createLandscapeCustomChip(item,kind){
-  const isReaction=kind==="reaction";
-  const chip=document.createElement("div");
-  chip.className="customs-chip";
-  chip.dataset.kind=kind;chip.dataset.id=item.id;
-  const main=document.createElement("button");
-  main.type="button";main.className="customs-chip-main";
-  if(isReaction){
-    const token=customReactionSelectionToken(item.id);
-    main.classList.toggle("selected",state.selectedReactions.includes(token));
-    main.innerHTML=`<span class="customs-chip-emoji">${item.emoji}</span><span>${item.label}</span>`;
-    main.setAttribute("aria-pressed",String(state.selectedReactions.includes(token)));
-    main.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});
-  }else{
-    main.textContent=item.label;
-    main.addEventListener("click",()=>{if(tabletLandscapeView.activeThemeSlot===null)return;state.targetSlot=tabletLandscapeView.activeThemeSlot;selectTheme(item);});
-  }
-  const edit=document.createElement("button");
-  edit.type="button";edit.className="customs-chip-edit";edit.textContent="✎";edit.title="Edit";edit.setAttribute("aria-label",`Edit ${item.label}`);
-  edit.addEventListener("click",e=>{e.stopPropagation();isReaction?openCustomReactionDialog(item):openCustomThemeDialog(item);});
-  chip.append(main,edit);
-  return chip;
-}
-function setLandscapeCustomsTab(tab,{focusSearch=false}={}){
-  const valid=["search","reactions","themes"];if(!valid.includes(tab))tab="search";
-  tabletLandscapeView.customsTab=tab;
-  const map={search:["tabletCustomSearchTab","tabletCustomSearchPanel"],reactions:["tabletCustomReactionsTab","tabletCustomReactionsPanel"],themes:["tabletCustomThemesTab","tabletCustomThemesPanel"]};
-  Object.entries(map).forEach(([key,[tabId,panelId]])=>{
-    const active=key===tab,b=$(tabId),panel=$(panelId);if(b){b.classList.toggle("active",active);b.setAttribute("aria-selected",String(active));}if(panel)panel.hidden=!active;
-  });
-  if(focusSearch&&tab==="search")requestAnimationFrame(()=>$('tabletCustomSearch')?.focus());
-}
-function renderLandscapeCustoms(){
-  const reactionScroller=$("tabletCustomReactionList"),themeScroller=$("tabletCustomThemeList"),searchScroller=document.querySelector("#tabletCustomSearchPanel .customs-search-results");
-  if(reactionScroller)landscapeCustomScroll.reactions=reactionScroller.scrollTop;
-  if(themeScroller)landscapeCustomScroll.themes=themeScroller.scrollTop;
-  if(searchScroller)landscapeCustomScroll.search=searchScroller.scrollTop;
-  const q=$('tabletCustomSearch')?.value.trim().toLowerCase()||"";
-  const themes=state.customThemes||[],reactions=state.customReactions||[];
-  const themeList=$('tabletCustomThemeList'),reactionList=$('tabletCustomReactionList');
-  if(themeList){themeList.innerHTML="";sortLandscapeCustoms(themes,"themes").forEach(item=>themeList.appendChild(createLandscapeCustomChip(item,"theme")));}
-  if(reactionList){reactionList.innerHTML="";sortLandscapeCustoms(reactions,"reactions").forEach(item=>reactionList.appendChild(createLandscapeCustomChip(item,"reaction")));}
-  const searchThemes=$('tabletCustomSearchThemeList'),searchReactions=$('tabletCustomSearchReactionList');
-  const themeMatches=themes.filter(item=>!q||item.label.toLowerCase().includes(q));
-  const reactionMatches=reactions.filter(item=>!q||item.label.toLowerCase().includes(q)||item.emoji.includes(q));
-  if(searchThemes){searchThemes.innerHTML="";[...themeMatches].sort((a,b)=>a.label.localeCompare(b.label,undefined,{sensitivity:"base"})).forEach(item=>searchThemes.appendChild(createLandscapeCustomChip(item,"theme")));}
-  if(searchReactions){searchReactions.innerHTML="";[...reactionMatches].sort((a,b)=>a.label.localeCompare(b.label,undefined,{sensitivity:"base"})).forEach(item=>searchReactions.appendChild(createLandscapeCustomChip(item,"reaction")));}
-  if($('tabletCustomSearchThemeGroup'))$('tabletCustomSearchThemeGroup').hidden=themeMatches.length===0;
-  if($('tabletCustomSearchReactionGroup'))$('tabletCustomSearchReactionGroup').hidden=reactionMatches.length===0;
-  setLandscapeCustomsTab(tabletLandscapeView.customsTab||"search");
-  requestAnimationFrame(()=>{
-    if($("tabletCustomReactionList"))$("tabletCustomReactionList").scrollTop=landscapeCustomScroll.reactions;
-    if($("tabletCustomThemeList"))$("tabletCustomThemeList").scrollTop=landscapeCustomScroll.themes;
-    const scroller=document.querySelector("#tabletCustomSearchPanel .customs-search-results");if(scroller)scroller.scrollTop=landscapeCustomScroll.search;
-  });
-}
+function renderLandscapeCustoms(){const themeList=$("tabletCustomThemeList"),reactionList=$("tabletCustomReactionList"),q=$("tabletCustomSearch")?.value.trim().toLowerCase()||"";if(themeList){themeList.innerHTML="";(state.customThemes||[]).filter(item=>!q||item.label.toLowerCase().includes(q)).forEach(theme=>{const row=document.createElement("div");row.className="landscape-custom-item";row.dataset.kind="theme";row.dataset.id=theme.id;const main=document.createElement("button");main.type="button";main.className="custom-item-main";main.textContent=theme.label;main.addEventListener("click",()=>{if(tabletLandscapeView.activeThemeSlot===null)return;state.targetSlot=tabletLandscapeView.activeThemeSlot;selectTheme(theme);});const edit=document.createElement("button");edit.type="button";edit.className="custom-item-edit";edit.title="Edit";edit.setAttribute("aria-label",`Edit ${theme.label}`);edit.textContent="✎";edit.addEventListener("click",()=>openCustomThemeDialog(theme));const del=document.createElement("button");del.type="button";del.className="custom-item-delete";del.title="Delete";del.setAttribute("aria-label",`Delete ${theme.label}`);del.textContent="×";del.addEventListener("click",()=>{if(!confirm(`Delete custom theme “${theme.label}”?`))return;saveCustomThemes((state.customThemes||[]).filter(x=>x.id!==theme.id));renderAll();});row.append(main,edit,del);wireLibraryReorder(row,"theme",theme.id);themeList.appendChild(row);});}if(reactionList){reactionList.innerHTML="";(state.customReactions||[]).filter(item=>!q||item.label.toLowerCase().includes(q)||item.emoji.includes(q)).forEach(record=>{const token=customReactionSelectionToken(record.id),row=document.createElement("div");row.className="landscape-custom-item";row.dataset.kind="reaction";row.dataset.id=record.id;const main=document.createElement("button");main.type="button";main.className="custom-item-main"+(state.selectedReactions.includes(token)?" selected":"");main.innerHTML=`<span>${record.emoji}</span> ${record.label}`;main.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(token);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(token);saveCurrent("director-custom-reaction-auto");renderAll();});const edit=document.createElement("button");edit.type="button";edit.className="custom-item-edit";edit.title="Edit";edit.setAttribute("aria-label",`Edit ${record.label}`);edit.textContent="✎";edit.addEventListener("click",()=>openCustomReactionDialog(record));const del=document.createElement("button");del.type="button";del.className="custom-item-delete";del.title="Delete";del.setAttribute("aria-label",`Delete ${record.label}`);del.textContent="×";del.addEventListener("click",()=>{if(!confirm(`Delete custom reaction “${record.label}”?`))return;saveCustomReactions((state.customReactions||[]).filter(x=>x.id!==record.id));state.selectedReactions=state.selectedReactions.filter(x=>x!==token);saveCurrent("director-custom-reaction-delete");renderAll();renderCustomThemePicker();});row.append(main,edit,del);wireLibraryReorder(row,"reaction",record.id);reactionList.appendChild(row);});}}
 $("addCustomReactionBtn")?.addEventListener("click",()=>openCustomReactionDialog());
 $("addCustomThemeBtn")?.addEventListener("click",()=>openCustomThemeDialog());
 if($("tabletAddCustomThemeBtn")) $("tabletAddCustomThemeBtn").onclick=e=>{e.preventDefault();e.stopPropagation();openCustomThemeDialog();};
@@ -2944,25 +2822,15 @@ $("customThemeLabel")?.addEventListener("input",()=>updateCustomDialogValidation
 $("customReactionLabel")?.addEventListener("input",()=>updateCustomDialogValidation());
 $("customReactionEmoji")?.addEventListener("input",()=>updateCustomDialogValidation());
 $("tabletCustomSearch")?.addEventListener("input",renderLandscapeCustoms);
-$("tabletCustomSearch")?.addEventListener("focus",()=>{document.documentElement.classList.add("landscape-keyboard-open");document.documentElement.classList.add("customs-search-focused");});
-$("tabletCustomSearch")?.addEventListener("blur",()=>{document.documentElement.classList.remove("landscape-keyboard-open");document.documentElement.classList.remove("customs-search-focused");});
-$("tabletCustomSearchTab")?.addEventListener("click",()=>setLandscapeCustomsTab("search",{focusSearch:false}));
-$("tabletCustomReactionsTab")?.addEventListener("click",()=>setLandscapeCustomsTab("reactions"));
-$("tabletCustomThemesTab")?.addEventListener("click",()=>setLandscapeCustomsTab("themes"));
-[["tabletCustomReactionSort","reactions"],["tabletCustomThemeSort","themes"]].forEach(([id,kind])=>$(id)?.addEventListener("change",e=>{
-  const cfg=landscapeCustomSort[kind];cfg.mode=e.target.value;cfg.direction=cfg.mode==="alpha"?"asc":"desc";
-  const dir=$(kind==="reactions"?"tabletCustomReactionSortDirection":"tabletCustomThemeSortDirection");
-  if(dir){dir.textContent=cfg.direction==="asc"?"↑":"↓";dir.setAttribute("aria-label",cfg.direction==="asc"?"Sort ascending":"Sort descending");dir.setAttribute("aria-pressed",String(cfg.direction==="desc"));}
-  renderLandscapeCustoms();
-}));
-[["tabletCustomReactionSortDirection","reactions"],["tabletCustomThemeSortDirection","themes"]].forEach(([id,kind])=>$(id)?.addEventListener("click",e=>{const cfg=landscapeCustomSort[kind];cfg.direction=cfg.direction==="asc"?"desc":"asc";e.currentTarget.textContent=cfg.direction==="asc"?"↑":"↓";e.currentTarget.setAttribute("aria-label",cfg.direction==="asc"?"Sort ascending":"Sort descending");e.currentTarget.setAttribute("aria-pressed",String(cfg.direction==="desc"));renderLandscapeCustoms();}));
+$("tabletCustomSearch")?.addEventListener("focus",()=>{document.documentElement.classList.add("landscape-keyboard-open");setTimeout(()=>$("tabletCustomSearch")?.scrollIntoView({block:"center",behavior:"smooth"}),120)});
+$("tabletCustomSearch")?.addEventListener("blur",()=>document.documentElement.classList.remove("landscape-keyboard-open"));
 $$("[data-close-custom-dialog]").forEach(button=>button.addEventListener("click",()=>$(button.dataset.closeCustomDialog)?.close()));
 
 window.addEventListener("resize",()=>requestAnimationFrame(fitLandscapeAiDescription));
 
 // v0.9.39.24 — keep the focused Customs search visible above Android keyboards.
 if(window.visualViewport){
-  const syncViewport=()=>{document.documentElement.style.setProperty("--visual-viewport-height",`${window.visualViewport.height}px`);document.documentElement.style.setProperty("--visual-viewport-offset-top",`${window.visualViewport.offsetTop||0}px`);document.documentElement.style.setProperty("--visual-viewport-offset-left",`${window.visualViewport.offsetLeft||0}px`);};
+  const syncViewport=()=>{document.documentElement.style.setProperty("--visual-viewport-height",`${window.visualViewport.height}px`);};
   window.visualViewport.addEventListener("resize",syncViewport);
   window.visualViewport.addEventListener("scroll",syncViewport);
   syncViewport();

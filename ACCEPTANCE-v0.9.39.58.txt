@@ -1,10 +1,8 @@
-Genreactrix v0.9.39.58 — Image View Horizontal Field Centering
+Genreactrix v0.9.39.58 — Image View final centering + compact controls
 
-Scope: Image View reaction field horizontal position only.
-
-Acceptance criteria:
-- Preserve v0.9.39.57 ring/emoji shared-center geometry.
-- Preserve ring size, emoji size, field scale, slot spacing, four-row brick pattern, and vertical position.
-- Preserve canonical rows 1/2 and custom rows 3/4 continuation.
-- Anchor the finished reaction field midpoint to the exact horizontal midpoint of the available Image View reaction region.
-- No unrelated UI changes.
+Acceptance scope:
+1. Image View reaction field retains v0.9.39.57 geometry and bounded scale.
+2. Finished reaction field is horizontally centered by its actual bounding box in the reaction region.
+3. Vertical centering remains unchanged.
+4. Four Image View control buttons are 25px high, aligned to the bottom of the existing 29px control row.
+5. No unrelated UI or data behavior changes.
