@@ -6133,3 +6133,91 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
   .landscape-image-view-prim.custom.selected::before{border-color:#26c9c9}
 }
+
+/* v0.9.39.52 — Image View fit authority.
+   The v0.9.39.50/51 slot engine is retained unchanged. This block uses the
+   same #landscapeImageView specificity + !important level as historical
+   folded-landscape rules so the compact shared-center geometry actually wins.
+   Ring:glyph ratio remains locked at 34:24. */
+@media (orientation:landscape){
+  #landscapeImageView .landscape-image-view-prims{
+    --iv-glyph-size:20px!important;
+    --iv-ring-size:28.3333333333px!important;
+    --iv-ring-stroke:2.5px!important;
+    grid-column:2!important;
+    grid-row:3!important;
+    display:grid!important;
+    width:min(100%,540px)!important;
+    max-width:540px!important;
+    min-width:0!important;
+    justify-self:center!important;
+    align-self:center!important;
+    grid-template-columns:repeat(15,minmax(0,1fr))!important;
+    grid-template-rows:repeat(4,31px)!important;
+    grid-auto-rows:31px!important;
+    column-gap:0!important;
+    row-gap:0!important;
+    align-items:center!important;
+    align-content:center!important;
+    justify-content:stretch!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:visible!important;
+  }
+  #landscapeImageView .landscape-image-view-prim{
+    position:relative!important;
+    width:100%!important;
+    height:31px!important;
+    min-width:0!important;
+    min-height:31px!important;
+    padding:0!important;
+    margin:0!important;
+    display:grid!important;
+    place-items:center!important;
+    border:0!important;
+    background:transparent!important;
+    font-size:var(--iv-glyph-size)!important;
+    line-height:1!important;
+    pointer-events:none!important;
+    transform:none!important;
+  }
+  #landscapeImageView .landscape-image-view-prim span{
+    position:absolute!important;
+    left:50%!important;
+    top:50%!important;
+    transform:translate(-50%,-50%)!important;
+    display:grid!important;
+    place-items:center!important;
+    width:var(--iv-ring-size)!important;
+    height:var(--iv-ring-size)!important;
+    min-width:0!important;
+    min-height:0!important;
+    font-size:var(--iv-glyph-size)!important;
+    line-height:1!important;
+    text-align:center!important;
+    margin:0!important;
+    padding:0!important;
+    z-index:1!important;
+  }
+  #landscapeImageView .landscape-image-view-prim.selected::before{
+    content:""!important;
+    position:absolute!important;
+    left:50%!important;
+    top:50%!important;
+    width:var(--iv-ring-size)!important;
+    height:var(--iv-ring-size)!important;
+    min-width:0!important;
+    min-height:0!important;
+    transform:translate(-50%,-50%)!important;
+    border:var(--iv-ring-stroke) solid #ff3b47!important;
+    border-radius:50%!important;
+    box-sizing:border-box!important;
+    margin:0!important;
+    padding:0!important;
+    z-index:2!important;
+    pointer-events:none!important;
+  }
+  #landscapeImageView .landscape-image-view-prim.custom.selected::before{
+    border-color:#26c9c9!important;
+  }
+}

@@ -1,0 +1,13 @@
+Genreactrix v0.9.39.52 — Image View Compact Fit Authority
+
+Scope: Image View reaction field fit only.
+
+Verified source changes:
+- Keeps the v0.9.39.51 canonical/custom slot engine unchanged.
+- Overrides historical #landscapeImageView size/grid rules at matching specificity.
+- Uses 15 slot columns and four uniform 31px rows.
+- Keeps rows 2→3 at the same spacing as every other adjacent row (no customs section gap).
+- Locks ring:glyph ratio to 34:24 (28.333px ring / 20px glyph).
+- Centers ring and glyph on the same slot center.
+- Centers the complete reaction field in the available Image View reaction area.
+- No Judgment, Customs CRUD, theme, image, navigation, or AI behavior changes.
