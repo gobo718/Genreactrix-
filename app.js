@@ -56,10 +56,10 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Beautiful|Intense": "Majestic",
   "Beautiful|Weird": "Surreal",
   "Beautiful|Ticket": "Irreverent",
-  "Beautiful|Dreamy": "Sublime",
+  "Beautiful|Dreamy": "Romance",
   "Beautiful|Zazzly": "Horny",
   "Beautiful|Disgusting": "Grotesque",
-  "Beautiful|Scary": "Gothic",
+  "Beautiful|Scary": "Vulnerable",
   "Beautiful|Smart": "Elegant",
   "Beautiful|Celebration": "Radiant",
   "Angry|Beautiful": "Pretentious",
@@ -73,8 +73,8 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Adorable|Zazzly": "Kawaii",
   "Adorable|Disgusting": "Grimy",
   "Adorable|Scary": "CreepyCute",
-  "Adorable|Smart": "Precocious",
-  "Adorable|Celebration": "Heartwarming",
+  "Adorable|Smart": "Innocence",
+  "Adorable|Celebration": "Playful",
   "Adorable|Angry": "Saccharine",
   "Tragic|Tragic": "Tragic",
   "Funny|Tragic": "Ironic",
@@ -83,8 +83,8 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Ticket|Tragic": "Dark",
   "Dreamy|Tragic": "Liminal",
   "Tragic|Zazzly": "Rejected",
-  "Disgusting|Tragic": "Horrific",
-  "Scary|Tragic": "Harrowing",
+  "Disgusting|Tragic": "Despair",
+  "Scary|Tragic": "Foreboding",
   "Smart|Tragic": "Poignant",
   "Celebration|Tragic": "Bittersweet",
   "Angry|Tragic": "Dysphoria",
@@ -115,7 +115,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Weird|Zazzly": "FreakyDeaky",
   "Disgusting|Weird": "Mutant",
   "Scary|Weird": "Macabre",
-  "Smart|Weird": "Madcap",
+  "Smart|Weird": "Alien",
   "Celebration|Weird": "Delirious",
   "Angry|Weird": "Monstrous",
   "Ticket|Ticket": "Ticket",
@@ -130,7 +130,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Dreamy|Zazzly": "Limerence",
   "Disgusting|Dreamy": "Putrid",
   "Dreamy|Scary": "Eerie",
-  "Dreamy|Smart": "Visionary",
+  "Dreamy|Smart": "Ethereal",
   "Celebration|Dreamy": "Wonder",
   "Angry|Dreamy": "Phantasmagoric",
   "Zazzly|Zazzly": "Zazzly",
@@ -140,7 +140,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Celebration|Zazzly": "Hedonism",
   "Angry|Zazzly": "Sadomasochism",
   "Disgusting|Disgusting": "Disgusting",
-  "Disgusting|Scary": "Visceral",
+  "Disgusting|Scary": "Horror",
   "Disgusting|Smart": "Greed",
   "Celebration|Disgusting": "Indulgent",
   "Angry|Disgusting": "Repulsive",
@@ -675,7 +675,7 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const bottomSymbols=["🌀", "🎟️", "🌌", "🤢", "👻", "💥", "🧠"];
   const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🎟️", "🌀", "🧸", "🌀", "🎟️", "🌌", "🤢", "👻", "💥", "🤬"];
   const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🎟️", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠", "🤬"];
-  const matrixRows=[[{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Trolling","tone":"lavender"},{"value":"Dysphoria","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Revenge","tone":"lavender"},{"value":"Obsessive","tone":"lavender"}],[{"value":"Spirited","tone":"lavender"},{"value":"Majestic","tone":"lavender"},{"value":"Wild","tone":"lavender"},{"value":"Devastating","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Pride","tone":"lavender"},{"value":"Brilliant","tone":"lavender"}],[{"value":"CreepyCute","tone":"lavender"},{"value":"Gothic","tone":"lavender"},{"value":"Comedy Horror","tone":"lavender"},{"value":"Harrowing","tone":"lavender"},{"value":"Carnal","tone":"lavender"},{"value":"Spirituality","tone":"lavender"},{"value":"Paranoia","tone":"lavender"}],[{"value":"Grimy","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Horrific","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Greed","tone":"lavender"}],[{"value":"Whimsical","tone":"lavender"},{"value":"Sublime","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Liminal","tone":"lavender"},{"value":"Limerence","tone":"lavender"},{"value":"Wonder","tone":"lavender"},{"value":"Visionary","tone":"lavender"}],[{"value":"Camp","tone":"lavender"},{"value":"Irreverent","tone":"lavender"},{"value":"Satirical","tone":"lavender"},{"value":"Dark","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Snarky","tone":"lavender"},{"value":"Parodic","tone":"lavender"}],[{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Bonkers","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Madcap","tone":"lavender"}],[{"value":"🧸","tone":"green"},{"value":"Cherubic","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Heartwarming","tone":"lavender"},{"value":"Precocious","tone":"lavender"}],[{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Charming","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Horny","tone":"lavender"},{"value":"Radiant","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],[{"value":"Absurdist","tone":"peach"},{"value":"🎟️","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Ironic","tone":"lavender"},{"value":"Blue Humor","tone":"lavender"},{"value":"Jubilant","tone":"lavender"},{"value":"Witty","tone":"lavender"}],[{"value":"Psychedelic","tone":"peach"},{"value":"Magical","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"😭","tone":"green"},{"value":"Rejected","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],[{"value":"Mutant","tone":"peach"},{"value":"Tasteless","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],[{"value":"Macabre","tone":"peach"},{"value":"Execrable","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Visceral","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Triumphant","tone":"lavender"}],[{"value":"Chaotic","tone":"peach"},{"value":"Outrageous","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Terror","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🧠","tone":"green"}],[{"value":"Monstrous","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Violated","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"}]];
+  const matrixRows=[[{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Trolling","tone":"lavender"},{"value":"Dysphoria","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Revenge","tone":"lavender"},{"value":"Obsessive","tone":"lavender"}],[{"value":"Spirited","tone":"lavender"},{"value":"Majestic","tone":"lavender"},{"value":"Wild","tone":"lavender"},{"value":"Devastating","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Pride","tone":"lavender"},{"value":"Brilliant","tone":"lavender"}],[{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"Comedy Horror","tone":"lavender"},{"value":"Foreboding","tone":"lavender"},{"value":"Carnal","tone":"lavender"},{"value":"Spirituality","tone":"lavender"},{"value":"Paranoia","tone":"lavender"}],[{"value":"Grimy","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Greed","tone":"lavender"}],[{"value":"Whimsical","tone":"lavender"},{"value":"Romance","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Liminal","tone":"lavender"},{"value":"Limerence","tone":"lavender"},{"value":"Wonder","tone":"lavender"},{"value":"Ethereal","tone":"lavender"}],[{"value":"Camp","tone":"lavender"},{"value":"Irreverent","tone":"lavender"},{"value":"Satirical","tone":"lavender"},{"value":"Dark","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Snarky","tone":"lavender"},{"value":"Parodic","tone":"lavender"}],[{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Bonkers","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Alien","tone":"lavender"}],[{"value":"🧸","tone":"green"},{"value":"Cherubic","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Playful","tone":"lavender"},{"value":"Innocence","tone":"lavender"}],[{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Charming","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Horny","tone":"lavender"},{"value":"Radiant","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],[{"value":"Absurdist","tone":"peach"},{"value":"🎟️","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Ironic","tone":"lavender"},{"value":"Blue Humor","tone":"lavender"},{"value":"Jubilant","tone":"lavender"},{"value":"Witty","tone":"lavender"}],[{"value":"Psychedelic","tone":"peach"},{"value":"Magical","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"😭","tone":"green"},{"value":"Rejected","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],[{"value":"Mutant","tone":"peach"},{"value":"Tasteless","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],[{"value":"Macabre","tone":"peach"},{"value":"Execrable","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Horror","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Triumphant","tone":"lavender"}],[{"value":"Chaotic","tone":"peach"},{"value":"Outrageous","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Terror","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🧠","tone":"green"}],[{"value":"Monstrous","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Violated","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"}]];
 
   const primitiveForSymbol=symbol=>PRIMITIVES.find(p=>p.symbol===symbol);
   const pairForLabel=(label)=>{

@@ -1,4 +1,4 @@
-## v0.9.39.64 — Folded-landscape Customs workspace
+## v0.9.39.65 — Folded-landscape Customs workspace
 
 - Replaces the crowded all-at-once Customs drawer with persistent Custom Search, Custom Reactions, and Custom Themes panels.
 - Uses the existing contextual button as AI Analysis while Customs is open.

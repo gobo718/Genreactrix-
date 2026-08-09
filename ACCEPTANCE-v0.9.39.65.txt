@@ -1,0 +1,20 @@
+Genreactrix v0.9.39.65 — PrimFusion Matrix Pass 1
+
+Source baseline: v0.9.39.64 customs-button-spacing.
+
+Scope:
+- Matrix version remains 0.0.0.0 (pre-batch / not yet used).
+- Updated nine PrimFusion labels only in matrix data and pair-to-label references.
+- No CSS, geometry, font, matrix placement, or interaction changes.
+- Non-matrix generic vocabulary is intentionally untouched.
+
+Renames:
+PFM0112 Precocious -> Innocence
+PFM0113 Heartwarming -> Playful
+PFM0208 Sublime -> Romance
+PFM0211 Gothic -> Vulnerable
+PFM0310 Horrific -> Despair
+PFM0311 Harrowing -> Foreboding
+PFM0612 Madcap -> Alien
+PFM0812 Visionary -> Ethereal
+PFM1011 Visceral -> Horror
