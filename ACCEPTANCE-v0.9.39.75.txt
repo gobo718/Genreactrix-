@@ -1,0 +1,12 @@
+Genreactrix v0.9.39.75
+
+Focused AI component-isolation recovery build.
+
+Changes:
+- Runs Reactions, Themes, and Description as independent Worker requests instead of one long all-or-nothing request.
+- Preserves successful component results even if a later component fails.
+- Component-specific errors identify exactly which analysis failed.
+- Global provider/network failures still pause the job after the first affected component.
+- Preserves v0.9.39.74 provider/key verification, Missing defaults, interrupted-job recovery, queue containment, and prior report/PrimFusion work.
+
+No PrimFusion vocabulary or AI definitions changed.
