@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.44";
+const GENREACTRIX_BUILD="v0.9.39.67";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -160,6 +160,13 @@ function canonicalPrimFusionLabel(firstName, secondName){
   const key=[firstName,secondName].sort().join("|");
   return CANONICAL_PRIMFUSION_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
+
+// v0.9.39.67 — expose current 91 non-diagonal Theme labels to the reporting engine.
+window.genreactrixCurrentFusionThemes = Object.freeze([...new Set(
+  Object.entries(CANONICAL_PRIMFUSION_LABELS)
+    .filter(([pair])=>{const [a,b]=pair.split("|");return a!==b;})
+    .map(([,label])=>label)
+)]);
 
 const BASE_THEMES = [
   "Fantasy","Nature","Mythology","Cute","Food","Animal","Magic","Adventure",

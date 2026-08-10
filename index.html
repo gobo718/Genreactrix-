@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.66</title>
-<link href="styles.css?v=0.9.39.66" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.67</title>
+<link href="styles.css?v=0.9.39.67" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.66</span>
+<span>v0.9.39.67</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.66</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.67</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -623,7 +623,7 @@
 <section class="report-builder">
 <div class="report-grid">
 <label>Title<input id="reportTitle" value="Custom Report"/></label>
-<label>Scope<select id="reportScope"><option value="session">This session</option><option value="current-batch">Current batch</option><option value="most-recent-batch">Most recent batch</option><option value="latest-batches">Latest N submitted batches</option><option value="date-range">Date range</option><option value="last-submitted-images">Last N submitted images</option><option value="submitted">All submitted data</option><option value="all-records">All records</option><option value="saved">Saved images</option><option value="flagged">Flagged images</option></select></label>
+<label>Scope<select id="reportScope"><option value="latest-ai-job">Most recent AI run</option><option value="session">This session</option><option value="current-batch">Current batch</option><option value="most-recent-batch">Most recent batch</option><option value="latest-batches">Latest N submitted batches</option><option value="date-range">Date range</option><option value="last-submitted-images">Last N submitted images</option><option value="submitted">All submitted data</option><option value="all-records">All records</option><option value="saved">Saved images</option><option value="flagged">Flagged images</option></select></label>
 <label>N<input id="reportScopeCount" min="1" type="number" value="10"/></label>
 <label>Start<input id="reportStart" type="date"/></label>
 <label>End<input id="reportEnd" type="date"/></label>
@@ -631,8 +631,9 @@
 </div>
 <div aria-label="Report modules" class="report-modules">
 <label><input checked="" data-report-module="" type="checkbox" value="summary"/> Summary</label>
-<label><input checked="" data-report-module="" type="checkbox" value="reactions"/> Reactions</label>
-<label><input checked="" data-report-module="" type="checkbox" value="themes"/> Themes</label>
+<label><input checked="" data-report-module="" type="checkbox" value="reactions"/> Director Reactions</label>
+<label><input checked="" data-report-module="" type="checkbox" value="themes"/> Director Themes</label>
+<label><input checked="" data-report-module="" type="checkbox" value="ai-themes"/> AI Theme Usage</label>
 <label><input checked="" data-report-module="" type="checkbox" value="primfusion"/> PrimFusion</label>
 <label><input checked="" data-report-module="" type="checkbox" value="agreement"/> AI–Director</label>
 <label><input checked="" data-report-module="" type="checkbox" value="sources"/> Sources</label>
@@ -640,10 +641,10 @@
 </div>
 <div class="report-condition-header"><strong>Filters</strong><button id="reportAddCondition" type="button">+ Condition</button></div>
 <div class="report-conditions" id="reportConditions"></div>
-<div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button id="reportsAnalyticsOpen" type="button">Research Analytics</button><button class="primary" id="reportRun" type="button">Run report</button></div>
+<div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button id="reportsAnalyticsOpen" type="button">Research Analytics</button><button id="reportAiThemeUsage" type="button">AI Theme Usage · Latest Run</button><button class="primary" id="reportRun" type="button">Run report</button></div>
 </section>
 <section><h3>Presets</h3><div class="report-presets" id="reportPresets"></div></section>
-<section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button></div></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
+<section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button></div></div><div class="report-visual-output" id="reportVisualOutput" hidden></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
 <section><h3>Stored reports</h3><div class="report-history" id="reportHistory"></div></section>
 </div>
 </dialog>
@@ -838,7 +839,7 @@ window.grxOpenCustomDialog=function(dialogId){
   return false;
 };
 </script>
-<script src="app.js?v=0.9.39.66"></script>
+<script src="app.js?v=0.9.39.67"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
@@ -854,7 +855,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="notifications-engine.js?v=0.9.14.0"></script>
 <script src="queue-engine.js?v=0.9.14.0"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.14.0"></script>
-<script src="reports-engine.js?v=0.9.20.0"></script>
+<script src="reports-engine.js?v=0.9.39.67"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">

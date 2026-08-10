@@ -6712,3 +6712,18 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     min-height:28px!important;
   }
 }
+
+
+/* v0.9.39.67 — portrait AI Theme Usage report */
+.report-visual-output{display:grid;gap:12px;min-width:0}
+.ai-theme-report-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ai-theme-report-kpis>div{border:1px solid var(--line,#d8d8d8);border-radius:10px;padding:10px;display:grid;gap:2px;background:var(--panel,#fff)}
+.ai-theme-report-kpis strong{font-size:1.25rem}.ai-theme-report-kpis span{font-size:.72rem;opacity:.72}
+.ai-theme-report-lead{margin:0;padding:8px 10px;border-radius:9px;background:rgba(127,127,127,.09)}
+.ai-theme-report-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ai-theme-report-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.ai-theme-report-table th,.ai-theme-report-table td{padding:7px 6px;border-bottom:1px solid var(--line,#ddd);text-align:right;white-space:nowrap}
+.ai-theme-report-table th:first-child,.ai-theme-report-table td:first-child{text-align:left;white-space:normal;min-width:130px}
+.ai-theme-report-table td small{display:block;font-size:.66rem;opacity:.6;font-weight:400}
+.ai-theme-report-never p{line-height:1.5}
+@media (max-width:700px){.ai-theme-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-theme-report-table{font-size:.76rem}}

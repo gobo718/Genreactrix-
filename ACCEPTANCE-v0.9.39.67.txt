@@ -1,0 +1,10 @@
+Genreactrix v0.9.39.67 — Portrait AI Theme Usage Reports
+
+[PASS] Existing portrait Reports module retained; no new top-level workflow added.
+[PASS] Added "Most recent AI run" report scope using the existing AI job store.
+[PASS] Added AI Theme Usage report module.
+[PASS] Added one-tap "AI Theme Usage · Latest Run" report action.
+[PASS] AI Theme Usage report shows: images in scope, images with Theme results, missing Theme results, custom selection rate, per-Theme total selections, percent of analyzed images, rank 1/2/3 counts, average confidence, Custom proposals, never-selected current PrimFusion Themes, prompt versions, and model metadata.
+[PASS] Existing Director Reactions / Director Themes reporting remains unchanged; labels clarified in the UI.
+[PASS] Existing report JSON/CSV export and stored-report history remain available.
+[PASS] PrimFusion vocabulary and matrix version are unchanged by this reporting-only build.
