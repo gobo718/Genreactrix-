@@ -482,3 +482,20 @@ Changes:
 - Consolidates historical ACCEPTANCE txt files into ACCEPTANCE_HISTORY.md to reduce flat-root file count.
 
 No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.
+
+
+---
+
+Genreactrix v0.9.39.78
+
+AI queue source-type preflight.
+
+Changes:
+- Local image records must successfully decode in the browser before they may enter a new AI queue.
+- Unsupported or undecodable local image types are skipped before queue creation rather than sent to the Worker.
+- AI transport no longer falls back to sending an original local file when JPEG preparation fails.
+- Queue jobs retain a sourceRejects list and skipped count for unsupported/undecodable records.
+- Browser-decodable local formats are still normalized to a temporary JPEG for AI transport; original stored images are unchanged.
+- Preserves v0.9.39.77 AI image transport and all prior queue/provider recovery behavior.
+
+No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.
