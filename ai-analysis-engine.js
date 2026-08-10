@@ -106,7 +106,7 @@
  async function recoverInterruptedAiJobs(){const jobs=await all(JOBS);let recovered=0;for(const job of jobs.filter(j=>j.state==='running')){const items=await byIndex(ITEMS,'jobId',job.id);for(const item of items.filter(i=>i.state==='processing')){item.state='queued';item.error='Recovered after page reload';for(const c of item.components||[])if(c.state==='processing')c.state='queued';await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'queued',{error:'Recovered after page reload'});recovered++}job.state='queued';job.processing=0;job.stopRequested=false;job.message='Recovered after page reload';await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'queued','Recovered after page reload');recovered++}if(recovered)emit();return recovered}
  async function retryFailed(id){const items=await byIndex(ITEMS,'jobId',id);for(const item of items.filter(i=>i.state==='failed')){item.state='queued';item.error='';item.components.forEach(c=>{if(c.state==='failed')c.state='queued'});await put(ITEMS,item)}const j=(await all(JOBS)).find(x=>x.id===id);if(j){j.state='queued';j.failed=0;j.completed=items.filter(i=>i.state==='complete').length;await put(JOBS,j);run(id)}}
  async function resumeStrandedJobs(){window.GenreactrixCloudApi?.reload?.();if(!window.GenreactrixCloudApi?.isConfigured?.())return 0;const stranded=(await all(JOBS)).filter(j=>j.state==='queued');for(const job of stranded)await run(job.id);return stranded.length}
- async function snapshot(){const jobs=await all(JOBS),items=await all(ITEMS);snapshotCache={pending:items.filter(i=>['queued','processing'].includes(i.state)).length,available:eligibleRecords({target:'current',quantityMode:'all',components:{reactions:{enabled:true,behavior:'analyze'}}}).length,ready:(window.genreactrixImageRecordEngine?.all?.()||[]).filter(r=>['current'].includes(r.components.aiReactions)&&['current'].includes(r.components.aiThemes)&&['current'].includes(r.components.aiDescription)).length,bufferTarget:Math.max(0,Number(window.genreactrixSettingsEngine?.get?.('ai.buffer.target',25))||25),quickAddAmount:Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('defaults.ai.quickAdd',100))||100),jobs,items};return clone(snapshotCache)}
+ async function snapshot(){const jobs=await all(JOBS),items=await all(ITEMS);snapshotCache={pending:items.filter(i=>['queued','processing'].includes(i.state)).length,available:eligibleRecords({target:'current',quantityMode:'all',components:{reactions:{enabled:true,behavior:'analyze'}}}).length,ready:(window.genreactrixInboxReadyRecords?.()||[]).length,bufferTarget:Math.max(0,Number(window.genreactrixSettingsEngine?.get?.('ai.buffer.target',25))||25),quickAddAmount:Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('defaults.ai.quickAdd',100))||100),jobs,items};return clone(snapshotCache)}
  function snapshotCached(){return clone(snapshotCache)}
  async function queueNext(count,outputs=null,options={}){const map=componentMap(),selected=outputs||window.selectedPortraitAiOutputs?.()||{};for(const [key,on] of Object.entries(selected)){const normalized={'reaction-reasons':'reactionReasons','genre-reasons':'genreReasons'}[key]||key;if(map[normalized])map[normalized]={enabled:Boolean(on),behavior:'analyze'}}const config={target:'current',quantityMode:'next',quantity:count,order:'queue',components:map,skipFailed:Boolean(options.skipFailed)};const job=await createJob(config);if(job.total&&window.GenreactrixCloudApi?.isConfigured())await run(job.id);render();return job.total}
  async function maintainBuffer(){if(!Boolean(window.genreactrixSettingsEngine?.get?.('ai.lookAhead.enabled',true)))return 0;if(maintainBufferPromise)return maintainBufferPromise;maintainBufferPromise=(async()=>{const snap=await snapshot();const needed=Math.max(0,snap.bufferTarget-snap.pending-snap.ready);if(!needed)return 0;return queueNext(needed,null,{skipFailed:true})})();try{return await maintainBufferPromise}finally{maintainBufferPromise=null}}
@@ -164,6 +164,71 @@
   document.getElementById('aiPauseJob')?.addEventListener('click',()=>current()&&pause(current()));document.getElementById('aiResumeJob')?.addEventListener('click',()=>current()&&resume(current()));document.getElementById('aiStopJob')?.addEventListener('click',()=>current()&&stop(current()));document.getElementById('aiRetryFailed')?.addEventListener('click',()=>current()&&retryFailed(current()));
  }
 
+ function safeExportName(value,fallback='image'){
+  const clean=String(value||fallback).replace(/[\\/:*?"<>|\x00-\x1F]/g,'_').trim();return clean||fallback;
+ }
+ function crc32(bytes){
+  let crc=0xffffffff;for(const byte of bytes){crc^=byte;for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return (crc^0xffffffff)>>>0;
+ }
+ function dosStamp(input){
+  const d=input instanceof Date?input:new Date(input||Date.now()),year=Math.max(1980,d.getFullYear());
+  return {time:((d.getHours()&31)<<11)|((d.getMinutes()&63)<<5)|((Math.floor(d.getSeconds()/2))&31),date:(((year-1980)&127)<<9)|(((d.getMonth()+1)&15)<<5)|(d.getDate()&31)};
+ }
+ function u16(v){return new Uint8Array([v&255,(v>>>8)&255]);}
+ function u32(v){return new Uint8Array([v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255]);}
+ function joinBytes(parts){const total=parts.reduce((n,p)=>n+p.length,0),out=new Uint8Array(total);let offset=0;for(const p of parts){out.set(p,offset);offset+=p.length;}return out;}
+ async function storedZip(entries){
+  const encoder=new TextEncoder(),locals=[],centrals=[];let offset=0;
+  for(const entry of entries){
+    const name=encoder.encode(entry.name),bytes=entry.bytes instanceof Uint8Array?entry.bytes:new Uint8Array(entry.bytes),crc=crc32(bytes),stamp=dosStamp(entry.date),size=bytes.length;
+    const local=joinBytes([u32(0x04034b50),u16(20),u16(0),u16(0),u16(stamp.time),u16(stamp.date),u32(crc),u32(size),u32(size),u16(name.length),u16(0),name,bytes]);
+    const central=joinBytes([u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(stamp.time),u16(stamp.date),u32(crc),u32(size),u32(size),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]);
+    locals.push(local);centrals.push(central);offset+=local.length;
+  }
+  const centralBytes=joinBytes(centrals),localBytes=joinBytes(locals),end=joinBytes([u32(0x06054b50),u16(0),u16(0),u16(entries.length),u16(entries.length),u32(centralBytes.length),u32(localBytes.length),u16(0)]);
+  return new Blob([localBytes,centralBytes,end],{type:'application/zip'});
+ }
+ function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+ async function exportFails(){
+  const records=window.genreactrixCurrentAiFailureRecords?.()||[];if(!records.length)throw new Error('No current AI failures are available to export.');
+  const [jobs,items]=await Promise.all([all(JOBS),all(ITEMS)]),jobsById=new Map(jobs.map(job=>[job.id,job])),recordIds=new Set(records.map(r=>r.id)),entries=[],manifestRows=[],usedNames=new Set();
+  for(const record of records){
+    let blob=await window.imageBlobGet?.(record.id).catch(()=>null);
+    if(!blob){const url=record.storage?.hyperlink||record.source?.originalUrl;if(url){const response=await fetch(url,{mode:'cors'});if(response.ok)blob=await response.blob();}}
+    if(!blob)throw new Error(`Could not copy ${record.source?.originalFilename||record.name||record.id}; export cancelled before anything moved.`);
+    let filename=safeExportName(record.source?.originalFilename||record.name||`${record.id}.img`),base=filename,n=2;while(usedNames.has(filename)){const dot=base.lastIndexOf('.');filename=dot>0?`${base.slice(0,dot)}-${n++}${base.slice(dot)}`:`${base}-${n++}`;}usedNames.add(filename);
+    entries.push({name:`images/${filename}`,bytes:new Uint8Array(await blob.arrayBuffer()),date:new Date(record.createdAt||Date.now())});
+    const related=items.filter(item=>item.imageId===record.id&&item.error).sort((a,b)=>String(jobsById.get(a.jobId)?.createdAt||'').localeCompare(String(jobsById.get(b.jobId)?.createdAt||'')));
+    const latest=related.at(-1)||null,job=latest?jobsById.get(latest.jobId):null;
+    manifestRows.push({
+      imageId:record.id,filename:record.source?.originalFilename||record.name||filename,zipPath:`images/${filename}`,
+      failedComponents:[['reactions','aiReactions'],['themes','aiThemes'],['description','aiDescription']].filter(([,field])=>record.components?.[field]==='failed').map(([component])=>component),
+      error:latest?.error||record.error||'',aiJobId:latest?.jobId||null,attempts:latest?.attempts||0,jobCreatedAt:job?.createdAt||null,jobCompletedAt:job?.completedAt||null,
+      model:window.genreactrixSettingsEngine?.get?.('ai.provider.model','')||null,promptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version','')||null,
+      configuration:job?.config||null,workerBaseUrl:window.GenreactrixCloudApi?.getBaseUrl?.()||null,siteBuild:window.GENREACTRIX_BUILD||null
+    });
+  }
+  const exportedAt=new Date().toISOString(),manifest={schemaVersion:1,type:'genreactrix-ai-failure-export',exportedAt,count:manifestRows.length,images:manifestRows};
+  entries.unshift({name:'failure-manifest.json',bytes:new TextEncoder().encode(JSON.stringify(manifest,null,2)),date:new Date()});
+  const zip=await storedZip(entries),stamp=exportedAt.replace(/[:.]/g,'-'),filename=`genreactrix-ai-fails-${stamp}.zip`;downloadBlob(zip,filename);
+  const move=confirm(`Failure ZIP created with ${records.length} image${records.length===1?'':'s'} and manifest.\n\nAfter you have saved the ZIP, move these exported failures to Recycle?`);
+  if(!move){render();window.renderPortraitControlStation?.();return{exported:records.length,moved:0,filename};}
+  const affectedJobIds=new Set(),affectedItems=[];
+  for(const item of items){if(recordIds.has(item.imageId)&&item.state==='failed'){item.state='exported';item.exportedAt=exportedAt;item.exportedError=item.error;await put(ITEMS,item);affectedJobIds.add(item.jobId);affectedItems.push(item);}}
+  for(const record of records)await window.genreactrixImagesEngine?.moveAiFailureToRecycle?.(record.id);
+  for(const item of affectedItems)await q()?.setItemState?.(`queue_${item.id}`,'cancelled',{error:'Failure exported; original moved to Recycle'}).catch(()=>{});
+  for(const jobId of affectedJobIds){
+    const rows=await byIndex(ITEMS,'jobId',jobId),job=(await all(JOBS)).find(j=>j.id===jobId);if(!job)continue;
+    const failed=rows.filter(i=>i.state==='failed').length,exported=rows.filter(i=>i.state==='exported').length;
+    job.completed=rows.filter(i=>i.state==='complete').length;job.failed=failed;job.skipped=rows.filter(i=>['cancelled','exported','skipped'].includes(i.state)).length;job.exportedFailures=exported;job.updatedAt=exportedAt;
+    if(!failed&&['completed-with-failures','failed'].includes(job.state)){job.state='completed';job.message='Failures exported to Recycle';job.completedAt=job.completedAt||exportedAt;}
+    await put(JOBS,job);
+    const queueJobId=`queue_${jobId}`;const queueJob=q()?.getJob?.(queueJobId);if(queueJob&&!failed)await q()?.patchJob?.(queueJobId,{state:'completed',message:'Failures exported to Recycle',completedAt:queueJob.completedAt||exportedAt});
+  }
+  await q()?.refresh?.();emit();render();window.renderPortraitControlStation?.();window.dispatchEvent(new CustomEvent('genreactrix:ai-failures-exported',{detail:{imageIds:[...recordIds],filename,exportedAt}}));
+  return{exported:records.length,moved:records.length,filename};
+ }
+
  async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});return{jobCount:jobs.length,itemCount:items.length,issueCount:issues.length,issues}}
- const engine={createJob,run,pause,resume,stop,retryFailed,snapshot,snapshotCached,queueNext,maintainBuffer,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainBuffer().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());
+ const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainBuffer,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainBuffer().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());
 })();

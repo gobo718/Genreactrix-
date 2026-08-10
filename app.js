@@ -1,4 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.39.81";
+const GENREACTRIX_BUILD="v0.9.39.82";
+window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -231,8 +232,8 @@ const state = {
   feedEmpty: true
 };
 
-// v0.9.39.81 — Portrait pushes analyzed packs into the persistent Landscape Inbox.
-// Landscape filters/sorts that Inbox; it never creates a shadow image population.
+// v0.9.39.82 — Portrait pushes the current Ready gaggleblob into Inbox.
+// The push transaction creates a Pack with frozen membership; Landscape filters/sorts Packs already in Inbox.
 const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v2";
 const LANDSCAPE_FILTER_LEGACY_KEY="genreactrix-landscape-filter-v1";
 const LANDSCAPE_INBOX_KEY="genreactrix-landscape-inbox-v1";
@@ -272,6 +273,7 @@ function normalizeInboxPack(pack){
   if(!pack?.id)return null;
   return {
     id:String(pack.id),
+    number:Number(pack.number)||null,
     label:String(pack.label||"Pack"),
     sourceLabel:String(pack.sourceLabel||""),
     imageIds:[...new Set((pack.imageIds||[]).map(String))],
@@ -287,9 +289,16 @@ let landscapeFilter=loadLandscapeFilter();
 let landscapeInbox=loadLandscapeInbox();
 let landscapeFeedDirty=false;
 let landscapeRehydrateTimer=0;
-let packPickerMode="push";
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
 function saveLandscapeInbox(){localStorage.setItem(LANDSCAPE_INBOX_KEY,JSON.stringify(landscapeInbox));}
+function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
+function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription"].some(key=>record?.components?.[key]==="failed");}
+function recordAlreadyPushedToInbox(record){return Array.isArray(record?.metadata?.extended?.inboxPackIds)&&record.metadata.extended.inboxPackIds.length>0;}
+function recordReadyForInbox(record){return Boolean(record)&&recordHasRequestedAi(record)&&!recordAlreadyPushedToInbox(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
+function readyRecordsForInbox(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordReadyForInbox);}
+function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyPushedToInbox(record));}
+window.genreactrixInboxReadyRecords=()=>readyRecordsForInbox().map(record=>structuredClone(record));
+window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
@@ -651,7 +660,7 @@ function renderImage(){
     $("mainImage").removeAttribute("src");
     $("mainImage").hidden=true;
     $("imageEmpty").hidden=false;
-    $("imageEmpty").textContent=landscapeInbox.length?"No images match the current filter.":"Inbox is empty. Push a post-analysis pack from Portrait.";
+    $("imageEmpty").textContent=landscapeInbox.length?"No images match the current filter.":"Inbox is empty. Push Ready images from Portrait.";
     if($("profileName"))$("profileName").textContent=landscapeInbox.length?"Filtered feed":"Inbox";
     if($("profilePosition"))$("profilePosition").textContent="0 / 0";
     if($("progressText"))$("progressText").textContent="0 images";
@@ -1144,7 +1153,7 @@ async function refreshPortraitControlStation(){
     set('portraitAiReadyCount',a.ready||0);
     set('portraitAiPendingCount',a.pending||0);
     set('portraitAiBufferTarget',a.bufferTarget||0);
-    set('portraitAiFailedCount',(a.items||[]).filter(item=>item.state==='failed').length);
+    set('portraitAiFailedCount',currentAiFailureRecords().length);
     set('portraitQueueRunningCount',q.running||0);
     set('portraitQueuedCount',q.queued||0);
     set('portraitQueueFailedCount',(q.failed||0)+(q.blocked||0));
@@ -1693,56 +1702,69 @@ function scheduleLandscapeRehydrate(){
   landscapeRehydrateTimer=setTimeout(()=>rehydrateLandscapeFeed().catch(error=>console.warn("Landscape feed could not be rehydrated",error)),80);
 }
 window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
-function packLabel(job){
-  const count=(job.imageIds||[]).length,date=job.completedAt||job.createdAt;
-  const when=date?new Date(date).toLocaleString():"Undated";
-  const source=String(job.sourceLabel||"").trim();
-  return `${source&&source!=="Folder import"&&source!=="URL list"?source:"Pack"} · ${when} · ${count} image${count===1?"":"s"}`;
+function nextInboxPackNumber(){
+  return Math.max(landscapeInbox.length,...landscapeInbox.map(pack=>Number(pack.number)||0))+1;
 }
-function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
-async function availablePortraitPacks(){
-  const jobs=await window.genreactrixImportJobEngine?.all?.()||[],records=window.genreactrixImagesEngine?.allRecords?.()||[],byId=new Map(records.map(record=>[String(record.id),record]));
-  return jobs.filter(job=>Array.isArray(job.imageIds)&&job.imageIds.length).map(job=>{
-    const imageIds=job.imageIds.map(String),packRecords=imageIds.map(id=>byId.get(id)).filter(Boolean);
-    const ready=packRecords.length===imageIds.length&&packRecords.every(recordHasRequestedAi);
-    const analyzedAt=packRecords.map(record=>record.analysis?.ai?.recordedAt||record.analysis?.ai?.analyzedAt||"").filter(Boolean).sort().at(-1)||job.completedAt||null;
-    return{id:String(job.id),label:packLabel(job),sourceLabel:job.sourceLabel||"",imageIds,createdAt:job.createdAt||null,analyzedAt,ready};
-  }).filter(pack=>pack.ready).sort((a,b)=>String(b.analyzedAt||b.createdAt||"").localeCompare(String(a.analyzedAt||a.createdAt||"")));
+function makeInboxPackFromReady(records){
+  const createdAt=new Date().toISOString(),number=nextInboxPackNumber();
+  return {
+    id:`pack-${globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}`,
+    number,
+    label:`Pack ${number}`,
+    sourceLabel:"Ready push",
+    imageIds:records.map(record=>String(record.id)),
+    createdAt,
+    analyzedAt:records.map(record=>record.analysis?.ai?.recordedAt||record.analysis?.ai?.analyzedAt||"").filter(Boolean).sort().at(-1)||createdAt,
+    pushedAt:createdAt
+  };
 }
 async function pushPackToInbox(pack){
   if(!pack?.id||!(pack.imageIds||[]).length)return false;
-  const normalized=normalizeInboxPack({...pack,pushedAt:new Date().toISOString()});
-  const existing=landscapeInbox.findIndex(item=>item.id===normalized.id);
-  if(existing>=0)landscapeInbox[existing]={...landscapeInbox[existing],...normalized,pushedAt:landscapeInbox[existing].pushedAt||normalized.pushedAt};else landscapeInbox.push(normalized);
+  const normalized=normalizeInboxPack({...pack,pushedAt:pack.pushedAt||new Date().toISOString()});
+  if(landscapeInbox.some(item=>item.id===normalized.id))return false;
+  landscapeInbox.push(normalized);
   saveLandscapeInbox();
   const recordEngine=window.genreactrixImageRecordEngine;
-  for(const imageId of normalized.imageIds){const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;const existingIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];if(!existingIds.includes(normalized.id))recordEngine.update(imageId,{metadata:{extended:{inboxPackIds:[...existingIds,normalized.id],inboxPushedAt:normalized.pushedAt}}},"inbox-pack-pushed");}
+  for(const imageId of normalized.imageIds){
+    const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;
+    const existingIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
+    recordEngine.update(imageId,{
+      workflow:{stage:"ready-for-director"},
+      metadata:{extended:{inboxPackIds:[...existingIds,normalized.id],inboxPushedAt:normalized.pushedAt,lastInboxPackId:normalized.id}}
+    },"inbox-pack-pushed");
+  }
   await rehydrateLandscapeFeed();renderPortraitInboxControls();return true;
+}
+async function pushReadyToInbox(){
+  const records=readyRecordsForInbox();
+  if(!records.length){setPortraitStationStatus("No Ready images are available to push to Inbox.");return null;}
+  const pack=makeInboxPackFromReady(records);
+  await pushPackToInbox(pack);
+  setPortraitStationStatus(`${pack.label} created in Inbox · ${records.length} image${records.length===1?"":"s"}.`);
+  window.genreactrixAiAnalysisEngine?.maintainBuffer?.().catch?.(()=>{});
+  return pack;
 }
 function renderPortraitInboxControls(){
   const count=$("portraitInboxPackCount");if(count)count.textContent=String(landscapeInbox.length);
-  const latest=landscapeInbox.at(-1);const status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:"Inbox empty";
+  const latest=landscapeInbox.at(-1),readyCount=readyRecordsForInbox().length,failedCount=currentAiFailureRecords().length;
+  const status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:"Inbox empty";
+  const push=$("portraitInboxPushReady");if(push){push.disabled=readyCount===0;push.textContent=readyCount?`Push ${readyCount} to Inbox`:"Push to Inbox";}
+  const exportButton=$("portraitExportFails");if(exportButton){exportButton.disabled=failedCount===0;exportButton.title=failedCount?`${failedCount} failed image${failedCount===1?"":"s"} available to export`:"No current AI failures";}
 }
-async function pushLatestPack(){
-  const packs=await availablePortraitPacks(),pack=packs[0];
-  if(!pack){setPortraitStationStatus("No post-analysis packs are available to push to Inbox yet.");return;}
-  await pushPackToInbox(pack);setPortraitStationStatus(`${pack.label} pushed to Inbox.`);
+async function openPackPicker(){
+  const dialog=$("packPickerDialog"),title=$("packPickerTitle"),list=$("packPickerList");if(!dialog||!list)return;
+  const packs=[...landscapeInbox].reverse();
+  if(title)title.textContent="Select Pack";
+  const rows=[`<button type="button" class="pack-picker-row ${!landscapeFilter.packId?"is-selected":""}" data-pack-picker-id=""><strong>All Packs</strong><small>No Pack filter</small></button>`];
+  rows.push(...packs.map(pack=>{const when=pack.pushedAt||pack.createdAt;const date=when?new Date(when).toLocaleString():"Undated";return `<button type="button" class="pack-picker-row ${landscapeFilter.packId===pack.id?"is-selected":""}" data-pack-picker-id="${pack.id.replaceAll('"','&quot;')}"><strong>${pack.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${date} · ${pack.imageIds.length} image${pack.imageIds.length===1?"":"s"}</small></button>`;}));
+  list.innerHTML=rows.join("")||'<p class="pack-picker-empty">Inbox has no Packs yet.</p>';dialog.showModal();
 }
-async function openPackPicker(mode="push"){
-  packPickerMode=mode;const dialog=$("packPickerDialog"),title=$("packPickerTitle"),list=$("packPickerList");if(!dialog||!list)return;
-  const packs=mode==="push"?await availablePortraitPacks():[...landscapeInbox].reverse();
-  if(title)title.textContent=mode==="push"?"Select Pack to Push":"Select Pack";
-  const rows=[];if(mode==="filter")rows.push(`<button type="button" class="pack-picker-row ${!landscapeFilter.packId?"is-selected":""}" data-pack-picker-id=""><strong>All Packs</strong><small>No Pack filter</small></button>`);
-  rows.push(...packs.map(pack=>`<button type="button" class="pack-picker-row ${mode==="filter"&&landscapeFilter.packId===pack.id?"is-selected":""}" data-pack-picker-id="${pack.id.replaceAll('"','&quot;')}"><strong>${pack.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${pack.imageIds.length} image${pack.imageIds.length===1?"":"s"}</small></button>`));
-  list.innerHTML=rows.join("")||'<p class="pack-picker-empty">No post-analysis packs are available.</p>';dialog.showModal();
-}
-$("portraitInboxUseLatest")?.addEventListener("click",()=>pushLatestPack().catch(error=>setPortraitStationStatus(`Inbox push failed: ${error.message||error}`)));
-$("portraitInboxSelectPack")?.addEventListener("click",()=>openPackPicker("push").catch(console.warn));
+$("portraitInboxPushReady")?.addEventListener("click",()=>pushReadyToInbox().catch(error=>setPortraitStationStatus(`Inbox push failed: ${error.message||error}`)));
+$("portraitExportFails")?.addEventListener("click",async()=>{try{const result=await window.genreactrixAiAnalysisEngine?.exportFails?.();if(result?.moved)setPortraitStationStatus(`${result.moved} exported failure${result.moved===1?"":"s"} moved to Recycle.`);else if(result?.exported)setPortraitStationStatus(`Failure ZIP exported. Originals remain in Failed.`);}catch(error){setPortraitStationStatus(`Export Fails failed: ${error.message||error}`);}});
 $("packPickerClose")?.addEventListener("click",()=>$("packPickerDialog")?.close());
 $("packPickerList")?.addEventListener("click",async event=>{
   const button=event.target.closest("[data-pack-picker-id]");if(!button)return;const id=button.dataset.packPickerId||null;
-  if(packPickerMode==="filter"){landscapeFilter.packId=id;saveLandscapeFilter();$("packPickerDialog")?.close();await applyLandscapeFilter();return;}
-  const packs=await availablePortraitPacks(),pack=packs.find(item=>item.id===id);if(!pack)return;await pushPackToInbox(pack);$("packPickerDialog")?.close();setPortraitStationStatus(`${pack.label} pushed to Inbox.`);
+  landscapeFilter.packId=id;saveLandscapeFilter();$("packPickerDialog")?.close();await applyLandscapeFilter();
 });
 renderPortraitInboxControls();
 async function loadImageFolder(fileList,limit=null){
@@ -2094,7 +2116,7 @@ FILTER_CATEGORIES.forEach(key=>{
   $("landscapeFilterInclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.include[key]=e.target.checked;if(e.target.checked){landscapeFilter.all=false;landscapeFilter.feed=false;}await applyLandscapeFilter();});
   $("landscapeFilterExclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.exclude[key]=e.target.checked;await applyLandscapeFilter();});
 });
-$("landscapeFilterPackSelect")?.addEventListener("click",()=>openPackPicker("filter"));
+$("landscapeFilterPackSelect")?.addEventListener("click",()=>openPackPicker());
 $("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"pack";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
 
 $("tabletParkBtn")?.addEventListener("click",async()=>{
@@ -2761,6 +2783,15 @@ function createImagesEngine(){
     const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.flagged||record.attributes.inRecycleBin)return null;
     return records.update(id,{storage:{mode:"recycle",recycle:recycleSnapshot(record)},attributes:{inRecycleBin:true}},"recycled");
   }
+  async function moveAiFailureToRecycle(id){
+    const record=records.get(id,{touch:false});if(!record)return null;if(record.attributes.inRecycleBin)return record;
+    return records.update(id,{
+      storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},
+      workflow:{stage:"ai-failure-exported"},
+      attributes:{saved:false,flagged:false,needsReview:false,rejectionFlagged:false,parked:false,inRecycleBin:true},
+      timestamps:{savedAt:null,flaggedAt:null,rejectionFlaggedAt:null,parkedAt:null}
+    },"ai-failure-exported");
+  }
   async function rejectImage(id){
     const record=records.get(id,{touch:false});if(!record)return null;if(record.attributes.inRecycleBin)return record;
     return records.update(id,{
@@ -2795,13 +2826,14 @@ function createImagesEngine(){
   async function purgeExpired(){const days=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.("recycle.retentionDays",30) ?? localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
   async function verifyStorage(){const issues=[];for(const record of records.all()){if(["temporary","reference","recycle"].includes(record.storage.mode)){const blob=await imageBlobGet(record.id).catch(()=>null);if(!blob){records.update(record.id,{storage:{missingReference:true}},"integrity");issues.push({imageId:record.id,type:"missing-blob"});}}}const recordIntegrity=records.integrity();const historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};}
   function allRecords(){return records.all();}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,setSeen,saveReference,cleanupProcessed,moveToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,setSeen,saveReference,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","rejection-flag-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
+  renderPortraitInboxControls();
 });
 
 // v0.9.8.0 adds the persistent modular AI Analysis Engine while preserving the Control Station, Images, Image Record, and History engines.
