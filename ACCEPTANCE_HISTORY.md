@@ -622,3 +622,11 @@ Restored the approved Landscape workstation presentation after the Inbox/Filter 
 
 ## v0.9.39.85
 - Landscape state-light cleanup: idle state buttons match siblings, Park active blue, Filter active teal only for actual category/Pack filters, sort never counts as Filter active.
+
+
+## v0.9.39.86
+
+- Fold-landscape only: Park active state restored to indigo/purple-blue.
+- Customs header changed from 74.5% + separately positioned AI Analysis to one literal four-column grid: Custom Search | Custom Reactions | Custom Themes | AI Analysis.
+- Four Customs header controls use the AI top-row geometry: four equal columns, 4px gap, 28px height, 3px 5px padding, zero margin, line-height 1, clamp(8px,.76vw,10.5px).
+- No other layout or workflow behavior changed.

@@ -1,0 +1,14 @@
+Genreactrix v0.9.39.86 — Fold Landscape Park + Customs Header Alignment
+
+Scope
+- Narrow visual/layout correction on top of v0.9.39.85.
+- No Inbox, Pack, Filter logic, AI workflow, Recycle, Portrait, Matrix, or Worker redesign.
+
+Required behavior
+1. Idle Keep/Park/Filter remain visually identical to ordinary Landscape toolbar buttons.
+2. Park ON is indigo/purple-blue (#493b86) with lavender-blue border (#9b8cff).
+3. Filter ON remains teal only for an actual category Include/Exclude or selected Pack; sort choice does not activate Filter.
+4. Customs top header is one four-slot grid: Custom Search | Custom Reactions | Custom Themes | AI Analysis.
+5. The Customs four-slot row uses the same geometry as the AI top row: repeat(4,minmax(0,1fr)), gap 4px, 28px controls, padding 3px 5px, margin 0, line-height 1, font clamp(8px,.76vw,10.5px).
+6. The old 74.5% Customs strip + separately positioned 24.5% AI Analysis approximation is no longer used in Customs mode.
+7. Worker remains v0.9.6.2 byte-for-byte from v0.9.39.85.

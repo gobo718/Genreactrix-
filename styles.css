@@ -6913,3 +6913,55 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   box-shadow:none!important;
   outline:none;
 }
+
+
+/* v0.9.39.86 — narrow Fold-landscape correction only.
+   1) Park active state returns to the booked indigo/purple-blue identity.
+   2) Customs header is one exact four-slot grid, matching the AI top-row geometry.
+   3) Idle stateful toolbar controls remain ordinary toolbar buttons; Filter sort order
+      is not an active-filter light trigger (logic preserved from v0.9.39.85). */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Park ON = indigo, blue leaning toward purple. Idle is inherited from the
+     ordinary toolbar-button rule already authoritative above. */
+  #tabletParkBtn[aria-pressed="true"]{
+    background:#493b86!important;
+    border-color:#9b8cff!important;
+    color:#f1edff!important;
+    outline:2px solid #9b8cff!important;
+    outline-offset:-2px!important;
+    box-shadow:none!important;
+  }
+
+  /* Customs mode no longer approximates 3/4 + 1/4 with two independently
+     positioned regions. The four headers are literal siblings in one shared
+     four-column grid, using the same geometry as the AI top row. */
+  .landscape-sliding-drawer.customs-active .landscape-ai-controls{
+    display:none!important;
+  }
+  #tabletCustomsDrawer .customs-tab-strip,
+  html.customs-search-focused #tabletCustomsDrawer .customs-tab-strip{
+    width:100%!important;
+    height:28px!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;
+    margin:0!important;
+    padding:0!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  #tabletCustomsDrawer .customs-tab{
+    min-width:0!important;
+    width:auto!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+    padding:3px 5px!important;
+    font-size:clamp(8px,.76vw,10.5px)!important;
+    line-height:1!important;
+    box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer .customs-return-ai{
+    display:block!important;
+  }
+}

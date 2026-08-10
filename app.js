@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.85";
+const GENREACTRIX_BUILD="v0.9.39.86";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -3331,6 +3331,7 @@ $("tabletCustomSearch")?.addEventListener("blur",()=>{document.documentElement.c
 $("tabletCustomSearchTab")?.addEventListener("click",()=>setLandscapeCustomsTab("search",{focusSearch:false}));
 $("tabletCustomReactionsTab")?.addEventListener("click",()=>setLandscapeCustomsTab("reactions"));
 $("tabletCustomThemesTab")?.addEventListener("click",()=>setLandscapeCustomsTab("themes"));
+$("tabletReturnAiBtn")?.addEventListener("click",()=>{tabletLandscapeView.customs=false;renderTabletWorkbench();});
 [["tabletCustomReactionSort","reactions"],["tabletCustomThemeSort","themes"]].forEach(([id,kind])=>$(id)?.addEventListener("change",e=>{
   const cfg=landscapeCustomSort[kind];cfg.mode=e.target.value;cfg.direction=cfg.mode==="alpha"?"asc":"desc";
   const dir=$(kind==="reactions"?"tabletCustomReactionSortDirection":"tabletCustomThemeSortDirection");
