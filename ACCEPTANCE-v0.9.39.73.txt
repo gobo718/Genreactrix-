@@ -1,0 +1,12 @@
+Genreactrix v0.9.39.73
+
+Interrupted AI-run recovery build.
+
+Changes:
+- Detects AI jobs persisted as Running across a page reload and converts them back to Queued before startup resume.
+- Converts any AI item persisted as Processing back to Queued so the image can actually be retried.
+- Reconciles the Queue wrapper state with the recovered AI job before resuming.
+- Preserves v0.9.39.72 Worker URL/key persistence, Settings-ready startup ordering, Missing/Rerun persistence, three supported AI outputs, Reports, and portrait Queue containment.
+- Keeps historical acceptance notes consolidated in ACCEPTANCE_HISTORY.md; only the current acceptance file remains separate.
+
+No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.

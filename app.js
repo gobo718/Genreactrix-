@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.72";
+const GENREACTRIX_BUILD="v0.9.39.73";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");

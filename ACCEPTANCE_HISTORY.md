@@ -461,3 +461,24 @@ Changes:
 - Preserves v0.9.39.69 portrait Queue viewport containment and prior queue recovery behavior.
 
 No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.
+
+
+## v0.9.39.72
+
+Genreactrix v0.9.39.72
+
+Canonical-repo AI recovery and configuration persistence build.
+
+Changes:
+- Built directly from the uploaded current GitHub repository tree.
+- Synchronizes visible/index/app build version at v0.9.39.72.
+- Preserves Worker URL and Analysis key in Settings plus local fallback storage.
+- Reloads Worker configuration after the Settings Engine is ready.
+- Queued AI jobs wait safely when no Worker URL is configured instead of failing through the population.
+- Queued AI jobs can be resumed, and stranded queued jobs resume only after settings/provider initialization.
+- Saving provider configuration resumes stranded queued AI work.
+- AI Missing/Rerun behavior is persisted for Reactions, Themes, and Description.
+- Preserves three supported AI outputs only and portrait Queue viewport containment.
+- Consolidates historical ACCEPTANCE txt files into ACCEPTANCE_HISTORY.md to reduce flat-root file count.
+
+No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.
