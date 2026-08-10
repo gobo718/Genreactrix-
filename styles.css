@@ -6759,7 +6759,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .landscape-filter-bases input{width:20px;height:20px;accent-color:#23939b}
 .landscape-filter-count{margin:0;text-align:center;color:#9dd7db;font-size:.82rem;min-height:1.2em}
 
-/* v0.9.39.82 — Ready → Push to Inbox creates Pack; Failed export/recycle workflow. */
+/* v0.9.39.83 — Ready → Push to Inbox creates Pack; Failed export/recycle workflow. */
 .portrait-inbox-push{display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;gap:5px;margin-top:3px}
 .portrait-inbox-push button{min-height:24px;padding:3px 7px;font-size:.66rem;line-height:1}
 .portrait-inbox-label{font-size:.65rem;color:var(--muted);white-space:nowrap}
@@ -6796,3 +6796,13 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 .landscape-filter-dialog{max-height:calc(100dvh - 20px);overflow:hidden}
 .landscape-filter-shell{max-height:calc(100dvh - 20px);overflow-y:auto;overscroll-behavior:contain}
+
+/* v0.9.39.83 — Fold portrait Queue/Reports stat-card compression only. */
+@media (max-width:599px) and (orientation:portrait){
+  .portrait-queue-status button,
+  .portrait-report-status button{
+    min-height:20px;
+    padding-top:0;
+    padding-bottom:0;
+  }
+}

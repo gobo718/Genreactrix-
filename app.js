@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.82";
+const GENREACTRIX_BUILD="v0.9.39.83";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -232,7 +232,7 @@ const state = {
   feedEmpty: true
 };
 
-// v0.9.39.82 — Portrait pushes the current Ready gaggleblob into Inbox.
+// v0.9.39.83 — Portrait pushes the current Ready gaggleblob into Inbox.
 // The push transaction creates a Pack with frozen membership; Landscape filters/sorts Packs already in Inbox.
 const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v2";
 const LANDSCAPE_FILTER_LEGACY_KEY="genreactrix-landscape-filter-v1";

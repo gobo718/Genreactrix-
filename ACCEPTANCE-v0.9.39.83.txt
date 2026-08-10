@@ -1,0 +1,20 @@
+Genreactrix v0.9.39.83 — Portrait Queue / Reports Compression
+
+SOURCE
+- Built directly from Genreactrix v0.9.39.82.
+- No workflow, AI, Inbox, Pack, Filter, Sort, Recycle, or Worker behavior changed.
+- Bundled worker/ remains the exact supplied Genreactrix Worker v0.9.6.2 patch from v0.9.39.82.
+
+PORTRAIT LAYOUT CHANGE ONLY
+- Queue: all four status buttons are compressed vertically.
+- Reports: all four status buttons are compressed vertically.
+- Requested visual reduction: 16 px total per button on the current Fold portrait presentation (8 px top + 8 px bottom).
+- Implementation reduces the portrait min-height from 28px to 20px and removes the 4px vertical CSS padding, preserving horizontal padding and font sizes.
+- Queue and Reports row gaps remain unchanged.
+- No controls above or below these two status grids are moved or resized directly.
+
+VERIFICATION
+- Version markers synchronized to v0.9.39.83.
+- JavaScript syntax unchanged/passes.
+- Worker source unchanged from v0.9.39.82.
+- Release remains flat at archive root with only required worker/ nesting.
