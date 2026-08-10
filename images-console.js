@@ -22,7 +22,7 @@
     const records=listFor(section);
     $(id).innerHTML=records.length?records.map(r=>{
       const source=r.source?.originalName||r.source?.originalUrl||r.name||r.id;
-      const state=[r.workflow?.stage,r.attributes?.saved?"Kept":"",r.attributes?.flagged?"Review Flagged":"",r.attributes?.rejectionFlagged?"Rejection Flagged":"",r.attributes?.parked?"Parked":"",r.attributes?.inRecycleBin?"Recycle":"",r.error?"Failed":""].filter(Boolean).join(" · ");
+      const state=[r.workflow?.stage,r.attributes?.saved?"Kept":"",r.attributes?.flagged?"Review Flagged":"",r.attributes?.rejectionFlagged?"Deletion Flagged":"",r.attributes?.parked?"Parked":"",r.attributes?.inRecycleBin?"Recycle":"",r.error?"Failed":""].filter(Boolean).join(" · ");
       return `<label class="images-record-row"><input type="checkbox" data-image-select="${esc(r.id)}" ${selected.has(r.id)?"checked":""}><span><strong>${esc(source)}</strong><small>${esc(r.id)} · ${esc(state||"Available")}</small></span></label>`;
     }).join(""):`<p class="images-empty">No ${esc(section)} images.</p>`;
     $(id).querySelectorAll("[data-image-select]").forEach(box=>box.addEventListener("change",()=>{box.checked?selected.add(box.dataset.imageSelect):selected.delete(box.dataset.imageSelect);}));

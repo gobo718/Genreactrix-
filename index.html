@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.80</title>
-<link href="styles.css?v=0.9.39.80" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.81</title>
+<link href="styles.css?v=0.9.39.81" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.80</span>
+<span>v0.9.39.81</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -37,11 +37,11 @@
           <input accept="image/*" id="folderInput" multiple="" type="file" webkitdirectory=""/>
 </label>
 </div>
-<div class="progress-text" id="progressText">Demo image 1 / 3</div>
+<div class="progress-text" id="progressText">Inbox empty</div>
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.80</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.81</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -94,6 +94,11 @@
 <span>Buffer <strong id="portraitAiBufferTarget">25</strong></span>
 <span>Queued <strong id="portraitAiPendingCount">0</strong></span>
 <span>Failed <strong id="portraitAiFailedCount">0</strong></span></div>
+<div class="portrait-inbox-push" aria-label="Push analyzed pack to Inbox">
+  <span class="portrait-inbox-label">Inbox <strong id="portraitInboxPackCount">0</strong></span>
+  <button id="portraitInboxUseLatest" type="button">Use Latest</button>
+  <button id="portraitInboxSelectPack" type="button">Select Pack</button>
+</div>
 </section><section aria-label="Queue" class="portrait-panel portrait-queue-panel" data-quick-module="queue">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="queue">
@@ -460,7 +465,7 @@
   <form method="dialog" class="flag-admin-shell">
     <header><h2>Flag actions</h2><button value="cancel" aria-label="Close">×</button></header>
     <p>Choose the uncommon action for this image.</p>
-    <button id="flagForRejectionAction" type="button">Flag for Rejection</button>
+    <button id="flagForRejectionAction" type="button">Flag for Deletion</button>
     <button id="rejectImageAction" class="danger-action" type="button">Reject Image</button>
     <button value="cancel" type="submit">Cancel</button>
   </form>
@@ -476,11 +481,31 @@
     <div class="landscape-filter-grid" role="group" aria-label="Include and exclude filter categories">
       <strong>Include</strong><span></span><strong>Exclude</strong>
       <input id="landscapeFilterInclude_review" type="checkbox" aria-label="Include Flagged for Review"><label>Flagged for Review</label><input id="landscapeFilterExclude_review" type="checkbox" aria-label="Exclude Flagged for Review">
-      <input id="landscapeFilterInclude_rejection" type="checkbox" aria-label="Include Flagged for Rejection"><label>Flagged for Rejection</label><input id="landscapeFilterExclude_rejection" type="checkbox" aria-label="Exclude Flagged for Rejection">
+      <input id="landscapeFilterInclude_rejection" type="checkbox" aria-label="Include Flagged for Deletion"><label>Flagged for Deletion</label><input id="landscapeFilterExclude_rejection" type="checkbox" aria-label="Exclude Flagged for Deletion">
       <input id="landscapeFilterInclude_kept" type="checkbox" aria-label="Include Kept"><label>Kept</label><input id="landscapeFilterExclude_kept" type="checkbox" aria-label="Exclude Kept">
       <input id="landscapeFilterInclude_parked" type="checkbox" aria-label="Include Parked"><label>Parked</label><input id="landscapeFilterExclude_parked" type="checkbox" aria-label="Exclude Parked">
+      <input id="landscapeFilterInclude_seen" type="checkbox" aria-label="Include Seen"><label>Seen</label><input id="landscapeFilterExclude_seen" type="checkbox" aria-label="Exclude Seen">
     </div>
+    <div class="landscape-filter-pack">
+      <strong>Pack</strong>
+      <button class="is-unselected" id="landscapeFilterPackSelect" type="button">Select Pack</button>
+    </div>
+    <label class="landscape-filter-sort">Sort
+      <select id="landscapeFilterSort">
+        <option value="pack">Pack Order</option>
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="filename">Filename A–Z</option>
+        <option value="random">Randomize</option>
+      </select>
+    </label>
     <p class="landscape-filter-count" id="landscapeFilterCount" aria-live="polite"></p>
+  </section>
+</dialog>
+<dialog class="pack-picker-dialog" id="packPickerDialog">
+  <section class="pack-picker-shell">
+    <header><h2 id="packPickerTitle">Select Pack</h2><button id="packPickerClose" type="button" aria-label="Close">×</button></header>
+    <div class="pack-picker-list" id="packPickerList"></div>
   </section>
 </dialog>
 <section class="base-layout">
@@ -492,7 +517,7 @@
 <div class="image-description-row">
 <div class="image-viewport" id="imageViewport">
 <img alt="Current image" id="mainImage"/>
-<div class="image-empty" id="imageEmpty">Load a folder or use the demo images.</div>
+<div class="image-empty" id="imageEmpty">Inbox is empty. Push a post-analysis pack from Portrait.</div>
 </div>
 <article class="ai-description">
 <div class="console-label">AI freeform description</div>
@@ -827,7 +852,7 @@
 <script src="import-job-engine.js?v=0.9.24.0"></script>
 <script src="import-engine.js?v=0.9.24.0"></script>
 <script src="maintenance-engine.js?v=0.9.23.0"></script>
-<script src="settings-engine.js?v=0.9.39.80"></script>
+<script src="settings-engine.js?v=0.9.39.81"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
 <form class="custom-library-shell" method="dialog" onsubmit="return false;">
@@ -857,8 +882,8 @@ window.grxOpenCustomDialog=function(dialogId){
   return false;
 };
 </script>
-<script src="app.js?v=0.9.39.80"></script>
-<script src="images-console.js?v=0.9.39.80"></script>
+<script src="app.js?v=0.9.39.81"></script>
+<script src="images-console.js?v=0.9.39.81"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
@@ -872,9 +897,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="queue-engine.js?v=0.9.39.80"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.39.80"></script>
-<script src="reports-engine.js?v=0.9.39.80"></script>
+<script src="queue-engine.js?v=0.9.39.81"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.39.81"></script>
+<script src="reports-engine.js?v=0.9.39.81"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -888,7 +913,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="batch-engine.js?v=0.9.14.0"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.39.80"></script>
+<script src="ai-analysis-engine.js?v=0.9.39.81"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">

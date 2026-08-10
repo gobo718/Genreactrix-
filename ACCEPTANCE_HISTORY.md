@@ -516,3 +516,20 @@ Changes:
 - Preserves v0.9.39.78 source decode preflight, JPEG AI transport, failure quarantine, component isolation, provider diagnostics, and Reports.
 
 No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.
+
+---
+
+## v0.9.39.80
+
+Genreactrix v0.9.39.80 — Canonical Feed / Park / Filter
+
+Changes:
+- Landscape rehydrates from canonical persisted Image Records.
+- Landscape toolbar ends Keep → Park → Filter → Flip.
+- Park is persistent, Indigo, and does not navigate automatically.
+- Filter adds All / Feed and Include/Exclude controls for Review Flagged, Rejection Flagged, Kept, and Parked.
+- Long-hold Flag adds the persistent rejection/deletion-intent state; Reject Image moves the asset to Recycle while retaining the Image Record/history.
+- Portrait Images → Recycle is wired to canonical nested record fields.
+- Legacy zero-item Queue shells are cleaned at startup.
+
+This build still treated the Landscape population as the broad canonical record population rather than a Portrait-pushed Inbox, and its bundled worker folder was stale.

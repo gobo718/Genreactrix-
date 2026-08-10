@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.80";
+const GENREACTRIX_BUILD="v0.9.39.81";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -227,45 +227,102 @@ const state = {
   objectUrls: [],
   visitBaseline: null,
   aiRuns: {},
-  canonicalFeedActive: false,
-  feedEmpty: false
+  canonicalFeedActive: true,
+  feedEmpty: true
 };
 
-// v0.9.39.80 — Landscape is a view over the canonical Image Record population.
-// Filter state is intentionally local UI state, persisted across reloads/sessions.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v1";
-const FILTER_CATEGORIES=["review","rejection","kept","parked"];
+// v0.9.39.81 — Portrait pushes analyzed packs into the persistent Landscape Inbox.
+// Landscape filters/sorts that Inbox; it never creates a shadow image population.
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v2";
+const LANDSCAPE_FILTER_LEGACY_KEY="genreactrix-landscape-filter-v1";
+const LANDSCAPE_INBOX_KEY="genreactrix-landscape-inbox-v1";
+const FILTER_CATEGORIES=["review","rejection","kept","parked","seen"];
+const SORT_MODES=new Set(["pack","newest","oldest","filename","random"]);
 const defaultLandscapeFilter=()=>({
   all:false,
   feed:true,
-  include:{review:false,rejection:false,kept:false,parked:false},
-  exclude:{review:false,rejection:false,kept:false,parked:false}
+  include:{review:false,rejection:false,kept:false,parked:false,seen:false},
+  exclude:{review:false,rejection:false,kept:false,parked:false,seen:false},
+  packId:null,
+  sort:"pack",
+  randomSeed:0
 });
 function normalizeLandscapeFilter(value){
   const base=defaultLandscapeFilter(), input=value&&typeof value==="object"?value:{};
   if(Object.prototype.hasOwnProperty.call(input,"all"))base.all=Boolean(input.all);
   if(Object.prototype.hasOwnProperty.call(input,"feed"))base.feed=Boolean(input.feed);
   FILTER_CATEGORIES.forEach(key=>{base.include[key]=Boolean(input.include?.[key]);base.exclude[key]=Boolean(input.exclude?.[key]);});
+  base.packId=input.packId?String(input.packId):null;
+  base.sort=SORT_MODES.has(input.sort)?input.sort:"pack";
+  base.randomSeed=Number(input.randomSeed)||0;
   // All and Feed are base populations and are mutually exclusive.
   if(base.all&&base.feed)base.feed=false;
   if(FILTER_CATEGORIES.some(key=>base.include[key])){base.all=false;base.feed=false;}
   return base;
 }
-function loadLandscapeFilter(){try{return normalizeLandscapeFilter(JSON.parse(localStorage.getItem(LANDSCAPE_FILTER_KEY)||"null"));}catch{return defaultLandscapeFilter();}}
+function loadLandscapeFilter(){
+  try{
+    const current=localStorage.getItem(LANDSCAPE_FILTER_KEY);
+    if(current)return normalizeLandscapeFilter(JSON.parse(current));
+    const legacy=localStorage.getItem(LANDSCAPE_FILTER_LEGACY_KEY);
+    return legacy?normalizeLandscapeFilter(JSON.parse(legacy)):defaultLandscapeFilter();
+  }catch{return defaultLandscapeFilter();}
+}
+function normalizeInboxPack(pack){
+  if(!pack?.id)return null;
+  return {
+    id:String(pack.id),
+    label:String(pack.label||"Pack"),
+    sourceLabel:String(pack.sourceLabel||""),
+    imageIds:[...new Set((pack.imageIds||[]).map(String))],
+    createdAt:pack.createdAt||null,
+    analyzedAt:pack.analyzedAt||pack.completedAt||null,
+    pushedAt:pack.pushedAt||new Date().toISOString()
+  };
+}
+function loadLandscapeInbox(){
+  try{const value=JSON.parse(localStorage.getItem(LANDSCAPE_INBOX_KEY)||"[]");return Array.isArray(value)?value.map(normalizeInboxPack).filter(Boolean):[];}catch{return [];}
+}
 let landscapeFilter=loadLandscapeFilter();
+let landscapeInbox=loadLandscapeInbox();
 let landscapeFeedDirty=false;
 let landscapeRehydrateTimer=0;
+let packPickerMode="push";
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
+function saveLandscapeInbox(){localStorage.setItem(LANDSCAPE_INBOX_KEY,JSON.stringify(landscapeInbox));}
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
   if(key==="kept")return Boolean(record.attributes?.saved);
   if(key==="parked")return Boolean(record.attributes?.parked);
+  if(key==="seen")return Boolean(record.attributes?.seen);
   return false;
 }
 function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&record.workflow?.stage!=="archived";}
+function inboxPackById(id){return landscapeInbox.find(pack=>pack.id===id)||null;}
+function inboxImageIds(){return new Set(landscapeInbox.flatMap(pack=>pack.imageIds||[]));}
+function packOrderMap(){
+  const order=new Map();let n=0;
+  const packs=landscapeFilter.packId?[inboxPackById(landscapeFilter.packId)].filter(Boolean):landscapeInbox;
+  for(const pack of packs){for(const id of pack.imageIds||[]){if(!order.has(id))order.set(id,n++);}}
+  return order;
+}
+function deterministicRandomRank(id,seed){
+  let h=(Number(seed)||1)>>>0;for(const ch of String(id)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return h;
+}
+function sortLandscapeRecords(records){
+  const rows=[...records],mode=landscapeFilter.sort;
+  if(mode==="newest")rows.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  else if(mode==="oldest")rows.sort((a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")));
+  else if(mode==="filename")rows.sort((a,b)=>String(a.source?.originalFilename||a.name||a.id).localeCompare(String(b.source?.originalFilename||b.name||b.id),undefined,{numeric:true,sensitivity:"base"}));
+  else if(mode==="random"){const seed=landscapeFilter.randomSeed||1;rows.sort((a,b)=>deterministicRandomRank(a.id,seed)-deterministicRandomRank(b.id,seed));}
+  else{const order=packOrderMap();rows.sort((a,b)=>(order.get(a.id)??Number.MAX_SAFE_INTEGER)-(order.get(b.id)??Number.MAX_SAFE_INTEGER));}
+  return rows;
+}
 function filteredLandscapeRecords(){
-  const records=(window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordEligibleForLandscapeBase);
+  const inboxIds=inboxImageIds();
+  let records=(window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>inboxIds.has(String(record.id))&&recordEligibleForLandscapeBase(record));
+  if(landscapeFilter.packId){const selected=inboxPackById(landscapeFilter.packId);const ids=new Set(selected?.imageIds||[]);records=records.filter(record=>ids.has(String(record.id)));}
   const includeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.include[key]);
   let candidates=[];
   if(landscapeFilter.all)candidates=records;
@@ -274,7 +331,7 @@ function filteredLandscapeRecords(){
   // No base/include selection deliberately means zero images.
   const excludeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.exclude[key]);
   if(excludeKeys.length)candidates=candidates.filter(r=>!excludeKeys.some(key=>recordMatchesFilterCategory(r,key)));
-  return candidates;
+  return sortLandscapeRecords(candidates);
 }
 function currentImageRecord(){return state.canonicalFeedActive&&state.files.length?window.genreactrixImagesEngine?.recordById?.(currentKey())||null:null;}
 
@@ -288,26 +345,42 @@ function currentSource(){
   if(state.feedEmpty)return "";
   return state.files.length ? state.files[state.index].url : currentDemo().src;
 }
+function canonicalAiRunFromRecord(record){
+  const ai=record?.analysis?.ai;if(!ai)return null;
+  const components=ai.components||{};
+  const rawReactions=components.reactions||ai.reactions||null;
+  const weights=Object.fromEntries(PRIMITIVES.map(p=>{
+    const row=rawReactions?.[p.name];
+    const value=typeof row==="number"?row:(row?.confidence??row?.weight??ai.weights?.[p.id]??0);
+    return[p.id,Math.max(0,Math.min(100,Number(value)||0))];
+  }));
+  const rawThemes=components.themes||ai.themes||[];
+  const themes=(Array.isArray(rawThemes)?rawThemes:[]).map((row,index)=>{
+    const label=String(row?.theme||row?.label||"").trim();if(!label)return null;
+    return{id:row.id||`ai-theme:${index}:${label.toLowerCase()}`,label,weight:Math.max(0,Math.min(100,Number(row?.confidence??row?.weight)||0)),evidence:row?.evidence||"",role:row?.role||""};
+  }).filter(Boolean);
+  const description=String(components.description??ai.description??"").trim();
+  return {
+    id:ai.jobId||ai.id||`${record.id}-ai`,
+    createdAt:ai.recordedAt||ai.analyzedAt||record.updatedAt||new Date().toISOString(),
+    model:ai.model||ai.provider?.model||"",
+    interpretationSystemVersion:"IS-1",
+    weights,themes,description,provider:ai.provider||{},promptVersions:ai.promptVersions||{}
+  };
+}
 function currentDescription(){
   if(state.feedEmpty)return "No images match the current Landscape filter.";
-  return state.files.length
-    ? "AI freeform description placeholder for this locally loaded image. Structured AI data can be connected later without changing the console modules."
-    : currentDemo().description;
+  if(state.files.length)return canonicalAiRunFromRecord(currentImageRecord())?.description||"No AI description is stored for this image.";
+  return currentDemo().description;
 }
 function defaultAiRun(){
   if(state.feedEmpty){
     return {id:"filter-empty",createdAt:new Date().toISOString(),model:"none",interpretationSystemVersion:"IS-1",weights:Object.fromEntries(PRIMITIVES.map(p=>[p.id,0])),themes:[],description:currentDescription()};
   }
   if(state.files.length){
-    return {
-      id:`${currentKey()}-placeholder`,
-      createdAt:new Date().toISOString(),
-      model:"unconnected-placeholder",
-      interpretationSystemVersion:"IS-1",
-      weights:Object.fromEntries(PRIMITIVES.map(p=>[p.id,0])),
-      themes:[],
-      description:currentDescription()
-    };
+    const canonical=canonicalAiRunFromRecord(currentImageRecord());
+    if(canonical)return canonical;
+    return {id:`${currentKey()}-no-ai`,createdAt:new Date().toISOString(),model:"none",interpretationSystemVersion:"IS-1",weights:Object.fromEntries(PRIMITIVES.map(p=>[p.id,0])),themes:[],description:currentDescription()};
   }
   const demo=currentDemo();
   return {
@@ -322,6 +395,7 @@ function defaultAiRun(){
 }
 function currentAiRuns(){
   const key=currentKey();
+  if(state.canonicalFeedActive&&state.files.length){const canonical=canonicalAiRunFromRecord(currentImageRecord());if(canonical)state.aiRuns[key]=[canonical];}
   if(!state.aiRuns[key]?.length) state.aiRuns[key]=[defaultAiRun()];
   return state.aiRuns[key];
 }
@@ -496,7 +570,7 @@ function nextImage(){ navigateImage(1); }
 function prevImage(){ navigateImage(-1); }
 const DIRECTOR_LAST_KEY="genreactrix-director-last-image-v1";
 function directorSetting(id,fallback){try{return window.genreactrixSettingsEngine?.get?.(id,fallback)??fallback}catch{return fallback}}
-function imageCount(){return state.files.length||DEMOS.length}
+function imageCount(){return state.feedEmpty?0:(state.files.length||DEMOS.length)}
 function imageKeyAt(index){return state.files.length?(state.files[index]?.id||state.files[index]?.name):`demo-${index}`}
 function goToImageIndex(index,{remember=true}={}){
   const count=imageCount();if(!count)return false;
@@ -577,8 +651,8 @@ function renderImage(){
     $("mainImage").removeAttribute("src");
     $("mainImage").hidden=true;
     $("imageEmpty").hidden=false;
-    $("imageEmpty").textContent="No images match the current filter.";
-    if($("profileName"))$("profileName").textContent="Filtered feed";
+    $("imageEmpty").textContent=landscapeInbox.length?"No images match the current filter.":"Inbox is empty. Push a post-analysis pack from Portrait.";
+    if($("profileName"))$("profileName").textContent=landscapeInbox.length?"Filtered feed":"Inbox";
     if($("profilePosition"))$("profilePosition").textContent="0 / 0";
     if($("progressText"))$("progressText").textContent="0 images";
     return;
@@ -612,7 +686,7 @@ function renderFlag(){
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(state.retention==="keep"));
   const record=currentImageRecord();
   $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.parked)));
-  const customFilter=!(landscapeFilter.feed&&!landscapeFilter.all&&!FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]));
+  const customFilter=!(landscapeFilter.feed&&!landscapeFilter.all&&!landscapeFilter.packId&&landscapeFilter.sort==="pack"&&!FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]));
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
   ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletParkBtn"].forEach(id=>{if($(id))$(id).disabled=Boolean(state.feedEmpty);});
   $("landscapeFeedEmpty")?.toggleAttribute("hidden",!state.feedEmpty);
@@ -919,6 +993,9 @@ function renderTabletWorkbench(){
     return;
   }
   $("landscapeFeedEmpty")?.setAttribute("hidden","");
+  if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
+    const record=currentImageRecord();if(record&&!record.attributes?.seen){window.genreactrixImagesEngine?.setSeen?.(record.id,true);if(landscapeFilter.exclude.seen)landscapeFeedDirty=true;}
+  }
   $("tabletWorkbenchImage").src=currentSource();
   const prims=$("tabletWorkbenchPrims");
   const pctRow=$("tabletWorkbenchPrimPcts");
@@ -1616,12 +1693,64 @@ function scheduleLandscapeRehydrate(){
   landscapeRehydrateTimer=setTimeout(()=>rehydrateLandscapeFeed().catch(error=>console.warn("Landscape feed could not be rehydrated",error)),80);
 }
 window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
+function packLabel(job){
+  const count=(job.imageIds||[]).length,date=job.completedAt||job.createdAt;
+  const when=date?new Date(date).toLocaleString():"Undated";
+  const source=String(job.sourceLabel||"").trim();
+  return `${source&&source!=="Folder import"&&source!=="URL list"?source:"Pack"} · ${when} · ${count} image${count===1?"":"s"}`;
+}
+function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
+async function availablePortraitPacks(){
+  const jobs=await window.genreactrixImportJobEngine?.all?.()||[],records=window.genreactrixImagesEngine?.allRecords?.()||[],byId=new Map(records.map(record=>[String(record.id),record]));
+  return jobs.filter(job=>Array.isArray(job.imageIds)&&job.imageIds.length).map(job=>{
+    const imageIds=job.imageIds.map(String),packRecords=imageIds.map(id=>byId.get(id)).filter(Boolean);
+    const ready=packRecords.length===imageIds.length&&packRecords.every(recordHasRequestedAi);
+    const analyzedAt=packRecords.map(record=>record.analysis?.ai?.recordedAt||record.analysis?.ai?.analyzedAt||"").filter(Boolean).sort().at(-1)||job.completedAt||null;
+    return{id:String(job.id),label:packLabel(job),sourceLabel:job.sourceLabel||"",imageIds,createdAt:job.createdAt||null,analyzedAt,ready};
+  }).filter(pack=>pack.ready).sort((a,b)=>String(b.analyzedAt||b.createdAt||"").localeCompare(String(a.analyzedAt||a.createdAt||"")));
+}
+async function pushPackToInbox(pack){
+  if(!pack?.id||!(pack.imageIds||[]).length)return false;
+  const normalized=normalizeInboxPack({...pack,pushedAt:new Date().toISOString()});
+  const existing=landscapeInbox.findIndex(item=>item.id===normalized.id);
+  if(existing>=0)landscapeInbox[existing]={...landscapeInbox[existing],...normalized,pushedAt:landscapeInbox[existing].pushedAt||normalized.pushedAt};else landscapeInbox.push(normalized);
+  saveLandscapeInbox();
+  const recordEngine=window.genreactrixImageRecordEngine;
+  for(const imageId of normalized.imageIds){const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;const existingIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];if(!existingIds.includes(normalized.id))recordEngine.update(imageId,{metadata:{extended:{inboxPackIds:[...existingIds,normalized.id],inboxPushedAt:normalized.pushedAt}}},"inbox-pack-pushed");}
+  await rehydrateLandscapeFeed();renderPortraitInboxControls();return true;
+}
+function renderPortraitInboxControls(){
+  const count=$("portraitInboxPackCount");if(count)count.textContent=String(landscapeInbox.length);
+  const latest=landscapeInbox.at(-1);const status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:"Inbox empty";
+}
+async function pushLatestPack(){
+  const packs=await availablePortraitPacks(),pack=packs[0];
+  if(!pack){setPortraitStationStatus("No post-analysis packs are available to push to Inbox yet.");return;}
+  await pushPackToInbox(pack);setPortraitStationStatus(`${pack.label} pushed to Inbox.`);
+}
+async function openPackPicker(mode="push"){
+  packPickerMode=mode;const dialog=$("packPickerDialog"),title=$("packPickerTitle"),list=$("packPickerList");if(!dialog||!list)return;
+  const packs=mode==="push"?await availablePortraitPacks():[...landscapeInbox].reverse();
+  if(title)title.textContent=mode==="push"?"Select Pack to Push":"Select Pack";
+  const rows=[];if(mode==="filter")rows.push(`<button type="button" class="pack-picker-row ${!landscapeFilter.packId?"is-selected":""}" data-pack-picker-id=""><strong>All Packs</strong><small>No Pack filter</small></button>`);
+  rows.push(...packs.map(pack=>`<button type="button" class="pack-picker-row ${mode==="filter"&&landscapeFilter.packId===pack.id?"is-selected":""}" data-pack-picker-id="${pack.id.replaceAll('"','&quot;')}"><strong>${pack.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${pack.imageIds.length} image${pack.imageIds.length===1?"":"s"}</small></button>`));
+  list.innerHTML=rows.join("")||'<p class="pack-picker-empty">No post-analysis packs are available.</p>';dialog.showModal();
+}
+$("portraitInboxUseLatest")?.addEventListener("click",()=>pushLatestPack().catch(error=>setPortraitStationStatus(`Inbox push failed: ${error.message||error}`)));
+$("portraitInboxSelectPack")?.addEventListener("click",()=>openPackPicker("push").catch(console.warn));
+$("packPickerClose")?.addEventListener("click",()=>$("packPickerDialog")?.close());
+$("packPickerList")?.addEventListener("click",async event=>{
+  const button=event.target.closest("[data-pack-picker-id]");if(!button)return;const id=button.dataset.packPickerId||null;
+  if(packPickerMode==="filter"){landscapeFilter.packId=id;saveLandscapeFilter();$("packPickerDialog")?.close();await applyLandscapeFilter();return;}
+  const packs=await availablePortraitPacks(),pack=packs.find(item=>item.id===id);if(!pack)return;await pushPackToInbox(pack);$("packPickerDialog")?.close();setPortraitStationStatus(`${pack.label} pushed to Inbox.`);
+});
+renderPortraitInboxControls();
 async function loadImageFolder(fileList,limit=null){
   const batchId=await window.genreactrixBatchEngine?.activeId?.()||"current-import";
   const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit,target:"active-batch"}):null;
   window.pendingImportEngineMode=false;
   const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit,batchId});
-  if(window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
+  if(!importResult&&window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
   await rehydrateLandscapeFeed({preserveId:records[0]?.id||null});
   window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
   setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} copied into Temporary Import.`);
@@ -1945,8 +2074,12 @@ function renderLandscapeFilterDialog(){
     if(inc)inc.checked=Boolean(landscapeFilter.include[key]);
     if(exc)exc.checked=Boolean(landscapeFilter.exclude[key]);
   });
+  let selectedPack=inboxPackById(landscapeFilter.packId);
+  if(landscapeFilter.packId&&!selectedPack){landscapeFilter.packId=null;saveLandscapeFilter();selectedPack=null;}
+  const packButton=$("landscapeFilterPackSelect"),packRow=packButton?.closest?.(".landscape-filter-pack");if(packButton){packButton.textContent=selectedPack?selectedPack.label:"Select Pack";packButton.classList.toggle("is-unselected",!selectedPack);packRow?.classList.toggle("is-unselected",!selectedPack);}
+  const sort=$("landscapeFilterSort");if(sort)sort.value=landscapeFilter.sort;
   const count=filteredLandscapeRecords().length;
-  if($("landscapeFilterCount"))$("landscapeFilterCount").textContent=`${count} image${count===1?"":"s"} match`;
+  if($("landscapeFilterCount"))$("landscapeFilterCount").textContent=`${count} image${count===1?"":"s"} match · ${landscapeInbox.length} pack${landscapeInbox.length===1?"":"s"} in Inbox`;
 }
 async function applyLandscapeFilter(){saveLandscapeFilter();renderLandscapeFilterDialog();await rehydrateLandscapeFeed();}
 function setLandscapeFilterBase(key,checked){
@@ -1961,6 +2094,8 @@ FILTER_CATEGORIES.forEach(key=>{
   $("landscapeFilterInclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.include[key]=e.target.checked;if(e.target.checked){landscapeFilter.all=false;landscapeFilter.feed=false;}await applyLandscapeFilter();});
   $("landscapeFilterExclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.exclude[key]=e.target.checked;await applyLandscapeFilter();});
 });
+$("landscapeFilterPackSelect")?.addEventListener("click",()=>openPackPicker("filter"));
+$("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"pack";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
 
 $("tabletParkBtn")?.addEventListener("click",async()=>{
   if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
@@ -2225,7 +2360,7 @@ document.addEventListener("pointercancel",e=>{if(flagHoldState.pointerId===e.poi
 $("flagForRejectionAction")?.addEventListener("click",async()=>{
   $("flagAdminDialog")?.close();if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
   const next=!Boolean(record.attributes?.rejectionFlagged);await window.genreactrixImagesEngine.setRejectionFlagged(id,next);landscapeFeedDirty=true;
-  setDirectorStatus(next?"Image flagged for rejection. It will leave Feed when you navigate away.":"Rejection flag cleared.");renderFlag();
+  setDirectorStatus(next?"Image flagged for deletion. It will leave Feed when you navigate away.":"Deletion flag cleared.");renderFlag();
 });
 $("rejectImageAction")?.addEventListener("click",async()=>{
   $("flagAdminDialog")?.close();if(state.feedEmpty)return;if(!confirm("Reject this image? Its full-resolution asset moves to Recycle; its Image Record, analysis, and history remain."))return;
@@ -2500,7 +2635,8 @@ function createImageRecordEngine(){
       inRecycleBin:Boolean(record.attributes?.inRecycleBin||record.storageState==="recycle"),
       parked:Boolean(record.attributes?.parked),
       rejectionFlagged:Boolean(record.attributes?.rejectionFlagged),
-      rejected:Boolean(record.attributes?.rejected)
+      rejected:Boolean(record.attributes?.rejected),
+      seen:Boolean(record.attributes?.seen)
     },
     components:{...defaultComponents(),...(record.components||{})},
     analysis:{ai:record.analysis?.ai||null,director:record.analysis?.director||null},
@@ -2512,7 +2648,8 @@ function createImageRecordEngine(){
       processedAt:record.timestamps?.processedAt||record.processedAt||null,
       parkedAt:record.timestamps?.parkedAt||null,
       rejectionFlaggedAt:record.timestamps?.rejectionFlaggedAt||null,
-      rejectedAt:record.timestamps?.rejectedAt||null
+      rejectedAt:record.timestamps?.rejectedAt||null,
+      seenAt:record.timestamps?.seenAt||null
     },
     error:record.error||""
   });
@@ -2611,6 +2748,7 @@ function createImagesEngine(){
   function setFlagged(id,flagged=true){return records.update(id,{attributes:{flagged,needsReview:flagged},timestamps:{flaggedAt:flagged?now():null}},"flag-changed");}
   function setParked(id,parked=true){return records.update(id,{attributes:{parked:Boolean(parked)},timestamps:{parkedAt:parked?now():null}},"park-changed");}
   function setRejectionFlagged(id,flagged=true){return records.update(id,{attributes:{rejectionFlagged:Boolean(flagged)},timestamps:{rejectionFlaggedAt:flagged?now():null}},"rejection-flag-changed");}
+  function setSeen(id,seen=true){return records.update(id,{attributes:{seen:Boolean(seen)},timestamps:{seenAt:seen?now():null}},"landscape-seen");}
   async function saveReference(id){let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");if(record.storage.mode==="linked"){const response=await fetch(record.storage.hyperlink||record.source.originalUrl,{mode:"cors"});if(!response.ok)throw new Error(`HTTP ${response.status}`);const blob=await response.blob();if(!blob.type.startsWith("image/"))throw new Error("URL did not return an image");await imageBlobPut(id,blob);record=records.update(id,{storage:{mimeType:blob.type,size:blob.size,temporaryKey:id}},"reference-downloaded");}
     return records.update(id,{storage:{mode:"reference",referenceKey:id},attributes:{saved:true,hyperlinkOnly:false,inRecycleBin:false,rejectionFlagged:false,rejected:false},timestamps:{savedAt:now(),rejectionFlaggedAt:null,rejectedAt:null}},"reference-saved");
   }
@@ -2657,13 +2795,13 @@ function createImagesEngine(){
   async function purgeExpired(){const days=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.("recycle.retentionDays",30) ?? localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
   async function verifyStorage(){const issues=[];for(const record of records.all()){if(["temporary","reference","recycle"].includes(record.storage.mode)){const blob=await imageBlobGet(record.id).catch(()=>null);if(!blob){records.update(record.id,{storage:{missingReference:true}},"integrity");issues.push({imageId:record.id,type:"missing-blob"});}}}const recordIntegrity=records.integrity();const historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};}
   function allRecords(){return records.all();}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,saveReference,cleanupProcessed,moveToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,setSeen,saveReference,cleanupProcessed,moveToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed"].includes(type))scheduleLandscapeRehydrate();
 });
 
 // v0.9.8.0 adds the persistent modular AI Analysis Engine while preserving the Control Station, Images, Image Record, and History engines.
@@ -2955,7 +3093,7 @@ document.querySelector("[data-quick-dialog='save']")?.addEventListener("click",(
 
 
 ["genreactrix:image-record","genreactrix:batch","genreactrix:queue","genreactrix:report","genreactrix:notification","genreactrix:settings"].forEach(type=>window.addEventListener(type,()=>refreshPortraitControlStation().catch(console.warn)));
-window.addEventListener("orientationchange",()=>setTimeout(()=>refreshPortraitControlStation().catch(console.warn),120));
+window.addEventListener("orientationchange",()=>setTimeout(()=>{refreshPortraitControlStation().catch(console.warn);renderTabletWorkbench();},120));
 
 function parseImageIntakeUrls(){ return document.getElementById("imageUrlList")?.value || ""; }
 function openImageIntakeDialog({quantity=null}={}){
@@ -2967,6 +3105,7 @@ function openImageIntakeDialog({quantity=null}={}){
 $("imageIntakeClose")?.addEventListener("click",()=>$("imageIntakeDialog")?.close());
 $("imageIntakeFolderBtn")?.addEventListener("click",()=>{
   pendingPortraitImportLimit=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
+  window.pendingImportEngineMode=true;
   $("imageIntakeDialog")?.close();
   $("folderInput")?.click();
 });
@@ -2982,14 +3121,12 @@ $("imageUrlAddBtn")?.addEventListener("click",async()=>{
   const prefetch=Boolean($("imageUrlPrefetch")?.checked);
   const button=$("imageUrlAddBtn"); button.disabled=true;
   try{
-    const batchId=await window.genreactrixBatchEngine?.activeId?.()||"current-import";
-    const records=await window.genreactrixImagesEngine.importUrls(parseImageIntakeUrls(),{limit:quantity,mode,prefetch,batchId});
-    if(window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
-    const files=await window.genreactrixImagesEngine.workingFiles(records.map(record=>record.id));
-    await applyEngineWorkingFiles(files);
+    const result=await window.genreactrixImportEngine.runUrls(parseImageIntakeUrls(),{limit:quantity,mode:mode==="download"?"temporary":"link",prefetch,target:"active-batch"});
+    const records=result?.records||[];
+    await rehydrateLandscapeFeed();
     const failures=records.filter(record=>record.error).length;
     $("imageIntakeDialog")?.close();
-    setPortraitStationStatus(`${records.length} URL image${records.length===1?"":"s"} added${failures?` · ${failures} download fallback${failures===1?"":"s"}`:""}.`);
+    setPortraitStationStatus(`${records.length} URL image${records.length===1?"":"s"} added as a Pack${failures?` · ${failures} download fallback${failures===1?"":"s"}`:""}.`);
   }catch(error){ $("imageIntakePreview").textContent=`Add failed: ${error.message||error}`; }
   finally{ button.disabled=false; renderPortraitControlStation(); }
 });

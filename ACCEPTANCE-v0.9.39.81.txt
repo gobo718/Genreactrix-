@@ -1,0 +1,24 @@
+Genreactrix v0.9.39.81 — Inbox Handoff / Pack Filter / Sort
+
+Acceptance targets
+- Built from v0.9.39.80 website code.
+- Bundled worker/ is exactly the v0.9.6.2 Worker patch source set supplied separately.
+- Portrait is the handoff source: analyzed image packs are pushed into Inbox; Landscape does not pull from Portrait.
+- Portrait AI panel provides Use Latest and Select Pack controls.
+- Pack candidates come from persisted Portrait import jobs and are available only when every image in the pack has current Reactions, Themes, and Description AI components.
+- Both Portrait folder intake paths and Portrait URL intake create persisted import jobs so every normal Portrait intake has a Pack identity available for later Inbox push.
+- Select Pack opens a popup; selecting a pack pushes it into Inbox without cloning Image Records.
+- Inbox can contain multiple pushed packs; pushing the same pack again does not duplicate it.
+- Landscape no longer uses the three demo images as its working source. With an empty Inbox it shows an Inbox-empty state.
+- Landscape uses the same canonical Image Records and stored AI Reactions, Themes, and Description created in Portrait.
+- All = all usable Inbox records, including Parked and Flagged for Deletion.
+- Feed = usable Inbox records except Parked and Flagged for Deletion.
+- Filter “Or Select:” Include/Exclude categories: Flagged for Review, Flagged for Deletion, Kept, Parked, Seen.
+- Seen is marked when a canonical Inbox image is actually displayed in Landscape. Exclude Seen provides the unseen population.
+- Pack is a special Filter control with no Include/Exclude checkboxes. Select Pack opens a popup of Inbox packs; unchosen/greyed means all Inbox packs.
+- Sort is inside Filter with Pack Order, Newest First, Oldest First, Filename A–Z, and Randomize.
+- Randomize uses a persisted seed so the randomized order survives reloads/sessions until the sort is changed; selecting Randomize again after another sort produces a new order.
+- Filter state, Pack filter state, sort mode, and Inbox pack list persist across reloads/sessions.
+- Existing Park / Filter / Flip toolbar order remains Keep → Park → Filter → Flip (PF Chang(e)).
+- Recycle remains the existing Portrait system; this build does not redesign it.
+- Reaction and Theme filter/sort options are explicitly deferred.
