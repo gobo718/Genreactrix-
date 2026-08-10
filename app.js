@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.83";
+const GENREACTRIX_BUILD="v0.9.39.84";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -689,16 +689,18 @@ function renderImage(){
   $("progressText").textContent=`${state.files.length?"Image":"Demo image"} ${position} / ${total}`;
 }
 function renderFlag(){
-  $("directorFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
-  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
-  $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
-  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(state.retention==="keep"));
-  const record=currentImageRecord();
+  const hasImage=!state.feedEmpty;
+  $("directorFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
+  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
+  $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
+  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
+  const record=hasImage?currentImageRecord():null;
+  $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.parked)));
   const customFilter=!(landscapeFilter.feed&&!landscapeFilter.all&&!landscapeFilter.packId&&landscapeFilter.sort==="pack"&&!FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]));
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
-  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletParkBtn"].forEach(id=>{if($(id))$(id).disabled=Boolean(state.feedEmpty);});
-  $("landscapeFeedEmpty")?.toggleAttribute("hidden",!state.feedEmpty);
+  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletParkBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
+  $("landscapeFeedEmpty")?.toggleAttribute("hidden",hasImage);
 }
 function renderDirectorFields(){
   $("directorWriteIn").value=state.writeIn;
@@ -995,22 +997,22 @@ function applyJudgmentReactionGeometry(prims,pctRow){
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
-  if(state.feedEmpty){
+  const hasImage=!state.feedEmpty;
+  if(hasImage){
+    $("landscapeFeedEmpty")?.setAttribute("hidden","");
+    if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
+      const record=currentImageRecord();if(record&&!record.attributes?.seen){window.genreactrixImagesEngine?.setSeen?.(record.id,true);if(landscapeFilter.exclude.seen)landscapeFeedDirty=true;}
+    }
+    $("tabletWorkbenchImage").src=currentSource();
+  }else{
     $("tabletWorkbenchImage")?.removeAttribute("src");
     $("landscapeFeedEmpty")?.removeAttribute("hidden");
-    renderFlag();
-    return;
   }
-  $("landscapeFeedEmpty")?.setAttribute("hidden","");
-  if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
-    const record=currentImageRecord();if(record&&!record.attributes?.seen){window.genreactrixImagesEngine?.setSeen?.(record.id,true);if(landscapeFilter.exclude.seen)landscapeFeedDirty=true;}
-  }
-  $("tabletWorkbenchImage").src=currentSource();
   const prims=$("tabletWorkbenchPrims");
   const pctRow=$("tabletWorkbenchPrimPcts");
   prims.innerHTML="";
   if(pctRow) pctRow.innerHTML="";
-  const weights=currentAiWeights();
+  const weights=hasImage?currentAiWeights():{};
   /* v0.9.39.49 — explicit canonical Judgment order by stable primitive ID.
      Avoid symbol matching so variation-selector differences can never create
      empty slots or shift later canonical/custom reactions. */
@@ -1050,11 +1052,11 @@ function renderTabletWorkbench(){
   prims.classList.toggle("has-custom-reactions",customReactionCount>0);
   prims.classList.toggle("custom-reactions-many",customReactionCount>=3);
   for(let i=0;i<3;i++){
-    const directorValue=themeLabel(state.themes[i]);
+    const directorValue=hasImage?themeLabel(state.themes[i]):"—";
     $("tabletWorkbenchTheme"+(i+1)).textContent=directorValue;
     document.querySelector(`[data-tablet-workbench-slot="${i+1}"]`)?.classList.toggle("active",tabletLandscapeView.activeThemeSlot===i+1);
   }
-  const sortedAiThemes=currentAiThemes()
+  const sortedAiThemes=(hasImage?currentAiThemes():[])
     .map(([label,weight])=>({label,weight:Number(weight)||0}))
     .sort((a,b)=>b.weight-a.weight)
     .slice(0,3);
@@ -1063,7 +1065,7 @@ function renderTabletWorkbench(){
     $("tabletWorkbenchAiTheme"+(i+1)).textContent=value?.label||"—";
     $("tabletWorkbenchAiThemePct"+(i+1)).textContent=value?`${value.weight}%`:"—";
   }
-  $("tabletWorkbenchAiDescription").textContent=currentAiRun().description||currentDescription();
+  $("tabletWorkbenchAiDescription").textContent=hasImage?(currentAiRun().description||currentDescription()):"";
   root.classList.toggle("face-judgment",tabletLandscapeView.face==="judgment");
   $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
   $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
@@ -1078,9 +1080,9 @@ function renderTabletWorkbench(){
     contextualCustomsBtn.textContent=tabletLandscapeView.customs?"AI Analysis":"Customs";
     contextualCustomsBtn.setAttribute("aria-label",tabletLandscapeView.customs?"Return to AI Analysis":"Open Customs");
   }
-  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
-  $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(currentImageRecord()?.attributes?.parked)));
-  const keepOn=state.retention==="keep";
+  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
+  $("tabletParkBtn")?.setAttribute("aria-pressed",String(hasImage&&Boolean(currentImageRecord()?.attributes?.parked)));
+  const keepOn=hasImage&&state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   syncTabletAiRerunControls();

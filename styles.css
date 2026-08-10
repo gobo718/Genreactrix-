@@ -6806,3 +6806,52 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     padding-bottom:0;
   }
 }
+
+/* v0.9.39.84 — restore the approved Landscape workstation; only Park + Filter are added. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Preserve the canonical seven-button toolbar treatment, expanded only by the two requested buttons. */
+  .landscape-toolbar{
+    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    gap:.34%!important;
+  }
+  .landscape-toolbar button{
+    padding:0 .5em!important;
+    border:1px solid var(--line)!important;
+    border-radius:.42em!important;
+    background:var(--panel)!important;
+    color:var(--text)!important;
+    font-size:min(1.38vw,2.8vh)!important;
+    font-weight:700!important;
+    line-height:1!important;
+    box-shadow:none!important;
+    outline:none!important;
+  }
+  /* New controls look like ordinary toolbar buttons until their state is actually active. */
+  #tabletParkBtn[aria-pressed="true"]{
+    background:#493b86!important;
+    border-color:#9b8cff!important;
+    color:#f1edff!important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important;
+  }
+  #tabletFilterBtn[aria-pressed="true"]{
+    background:#17656b!important;
+    border-color:#61d5dd!important;
+    color:#e8feff!important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important;
+  }
+  /* Keep retains the previously approved idle/selected behavior. */
+  #tabletSaveBtn[aria-pressed="false"]{
+    background:var(--panel)!important;
+    border:1px solid var(--line)!important;
+    color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+  #tabletSaveBtn[aria-pressed="true"]{
+    background:#214c31!important;
+    border-color:#67d789!important;
+    color:#ecfff1!important;
+    outline:2px solid #67d789!important;
+    outline-offset:-2px!important;
+  }
+}

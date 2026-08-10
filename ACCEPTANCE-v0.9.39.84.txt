@@ -1,0 +1,22 @@
+Genreactrix v0.9.39.84 — Landscape Canonical Layout Restore
+
+SOURCE
+- Built directly from Genreactrix v0.9.39.83.
+- Retains all v0.9.39.82/.83 Inbox, Pack, Failed Export, Filter, Sort, portrait compression, and Worker v0.9.6.2 behavior.
+
+LANDSCAPE RESTORE
+- Restores the previously approved Landscape workstation instead of treating the Inbox/Filter feature as a redesign.
+- PrimFusion Matrix renders even when the Inbox/feed is currently empty.
+- Empty-feed messaging remains over the image area only; it no longer prevents the Matrix/workspace from rendering.
+- Original Landscape toolbar sizing, typography, spacing, and ordinary-button treatment are restored.
+- Toolbar is the old layout plus exactly two controls: Park and Filter. Nine equal columns total.
+- Park is visually ordinary while idle and indigo only when Park is active.
+- Filter is visually ordinary while the default Feed/Pack Order filter is active and teal only when a custom filter/sort/Pack selection is active.
+- Keep is not shown selected when there is no current image; its prior green selected treatment remains when an actual image is Kept.
+- No Inbox/Pack/Filter/Sort workflow behavior was removed.
+
+VERIFICATION
+- Version markers synchronized to v0.9.39.84.
+- app.js passes node --check.
+- Worker folder unchanged from v0.9.39.83 / exact v0.9.6.2 bundle.
+- Release remains flat at archive root with only required worker/ nesting.

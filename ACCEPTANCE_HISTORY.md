@@ -615,3 +615,6 @@ VERIFICATION REQUIRED BEFORE DELIVERY
 - Worker v0.9.6.2 bundled files match supplied patch byte-for-byte.
 - ZIP is flat at project root except required worker/ nesting.
 - Failure ZIP writer generates a standards-readable ZIP in validation.
+
+## v0.9.39.84 — Landscape Canonical Layout Restore
+Restored the approved Landscape workstation presentation after the Inbox/Filter implementation altered the visual state. Matrix remains rendered on an empty feed; toolbar returns to the canonical treatment with only Park and Filter added; idle Park/Filter match ordinary buttons and illuminate only when active; Keep cannot appear selected without a current image.
