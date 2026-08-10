@@ -6807,7 +6807,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.84 — restore the approved Landscape workstation; only Park + Filter are added. */
+/* v0.9.39.85 — restore the approved Landscape workstation; only Park + Filter are added. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* Preserve the canonical seven-button toolbar treatment, expanded only by the two requested buttons. */
   .landscape-toolbar{
@@ -6854,4 +6854,62 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     outline:2px solid #67d789!important;
     outline-offset:-2px!important;
   }
+}
+
+
+/* v0.9.39.85 — Landscape state-light cleanup only.
+   Idle stateful controls must be visually identical to their toolbar siblings.
+   Sort order is never treated as an active Filter state. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletSaveBtn[aria-pressed="false"],
+  #tabletParkBtn[aria-pressed="false"],
+  #tabletFilterBtn[aria-pressed="false"]{
+    background:var(--panel)!important;
+    border:1px solid var(--line)!important;
+    color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+
+  /* Park is blue only while the current image is actually parked. */
+  #tabletParkBtn[aria-pressed="true"]{
+    background:#173f6b!important;
+    border-color:#62aef8!important;
+    color:#eef7ff!important;
+    outline:2px solid #62aef8!important;
+    outline-offset:-2px!important;
+    box-shadow:none!important;
+  }
+
+  /* Filter is teal only when a category Include/Exclude or Pack filter is active. */
+  #tabletFilterBtn[aria-pressed="true"]{
+    background:#164c51!important;
+    border-color:#61d5dd!important;
+    color:#e8feff!important;
+    outline:2px solid #61d5dd!important;
+    outline-offset:-2px!important;
+    box-shadow:none!important;
+  }
+}
+
+/* Filter popup: unchecked base choices are ordinary controls, checked choices are highlighted. */
+.landscape-filter-bases label{
+  background:var(--panel)!important;
+  border:1px solid var(--line)!important;
+  color:var(--text)!important;
+}
+.landscape-filter-bases label:has(input:checked){
+  background:#164c51!important;
+  border-color:#61d5dd!important;
+  color:#e8feff!important;
+}
+
+/* Sorting changes order only. It is deliberately styled as a neutral control, not an active filter. */
+.landscape-filter-sort{color:var(--muted)!important}
+.landscape-filter-sort select{
+  background:var(--panel)!important;
+  border:1px solid var(--line)!important;
+  color:var(--text)!important;
+  box-shadow:none!important;
+  outline:none;
 }

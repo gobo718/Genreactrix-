@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.84";
+const GENREACTRIX_BUILD="v0.9.39.85";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -697,7 +697,8 @@ function renderFlag(){
   const record=hasImage?currentImageRecord():null;
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.parked)));
-  const customFilter=!(landscapeFilter.feed&&!landscapeFilter.all&&!landscapeFilter.packId&&landscapeFilter.sort==="pack"&&!FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]));
+  // Filter highlight reflects actual record filtering only. Base population and sort order are not "on" states.
+  const customFilter=Boolean(landscapeFilter.packId)||FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]);
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
   ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletParkBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
   $("landscapeFeedEmpty")?.toggleAttribute("hidden",hasImage);

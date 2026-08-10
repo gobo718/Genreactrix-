@@ -618,3 +618,7 @@ VERIFICATION REQUIRED BEFORE DELIVERY
 
 ## v0.9.39.84 — Landscape Canonical Layout Restore
 Restored the approved Landscape workstation presentation after the Inbox/Filter implementation altered the visual state. Matrix remains rendered on an empty feed; toolbar returns to the canonical treatment with only Park and Filter added; idle Park/Filter match ordinary buttons and illuminate only when active; Keep cannot appear selected without a current image.
+
+
+## v0.9.39.85
+- Landscape state-light cleanup: idle state buttons match siblings, Park active blue, Filter active teal only for actual category/Pack filters, sort never counts as Filter active.
