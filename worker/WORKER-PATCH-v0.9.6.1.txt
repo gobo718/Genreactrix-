@@ -1,0 +1,22 @@
+Genreactrix AI Worker v0.9.6.1
+
+Purpose
+- Harden the Cloudflare Workers AI response path against intermittent invalid JSON failures.
+
+Changes
+- Requests Workers AI JSON Mode with response_format: { type: "json_object" }.
+- Accepts Cloudflare JSON Mode responses when response is already a JavaScript object instead of converting it to "[object Object]".
+- Retains the existing text JSON parser as a compatibility fallback.
+- Retries once when Cloudflare reports that JSON Mode could not be met.
+- Keeps a final JSON-mode failure component-scoped so one malformed component does not automatically suppress later components for the same image.
+- Worker API version increments from 0.9.6.0 to 0.9.6.1.
+
+Unchanged
+- Genreactrix site version remains v0.9.39.79.
+- Component contracts and reaction/theme/description meanings are unchanged.
+- AI model remains @cf/meta/llama-3.2-11b-vision-instruct.
+- ANALYSIS_KEY behavior is unchanged.
+- No PrimFusion vocabulary or matrix behavior changes.
+
+Validation
+- src/index.js passes node --check.
