@@ -15,6 +15,7 @@
   ['ai.provider.model','AI model label','string','',{section:'ai'}],
   ['ai.prompt.version','AI prompt set','string','genreactrix-v1',{section:'ai'}],
   ['ai.components.default','Default AI components','json',{reactions:true,themes:true,description:true,emotion:false,reactionReasons:false,genreReasons:false},{section:'ai',legacy:['genreactrix-portrait-ai-outputs']}],
+  ['ai.components.behavior','Default AI component behavior','json',{reactions:'analyze',themes:'analyze',description:'analyze'},{section:'ai'}],
   ['acquisition.mode','Default acquisition mode','string','temporary',{section:'acquisition',allowed:['temporary','link','prefetch']}],
   ['acquisition.fallbackToLink','Fallback to hyperlink','boolean',true,{section:'acquisition'}],
   ['recycle.retentionDays','Recycle retention days','number',30,{min:0,max:3650,section:'storage',legacy:['genreactrix-recycle-retention-days']}],
