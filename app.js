@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.79";
+const GENREACTRIX_BUILD="v0.9.39.80";
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
   const status=$("directorStatus");
@@ -226,8 +226,58 @@ const state = {
   customReactions: [],
   objectUrls: [],
   visitBaseline: null,
-  aiRuns: {}
+  aiRuns: {},
+  canonicalFeedActive: false,
+  feedEmpty: false
 };
+
+// v0.9.39.80 — Landscape is a view over the canonical Image Record population.
+// Filter state is intentionally local UI state, persisted across reloads/sessions.
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v1";
+const FILTER_CATEGORIES=["review","rejection","kept","parked"];
+const defaultLandscapeFilter=()=>({
+  all:false,
+  feed:true,
+  include:{review:false,rejection:false,kept:false,parked:false},
+  exclude:{review:false,rejection:false,kept:false,parked:false}
+});
+function normalizeLandscapeFilter(value){
+  const base=defaultLandscapeFilter(), input=value&&typeof value==="object"?value:{};
+  if(Object.prototype.hasOwnProperty.call(input,"all"))base.all=Boolean(input.all);
+  if(Object.prototype.hasOwnProperty.call(input,"feed"))base.feed=Boolean(input.feed);
+  FILTER_CATEGORIES.forEach(key=>{base.include[key]=Boolean(input.include?.[key]);base.exclude[key]=Boolean(input.exclude?.[key]);});
+  // All and Feed are base populations and are mutually exclusive.
+  if(base.all&&base.feed)base.feed=false;
+  if(FILTER_CATEGORIES.some(key=>base.include[key])){base.all=false;base.feed=false;}
+  return base;
+}
+function loadLandscapeFilter(){try{return normalizeLandscapeFilter(JSON.parse(localStorage.getItem(LANDSCAPE_FILTER_KEY)||"null"));}catch{return defaultLandscapeFilter();}}
+let landscapeFilter=loadLandscapeFilter();
+let landscapeFeedDirty=false;
+let landscapeRehydrateTimer=0;
+function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
+function recordMatchesFilterCategory(record,key){
+  if(key==="review")return Boolean(record.attributes?.flagged);
+  if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
+  if(key==="kept")return Boolean(record.attributes?.saved);
+  if(key==="parked")return Boolean(record.attributes?.parked);
+  return false;
+}
+function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&record.workflow?.stage!=="archived";}
+function filteredLandscapeRecords(){
+  const records=(window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordEligibleForLandscapeBase);
+  const includeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.include[key]);
+  let candidates=[];
+  if(landscapeFilter.all)candidates=records;
+  else if(landscapeFilter.feed)candidates=records.filter(r=>!r.attributes?.parked&&!r.attributes?.rejectionFlagged);
+  else if(includeKeys.length)candidates=records.filter(r=>includeKeys.some(key=>recordMatchesFilterCategory(r,key)));
+  // No base/include selection deliberately means zero images.
+  const excludeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.exclude[key]);
+  if(excludeKeys.length)candidates=candidates.filter(r=>!excludeKeys.some(key=>recordMatchesFilterCategory(r,key)));
+  return candidates;
+}
+function currentImageRecord(){return state.canonicalFeedActive&&state.files.length?window.genreactrixImagesEngine?.recordById?.(currentKey())||null:null;}
+
 
 const $ = id => document.getElementById(id);
 const $$ = selector => document.querySelectorAll(selector);
@@ -235,14 +285,19 @@ const currentKey = () => state.files.length ? (state.files[state.index].id || st
 const currentDemo = () => DEMOS[state.demoIndex % DEMOS.length];
 
 function currentSource(){
+  if(state.feedEmpty)return "";
   return state.files.length ? state.files[state.index].url : currentDemo().src;
 }
 function currentDescription(){
+  if(state.feedEmpty)return "No images match the current Landscape filter.";
   return state.files.length
     ? "AI freeform description placeholder for this locally loaded image. Structured AI data can be connected later without changing the console modules."
     : currentDemo().description;
 }
 function defaultAiRun(){
+  if(state.feedEmpty){
+    return {id:"filter-empty",createdAt:new Date().toISOString(),model:"none",interpretationSystemVersion:"IS-1",weights:Object.fromEntries(PRIMITIVES.map(p=>[p.id,0])),themes:[],description:currentDescription()};
+  }
   if(state.files.length){
     return {
       id:`${currentKey()}-placeholder`,
@@ -385,11 +440,17 @@ function emptyClassification(){
   return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
 }
 function loadCurrent(){
+  if(state.feedEmpty){applyClassification(emptyClassification());state.visitBaseline=classificationState();renderAll();return;}
   const key=currentKey();
   const legacy=readClassificationForKey(key);
   const engine=window.genreactrixDirectorClassificationEngine;
   const canonical=engine?.migrate?.(key,legacy)||null;
   applyClassification(canonical?{selectedReactions:canonical.reactions,themes:canonical.themes,flagged:canonical.flagged,writeIn:canonical.notes,retention:canonical.retention}:legacy);
+  const imageRecord=state.canonicalFeedActive?window.genreactrixImagesEngine?.recordById?.(key):null;
+  if(imageRecord){
+    state.flagged=Boolean(imageRecord.attributes?.flagged);
+    state.retention=imageRecord.attributes?.saved?"keep":"discard";
+  }
   engine?.begin?.(key,canonical||legacy);
   state.visitBaseline=classificationState();
   // Paint the destination image's classification immediately, before any
@@ -415,10 +476,17 @@ function commitAndAdvance(sourceKey){
   if($("themeWorkspace")?.open) $("themeWorkspace").close();
   renderAll();
 }
-function navigateImage(delta){
+async function navigateImage(delta){
+  if(state.feedEmpty)return;
   saveImageTransformForCurrent?.();
   if(state.files.length){
     state.index=(state.index+delta+state.files.length)%state.files.length;
+    const destinationId=currentKey();
+    if(landscapeFeedDirty){
+      landscapeFeedDirty=false;
+      await rehydrateLandscapeFeed({preserveId:destinationId,preferredIndex:state.index});
+      return;
+    }
   }else{
     state.demoIndex=(state.demoIndex+delta+DEMOS.length)%DEMOS.length;
   }
@@ -505,6 +573,16 @@ function renderThemes(){
 }
 function renderImage(){
   const src=currentSource();
+  if(state.feedEmpty){
+    $("mainImage").removeAttribute("src");
+    $("mainImage").hidden=true;
+    $("imageEmpty").hidden=false;
+    $("imageEmpty").textContent="No images match the current filter.";
+    if($("profileName"))$("profileName").textContent="Filtered feed";
+    if($("profilePosition"))$("profilePosition").textContent="0 / 0";
+    if($("progressText"))$("progressText").textContent="0 images";
+    return;
+  }
   $("mainImage").src=src;
   $("mainImage").hidden=false;
   if(typeof restoreImageTransformForCurrent==="function") restoreImageTransformForCurrent();
@@ -532,6 +610,12 @@ function renderFlag(){
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
   $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(state.retention==="keep"));
+  const record=currentImageRecord();
+  $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.parked)));
+  const customFilter=!(landscapeFilter.feed&&!landscapeFilter.all&&!FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]));
+  $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
+  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletParkBtn"].forEach(id=>{if($(id))$(id).disabled=Boolean(state.feedEmpty);});
+  $("landscapeFeedEmpty")?.toggleAttribute("hidden",!state.feedEmpty);
 }
 function renderDirectorFields(){
   $("directorWriteIn").value=state.writeIn;
@@ -828,6 +912,13 @@ function applyJudgmentReactionGeometry(prims,pctRow){
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
+  if(state.feedEmpty){
+    $("tabletWorkbenchImage")?.removeAttribute("src");
+    $("landscapeFeedEmpty")?.removeAttribute("hidden");
+    renderFlag();
+    return;
+  }
+  $("landscapeFeedEmpty")?.setAttribute("hidden","");
   $("tabletWorkbenchImage").src=currentSource();
   const prims=$("tabletWorkbenchPrims");
   const pctRow=$("tabletWorkbenchPrimPcts");
@@ -902,6 +993,7 @@ function renderTabletWorkbench(){
     contextualCustomsBtn.setAttribute("aria-label",tabletLandscapeView.customs?"Return to AI Analysis":"Open Customs");
   }
   $("tabletFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+  $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(currentImageRecord()?.attributes?.parked)));
   const keepOn=state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
@@ -1497,24 +1589,41 @@ $("rerunAiBtn").addEventListener("click",()=>{
   renderAll();
 });
 
-async function applyEngineWorkingFiles(files){
+async function applyEngineWorkingFiles(files,{preserveId=null,preferredIndex=0,canonical=true}={}){
   state.objectUrls.forEach(URL.revokeObjectURL);
   state.objectUrls=[];
   state.files=[...files];
-  for(let i=state.files.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.files[i],state.files[j]]=[state.files[j],state.files[i]];}
-  state.index=0;
+  state.canonicalFeedActive=Boolean(canonical);
+  state.feedEmpty=Boolean(canonical&&!state.files.length);
+  if(state.files.length){
+    const preserved=preserveId?state.files.findIndex(file=>file.id===preserveId):-1;
+    state.index=preserved>=0?preserved:Math.max(0,Math.min(Number(preferredIndex)||0,state.files.length-1));
+  }else state.index=0;
   loadCurrent();
-  window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
   renderPortraitControlStation();
 }
+async function rehydrateLandscapeFeed({preserveId=null,preferredIndex=null}={}){
+  const engine=window.genreactrixImagesEngine;if(!engine)return;
+  const oldId=preserveId||(state.files.length?currentKey():null);
+  const oldIndex=preferredIndex==null?state.index:preferredIndex;
+  const records=filteredLandscapeRecords();
+  const files=await engine.workingFiles(records.map(record=>record.id));
+  await applyEngineWorkingFiles(files,{preserveId:oldId,preferredIndex:oldIndex,canonical:true});
+  renderLandscapeFilterDialog();
+}
+function scheduleLandscapeRehydrate(){
+  clearTimeout(landscapeRehydrateTimer);
+  landscapeRehydrateTimer=setTimeout(()=>rehydrateLandscapeFeed().catch(error=>console.warn("Landscape feed could not be rehydrated",error)),80);
+}
+window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
 async function loadImageFolder(fileList,limit=null){
   const batchId=await window.genreactrixBatchEngine?.activeId?.()||"current-import";
   const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit,target:"active-batch"}):null;
   window.pendingImportEngineMode=false;
   const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit,batchId});
   if(window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
-  const files=await window.genreactrixImagesEngine.workingFiles(records.map(record=>record.id));
-  await applyEngineWorkingFiles(files);
+  await rehydrateLandscapeFeed({preserveId:records[0]?.id||null});
+  window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
   setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} copied into Temporary Import.`);
 }
 let pendingPortraitImportLimit=null;
@@ -1827,6 +1936,37 @@ window.addEventListener("resize",()=>{
 // after all renderer dependencies (including image transform state) exist.
 loadCurrent();
 
+function renderLandscapeFilterDialog(){
+  const dialog=$("landscapeFilterDialog");if(!dialog)return;
+  $("landscapeFilterAll").checked=Boolean(landscapeFilter.all);
+  $("landscapeFilterFeed").checked=Boolean(landscapeFilter.feed);
+  FILTER_CATEGORIES.forEach(key=>{
+    const inc=$("landscapeFilterInclude_"+key),exc=$("landscapeFilterExclude_"+key);
+    if(inc)inc.checked=Boolean(landscapeFilter.include[key]);
+    if(exc)exc.checked=Boolean(landscapeFilter.exclude[key]);
+  });
+  const count=filteredLandscapeRecords().length;
+  if($("landscapeFilterCount"))$("landscapeFilterCount").textContent=`${count} image${count===1?"":"s"} match`;
+}
+async function applyLandscapeFilter(){saveLandscapeFilter();renderLandscapeFilterDialog();await rehydrateLandscapeFeed();}
+function setLandscapeFilterBase(key,checked){
+  if(key==="all"){landscapeFilter.all=checked;if(checked){landscapeFilter.feed=false;FILTER_CATEGORIES.forEach(k=>landscapeFilter.include[k]=false);}}
+  if(key==="feed"){landscapeFilter.feed=checked;if(checked){landscapeFilter.all=false;FILTER_CATEGORIES.forEach(k=>landscapeFilter.include[k]=false);}}
+}
+$("tabletFilterBtn")?.addEventListener("click",()=>{renderLandscapeFilterDialog();$("landscapeFilterDialog")?.showModal();});
+$("landscapeFilterClose")?.addEventListener("click",()=>$("landscapeFilterDialog")?.close());
+$("landscapeFilterAll")?.addEventListener("change",async e=>{setLandscapeFilterBase("all",e.target.checked);await applyLandscapeFilter();});
+$("landscapeFilterFeed")?.addEventListener("change",async e=>{setLandscapeFilterBase("feed",e.target.checked);await applyLandscapeFilter();});
+FILTER_CATEGORIES.forEach(key=>{
+  $("landscapeFilterInclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.include[key]=e.target.checked;if(e.target.checked){landscapeFilter.all=false;landscapeFilter.feed=false;}await applyLandscapeFilter();});
+  $("landscapeFilterExclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.exclude[key]=e.target.checked;await applyLandscapeFilter();});
+});
+
+$("tabletParkBtn")?.addEventListener("click",async()=>{
+  if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
+  const next=!Boolean(record.attributes?.parked);await window.genreactrixImagesEngine.setParked(id,next);
+  landscapeFeedDirty=true;renderFlag();renderTabletWorkbench();setDirectorStatus(next?"Image parked. It will leave Feed when you navigate away.":"Image returned from Parked state.");
+});
 
 document.getElementById("tabletWorkspaceFlipBtn")?.addEventListener("click",()=>{tabletLandscapeView.face=tabletLandscapeView.face==="matrix"?"judgment":"matrix";if(tabletLandscapeView.face==="matrix")tabletLandscapeView.customs=false;renderTabletWorkbench();});
 document.getElementById("tabletAiReactionsBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiReactions=!tabletLandscapeView.aiReactions;renderTabletWorkbench();});
@@ -1862,6 +2002,7 @@ $("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>createComponentAi
 syncTabletAiRerunControls();
 
 document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
+  if(state.feedEmpty)return;
   const id=currentKey();
   const keepOn=state.retention!=="keep";
   pushHistory();state.retention=keepOn?"keep":"discard";
@@ -1869,8 +2010,11 @@ document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
   try{
     const record=window.genreactrixImagesEngine?.recordById?.(id);
     if(record){
-      if(keepOn)await window.genreactrixImagesEngine.saveReference(id);
-      else window.genreactrixImageRecordEngine?.update?.(id,{attributes:{saved:false},timestamps:{savedAt:null}},"reference-keep-cleared");
+      if(keepOn){
+        const wasRejectionFlagged=Boolean(record.attributes?.rejectionFlagged);
+        await window.genreactrixImagesEngine.saveReference(id);
+        if(wasRejectionFlagged)landscapeFeedDirty=true;
+      }else window.genreactrixImageRecordEngine?.update?.(id,{attributes:{saved:false},timestamps:{savedAt:null}},"reference-keep-cleared");
     }
     renderAll();renderLandscapeImageView();
     setDirectorStatus(keepOn?"Full-resolution image marked Keep for batching.":"Keep cleared; full-resolution image may recycle after batching.");
@@ -2078,8 +2222,15 @@ function finishFlagHold(e,cancelled=false){
 // Finish a Flag hold even if Android releases the pointer outside the button.
 document.addEventListener("pointerup",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,false);},{passive:false});
 document.addEventListener("pointercancel",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,true);},{passive:false});
-$("flagForRejectionAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Image flagged for rejection review.")});
-$("rejectImageAction")?.addEventListener("click",()=>{$("flagAdminDialog")?.close();setDirectorStatus("Reject workflow will be completed in the lifecycle checkpoint.")});
+$("flagForRejectionAction")?.addEventListener("click",async()=>{
+  $("flagAdminDialog")?.close();if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
+  const next=!Boolean(record.attributes?.rejectionFlagged);await window.genreactrixImagesEngine.setRejectionFlagged(id,next);landscapeFeedDirty=true;
+  setDirectorStatus(next?"Image flagged for rejection. It will leave Feed when you navigate away.":"Rejection flag cleared.");renderFlag();
+});
+$("rejectImageAction")?.addEventListener("click",async()=>{
+  $("flagAdminDialog")?.close();if(state.feedEmpty)return;if(!confirm("Reject this image? Its full-resolution asset moves to Recycle; its Image Record, analysis, and history remain."))return;
+  const id=currentKey(),index=state.index;await window.genreactrixImagesEngine?.rejectImage?.(id);await rehydrateLandscapeFeed({preferredIndex:index});setDirectorStatus("Image rejected and moved to Recycle.");
+});
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
 landscapeImageCanvas?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();},{capture:true});
@@ -2321,7 +2472,16 @@ function createImageRecordEngine(){
       temporaryKey:record.storage?.temporaryKey ?? (["temporary","reference","recycle"].includes(record.storageState)?record.id:null),
       referenceKey:record.storage?.referenceKey ?? (record.storageState==="reference"?record.id:null),
       hyperlink:record.storage?.hyperlink||record.originalUrl||"",
-      recycle:{deletedAt:record.storage?.recycle?.deletedAt||null,priorMode:record.storage?.recycle?.priorMode||null},
+      recycle:{
+        deletedAt:record.storage?.recycle?.deletedAt||null,
+        priorMode:record.storage?.recycle?.priorMode||null,
+        priorStage:record.storage?.recycle?.priorStage||null,
+        priorSaved:record.storage?.recycle?.priorSaved??null,
+        priorFlagged:record.storage?.recycle?.priorFlagged??null,
+        priorRejectionFlagged:record.storage?.recycle?.priorRejectionFlagged??null,
+        priorParked:record.storage?.recycle?.priorParked??null,
+        priorRejected:record.storage?.recycle?.priorRejected??null
+      },
       missingReference:Boolean(record.storage?.missingReference),
       mimeType:record.storage?.mimeType||record.mimeType||"",
       size:Number(record.storage?.size ?? record.size)||0,
@@ -2337,7 +2497,10 @@ function createImageRecordEngine(){
       needsReview:Boolean(record.attributes?.needsReview||record.flaggedAt),
       failed:Boolean(record.attributes?.failed||record.error),
       archived:Boolean(record.attributes?.archived),
-      inRecycleBin:Boolean(record.attributes?.inRecycleBin||record.storageState==="recycle")
+      inRecycleBin:Boolean(record.attributes?.inRecycleBin||record.storageState==="recycle"),
+      parked:Boolean(record.attributes?.parked),
+      rejectionFlagged:Boolean(record.attributes?.rejectionFlagged),
+      rejected:Boolean(record.attributes?.rejected)
     },
     components:{...defaultComponents(),...(record.components||{})},
     analysis:{ai:record.analysis?.ai||null,director:record.analysis?.director||null},
@@ -2346,7 +2509,10 @@ function createImageRecordEngine(){
     timestamps:{
       savedAt:record.timestamps?.savedAt||record.savedAt||null,
       flaggedAt:record.timestamps?.flaggedAt||record.flaggedAt||null,
-      processedAt:record.timestamps?.processedAt||record.processedAt||null
+      processedAt:record.timestamps?.processedAt||record.processedAt||null,
+      parkedAt:record.timestamps?.parkedAt||null,
+      rejectionFlaggedAt:record.timestamps?.rejectionFlaggedAt||null,
+      rejectedAt:record.timestamps?.rejectedAt||null
     },
     error:record.error||""
   });
@@ -2440,29 +2606,65 @@ function createImagesEngine(){
     const blob=await imageBlobGet(record.id);if(!blob){records.update(record.id,{storage:{missingReference:true}},"reference-missing");const fallback=record.storage.hyperlink||record.source.originalUrl;return fallback?{id:record.id,name:record.name,url:fallback,imageRecord:record}:null;}
     const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);records.update(record.id,{accessedAt:now(),storage:{missingReference:false}},"accessed");return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false})};
   }
-  async function workingFiles(ids=activeSessionIds){const selected=ids?.length?ids:records.query({stage:"available"}).map(r=>r.id);const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;}
+  async function workingFiles(ids=null){const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"available"}).map(r=>r.id));const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;}
   function setLifecycle(id,lifecycleState){const stage={processed:"director-complete"}[lifecycleState]||lifecycleState;return records.update(id,{workflow:{stage},timestamps:stage==="director-complete"?{processedAt:now()}:{}},"stage-changed");}
   function setFlagged(id,flagged=true){return records.update(id,{attributes:{flagged,needsReview:flagged},timestamps:{flaggedAt:flagged?now():null}},"flag-changed");}
+  function setParked(id,parked=true){return records.update(id,{attributes:{parked:Boolean(parked)},timestamps:{parkedAt:parked?now():null}},"park-changed");}
+  function setRejectionFlagged(id,flagged=true){return records.update(id,{attributes:{rejectionFlagged:Boolean(flagged)},timestamps:{rejectionFlaggedAt:flagged?now():null}},"rejection-flag-changed");}
   async function saveReference(id){let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");if(record.storage.mode==="linked"){const response=await fetch(record.storage.hyperlink||record.source.originalUrl,{mode:"cors"});if(!response.ok)throw new Error(`HTTP ${response.status}`);const blob=await response.blob();if(!blob.type.startsWith("image/"))throw new Error("URL did not return an image");await imageBlobPut(id,blob);record=records.update(id,{storage:{mimeType:blob.type,size:blob.size,temporaryKey:id}},"reference-downloaded");}
-    return records.update(id,{storage:{mode:"reference",referenceKey:id},attributes:{saved:true,hyperlinkOnly:false,inRecycleBin:false},timestamps:{savedAt:now()}},"reference-saved");
+    return records.update(id,{storage:{mode:"reference",referenceKey:id},attributes:{saved:true,hyperlinkOnly:false,inRecycleBin:false,rejectionFlagged:false,rejected:false},timestamps:{savedAt:now(),rejectionFlaggedAt:null,rejectedAt:null}},"reference-saved");
   }
-  async function moveToRecycle(id){const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.flagged)return null;return records.update(id,{storage:{mode:"recycle",recycle:{deletedAt:now(),priorMode:record.storage.mode}},attributes:{inRecycleBin:true}},"recycled");}
-  async function cleanupProcessed(){const candidates=records.all().filter(r=>r.workflow.stage==="director-complete"&&r.storage.mode==="temporary"&&!r.attributes.flagged&&!r.attributes.saved);for(const r of candidates)await moveToRecycle(r.id);return candidates.length;}
-  async function restoreFromRecycle(id){const record=records.get(id,{touch:false});if(!record?.attributes.inRecycleBin)return null;return records.update(id,{storage:{mode:record.storage.recycle.priorMode||"temporary",recycle:{deletedAt:null,priorMode:null}},attributes:{inRecycleBin:false}},"recycle-restored");}
+  function recycleSnapshot(record){return {
+    deletedAt:now(),priorMode:record.storage.mode,priorStage:record.workflow.stage,
+    priorSaved:Boolean(record.attributes.saved),priorFlagged:Boolean(record.attributes.flagged),
+    priorRejectionFlagged:Boolean(record.attributes.rejectionFlagged),priorParked:Boolean(record.attributes.parked),priorRejected:Boolean(record.attributes.rejected)
+  };}
+  async function moveToRecycle(id){
+    const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.flagged||record.attributes.inRecycleBin)return null;
+    return records.update(id,{storage:{mode:"recycle",recycle:recycleSnapshot(record)},attributes:{inRecycleBin:true}},"recycled");
+  }
+  async function rejectImage(id){
+    const record=records.get(id,{touch:false});if(!record)return null;if(record.attributes.inRecycleBin)return record;
+    return records.update(id,{
+      storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},
+      workflow:{stage:"rejected"},
+      attributes:{saved:false,flagged:false,needsReview:false,rejectionFlagged:false,parked:false,rejected:true,inRecycleBin:true},
+      timestamps:{savedAt:null,flaggedAt:null,rejectionFlaggedAt:null,parkedAt:null,rejectedAt:now()}
+    },"image-rejected");
+  }
+  async function cleanupProcessed(){const candidates=records.all().filter(r=>r.workflow.stage==="director-complete"&&r.storage.mode==="temporary"&&!r.attributes.flagged&&!r.attributes.saved&&!r.attributes.rejectionFlagged&&!r.attributes.parked);for(const r of candidates)await moveToRecycle(r.id);return candidates.length;}
+  async function restoreFromRecycle(id){
+    const record=records.get(id,{touch:false});if(!record?.attributes.inRecycleBin)return null;const prior=record.storage.recycle||{};
+    return records.update(id,{
+      storage:{mode:prior.priorMode||"temporary",referenceKey:prior.priorSaved?id:null,recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorRejectionFlagged:null,priorParked:null,priorRejected:null}},
+      workflow:{stage:prior.priorStage||"available"},
+      attributes:{inRecycleBin:false,saved:Boolean(prior.priorSaved),flagged:Boolean(prior.priorFlagged),needsReview:Boolean(prior.priorFlagged),rejectionFlagged:Boolean(prior.priorRejectionFlagged),parked:Boolean(prior.priorParked),rejected:Boolean(prior.priorRejected)},
+      timestamps:{savedAt:prior.priorSaved?(record.timestamps.savedAt||now()):null,flaggedAt:prior.priorFlagged?(record.timestamps.flaggedAt||now()):null,rejectionFlaggedAt:prior.priorRejectionFlagged?(record.timestamps.rejectionFlaggedAt||now()):null,parkedAt:prior.priorParked?(record.timestamps.parkedAt||now()):null,rejectedAt:prior.priorRejected?(record.timestamps.rejectedAt||now()):null}
+    },"recycle-restored");
+  }
   async function purgeRecycle({before=null,freeBytes=null,all=false}={}){
     let candidates=records.all().filter(r=>r.attributes.inRecycleBin&&!r.attributes.saved&&!r.attributes.flagged).sort((a,b)=>String(a.storage.recycle.deletedAt).localeCompare(String(b.storage.recycle.deletedAt)));
     if(before)candidates=candidates.filter(r=>r.storage.recycle.deletedAt&&new Date(r.storage.recycle.deletedAt)<new Date(before));
     let freed=0,purged=0;
-    for(const record of candidates){if(!all&&!before&&Number.isFinite(freeBytes)&&freed>=freeBytes)break;await imageBlobDelete(record.id).catch(()=>{});freed+=record.storage.size||0;purged++;records.update(record.id,{storage:{mode:record.storage.hyperlink?"linked":"none",temporaryKey:null,referenceKey:null,recycle:{deletedAt:null,priorMode:null}},attributes:{inRecycleBin:false,hyperlinkOnly:Boolean(record.storage.hyperlink)},workflow:{stage:"archived"}},"recycle-purged");}
+    for(const record of candidates){
+      if(!all&&!before&&Number.isFinite(freeBytes)&&freed>=freeBytes)break;
+      await imageBlobDelete(record.id).catch(()=>{});freed+=record.storage.size||0;purged++;
+      const wasRejected=Boolean(record.attributes.rejected);
+      records.update(record.id,{storage:{mode:record.storage.hyperlink?"linked":"none",temporaryKey:null,referenceKey:null,recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorRejectionFlagged:null,priorParked:null,priorRejected:null}},attributes:{inRecycleBin:false,hyperlinkOnly:Boolean(record.storage.hyperlink),archived:!wasRejected},workflow:{stage:wasRejected?"rejected":"archived"}},"recycle-purged");
+    }
     return{purged,freed};
   }
   async function purgeExpired(){const days=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.("recycle.retentionDays",30) ?? localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
   async function verifyStorage(){const issues=[];for(const record of records.all()){if(["temporary","reference","recycle"].includes(record.storage.mode)){const blob=await imageBlobGet(record.id).catch(()=>null);if(!blob){records.update(record.id,{storage:{missingReference:true}},"integrity");issues.push({imageId:record.id,type:"missing-blob"});}}}const recordIntegrity=records.integrity();const historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};}
   function allRecords(){return records.all();}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,saveReference,cleanupProcessed,moveToRecycle,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,saveReference,cleanupProcessed,moveToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
-window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);}).catch(console.warn);
+window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
+window.addEventListener("genreactrix:image-record",event=>{
+  const type=event.detail?.type||"external-refresh";
+  if(["created","flag-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh"].includes(type))scheduleLandscapeRehydrate();
+});
 
 // v0.9.8.0 adds the persistent modular AI Analysis Engine while preserving the Control Station, Images, Image Record, and History engines.
 // Portrait remains a client of shared capabilities. Quick buttons store references

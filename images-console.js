@@ -8,10 +8,10 @@
   function status(text){ if($("imagesConsoleStatus")) $("imagesConsoleStatus").textContent=text||""; }
   function listFor(section){
     const records=all();
-    if(section==="review") return records.filter(r=>!["recycle","purged"].includes(r.stage));
-    if(section==="saved") return records.filter(r=>r.saved||r.attributes?.saved||r.storage?.reference);
-    if(section==="flagged") return records.filter(r=>r.flagged||r.attributes?.flagged);
-    if(section==="recycle") return records.filter(r=>r.stage==="recycle"||r.attributes?.inRecycleBin);
+    if(section==="review") return records.filter(r=>!["recycle","purged","rejected","archived"].includes(r.workflow?.stage)&&!r.attributes?.inRecycleBin);
+    if(section==="saved") return records.filter(r=>r.attributes?.saved||r.storage?.mode==="reference");
+    if(section==="flagged") return records.filter(r=>r.attributes?.flagged||r.attributes?.rejectionFlagged);
+    if(section==="recycle") return records.filter(r=>r.attributes?.inRecycleBin);
     if(section==="failures") return records.filter(r=>r.error||r.attributes?.failedOperation||r.attributes?.missingSource);
     if(section==="history") return records.slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
     return [];
@@ -22,7 +22,7 @@
     const records=listFor(section);
     $(id).innerHTML=records.length?records.map(r=>{
       const source=r.source?.originalName||r.source?.originalUrl||r.name||r.id;
-      const state=[r.stage,r.saved||r.attributes?.saved?"Saved":"",r.flagged||r.attributes?.flagged?"Flagged":"",r.error?"Failed":""].filter(Boolean).join(" · ");
+      const state=[r.workflow?.stage,r.attributes?.saved?"Kept":"",r.attributes?.flagged?"Review Flagged":"",r.attributes?.rejectionFlagged?"Rejection Flagged":"",r.attributes?.parked?"Parked":"",r.attributes?.inRecycleBin?"Recycle":"",r.error?"Failed":""].filter(Boolean).join(" · ");
       return `<label class="images-record-row"><input type="checkbox" data-image-select="${esc(r.id)}" ${selected.has(r.id)?"checked":""}><span><strong>${esc(source)}</strong><small>${esc(r.id)} · ${esc(state||"Available")}</small></span></label>`;
     }).join(""):`<p class="images-empty">No ${esc(section)} images.</p>`;
     $(id).querySelectorAll("[data-image-select]").forEach(box=>box.addEventListener("change",()=>{box.checked?selected.add(box.dataset.imageSelect):selected.delete(box.dataset.imageSelect);}));
@@ -72,7 +72,7 @@
   async function emptyRecycle(){
     const records=listFor("recycle"); if(!records.length){status("Recycle bin is empty.");return;}
     if(!confirm(`Permanently purge ${records.length} eligible recycle item${records.length===1?"":"s"}? Records and analysis remain.`)) return;
-    const result=await engine()?.purgeRecycle?.({mode:"all"}); status(`${result?.purged||0} recycle item${result?.purged===1?"":"s"} purged.`); renderList("recycle"); window.dispatchEvent(new CustomEvent("genreactrix:image-record"));
+    const result=await engine()?.purgeRecycle?.({all:true}); status(`${result?.purged||0} recycle item${result?.purged===1?"":"s"} purged.`); renderList("recycle"); window.dispatchEvent(new CustomEvent("genreactrix:image-record"));
   }
   function open(){
     const amount=window.genreactrixSettingsEngine?.getCached?.("defaults.images")||window.genreactrixSettingsEngine?.getCached?.("defaults.urls")||100;

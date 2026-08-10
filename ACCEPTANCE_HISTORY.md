@@ -499,3 +499,20 @@ Changes:
 - Preserves v0.9.39.77 AI image transport and all prior queue/provider recovery behavior.
 
 No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.
+
+---
+
+## v0.9.39.79
+
+Genreactrix v0.9.39.79
+
+AI eligibility selection-order correction.
+
+Changes:
+- AI scope filtering and Missing/Rerun eligibility are now evaluated before Quantity limits are applied.
+- Quantity 1 no longer inspects only the first record in a scope and incorrectly reports 0 eligible when later records need analysis.
+- Queue/processing records are excluded from the live preflight count.
+- Preflight now shows total eligible images and how many the requested quantity will actually run.
+- Preserves v0.9.39.78 source decode preflight, JPEG AI transport, failure quarantine, component isolation, provider diagnostics, and Reports.
+
+No PrimFusion vocabulary, AI definitions, report calculations, or Worker behavior changed.

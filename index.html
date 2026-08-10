@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.79</title>
-<link href="styles.css?v=0.9.39.79" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.80</title>
+<link href="styles.css?v=0.9.39.80" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.39.79</span>
+<span>v0.9.39.80</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -41,7 +41,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.79</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.80</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
@@ -337,6 +337,7 @@
 <section class="landscape-image-region" aria-label="Image and Director themes">
 <button class="landscape-image-button" id="tabletImageViewBtn" type="button" aria-label="Open image inspection view">
 <img alt="Current image" id="tabletWorkbenchImage"/>
+<span class="landscape-feed-empty" id="landscapeFeedEmpty" hidden>No images match this filter.<br><small>Open Filter to change the image population.</small></span>
 </button>
 <div class="landscape-director-themes" aria-label="Director themes">
 <button class="tablet-theme-cell" data-tablet-workbench-slot="1"><span class="tablet-slot-number">1</span><strong id="tabletWorkbenchTheme1">—</strong></button>
@@ -352,6 +353,8 @@
 <button id="tabletRedoBtn" type="button">Redo</button>
 <button aria-pressed="false" id="tabletFlagBtn" type="button">⚑ Flag</button>
 <button aria-pressed="true" class="primary-action" id="tabletSaveBtn" type="button">Keep</button>
+<button aria-pressed="false" id="tabletParkBtn" type="button">Park</button>
+<button aria-pressed="false" id="tabletFilterBtn" type="button">Filter</button>
 <button id="tabletWorkspaceFlipBtn" type="button" aria-label="Flip Matrix and Judgment workspace">Flip</button>
 <input accept="image/*" id="tabletFolderInput" multiple="" type="file" webkitdirectory="" hidden/>
 </header>
@@ -461,6 +464,24 @@
     <button id="rejectImageAction" class="danger-action" type="button">Reject Image</button>
     <button value="cancel" type="submit">Cancel</button>
   </form>
+</dialog>
+<dialog class="landscape-filter-dialog" id="landscapeFilterDialog">
+  <section class="landscape-filter-shell">
+    <header><h2>Filter</h2><button id="landscapeFilterClose" type="button" aria-label="Close">×</button></header>
+    <div class="landscape-filter-bases" aria-label="Base image populations">
+      <label><input id="landscapeFilterAll" type="checkbox"> <span>All</span></label>
+      <label><input id="landscapeFilterFeed" type="checkbox"> <span>Feed</span></label>
+    </div>
+    <h3>Or Select:</h3>
+    <div class="landscape-filter-grid" role="group" aria-label="Include and exclude filter categories">
+      <strong>Include</strong><span></span><strong>Exclude</strong>
+      <input id="landscapeFilterInclude_review" type="checkbox" aria-label="Include Flagged for Review"><label>Flagged for Review</label><input id="landscapeFilterExclude_review" type="checkbox" aria-label="Exclude Flagged for Review">
+      <input id="landscapeFilterInclude_rejection" type="checkbox" aria-label="Include Flagged for Rejection"><label>Flagged for Rejection</label><input id="landscapeFilterExclude_rejection" type="checkbox" aria-label="Exclude Flagged for Rejection">
+      <input id="landscapeFilterInclude_kept" type="checkbox" aria-label="Include Kept"><label>Kept</label><input id="landscapeFilterExclude_kept" type="checkbox" aria-label="Exclude Kept">
+      <input id="landscapeFilterInclude_parked" type="checkbox" aria-label="Include Parked"><label>Parked</label><input id="landscapeFilterExclude_parked" type="checkbox" aria-label="Exclude Parked">
+    </div>
+    <p class="landscape-filter-count" id="landscapeFilterCount" aria-live="polite"></p>
+  </section>
 </dialog>
 <section class="base-layout">
 <section aria-label="Image and AI description" class="console image-console">
@@ -806,7 +827,7 @@
 <script src="import-job-engine.js?v=0.9.24.0"></script>
 <script src="import-engine.js?v=0.9.24.0"></script>
 <script src="maintenance-engine.js?v=0.9.23.0"></script>
-<script src="settings-engine.js?v=0.9.39.79"></script>
+<script src="settings-engine.js?v=0.9.39.80"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
 <form class="custom-library-shell" method="dialog" onsubmit="return false;">
@@ -836,7 +857,8 @@ window.grxOpenCustomDialog=function(dialogId){
   return false;
 };
 </script>
-<script src="app.js?v=0.9.39.79"></script>
+<script src="app.js?v=0.9.39.80"></script>
+<script src="images-console.js?v=0.9.39.80"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
@@ -850,9 +872,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="queue-engine.js?v=0.9.14.1"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.39.79"></script>
-<script src="reports-engine.js?v=0.9.39.79"></script>
+<script src="queue-engine.js?v=0.9.39.80"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.39.80"></script>
+<script src="reports-engine.js?v=0.9.39.80"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -866,7 +888,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="batch-engine.js?v=0.9.14.0"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.39.79"></script>
+<script src="ai-analysis-engine.js?v=0.9.39.80"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">
