@@ -1,0 +1,31 @@
+Genreactrix v0.9.39.92 — PrimFusion Theme Vocabulary Update
+
+SCOPE
+Pre-live Matrix v0.0.0.0 vocabulary correction and AI Theme-definition grounding on top of v0.9.39.91.
+No Reaction scoring, 114-point scoring, image-fit, Flag/Reject, Filter, Pack, filesystem, report-layout, or Cycle changes.
+
+MATRIX v0.0.0.0 CHANGES
+1. PFM0209 [✨🌶️] Horny -> Exposure.
+2. PFM0307 [😭🎟️] Dark -> Shame.
+3. PFM0309 [😭🌶️] Rejected -> Humiliation.
+4. Matrix version remains v0.0.0.0 because the Matrix has not gone live.
+5. PrimFusion cell identities/codes are unchanged; only the pre-live Theme vocabulary is refined.
+
+AI THEME CONTRACT
+1. Worker updated from v0.9.6.2 to v0.9.6.3.
+2. Theme Analysis receives the complete 91-Theme PrimFusion catalog with canonical definitions and image cues.
+3. Definitions retain the existing PFM#### [emoji pair] Theme - definition; cue formatting.
+4. Exposure definition/cues:
+   PFM0209 [✨🌶️] Exposure - Being naked, indecently revealed, or too visibly exposed, especially in ways that feel shameful, embarrassing, humiliating, or sexually charged; visible nudity, uncovered body parts, flashing, revealing poses, or accidental bodily exposure.
+5. Shame definition/cues:
+   PFM0307 [😭🎟️] Shame - Painful self-conscious disgrace, embarrassment, exposure, or feeling unworthy, judged, or wanting to hide; averted gaze, covered face, hiding posture, blushing, shrinking, or visibly caught embarrassment.
+6. Humiliation definition/cues:
+   PFM0309 [😭🌶️] Humiliation - Being demeaned, degraded, ridiculed, exposed, rejected, or stripped of dignity by others or events; pointing or laughing onlookers, forced exposure, defeated posture, visible embarrassment, or submission.
+7. Existing canonical Theme must be preferred when it reasonably represents the concept.
+8. Synonyms, grammatical variants, broader/narrower wording, and Theme+subject combinations are not Customs.
+9. Custom fallback is reserved for genuine semantic gaps.
+10. Custom labels must be concise reusable abstract concepts; not settings, objects, professions, standalone Prims, or “and” compounds.
+
+UNCHANGED
+- Reaction Analysis remains the existing v0.9.6.2-style contract for now; the planned Prim-definition and 114-point work is not included here.
+- Current historical/test AI outputs are not rewritten; raw prior model proposals remain intact.

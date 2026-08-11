@@ -1,9 +1,24 @@
-## v0.9.39.65 — Folded-landscape Customs workspace
+## v0.9.39.93 — Prim reactions + 114-point scoring
 
-- Replaces the crowded all-at-once Customs drawer with persistent Custom Search, Custom Reactions, and Custom Themes panels.
-- Uses the existing contextual button as AI Analysis while Customs is open.
-- Custom buttons are content-sized chips; reactions show emoji + word + pencil, themes show word + pencil. Delete remains inside Edit dialogs.
-- Reactions and Themes have independent A-Z / Date / Top sorting with an ascending/descending toggle and independent scrolling.
-- Search results are split into Custom Reactions and Custom Themes.
-- Search focus promotes the Customs workspace over the visual viewport above the Android keyboard instead of compressing Image View.
-- Existing custom creation/editing/selection, vocabulary versioning, AI drawer, and Image View centering behavior are preserved.
+This build adds the finalized 14 Prim reaction definitions to AI Reaction Analysis
+and changes Reaction scoring to the 114-point comparative method.
+
+- Worker v0.9.6.4.
+- Matrix remains v0.0.0.0 because it is still pre-live.
+- AI allocates exactly 114 whole points across all 14 Prims, minimum 1 each.
+- Worker validates the raw allocation, subtracts 1 from each Prim, and exposes the
+  remaining 100 points as the reaction percentages.
+- Raw `allocationPoints` remain attached to each stored reaction result.
+- Theme Analysis remains grounded in the canonical 91-theme catalog from v0.9.39.92.
+
+See `ACCEPTANCE-v0.9.39.93.txt` for scope and the research-integrity note about
+legacy binary AI-agreement thresholds.
+
+## v0.9.39.92 — PrimFusion Theme vocabulary update
+
+- Matrix remains pre-live v0.0.0.0.
+- PFM0209: Exposure replaces Horny.
+- PFM0307: Shame replaces Dark.
+- PFM0309: Humiliation replaces Rejected.
+- Worker v0.9.6.3 now grounds Theme Analysis in the complete 91-Theme PrimFusion definition catalog before permitting Custom fallback.
+- Existing Landscape full-image containment from v0.9.39.91 is preserved.

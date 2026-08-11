@@ -1,3 +1,19 @@
+## v0.9.39.93
+- Added the finalized 14 Prim reaction definitions to the Worker Reaction prompt.
+- Replaced independent 0–100 AI reaction scoring with the 114-point comparative method.
+- Requires all 14 whole-number allocations, minimum 1 each, exact total 114.
+- Worker subtracts 1 locally and stores/display-consumes the resulting 100-point distribution.
+- Preserves each raw allocation as `allocationPoints`.
+- Reaction prompt version is `genreactrix-reactions-v3-114-point-prims`.
+- Matrix remains pre-live v0.0.0.0.
+- Legacy binary agreement thresholds are intentionally not reinterpreted in this build.
+
+## v0.9.39.92
+- Pre-live PrimFusion Matrix v0.0.0.0 vocabulary refinements: Horny → Exposure, Dark → Shame, Rejected → Humiliation.
+- Worker v0.9.6.3 now receives all 91 canonical PrimFusion Theme definitions and image cues instead of free-form Theme naming without the Matrix vocabulary.
+- Theme prompt now exhausts the Matrix before Custom fallback and rejects synonym/variant, setting, object, profession, standalone-Prim, Theme+subject, and “and” compound Custom shortcuts.
+- Prior test outputs are preserved rather than silently rewritten.
+
 ## v0.9.39.91
 - Corrected the v0.9.39.90 Landscape image-fit implementation.
 - The workbench image and focused Image View now fill a fixed viewport box while
