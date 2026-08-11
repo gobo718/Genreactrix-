@@ -1,5 +1,14 @@
 # Genreactrix
 
+## v0.9.40.3 — Fold 6 unfolded safe-control gutter
+
+- Fixes the unfolded router so a Fold 6 opened in the wider physical orientation enters the unfolded wrapper instead of remaining on the normal responsive index page.
+- The router now re-checks after resize/orientation changes, so rotating an already-open unfolded phone can enter the wrapper without a reload.
+- Unfolded Portrait/Landscape selection now uses the physical Screen Orientation API first instead of browser viewport width/height. This prevents browser chrome on the near-square inner display from making both physical orientations look like Landscape.
+- Existing Portrait and folded-Landscape canvases remain separate fixed-ratio layouts and are proportionally scaled to fit the unfolded display; unused area stays black.
+- Swap Layout and Lock Orientation remain bottom-left and are guaranteed not to cover the mirrored canvas: existing black letterbox space is used when available; otherwise the canvas is proportionally reduced just enough to reserve a black control gutter.
+- No Reaction, Theme, Matrix, Worker, or other gameplay behavior changed in this site-only correction.
+
 ## v0.9.40.1 — Zazzly / Liminal tuning + unfolded Fold 6 wrapper
 
 - App build: v0.9.40.1.

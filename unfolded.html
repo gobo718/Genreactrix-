@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>Genreactrix v0.9.40.1 — Unfolded</title>
+<title>Genreactrix v0.9.40.3 — Unfolded</title>
 <style>
   *{box-sizing:border-box}
   html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#f4eef8;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
   #unfoldedStage{position:fixed;inset:0;overflow:hidden;background:#000}
   #unfoldedMirror{position:absolute;left:50%;top:50%;border:0;background:#0f0d14;transform-origin:center center;box-shadow:0 0 0 1px #25202b}
-  #unfoldedControls{position:fixed;left:max(10px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));z-index:20;display:flex;gap:8px;align-items:center}
+  #unfoldedControls{position:fixed;left:max(10px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));z-index:20;display:flex;gap:8px;align-items:center;max-width:calc(100vw - 20px);flex-wrap:wrap}
   #unfoldedControls button{border:1px solid #51465c;background:#221e2a;color:#f4eef8;border-radius:9px;padding:9px 12px;font:700 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 3px 12px #0009}
   #unfoldedControls button[aria-pressed="true"]{border-color:#c29cff;color:#c29cff}
 </style>
@@ -28,17 +28,36 @@
   const lock=document.getElementById('lockOrientation');
   const LOGICAL_SHORT=540;
   const LOGICAL_LONG=1200;
+  const nearSquare=(w,h,maxRatio)=>{
+    w=Math.max(1,Number(w)||0); h=Math.max(1,Number(h)||0);
+    return Math.min(w,h)>=600 && Math.max(w,h)/Math.min(w,h)<=maxRatio;
+  };
+  const viewport=()=>({
+    w:Math.max(1,window.visualViewport?.width||window.innerWidth),
+    h:Math.max(1,window.visualViewport?.height||window.innerHeight)
+  });
+  const isUnfoldedViewport=()=>{
+    const v=viewport();
+    return nearSquare(screen?.width,screen?.height,1.25) || nearSquare(v.w,v.h,1.48);
+  };
+  const physicalLayout=()=>{
+    const type=String(screen?.orientation?.type||'').toLowerCase();
+    if(type.startsWith('portrait')) return 'portrait';
+    if(type.startsWith('landscape')) return 'landscape';
+    const angle=Number.isFinite(Number(screen?.orientation?.angle)) ? Number(screen.orientation.angle) : Number(window.orientation);
+    if(Number.isFinite(angle)) return Math.abs(angle)%180===90?'landscape':'portrait';
+    if(Number(screen?.width)>0 && Number(screen?.height)>0 && Number(screen.width)!==Number(screen.height)){
+      return Number(screen.width)>Number(screen.height)?'landscape':'portrait';
+    }
+    const v=viewport();
+    return v.w>v.h?'landscape':'portrait';
+  };
+
   let locked=false;
-  let chosen=window.innerWidth>window.innerHeight?'landscape':'portrait';
+  let chosen=physicalLayout();
   let manualOverride=false;
   let lastPhysical=chosen;
 
-  const isUnfoldedViewport=()=>{
-    const w=Math.max(1,window.innerWidth),h=Math.max(1,window.innerHeight);
-    const ratio=Math.max(w,h)/Math.min(w,h);
-    return Math.min(w,h)>=600 && ratio<=1.28;
-  };
-  const physicalLayout=()=>window.innerWidth>window.innerHeight?'landscape':'portrait';
   function render(){
     if(!isUnfoldedViewport()){
       location.replace(new URL('index.html',location.href));
@@ -51,16 +70,48 @@
     }
     if(!locked && !manualOverride) chosen=physical;
     lastPhysical=physical;
+
     const cw=chosen==='portrait'?LOGICAL_SHORT:LOGICAL_LONG;
     const ch=chosen==='portrait'?LOGICAL_LONG:LOGICAL_SHORT;
-    const scale=Math.min(window.innerWidth/cw,window.innerHeight/ch);
+    const v=viewport();
+
+    // Keep the unfolded controls completely outside the mirrored app canvas.
+    // First try the full-viewport proportional scale. If the natural black
+    // letterbox margin already has room for the controls, use that space.
+    // Otherwise reserve a bottom control gutter and shrink only enough to fit.
+    const PAD=10;
+    const controlRect=document.getElementById('unfoldedControls').getBoundingClientRect();
+    const controlW=Math.ceil(controlRect.width);
+    const controlH=Math.ceil(controlRect.height);
+    const fullScale=Math.min(v.w/cw,v.h/ch);
+    const fullW=cw*fullScale;
+    const fullH=ch*fullScale;
+    const sideMargin=Math.max(0,(v.w-fullW)/2);
+    const bottomMargin=Math.max(0,(v.h-fullH)/2);
+    const controlsFitInBottom=bottomMargin>=controlH+(PAD*2);
+    const controlsFitAtLeft=sideMargin>=controlW+(PAD*2);
+
+    let scale=fullScale;
+    let centerX=v.w/2;
+    let centerY=v.h/2;
+    if(!controlsFitInBottom && !controlsFitAtLeft){
+      const gutterH=Math.min(v.h-1,controlH+(PAD*2));
+      const usableH=Math.max(1,v.h-gutterH);
+      scale=Math.min(v.w/cw,usableH/ch);
+      centerY=usableH/2;
+    }
+
     frame.style.width=cw+'px';
     frame.style.height=ch+'px';
+    frame.style.left=centerX+'px';
+    frame.style.top=centerY+'px';
     frame.style.transform=`translate(-50%,-50%) scale(${scale})`;
     frame.dataset.layout=chosen;
+    document.documentElement.dataset.physicalOrientation=physical;
     lock.setAttribute('aria-pressed',String(locked));
     lock.textContent=locked?'Unlock Orientation':'Lock Orientation';
   }
+
   swap.addEventListener('click',()=>{
     chosen=chosen==='portrait'?'landscape':'portrait';
     manualOverride=true;
@@ -75,7 +126,9 @@
     render();
   });
   window.addEventListener('resize',render,{passive:true});
-  window.addEventListener('orientationchange',()=>setTimeout(render,60),{passive:true});
+  window.visualViewport?.addEventListener?.('resize',render,{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(render,80),{passive:true});
+  try{ screen.orientation?.addEventListener?.('change',()=>setTimeout(render,40)); }catch(_){ }
   render();
 })();
 </script>

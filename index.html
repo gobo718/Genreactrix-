@@ -10,23 +10,36 @@
   const params=new URLSearchParams(location.search);
   if(params.get("unfoldedMirror")==="1") return;
   const isTouchDevice=()=>navigator.maxTouchPoints>0 || matchMedia?.("(pointer: coarse)")?.matches;
-  const isUnfoldedViewport=()=>{
-    const w=Math.max(1,window.innerWidth), h=Math.max(1,window.innerHeight);
-    const ratio=Math.max(w,h)/Math.min(w,h);
-    return isTouchDevice() && Math.min(w,h)>=600 && ratio<=1.28;
+  const nearSquare=(w,h,maxRatio)=>{
+    w=Math.max(1,Number(w)||0); h=Math.max(1,Number(h)||0);
+    return Math.min(w,h)>=600 && Math.max(w,h)/Math.min(w,h)<=maxRatio;
   };
-  if(isUnfoldedViewport()) location.replace(new URL("unfolded.html",location.href));
+  const isUnfoldedViewport=()=>{
+    const screenMatch=nearSquare(screen?.width,screen?.height,1.25);
+    const viewportMatch=nearSquare(window.innerWidth,window.innerHeight,1.48);
+    return isTouchDevice() && (screenMatch || viewportMatch);
+  };
+  let routing=false;
+  const routeIfUnfolded=()=>{
+    if(routing || !isUnfoldedViewport()) return;
+    routing=true;
+    location.replace(new URL("unfolded.html",location.href));
+  };
+  routeIfUnfolded();
+  window.addEventListener("resize",()=>setTimeout(routeIfUnfolded,40),{passive:true});
+  window.addEventListener("orientationchange",()=>setTimeout(routeIfUnfolded,80),{passive:true});
+  try{ screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,40)); }catch(_){ }
 })();
 </script>
-<title>Genreactrix v0.9.40.1</title>
-<link href="styles.css?v=0.9.40.1" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.3</title>
+<link href="styles.css?v=0.9.40.3" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.1</span>
+<span>v0.9.40.3</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -54,7 +67,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.1</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.3</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -909,7 +922,7 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.1"></script>
+<script src="app.js?v=0.9.40.3"></script>
 <script src="images-console.js?v=0.9.39.85"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
