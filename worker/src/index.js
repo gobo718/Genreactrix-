@@ -1,6 +1,6 @@
-/* Genreactrix AI Worker v0.9.6.4 — canonical Prim definitions + 114-point comparative Reaction scoring. */
-const API_VERSION='0.9.6.4';
-const BUILD_ID='prim-reactions-114-theme-catalog-v0.0.0.0-r1';
+/* Genreactrix AI Worker v0.9.6.5 — true reanalyze behavior + balanced 114-point comparative Reaction scoring. */
+const API_VERSION='0.9.6.5';
+const BUILD_ID='prim-reactions-114-reanalyze-v2-theme-catalog-v0.0.0.0';
 const cors={
   'access-control-allow-origin':'*',
   'access-control-allow-methods':'GET, POST, OPTIONS',
@@ -14,7 +14,7 @@ const DEFAULT_MODEL='@cf/meta/llama-3.2-11b-vision-instruct';
 const COMPONENT_IDS=['reactions','themes','description','emotion','reactionReasons','genreReasons'];
 const REACTION_NAMES=['Beautiful','Adorable','Tragic','Funny','Intense','Weird','Ticket','Dreamy','Zazzly','Disgusting','Scary','Smart','Celebration','Angry'];
 const PROMPT_VERSIONS=Object.freeze({
-  reactions:'genreactrix-reactions-v3-114-point-prims',
+  reactions:'genreactrix-reactions-v4-114-point-balanced-rerun',
   themes:'genreactrix-themes-v2-catalog',
   description:'genreactrix-description-v1',
   emotion:'genreactrix-emotion-v1',
@@ -253,7 +253,7 @@ const componentSchemas={
 const promptFor=component=>{
   const common='You are Genreactrix, a rigorous visual-research analyst. Analyze only visible evidence in the image. Do not infer hidden identity or backstory.';
   const prompts={
-    reactions:`${common} Mimic a person choosing emoji reaction buttons from what the image feels like or what word essence it gives off. Consider every reaction using its supplied definition. Use one shared pool of exactly 114 WHOLE points across all 14 reactions. Give every reaction at least 1 point. Concentrate the remaining 100 discretionary points on the few emoji buttons a person would actually feel compelled to press. A reaction with no meaningful fit may receive only its required 1 point. When no reaction strongly dominates, spread discretionary points more evenly. Return every exact reaction key with integer points plus a concise reason grounded in visible evidence or felt essence. Smart is the output key for the 🧠 Brain/Mind reaction.\n\nCANONICAL PRIM REACTIONS\n${REACTION_CATALOG_TEXT}`,
+    reactions:`${common} Mimic a person choosing emoji reaction buttons from what the image feels like or what word essence it gives off. Consider every reaction using its supplied definition. Use one shared pool of exactly 114 WHOLE points across all 14 reactions. Give every reaction at least 1 point. Allocate the remaining 100 discretionary points according to relative reaction fit. Concentrate points on reactions a person would actually feel compelled to press, while giving some discretionary points to every reaction that has meaningful visible or felt support. Do not collapse to a winner-take-all 101/1/1/... allocation merely because one reaction is strongest; use that extreme only when the image genuinely has no meaningful secondary reaction. A reaction with no meaningful fit may receive only its required 1 point. When no reaction strongly dominates, spread discretionary points more evenly. Return every exact reaction key with integer points plus a concise reason grounded in visible evidence or felt essence. Smart is the output key for the 🧠 Brain/Mind reaction.\n\nCANONICAL PRIM REACTIONS\n${REACTION_CATALOG_TEXT}`,
     themes:`${common} Return exactly THREE distinct Theme suggestions, ranked strongest to weakest. First compare the image against the complete canonical PrimFusion Theme catalog below and use the exact canonical Theme label whenever an existing Theme reasonably represents the concept. A different word, synonym, grammatical variation, broader or narrower wording, or an existing Theme combined with visible subject matter is NOT a Custom Theme. A Custom Theme is allowed only for a genuine semantic gap that the canonical catalog cannot reasonably express. Custom Theme labels must be one concise reusable abstract concept: never a setting, object, profession, standalone Prim name, or an "and" compound. Theme labels must be non-empty and unique ignoring capitalization and surrounding whitespace. Give confidence 0-100, concise visible evidence, and role primary, secondary, or ambiguous. Do not repeat the same Theme under alternate capitalization or trivial wording.\n\nCANONICAL PRIMFUSION THEMES — MATRIX v0.0.0.0\n${THEME_CATALOG_TEXT}`,
     description:`${common} Write a detailed factual description of subjects, objects, actions, setting, composition, style, visible text, and unusual juxtapositions.`,
     emotion:`${common} Describe visible emotional tone using dominant and secondary emotions, overall tone, 0-100 intensity, contrasts, and visible causes.`,
@@ -331,19 +331,20 @@ function isRecoverableOutputError(message){
   return /invalid json|output|omitted|confidence|description|theme|reaction allocation|whole number|114 required/i.test(String(message||''));
 }
 
-async function runComponent(env,model,image,component){
+async function runComponent(env,model,image,component,behavior='analyze'){
   const schema=componentSchemas[component];
   if(!schema)throw new Error(`No structured schema for ${component}`);
   let lastError=null;
   for(let attempt=1;attempt<=3;attempt++){
     const schemaMode=attempt<3;
+    const freshRerun=behavior==='reanalyze'?' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible allocation or wording; reconsider the relative evidence while remaining faithful to what is visible.':'';
     const correction=attempt===1?'':` Previous attempt was unusable. Follow the requested structure exactly${component==='themes'?' and return three DISTINCT theme labels':''}${component==='reactions'?' and return all 14 integer point allocations totaling exactly 114 with minimum 1 each':''}.`;
     try{
       const payload=await env.AI.run(model,{
-        prompt:promptFor(component)+correction,
+        prompt:promptFor(component)+freshRerun+correction,
         image,
         max_tokens:component==='reactions'?2200:component==='description'?1600:1200,
-        temperature:attempt===1?0.1:0,
+        temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):(attempt===2&&behavior==='reanalyze'?0.1:0),
         response_format:schemaMode?{type:'json_schema',json_schema:schema}:{type:'json_object'}
       });
       const raw=responseValue(payload);
@@ -372,9 +373,10 @@ async function analyze(env,body){
   const components={},diagnostics={};
   for(const component of requested){
     try{
-      const result=await runComponent(env,model,image,component);
+      const behavior=body.componentBehaviors?.[component]==='reanalyze'?'reanalyze':'analyze';
+      const result=await runComponent(env,model,image,component,behavior);
       components[component]=result.value;
-      diagnostics[component]={attempts:result.attempts,mode:result.mode};
+      diagnostics[component]={attempts:result.attempts,mode:result.mode,behavior};
       if(component==='reactions')Object.assign(diagnostics[component],{scoringMethod:'114-point-min1-minus1',rawAllocationTotal:114,derivedPercentageTotal:100});
     }catch(error){
       throw new Error(`${component}: ${String(error?.message||error)}`);
