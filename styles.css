@@ -6965,3 +6965,77 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     display:block!important;
   }
 }
+
+/* v0.9.39.87 — lightweight live event log. Diagnostic UI only. */
+.portrait-event-log-button{
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:-1px;
+}
+.event-log-dialog{
+  width:min(92vw,860px);
+  height:min(72vh,620px);
+  padding:0;
+  border:1px solid #3d4652;
+  border-radius:8px;
+  background:#050607;
+  color:#d7f7d7;
+  box-shadow:0 18px 56px rgba(0,0,0,.58);
+}
+.event-log-dialog::backdrop{background:rgba(0,0,0,.62);}
+.event-log-shell{height:100%;display:flex;flex-direction:column;min-height:0;background:#050607;}
+.event-log-header{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 10px;
+  border-bottom:1px solid #29313a;
+  background:#11151a;
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+}
+.event-log-header>div{display:flex;align-items:center;gap:8px;min-width:0;}
+.event-log-header>div:first-child{flex-direction:column;align-items:flex-start;gap:1px;}
+.event-log-header strong{font-size:12px;color:#f2f6f2;}
+.event-log-header small{font-size:9px;color:#8c99a5;}
+.event-log-header button{
+  min-width:34px;
+  height:27px;
+  padding:3px 8px;
+  border:1px solid #3a4652;
+  border-radius:4px;
+  background:#171d23;
+  color:#d8e0e7;
+  font:10px ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+}
+.event-log-output{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  padding:10px 11px 18px;
+  background:#050607;
+  color:#b9efb9;
+  font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.event-log-line{padding:1px 0;}
+.event-log-time{color:#687785;}
+.event-log-source{display:inline-block;min-width:68px;color:#78c6ff;font-weight:700;}
+.event-log-line.level-warn .event-log-message{color:#ffd279;}
+.event-log-line.level-error .event-log-message{color:#ff8b8b;}
+@media (max-width:600px){
+  .event-log-dialog{width:96vw;height:78vh;}
+  .event-log-output{font-size:10px;padding:8px 9px 14px;}
+  .event-log-source{min-width:58px;}
+}
+
+
+/* v0.9.39.89 — Cycle: maximum three repeated Missing passes. */
+.ai-run-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ai-cycle-button{border:1px solid #8b5cf6;color:#ddd6fe;background:#171126;font-weight:800;padding:8px 14px;border-radius:9px}
+.ai-cycle-button:hover{background:#24183d}
+.ai-cycle-button.is-running{border-color:#f59e0b;color:#fde68a;background:#2a1d08}
+.ai-cycle-status{font-size:.75rem;color:#cbd5e1;min-width:12ch}

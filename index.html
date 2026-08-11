@@ -5,8 +5,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content" name="viewport"/>
 <meta content="#17141e" name="theme-color"/>
-<title>Genreactrix v0.9.39.86</title>
-<link href="styles.css?v=0.9.39.86" rel="stylesheet"/>
+<title>Genreactrix v0.9.39.89</title>
+<link href="styles.css?v=0.9.39.89" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
@@ -41,9 +41,10 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.86</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.39.89</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
+<button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
 <button aria-label="Notifications" class="portrait-icon-button portrait-mailbox-button" id="portraitMailboxBtn" title="Notifications" type="button">📬<span class="mailbox-badge" hidden="" id="portraitMailboxBadge">0</span></button>
 <button aria-label="Settings" class="portrait-icon-button" id="portraitSettingsBtn" title="Settings" type="button">⚙</button>
 </div>
@@ -118,6 +119,12 @@
 <div class="portrait-report-status"><button data-portrait-status="reports-auto" type="button">Auto <strong id="portraitLastReport">None</strong></button><button data-portrait-status="reports-custom" type="button">Custom <strong id="portraitLastCustomReport">None</strong></button><button data-portrait-status="reports-stored" type="button">Stored <strong id="portraitReportCount">0</strong></button><button data-portrait-status="reports-failed" type="button">Failed <strong id="portraitReportFailedCount">0</strong></button></div>
 </section><div aria-live="polite" class="portrait-station-status" hidden="" id="portraitStationStatus" role="status"></div>
 </section>
+<dialog class="event-log-dialog" id="eventLogDialog">
+<div class="event-log-shell">
+<header class="event-log-header"><div><strong>Genreactrix Live Log</strong><small><span id="eventLogCount">0</span> events · current session</small></div><div><button id="eventLogClear" type="button">Clear</button><button aria-label="Close" id="eventLogClose" type="button">×</button></div></header>
+<div class="event-log-output" id="eventLogOutput" role="log" aria-live="polite" aria-relevant="additions text"></div>
+</div>
+</dialog>
 <dialog class="image-intake-dialog" id="imageIntakeDialog">
 <form class="image-intake-form" id="imageIntakeForm" method="dialog">
 <div class="image-intake-header">
@@ -263,7 +270,7 @@
 <label>Order<select id="aiOrder"><option value="queue">Queue order</option><option value="oldest">Oldest imported</option><option value="newest">Newest imported</option><option value="random">Random</option></select></label>
 </div>
 <div class="ai-preflight" id="aiPreflight">Choose components and a population.</div>
-<button class="primary-action" id="aiStartJob" type="button">Start analysis</button>
+<div class="ai-run-actions"><button class="primary-action" id="aiStartJob" type="button">Start analysis</button><button class="ai-cycle-button" id="aiCycleBtn" type="button" title="Repeat Missing analysis for the frozen selection, up to three total passes">Cycle</button><span class="ai-cycle-status" id="aiCycleStatus" aria-live="polite"></span></div>
 </section>
 <section class="ai-console-section">
 <h3>Automatic look-ahead</h3>
@@ -883,7 +890,8 @@ window.grxOpenCustomDialog=function(dialogId){
   return false;
 };
 </script>
-<script src="app.js?v=0.9.39.85"></script>
+<script src="event-log.js?v=0.9.39.89"></script>
+<script src="app.js?v=0.9.39.89"></script>
 <script src="images-console.js?v=0.9.39.85"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -914,7 +922,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="batch-engine.js?v=0.9.14.0"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.39.85"></script>
+<script src="ai-analysis-engine.js?v=0.9.39.89"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">

@@ -1,3 +1,10 @@
+## v0.9.39.89
+- Tightened **Cycle** to a hard maximum of three total Missing passes for the frozen starting population.
+- Cycle stops earlier only when all selected components become current, the user stops it, or a provider/global failure pauses it.
+- Changing failure messages or changing unresolved image/component combinations never extends the three-pass ceiling.
+- Removed v0.9.39.88's repeated-identical-failure-set stop criterion; three total passes is now the retry boundary.
+- Worker remains unchanged at v0.9.6.2.
+
 # Genreactrix Acceptance History
 
 Consolidated from the historical `ACCEPTANCE-v*.txt` files. Original text is preserved below.
@@ -630,3 +637,18 @@ Restored the approved Landscape workstation presentation after the Inbox/Filter 
 - Customs header changed from 74.5% + separately positioned AI Analysis to one literal four-column grid: Custom Search | Custom Reactions | Custom Themes | AI Analysis.
 - Four Customs header controls use the AI top-row geometry: four equal columns, 4px gap, 28px height, 3px 5px padding, zero margin, line-height 1, clamp(8px,.76vw,10.5px).
 - No other layout or workflow behavior changed.
+
+## v0.9.39.87
+- Added a lightweight portrait Live Event Log opened by a `>_` header button.
+- Event Log is a session-scoped diagnostic overlay only; it does not replace existing status displays or alter workflow logic.
+- Mirrors status text, queue progress/state, warnings/errors, window errors, and unhandled promise rejections into a timestamped command-prompt-style feed.
+- Log is capped at 400 entries and includes a Clear control.
+- Worker remains v0.9.6.2 unchanged.
+
+## v0.9.39.88
+- Added **Cycle** to AI Analysis as a bounded automatic Missing-pass helper.
+- Cycle freezes the initial target population, then retries only unresolved selected AI components.
+- It stops when the exact unresolved image/component set repeats on two consecutive passes, when everything succeeds, on a safe user stop, on provider pause, or at a 25-pass safety ceiling.
+- Cycle emits progress into the v0.9.39.87 Live Event Log.
+- Worker remains v0.9.6.2.
+

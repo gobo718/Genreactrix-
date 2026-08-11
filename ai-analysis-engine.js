@@ -20,6 +20,8 @@
  const q=()=>window.genreactrixQueueEngine;
  let snapshotCache={pending:0,available:0,ready:0,bufferTarget:25,jobs:[],items:[]};
  let maintainBufferPromise=null;
+ let cycleRunning=false,cycleStopRequested=false,cycleCurrentJobId=null;
+ const CYCLE_MAX_PASSES=3;
  function eligibleRecords(config){let rows=window.genreactrixImageRecordEngine?.all?.()||[];if(config.target==='flagged')rows=rows.filter(r=>r.attributes.flagged);else if(config.target==='saved')rows=rows.filter(r=>r.attributes.saved);else if(config.target==='failed')rows=rows.filter(r=>r.attributes.failed||Object.values(r.components||{}).includes('failed'));else if(config.target==='current'){const active=window.genreactrixBatchEngine?.activeIdCached||null;rows=active?rows.filter(r=>(r.batchIds||[]).includes(active)):rows.filter(r=>(r.batchIds||[]).includes('current-import'));}else if(config.target==='selected'){const ids=new Set((config.imageIds||[]).map(String));rows=rows.filter(r=>ids.has(String(r.id)));}if(config.order==='oldest')rows.sort((a,b)=>a.createdAt.localeCompare(b.createdAt));if(config.order==='newest')rows.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));if(config.order==='random')rows.sort(()=>Math.random()-.5);if(config.quantityMode==='random')rows.sort(()=>Math.random()-.5);return rows;}
  function applyQuantity(rows,config){if(config.quantityMode==='all')return rows;return rows.slice(0,Math.max(1,Number(config.quantity)||100));}
  function shouldRun(record,component,behavior){const field=COMPONENTS.find(([id])=>id===component)?.[2];const status=record.components?.[field]||'missing';return behavior==='reanalyze'||['missing','stale','failed','partial'].includes(status)}
@@ -112,6 +114,45 @@
  async function maintainBuffer(){if(!Boolean(window.genreactrixSettingsEngine?.get?.('ai.lookAhead.enabled',true)))return 0;if(maintainBufferPromise)return maintainBufferPromise;maintainBufferPromise=(async()=>{const snap=await snapshot();const needed=Math.max(0,snap.bufferTarget-snap.pending-snap.ready);if(!needed)return 0;return queueNext(needed,null,{skipFailed:true})})();try{return await maintainBufferPromise}finally{maintainBufferPromise=null}}
  function emit(){window.dispatchEvent(new CustomEvent('genreactrix:ai-jobs'));render()}
  function configFromForm(){const components=componentMap();document.querySelectorAll('[data-ai-component]').forEach(row=>{const key=row.dataset.aiComponent;components[key]={enabled:row.querySelector('input').checked,behavior:row.querySelector('select').value}});const promptRefs={};for(const [key,v] of Object.entries(components))if(v.enabled){const p=window.genreactrixPromptLibraryEngine?.active?.(key);if(p)promptRefs[key]={id:p.id,version:p.version,name:p.name}}return{target:document.getElementById('aiTarget').value,quantity:Number(document.getElementById('aiQuantity').value)||100,quantityMode:document.getElementById('aiQuantityMode').value,order:document.getElementById('aiOrder').value,components,promptRefs}}
+ function cycleEvent(message,level='info'){const log=window.genreactrixEventLog;const fn=level==='warn'?log?.warn:level==='error'?log?.error:log?.info;fn?.(message,'CYCLE');}
+ function setCycleUi(running,message=''){
+  const button=document.getElementById('aiCycleBtn'),status=document.getElementById('aiCycleStatus'),start=document.getElementById('aiStartJob');
+  if(button){button.textContent=running?'Stop Cycle':'Cycle';button.classList.toggle('is-running',running);button.title=running?'Stop after the current AI operation':'Repeat Missing analysis for the frozen selection, up to three total passes';}
+  if(start)start.disabled=running;if(status)status.textContent=message;
+ }
+ function missingComponentsFrom(config){const next=componentMap();for(const [key,value] of Object.entries(config.components||{}))if(value.enabled&&next[key])next[key]={enabled:true,behavior:'analyze'};return next;}
+ function unresolvedForCycle(imageIds,components){
+  const wanted=new Set((imageIds||[]).map(String)),records=(window.genreactrixImageRecordEngine?.all?.()||[]).filter(record=>wanted.has(String(record.id))),out=[];
+  const selected=Object.entries(components||{}).filter(([,value])=>value.enabled);
+  for(const record of records)for(const [component] of selected){const field=COMPONENTS.find(([id])=>id===component)?.[2],status=record.components?.[field]||'missing';if(['missing','stale','failed','partial'].includes(status))out.push(`${record.id}:${component}`);}
+  return out.sort();
+ }
+ async function cycleMissing(){
+  if(cycleRunning){cycleStopRequested=true;setCycleUi(true,'Stopping…');cycleEvent('Stop requested.','warn');if(cycleCurrentJobId)await stop(cycleCurrentJobId);return;}
+  try{
+   if(!window.GenreactrixCloudApi.isConfigured())throw new Error('Save a Worker URL before starting Cycle');
+   const base=configFromForm(),components=missingComponentsFrom(base),enabled=Object.values(components).some(value=>value.enabled);if(!enabled)throw new Error('Choose at least one AI component');
+   const selectionConfig={...base,components};
+   const activeItems=(await all(ITEMS)).filter(item=>['queued','processing'].includes(item.state)),activeIds=new Set(activeItems.map(item=>String(item.imageId)));
+   const initialRows=applyQuantity(eligibleRecords(selectionConfig).filter(record=>!activeIds.has(String(record.id))&&Object.entries(components).some(([component,value])=>value.enabled&&shouldRun(record,component,'analyze'))),selectionConfig);
+   const imageIds=initialRows.map(record=>record.id);if(!imageIds.length)throw new Error('No matching images need Missing analysis');
+   const cycleConfig={...base,target:'selected',imageIds,quantityMode:'all',quantity:imageIds.length,components};
+   cycleRunning=true;cycleStopRequested=false;setCycleUi(true,`Cycle · ${imageIds.length} images`);cycleEvent(`Started with ${imageIds.length} frozen image${imageIds.length===1?'':'s'}.`);
+   let finished=false;
+   for(let pass=1;pass<=CYCLE_MAX_PASSES&&!cycleStopRequested;pass++){
+    const before=unresolvedForCycle(imageIds,components);if(!before.length){setCycleUi(true,'Cycle complete · 0 unresolved');cycleEvent(`Pass ${pass}: nothing unresolved. Cycle complete.`);finished=true;break;}
+    setCycleUi(true,`Cycle pass ${pass} of ${CYCLE_MAX_PASSES} · ${before.length} unresolved`);cycleEvent(`Pass ${pass} of ${CYCLE_MAX_PASSES} starting · ${before.length} unresolved image/component pair${before.length===1?'':'s'}.`);
+    const job=await createJob(cycleConfig);
+    if(job.total){cycleCurrentJobId=job.id;await run(job.id);const finalJob=(await all(JOBS)).find(item=>item.id===job.id);cycleCurrentJobId=null;if(cycleStopRequested||finalJob?.state==='cancelled'){setCycleUi(true,'Cycle stopped');cycleEvent(`Stopped during pass ${pass}.`,'warn');break;}if(finalJob?.state==='paused'){setCycleUi(true,'Cycle paused by provider error');cycleEvent(`Stopped because pass ${pass} paused: ${finalJob.message}`,'error');break;}}
+    const unresolved=unresolvedForCycle(imageIds,components);
+    if(!unresolved.length){setCycleUi(true,`Cycle complete · pass ${pass}`);cycleEvent(`Pass ${pass} completed with 0 unresolved. Cycle complete.`);finished=true;break;}
+    cycleEvent(`Pass ${pass} completed · ${unresolved.length} unresolved remain.`,'warn');
+    if(pass===CYCLE_MAX_PASSES){const imageCount=new Set(unresolved.map(value=>value.split(':')[0])).size;setCycleUi(true,`Cycle limit · ${imageCount} image${imageCount===1?'':'s'} unresolved`);cycleEvent(`Cycle stopped after ${CYCLE_MAX_PASSES} total passes. ${imageCount} image${imageCount===1?'':'s'} remain unresolved across ${unresolved.length} selected component${unresolved.length===1?'':'s'}.`,'warn');finished=true;}
+   }
+   if(cycleStopRequested&&!finished)setCycleUi(true,'Cycle stopped');
+  }catch(error){setCycleUi(false,String(error.message||error));cycleEvent(String(error.message||error),'error');return;}
+  finally{cycleRunning=false;cycleCurrentJobId=null;const status=document.getElementById('aiCycleStatus')?.textContent||'';setCycleUi(false,status);render();}
+ }
  async function render(){
   const snap=await snapshot();
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=String(v)};
@@ -158,6 +199,7 @@
   });
   document.getElementById('aiHealthCheck')?.addEventListener('click',async()=>{const el=document.getElementById('aiProviderStatus');el.textContent='Checking…';try{const p=await window.GenreactrixCloudApi.verifyConnection();el.textContent=p.auth==='verified'?'Configured · key verified':(p.vision||p.status||'Connected')}catch(e){el.textContent=e.message}});
   document.getElementById('aiStartJob')?.addEventListener('click',async()=>{try{const cfg=configFromForm(), enabled=Object.values(cfg.components).some(v=>v.enabled);if(!enabled)throw new Error('Choose at least one AI component');if(!window.GenreactrixCloudApi.isConfigured())throw new Error('Save a Worker URL before starting');const j=await createJob(cfg);if(!j.total)throw new Error('No matching images need the selected analysis');await run(j.id)}catch(e){document.getElementById('aiJobSummary').textContent=e.message}});
+  document.getElementById('aiCycleBtn')?.addEventListener('click',()=>cycleMissing());
   document.querySelectorAll('#aiAnalysisDialog input,#aiAnalysisDialog select').forEach(el=>{if(!['aiWorkerUrl','aiAnalysisKey','aiModelName','aiPromptVersion'].includes(el.id))el.addEventListener('change',()=>{if(el.closest?.('[data-ai-component]'))saveComponentDefaultsFromGrid();render()})});
   document.getElementById('aiJobList')?.addEventListener('click',e=>{const b=e.target.closest('[data-ai-job-id]');if(!b)return;document.getElementById('aiJobSummary').dataset.jobId=b.dataset.aiJobId;render()});
   const current=()=>document.getElementById('aiJobSummary').dataset.jobId||null;
@@ -230,5 +272,5 @@
  }
 
  async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});return{jobCount:jobs.length,itemCount:items.length,issueCount:issues.length,issues}}
- const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainBuffer,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainBuffer().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());
+ const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainBuffer,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainBuffer().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());
 })();
