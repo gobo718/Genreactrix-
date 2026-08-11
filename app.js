@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.3";
+const GENREACTRIX_BUILD="v0.9.40.5";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2287,7 +2287,17 @@ document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
     setDirectorStatus("Keep changed in the working evaluation, but storage preference could not be persisted.");
   }
 });
-document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{const slot=Number(button.dataset.tabletWorkbenchSlot);state.targetSlot=slot;tabletLandscapeView.activeThemeSlot=slot;renderTabletWorkbench();}));
+document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{
+  const slot=Number(button.dataset.tabletWorkbenchSlot);
+  const alreadyActive=tabletLandscapeView.activeThemeSlot===slot;
+  if(alreadyActive){
+    tabletLandscapeView.activeThemeSlot=null;
+  }else{
+    state.targetSlot=slot;
+    tabletLandscapeView.activeThemeSlot=slot;
+  }
+  renderTabletWorkbench();
+}));
 
 // v0.9.39.24 — focused Image View. This is a verification mode, not an editor.
 const landscapeImageViewState={open:false,scale:1,x:0,y:0,pointers:new Map(),gestureMoved:false,pinched:false,downAt:0};

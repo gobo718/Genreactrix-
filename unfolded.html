@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>Genreactrix v0.9.40.3 — Unfolded</title>
+<title>Genreactrix v0.9.40.5 — Unfolded</title>
 <style>
   *{box-sizing:border-box}
   html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#f4eef8;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -28,18 +28,24 @@
   const lock=document.getElementById('lockOrientation');
   const LOGICAL_SHORT=540;
   const LOGICAL_LONG=1200;
-  const nearSquare=(w,h,maxRatio)=>{
-    w=Math.max(1,Number(w)||0); h=Math.max(1,Number(h)||0);
-    return Math.min(w,h)>=600 && Math.max(w,h)/Math.min(w,h)<=maxRatio;
+  const shape=(w,h)=>{
+    w=Math.max(1,Number(w)||0);
+    h=Math.max(1,Number(h)||0);
+    const short=Math.min(w,h), long=Math.max(w,h);
+    return {short,long,ratio:long/short};
   };
   const viewport=()=>({
     w:Math.max(1,window.visualViewport?.width||window.innerWidth),
     h:Math.max(1,window.visualViewport?.height||window.innerHeight)
   });
-  const isUnfoldedViewport=()=>{
-    const v=viewport();
-    return nearSquare(screen?.width,screen?.height,1.25) || nearSquare(v.w,v.h,1.48);
+
+  // Do NOT decide "folded" from the viewport. Browser chrome and rotation make
+  // viewport dimensions jump and caused the index.html <-> unfolded.html loop.
+  const stronglyFoldedPhysicalScreen=()=>{
+    const s=shape(screen?.width,screen?.height);
+    return s.ratio>=1.80;
   };
+
   const physicalLayout=()=>{
     const type=String(screen?.orientation?.type||'').toLowerCase();
     if(type.startsWith('portrait')) return 'portrait';
@@ -59,10 +65,6 @@
   let lastPhysical=chosen;
 
   function render(){
-    if(!isUnfoldedViewport()){
-      location.replace(new URL('index.html',location.href));
-      return;
-    }
     const physical=physicalLayout();
     if(!locked && physical!==lastPhysical){
       chosen=physical;
@@ -125,11 +127,25 @@
     }
     render();
   });
-  window.addEventListener('resize',render,{passive:true});
+
+  let foldCheckTimer=0;
+  function scheduleFoldCheck(){
+    clearTimeout(foldCheckTimer);
+    foldCheckTimer=setTimeout(()=>{
+      // Require the strongly phone-shaped physical screen to persist.
+      // This is intentionally conservative: rotation must never kick us out.
+      if(stronglyFoldedPhysicalScreen()){
+        location.replace(new URL('index.html',location.href));
+      }
+    },900);
+  }
+  window.addEventListener('resize',()=>{render();scheduleFoldCheck();},{passive:true});
   window.visualViewport?.addEventListener?.('resize',render,{passive:true});
-  window.addEventListener('orientationchange',()=>setTimeout(render,80),{passive:true});
-  try{ screen.orientation?.addEventListener?.('change',()=>setTimeout(render,40)); }catch(_){ }
+  window.addEventListener('orientationchange',()=>{setTimeout(render,120);scheduleFoldCheck();},{passive:true});
+  try{ screen.orientation?.addEventListener?.('change',()=>{setTimeout(render,100);scheduleFoldCheck();}); }catch(_){ }
+  window.addEventListener('pageshow',()=>{render();scheduleFoldCheck();},{passive:true});
   render();
+  scheduleFoldCheck();
 })();
 </script>
 </body>

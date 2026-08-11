@@ -9,37 +9,55 @@
 (()=>{
   const params=new URLSearchParams(location.search);
   if(params.get("unfoldedMirror")==="1") return;
+
   const isTouchDevice=()=>navigator.maxTouchPoints>0 || matchMedia?.("(pointer: coarse)")?.matches;
-  const nearSquare=(w,h,maxRatio)=>{
-    w=Math.max(1,Number(w)||0); h=Math.max(1,Number(h)||0);
-    return Math.min(w,h)>=600 && Math.max(w,h)/Math.min(w,h)<=maxRatio;
+  const ua=String(navigator.userAgent||"");
+  const isFold6=/SM-F956/i.test(ua);
+
+  const shape=(w,h)=>{
+    w=Math.max(1,Number(w)||0);
+    h=Math.max(1,Number(h)||0);
+    const short=Math.min(w,h), long=Math.max(w,h);
+    return {short,long,ratio:long/short};
   };
-  const isUnfoldedViewport=()=>{
-    const screenMatch=nearSquare(screen?.width,screen?.height,1.25);
-    const viewportMatch=nearSquare(window.innerWidth,window.innerHeight,1.48);
-    return isTouchDevice() && (screenMatch || viewportMatch);
+
+  const likelyInnerScreen=()=>{
+    const s=shape(screen?.width,screen?.height);
+    const v=shape(window.innerWidth,window.innerHeight);
+
+    // Fold 6 inner display is near-square. Keep the CSS-pixel floor low enough
+    // for Samsung/browser scaling, while excluding normal phone aspect ratios.
+    const screenInner=s.short>=430 && s.long<=1100 && s.ratio<=1.48;
+    const viewportInner=v.short>=430 && v.long<=1100 && v.ratio<=1.62;
+
+    // On the target Fold 6, either signal is sufficient. On other touch devices,
+    // require the stricter physical-screen shape so ordinary tablets stay normal.
+    return isTouchDevice() && (isFold6 ? (screenInner || viewportInner) : screenInner);
   };
+
   let routing=false;
   const routeIfUnfolded=()=>{
-    if(routing || !isUnfoldedViewport()) return;
+    if(routing || !likelyInnerScreen()) return;
     routing=true;
     location.replace(new URL("unfolded.html",location.href));
   };
+
   routeIfUnfolded();
-  window.addEventListener("resize",()=>setTimeout(routeIfUnfolded,40),{passive:true});
-  window.addEventListener("orientationchange",()=>setTimeout(routeIfUnfolded,80),{passive:true});
-  try{ screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,40)); }catch(_){ }
+  window.addEventListener("pageshow",()=>setTimeout(routeIfUnfolded,80),{passive:true});
+  window.addEventListener("resize",()=>setTimeout(routeIfUnfolded,120),{passive:true});
+  window.addEventListener("orientationchange",()=>setTimeout(routeIfUnfolded,180),{passive:true});
+  try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.3</title>
-<link href="styles.css?v=0.9.40.3" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.5</title>
+<link href="styles.css?v=0.9.40.5" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.3</span>
+<span>v0.9.40.5</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -67,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.3</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.5</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -922,7 +940,7 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.3"></script>
+<script src="app.js?v=0.9.40.5"></script>
 <script src="images-console.js?v=0.9.39.85"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">

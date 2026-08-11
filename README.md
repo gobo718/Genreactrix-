@@ -1,6 +1,6 @@
 # Genreactrix
 
-## v0.9.40.3 — Fold 6 unfolded safe-control gutter
+## v0.9.40.4 — Fold 6 unfolded safe-control gutter
 
 - Fixes the unfolded router so a Fold 6 opened in the wider physical orientation enters the unfolded wrapper instead of remaining on the normal responsive index page.
 - The router now re-checks after resize/orientation changes, so rotating an already-open unfolded phone can enter the wrapper without a reload.
@@ -1196,3 +1196,18 @@ OUT OF SCOPE
 - 44 standalone `ACCEPTANCE-v*.txt` files were consolidated into this README.
 - `ACCEPTANCE_HISTORY.md` was also consolidated into this README.
 - Standalone acceptance/history files are intentionally omitted from the release ZIP.
+
+
+## v0.9.40.4 unfolded stability fix
+- Stops rotation from bouncing between index.html and unfolded.html.
+- Fold exit now uses a conservative physical-screen aspect check, not transient viewport dimensions.
+- Fold 6 inner-display entry detection tolerates Samsung/browser CSS scaling.
+- Swap Layout remains the guaranteed manual path between existing Portrait and Landscape layouts.
+- Safe control gutter remains outside the mirrored app canvas.
+
+
+## v0.9.40.5 — Theme target safety toggle
+- In the landscape/unfolded workbench, tapping an already-highlighted Theme 1/2/3 target now unselects it.
+- With no Theme target highlighted, PrimFusion/theme taps cannot accidentally replace a Theme.
+- Tapping a different Theme target still activates that target normally.
+- No Worker, Matrix vocabulary, AI, or unfolded-orientation behavior changed.
