@@ -1,6 +1,12 @@
+
+## v0.9.39.98 — PrimFusion AI theme label resolution
+- AI theme results that arrive as internal PrimFusion codes (for example `PFM0812`) are resolved through the canonical PrimFusion Matrix before display.
+- `PFM0812` now displays as `Ethereal` (P08 Dreamy + P12 Smart).
+- Resolution is generic for all canonical `PFM####` codes; stored AI evidence/codes are not rewritten.
+
 # Genreactrix Release Notes
 
-## v0.9.39.97 — Reaction Percentage Total Normalization
+## v0.9.39.98 — Reaction Percentage Total Normalization
 - Fixes reaction percentage sets that could visibly total more than 100% (for example, a legacy/raw set totaling 150%).
 - Stored AI reaction evidence is not rewritten or destroyed.
 - All 14 canonical reaction values are normalized only at the percentage presentation boundary.

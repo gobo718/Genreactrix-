@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.97";
+const GENREACTRIX_BUILD="v0.9.39.98";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -377,8 +377,18 @@ function canonicalAiRunFromRecord(record){
   }));
   let rawThemes=components.themes??components.aiThemes??ai.themes??ai.aiThemes??[];
   if(rawThemes&&typeof rawThemes==="object"&&!Array.isArray(rawThemes)&&Array.isArray(rawThemes.themes))rawThemes=rawThemes.themes;
+  const resolveAiThemeLabel=(row,rawLabel)=>{
+    const label=String(rawLabel||"").trim();
+    const candidate=String((typeof row==="object"&&row?.code)||label).trim().toUpperCase();
+    const match=candidate.match(/^PFM(\d{2})(\d{2})$/);
+    if(!match)return label;
+    const first=PRIMITIVE_BY_ID[`P${match[1]}`];
+    const second=PRIMITIVE_BY_ID[`P${match[2]}`];
+    return first&&second?canonicalPrimFusionLabel(first.name,second.name):label;
+  };
   const themes=(Array.isArray(rawThemes)?rawThemes:[]).map((row,index)=>{
-    const label=String(typeof row==="string"?row:(row?.theme??row?.name??row?.proposedName??row?.label??row?.code??"")).trim();if(!label)return null;
+    const rawLabel=String(typeof row==="string"?row:(row?.theme??row?.name??row?.proposedName??row?.label??row?.code??"")).trim();if(!rawLabel)return null;
+    const label=resolveAiThemeLabel(row,rawLabel);
     const value=typeof row==="string"?0:(row?.percentage??row?.confidence??row?.score??row?.weight??0);
     return{id:row?.id||row?.code||`ai-theme:${index}:${label.toLowerCase()}`,label,weight:Math.max(0,Math.min(100,Number(value)||0)),evidence:row?.evidence||row?.reason||"",role:row?.role||""};
   }).filter(Boolean);
