@@ -1,5 +1,18 @@
 # Genreactrix
 
+## v0.9.40.1 — Zazzly / Liminal tuning + unfolded Fold 6 wrapper
+
+- App build: v0.9.40.1.
+- AI Worker target: v0.9.6.22-registry.
+- P09 Zazzly is expanded with explicit nudity, casual nudity, mirror-selfie, body-display, body-part emphasis, tight/form-fitting clothing, athletic/uniform, exhibitionism, and sexually salient presentation routes.
+- P02 Beautiful is deliberately over-restrained for this research pass: human faces, bodies, physique, skin, clothing, posing, nudity, and human physical attractiveness are not valid Beautiful evidence. Non-human aesthetics can still support Beautiful independently.
+- PFM0308 Liminal is tightened to a Backrooms-style environmental definition with a required spatial/environmental gate; empty, dark, eerie, weird, or personless images do not qualify by themselves.
+- Matrix remains pre-batch v0.0.0.0.
+- Unfolded near-square touch viewports now use a mirror wrapper instead of inventing a third layout. Upright selects the existing Portrait layout; sideways selects the existing folded-Landscape layout.
+- The wrapper scales the selected existing layout proportionally to the actual available viewport and leaves unused screen area black.
+- Bottom-left Swap Layout provides manual override; Lock Orientation freezes the selected app layout while unfolded. Folding/closing returns to normal automatic site behavior.
+- Meme/Studio planning is intentionally not included in this release.
+
 ## v0.9.40.0 — Reaction research repair + AI Info restoration
 
 - App build: v0.9.40.0.
