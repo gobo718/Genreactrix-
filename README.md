@@ -1,3 +1,15 @@
+# Genreactrix
+
+## v0.9.39.99 — True AI rerun behavior / Reaction rerun diversity
+
+- App build: v0.9.39.99.
+- AI Worker: v0.9.6.5.
+- The Worker now honors `componentBehaviors[component] = "reanalyze"`; previously the browser sent that flag but the Worker ignored it.
+- A rerun is now a fresh independent reconsideration with modestly higher first-pass sampling while retaining deterministic fallback retries for structured-output recovery.
+- Reaction prompt remains a 114-point allocation with a 1-point structural baseline per Prim and 100 discretionary points, but now explicitly distributes discretionary points to meaningful secondary reactions instead of encouraging winner-take-all 101/1/1/... allocations except when genuinely warranted.
+- Stored raw allocation and derived 100-point reaction percentages remain unchanged in structure.
+- Worker diagnostics now record whether each component ran as `analyze` or `reanalyze`.
+- PrimFusion Matrix remains v0.0.0.0.
 
 ## v0.9.39.98 — PrimFusion AI theme label resolution
 - AI theme results that arrive as internal PrimFusion codes (for example `PFM0812`) are resolved through the canonical PrimFusion Matrix before display.
