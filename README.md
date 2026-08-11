@@ -1,5 +1,22 @@
 # Genreactrix
 
+## v0.9.40.0 — Reaction research repair + AI Info restoration
+
+- App build: v0.9.40.0.
+- AI Worker: v0.9.6.13-registry.
+- Reaction Analysis now asks AI for comparative relative weights and a complete strongest-to-weakest ranking across all 14 Prims; the Worker, not the model, performs the exact 100 discretionary + 14 baseline bookkeeping.
+- Worker uses deterministic largest-remainder apportionment, validates exact 100 displayed / 114 raw totals, preserves raw AI weights/ranking/effort notes, and stores the primary + secondary Reaction Combo.
+- Obvious low-effort/collapsed Reaction output receives at most one reassessment. Provider-call timeout is bounded at 45 seconds rather than allowing repeated long waits.
+- Reactions Info and Themes Info are restored as independently selectable AI outputs. When selected with their paired classification, they share the same underlying assessment so the explanation cannot drift away from the result it explains.
+- Portrait AI controls use the approved two-row layout: Reactions / Themes / Description, then Reactions Info / Themes Info.
+- Custom AI Theme generation is switched OFF for research without deleting the fallback implementation; AI must currently choose three matrix Themes so vocabulary weaknesses remain visible.
+- Kawaii is locked at Matrix v0.0.0.0 as: “Highly stylized Japanese cute aesthetic using exaggerated sweetness or toy-like, childlike, or chibi-style proportions.”
+- Worker Theme vocabulary is synchronized to the current pre-batch definition file, including Exposure, Shame, and Humiliation. Matrix version remains v0.0.0.0.
+- Client-side Reaction re-normalization is removed; canonical Worker percentages are displayed directly.
+- AI P-code/theme display resolution now respects the canonical Worker/Matrix P01=Adorable, P02=Beautiful numbering without changing the historical local UI slot order.
+- Landscape component rerun failures now surface visibly instead of only appearing in status/console text.
+- Reactions Info and Themes Info are available as report modules for research export.
+
 ## v0.9.39.99 — True AI rerun behavior / Reaction rerun diversity
 
 - App build: v0.9.39.99.

@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.98";
+const GENREACTRIX_BUILD="v0.9.40.0";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -24,6 +24,11 @@ const PRIMITIVES = [
 ];
 const PRIMITIVE_BY_ID = Object.fromEntries(PRIMITIVES.map(p=>[p.id,p]));
 const PRIMITIVE_BY_NAME = Object.fromEntries(PRIMITIVES.map(p=>[p.name,p]));
+// Cloud Worker / PrimFusion Matrix canonical IDs keep Adorable=P01 and Beautiful=P02.
+// The local reaction display order historically stores those two in the opposite P slots,
+// so AI payload lookup must resolve by canonical semantic identity rather than local slot ID.
+const AI_CANONICAL_PRIM_ID_BY_NAME = Object.freeze({Beautiful:"P02",Adorable:"P01",Tragic:"P03",Funny:"P04",Intense:"P05",Weird:"P06",Ticket:"P07",Dreamy:"P08",Zazzly:"P09",Disgusting:"P10",Scary:"P11",Smart:"P12",Celebration:"P13",Angry:"P14"});
+const AI_CANONICAL_PRIM_NAME_BY_ID = Object.freeze(Object.fromEntries(Object.entries(AI_CANONICAL_PRIM_ID_BY_NAME).map(([name,id])=>[id,name])));
 
 const CUSTOM_REACTION_LIBRARY_KEY="genreactrix-custom-reactions-v1";
 const CUSTOM_THEME_LIBRARY_KEY="genreactrix-custom-themes-v2";
@@ -292,7 +297,7 @@ let landscapeRehydrateTimer=0;
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
 function saveLandscapeInbox(){localStorage.setItem(LANDSCAPE_INBOX_KEY,JSON.stringify(landscapeInbox));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
-function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription"].some(key=>record?.components?.[key]==="failed");}
+function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
 function recordAlreadyPushedToInbox(record){return Array.isArray(record?.metadata?.extended?.inboxPackIds)&&record.metadata.extended.inboxPackIds.length>0;}
 function recordReadyForInbox(record){return Boolean(record)&&recordHasRequestedAi(record)&&!recordAlreadyPushedToInbox(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
 function readyRecordsForInbox(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordReadyForInbox);}
@@ -366,7 +371,8 @@ function canonicalAiRunFromRecord(record){
   const reactionObject=rawReactions&&typeof rawReactions==="object"&&!Array.isArray(rawReactions)?rawReactions:{};
   const reactionObjectByKey=new Map(Object.entries(reactionObject).map(([key,value])=>[normalizeAiKey(key),value]));
   const weights=Object.fromEntries(PRIMITIVES.map(p=>{
-    const aliases=[p.id,p.name,...(reactionAliases[p.id]||[])];
+    const canonicalAiId=AI_CANONICAL_PRIM_ID_BY_NAME[p.name]||p.id;
+    const aliases=[canonicalAiId,p.name,...(reactionAliases[canonicalAiId]||reactionAliases[p.id]||[])];
     let row=null;
     for(const alias of aliases){const hit=reactionObjectByKey.get(normalizeAiKey(alias));if(hit!==undefined){row=hit;break;}}
     if(row==null&&reactionRows.length){
@@ -379,12 +385,13 @@ function canonicalAiRunFromRecord(record){
   if(rawThemes&&typeof rawThemes==="object"&&!Array.isArray(rawThemes)&&Array.isArray(rawThemes.themes))rawThemes=rawThemes.themes;
   const resolveAiThemeLabel=(row,rawLabel)=>{
     const label=String(rawLabel||"").trim();
+    if(label && !/^PFM\d{4}$/i.test(label)) return label;
     const candidate=String((typeof row==="object"&&row?.code)||label).trim().toUpperCase();
     const match=candidate.match(/^PFM(\d{2})(\d{2})$/);
     if(!match)return label;
-    const first=PRIMITIVE_BY_ID[`P${match[1]}`];
-    const second=PRIMITIVE_BY_ID[`P${match[2]}`];
-    return first&&second?canonicalPrimFusionLabel(first.name,second.name):label;
+    const firstName=AI_CANONICAL_PRIM_NAME_BY_ID[`P${match[1]}`];
+    const secondName=AI_CANONICAL_PRIM_NAME_BY_ID[`P${match[2]}`];
+    return firstName&&secondName?canonicalPrimFusionLabel(firstName,secondName):label;
   };
   const themes=(Array.isArray(rawThemes)?rawThemes:[]).map((row,index)=>{
     const rawLabel=String(typeof row==="string"?row:(row?.theme??row?.name??row?.proposedName??row?.label??row?.code??"")).trim();if(!rawLabel)return null;
@@ -443,18 +450,9 @@ function currentAiWeights(){ return currentAiRun().weights || {}; }
    percent signs is converted to whole-number shares whose displayed total is 100.
    Largest-remainder allocation preserves proportions without rounding drift. */
 function displayReactionPercentages(source={}){
-  const rows=PRIMITIVES.map((p,index)=>({id:p.id,index,value:Math.max(0,Number(source?.[p.id])||0)}));
-  const total=rows.reduce((sum,row)=>sum+row.value,0);
-  if(!(total>0))return Object.fromEntries(rows.map(row=>[row.id,0]));
-  const scaled=rows.map(row=>{
-    const exact=row.value*100/total;
-    const whole=Math.floor(exact);
-    return {...row,exact,whole,fraction:exact-whole};
-  });
-  let remaining=100-scaled.reduce((sum,row)=>sum+row.whole,0);
-  const order=[...scaled].sort((a,b)=>b.fraction-a.fraction||b.value-a.value||a.index-b.index);
-  for(let i=0;i<remaining;i++)order[i%order.length].whole+=1;
-  return Object.fromEntries(scaled.map(row=>[row.id,row.whole]));
+  // v0.9.40.0 — Worker owns canonical shared-pool apportionment.
+  // Preserve its exact per-Prim percentages instead of re-normalizing them in the client.
+  return Object.fromEntries(PRIMITIVES.map(p=>[p.id,Math.max(0,Math.min(100,Math.round(Number(source?.[p.id])||0)))]));
 }
 
 function classificationState(){
@@ -2258,6 +2256,7 @@ async function createComponentAiRerun(component){
     const message=String(error?.message||error);
     console.error(`AI ${component} rerun failed`,error);
     setDirectorStatus(`AI ${component} rerun failed: ${message}`);
+    alert(`AI ${component} rerun failed: ${message}`);
   }
 }
 $("tabletAiRerunLockBtn")?.addEventListener("click",()=>{tabletAiRerunLocked=!tabletAiRerunLocked;localStorage.setItem(AI_RERUN_LOCK_KEY,tabletAiRerunLocked?"1":"0");syncTabletAiRerunControls();});
@@ -3044,7 +3043,7 @@ const QUICK_ACTIONS={
       {key:"outputs",label:"Outputs",type:"ai-outputs",getDefault:()=>selectedPortraitAiOutputs()}
     ],
     summarize:p=>{
-      const labels={reactions:"Reactions",themes:"Themes",description:"Description",emotion:"Emotion","reaction-reasons":"Reaction reasons","genre-reasons":"Genre reasons"};
+      const labels={reactions:"Reactions",themes:"Themes",description:"Description",reactionReasons:"Reactions Info",genreReasons:"Themes Info"};
       const selected=Object.entries(p.outputs||{}).filter(([,on])=>on).map(([key])=>labels[key]);
       return [`Quantity: ${p.quantity}`,`Outputs: ${selected.join(", ")||"None"}`];
     },
@@ -3125,7 +3124,7 @@ function buildQuickFields(action,params){
       const box=document.createElement("fieldset");
       box.className="quick-output-fields";
       box.innerHTML="<legend>Outputs</legend>";
-      const labels={reactions:"Reactions",themes:"Themes",description:"Description",emotion:"Emotion","reaction-reasons":"Reaction reasons","genre-reasons":"Genre reasons"};
+      const labels={reactions:"Reactions",themes:"Themes",description:"Description",reactionReasons:"Reactions Info",genreReasons:"Themes Info"};
       Object.entries(labels).forEach(([key,label])=>{
         const item=document.createElement("label");
         item.innerHTML=`<input type="checkbox" data-assign-ai-output="${key}" ${params[field.key]?.[key]?"checked":""}> ${label}`;

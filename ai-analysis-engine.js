@@ -4,7 +4,8 @@
 (()=>{'use strict';
  const DB='genreactrix-ai-analysis',VERSION=1,JOBS='jobs',ITEMS='items';
  const COMPONENTS=[
-  ['reactions','Reactions','aiReactions'],['themes','Themes','aiThemes'],['description','Description','aiDescription']
+  ['reactions','Reactions','aiReactions'],['themes','Themes','aiThemes'],['description','Description','aiDescription'],
+  ['reactionReasons','Reactions Info','aiReactionReasons'],['genreReasons','Themes Info','aiGenreReasons']
  ];
  const clone=v=>v==null?v:structuredClone(v),now=()=>new Date().toISOString(),id=p=>`${p}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`;
  const openDb=()=>new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(JOBS)){const s=db.createObjectStore(JOBS,{keyPath:'id'});s.createIndex('state','state');s.createIndex('createdAt','createdAt')}if(!db.objectStoreNames.contains(ITEMS)){const s=db.createObjectStore(ITEMS,{keyPath:'id'});s.createIndex('jobId','jobId');s.createIndex('state','state');s.createIndex('imageId','imageId')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
@@ -13,7 +14,7 @@
  const all=store=>openDb().then(db=>new Promise((resolve,reject)=>{const t=db.transaction(store,'readonly'),r=t.objectStore(store).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error);t.oncomplete=()=>db.close()}));
  const byIndex=(store,index,value)=>openDb().then(db=>new Promise((resolve,reject)=>{const t=db.transaction(store,'readonly'),r=t.objectStore(store).index(index).getAll(value);r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error);t.oncomplete=()=>db.close()}));
  const componentMap=()=>Object.fromEntries(COMPONENTS.map(([id])=>[id,{enabled:false,behavior:'analyze'}]));
- const portraitKey=id=>({reactionReasons:'reaction-reasons',genreReasons:'genre-reasons'}[id]||id);
+ const portraitKey=id=>({'reaction-reasons':'reactionReasons','genre-reasons':'genreReasons'}[id]||id);
  function savedComponentDefaults(){try{return window.genreactrixSettingsEngine?.get?.('ai.components.default',{})||{}}catch{return {}}}
  function syncComponentChecksFromDefaults(){const saved=savedComponentDefaults();document.querySelectorAll('[data-ai-component]').forEach(row=>{const input=row.querySelector('input'),select=row.querySelector('select'),key=portraitKey(row.dataset.aiComponent);if(input&&Object.prototype.hasOwnProperty.call(saved,key))input.checked=Boolean(saved[key]);if(select)select.value='analyze'})}
  function saveComponentDefaultsFromGrid(){const next={...savedComponentDefaults()};document.querySelectorAll('[data-ai-component]').forEach(row=>{const input=row.querySelector('input'),key=portraitKey(row.dataset.aiComponent);if(input)next[key]=Boolean(input.checked)});window.genreactrixSettingsEngine?.set?.('ai.components.default',next);document.querySelectorAll('[data-portrait-ai-output]').forEach(input=>{if(Object.prototype.hasOwnProperty.call(next,input.dataset.portraitAiOutput))input.checked=Boolean(next[input.dataset.portraitAiOutput])});return next}
@@ -52,28 +53,48 @@
   const pending=item.components.filter(c=>c.state==='queued'||c.state==='failed');
   for(const c of pending){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'processing')}
   const input=await imageInput(record),errors=[];
-  for(const c of pending){
-    const field=COMPONENTS.find(([id])=>id===c.component)?.[2];
+
+  // Paired Info components must share the same underlying AI assessment as the
+  // classification they explain. Bundle each family into one Worker request.
+  const groups=[];
+  const take=(keys)=>{const rows=pending.filter(c=>keys.includes(c.component));if(rows.length)groups.push(rows)};
+  take(['reactions','reactionReasons']);
+  take(['themes','genreReasons']);
+  take(['description']);
+  for(const c of pending)if(!groups.some(group=>group.includes(c)))groups.push([c]);
+
+  for(const group of groups){
+    const requested=group.map(c=>c.component);
+    const componentBehaviors=Object.fromEntries(group.map(c=>[c.component,c.behavior]));
     try{
-      const payload=await window.GenreactrixCloudApi.analyzeImage({imageId:record.id,components:[c.component],componentBehaviors:{[c.component]:c.behavior},promptRefs:job.config.promptRefs||{},...input},window.GenreactrixCloudApi.getKey());
+      const payload=await window.GenreactrixCloudApi.analyzeImage({imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},...input},window.GenreactrixCloudApi.getKey());
       const result=payload.result||payload.report||payload;
       if(!result||typeof result!=='object')throw new Error('AI provider returned no structured result');
-      if(!Object.prototype.hasOwnProperty.call(result.components||{},c.component))throw new Error(`AI provider omitted ${c.component}`);
-      c.state='complete';
+      for(const c of group)if(!Object.prototype.hasOwnProperty.call(result.components||{},c.component))throw new Error(`AI provider omitted ${c.component}`);
+
+      const returned={};
+      for(const c of group){c.state='complete';returned[c.component]=result.components[c.component]}
+      if(result.components?.reactionDiagnostics) returned.reactionDiagnostics=result.components.reactionDiagnostics;
+      if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
+
       record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
       const previous=record.analysis?.ai||{};
-      const analysis={...previous,components:{...(previous.components||{}),[c.component]:result.components[c.component]},provider:result.provider||previous.provider||{},model:result.model||result.provider?.model||previous.model||'',promptVersions:{...(previous.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(previous.requested||[]),c.component])],recordedAt:now(),jobId:job.id};
-      window.genreactrixImageRecordEngine.attachAI(record.id,analysis,{[field]:'current'});
-      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${c.component}`,payload:{analysis:{components:{[c.component]:result.components[c.component]},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested:[c.component],jobId:job.id},componentUpdates:{[field]:'current'},partial:false}});
+      const componentUpdates={};
+      for(const c of group){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];componentUpdates[field]='current'}
+      const analysis={...previous,components:{...(previous.components||{}),...returned},provider:result.provider||previous.provider||{},model:result.model||result.provider?.model||previous.model||'',promptVersions:{...(previous.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(previous.requested||[]),...requested])],researchConfiguration:{...(previous.researchConfiguration||{}),...(result.researchConfiguration||{})},recordedAt:now(),jobId:job.id};
+      window.genreactrixImageRecordEngine.attachAI(record.id,analysis,componentUpdates);
+      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{analysis:{components:returned,provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id},componentUpdates,partial:false}});
     }catch(error){
-      const message=`${c.component}: ${String(error.message||error)}`;c.state='failed';errors.push(message);window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed');
-      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:message,payload:{error:message,component:c.component}}).catch(()=>{});
+      const message=`${requested.join('+')}: ${String(error.message||error)}`;errors.push(message);
+      for(const c of group){c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
+      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:message,payload:{error:message,components:requested}}).catch(()=>{});
       if(isGlobalProviderFailure(message))break;
     }
   }
   for(const c of pending.filter(c=>c.state==='processing')){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];c.state='failed';window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
   item.state=errors.length?'failed':'complete';item.error=errors.join(' | ');await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,item.state,{error:item.error});return item.state;
  }
+
  function isGlobalProviderFailure(message){return /unauthorized|analysis access is not configured|ai worker url is not configured|failed to fetch|networkerror|load failed|workers ai binding ai is not configured|workers ai vision failed|rate limit|quota/i.test(String(message||''))}
  async function run(jobId){
   let job=(await all(JOBS)).find(j=>j.id===jobId);
@@ -244,7 +265,7 @@
     const latest=related.at(-1)||null,job=latest?jobsById.get(latest.jobId):null;
     manifestRows.push({
       imageId:record.id,filename:record.source?.originalFilename||record.name||filename,zipPath:`images/${filename}`,
-      failedComponents:[['reactions','aiReactions'],['themes','aiThemes'],['description','aiDescription']].filter(([,field])=>record.components?.[field]==='failed').map(([component])=>component),
+      failedComponents:[['reactions','aiReactions'],['themes','aiThemes'],['description','aiDescription'],['reactionReasons','aiReactionReasons'],['genreReasons','aiGenreReasons']].filter(([,field])=>record.components?.[field]==='failed').map(([component])=>component),
       error:latest?.error||record.error||'',aiJobId:latest?.jobId||null,attempts:latest?.attempts||0,jobCreatedAt:job?.createdAt||null,jobCompletedAt:job?.completedAt||null,
       model:window.genreactrixSettingsEngine?.get?.('ai.provider.model','')||null,promptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version','')||null,
       configuration:job?.config||null,workerBaseUrl:window.GenreactrixCloudApi?.getBaseUrl?.()||null,siteBuild:window.GENREACTRIX_BUILD||null

@@ -7,7 +7,7 @@ PFM0105 [🧸💥] Joy - Happiness, delight, pleasure, or emotional uplift shown
 PFM0106 [🧸🌀] Bizarre - Strange, unusual, unexpected, peculiar; improbable combinations, anomalous forms, or unexplained oddities.
 PFM0107 [🧸🎟️] Camp - Exaggerated, theatrical, artificial, flamboyant, kitschy, or knowingly excessive styling and presentation.
 PFM0108 [🧸🌌] Whimsical - Fanciful, playful, imaginative, lightly odd, or guided by charming logic; fantasy details, charming oddities, or impossible elements.
-PFM0109 [🧸🌶️] Kawaii - A cute aesthetic emphasizing sweetness, softness, expressive features, or playful visual appeal; rounded forms, pastel styling, big eyes, or tiny proportions.
+PFM0109 [🧸🌶️] Kawaii - Highly stylized Japanese cute aesthetic using exaggerated sweetness or toy-like, childlike, or chibi-style proportions.
 PFM0110 [🧸🤢] Grimy - Dirty, soiled, greasy, dingy, stained, or neglected; visible dirt, grease, soot, residue, or accumulated grime on surfaces.
 PFM0111 [🧸👻] CreepyCute - Cute and unsettling at once; Halloween fun. Appealing subjects combined with eerie, spooky, uncanny, or disturbing features.
 PFM0112 [🧸🧠] Innocence - Openness, inexperience, trust, simplicity, or freedom from corruption; childlike expressions, gentleness, or naive imagery.
