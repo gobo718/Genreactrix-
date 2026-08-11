@@ -1,3 +1,13 @@
+# Genreactrix
+
+## v0.9.39.95 — Landscape Reaction Percentages Visible
+
+- Landscape Judgment now opens with AI Reactions enabled, so stored canonical reaction percentages are visible immediately.
+- Completing an AI Reaction rerun explicitly enables AI Reactions before repainting the Judgment view.
+- The AI Reactions button still toggles the percentage display off/on normally.
+- Reaction scoring, Worker v0.9.6.4, and PrimFusion Matrix v0.0.0.0 are unchanged.
+- No standalone acceptance file is added; release history remains consolidated in this README.
+
 ## v0.9.39.94 — real Landscape AI reruns
 
 This build repairs AI rerun controls that previously created synthetic copies of the

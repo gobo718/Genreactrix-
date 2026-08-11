@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.94";
+const GENREACTRIX_BUILD="v0.9.39.95";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -858,7 +858,7 @@ function renderComparison(){
 }
 
 
-const tabletLandscapeView={face:"matrix",aiReactions:false,aiThemes:false,aiDescription:false,customs:false,activeThemeSlot:null,customsTab:"search"};
+const tabletLandscapeView={face:"matrix",aiReactions:true,aiThemes:false,aiDescription:false,customs:false,activeThemeSlot:null,customsTab:"search"};
 const landscapeCustomSort={
   reactions:{mode:"alpha",direction:"asc"},
   themes:{mode:"alpha",direction:"asc"}
@@ -1719,6 +1719,10 @@ async function runCurrentAiRerun(components){
     await engine.run(job.id);
     const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
     if(finalJob.state!=="completed")throw new Error(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`);
+    // v0.9.39.95 — a completed Reaction rerun is itself a request to inspect
+    // the new scores. Make them visible before repainting Judgment so the
+    // completed rerun cannot appear to have produced no percentages.
+    if(requested.includes("reactions"))tabletLandscapeView.aiReactions=true;
     renderAll();
     renderTabletWorkbench();
     return finalJob;
