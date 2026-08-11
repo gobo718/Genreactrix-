@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.95";
+const GENREACTRIX_BUILD="v0.9.39.96";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1061,7 +1061,8 @@ function renderTabletWorkbench(){
     b.className="tablet-prim-button"+(state.selectedReactions.includes(primitiveIndex)?" selected":"");
     b.title=p.name;
     b.setAttribute("aria-pressed",String(state.selectedReactions.includes(primitiveIndex)));
-    const pctText=tabletLandscapeView.aiReactions?`${weights[p.id]??0}%`:"";
+    const pctText=`${Number(weights[p.id])||0}%`;
+    b.classList.toggle("ai-percentage-hidden",!tabletLandscapeView.aiReactions);
     b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${p.symbol}</span></span><span class="pct" aria-hidden="${String(!tabletLandscapeView.aiReactions)}">${pctText}</span>`;
     b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(primitiveIndex);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(primitiveIndex);saveCurrent("director-reaction-auto");renderAll();});
     prims.appendChild(b);
@@ -1071,9 +1072,10 @@ function renderTabletWorkbench(){
     const token=customReactionSelectionToken(record.id);
     const b=document.createElement("button");
     const rawCustomWeight=weights[record.id] ?? weights[token] ?? 0;
-    const customPctText=tabletLandscapeView.aiReactions?`${Number(rawCustomWeight)||0}%`:"";
+    const customPctText=`${Number(rawCustomWeight)||0}%`;
     b.type="button";
     b.className="tablet-prim-button custom-reaction-button"+(state.selectedReactions.includes(token)?" selected":"");
+    b.classList.toggle("ai-percentage-hidden",!tabletLandscapeView.aiReactions);
     b.title=record.label;
     b.dataset.customReaction=record.id;
     b.setAttribute("aria-pressed",String(state.selectedReactions.includes(token)));
@@ -1723,6 +1725,7 @@ async function runCurrentAiRerun(components){
     // the new scores. Make them visible before repainting Judgment so the
     // completed rerun cannot appear to have produced no percentages.
     if(requested.includes("reactions"))tabletLandscapeView.aiReactions=true;
+    delete state.aiRuns[imageId];
     renderAll();
     renderTabletWorkbench();
     return finalJob;
@@ -2937,6 +2940,10 @@ window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)con
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
   if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
+  if(type==="ai-attached"&&String(event.detail?.imageId||"")===String(currentKey())){
+    delete state.aiRuns[String(event.detail.imageId)];
+    renderTabletWorkbench();
+  }
   renderPortraitInboxControls();
 });
 

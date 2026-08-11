@@ -7141,3 +7141,20 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     object-position:center center!important;
   }
 }
+
+
+/* v0.9.39.96 — deterministic Landscape AI reaction percentage visibility.
+   Percentage text remains populated from the canonical AI record and only the
+   explicit AI Reactions toggle may hide it. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-judgment-face .tablet-prim-button .pct{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    z-index:4!important;
+  }
+  .landscape-judgment-face .tablet-prim-button.ai-percentage-hidden .pct{
+    visibility:hidden!important;
+    opacity:0!important;
+  }
+}

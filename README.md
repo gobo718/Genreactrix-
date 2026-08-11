@@ -1,5 +1,12 @@
 # Genreactrix
 
+## v0.9.39.96 — Landscape Reaction Percentages + Deterministic Asset Refresh
+- Corrects the prior package/version mismatch: the page title, visible build labels, `app.js` cache-buster, and `styles.css` cache-buster now all identify v0.9.39.96.
+- Landscape Judgment reaction percentage text is always populated from the canonical AI reaction weights; the AI Reactions toggle now controls explicit visibility instead of destroying/recreating the text.
+- A current-image `ai-attached` event invalidates the presentation cache and repaints Landscape immediately, so fresh Reaction rerun percentages appear as soon as the canonical record is updated.
+- A completed Reaction rerun forces AI Reactions visible and invalidates any cached run before repaint.
+- Worker remains v0.9.6.4; PrimFusion Matrix remains v0.0.0.0.
+
 ## v0.9.39.95 — Landscape Reaction Percentages Visible
 
 - Landscape Judgment now opens with AI Reactions enabled, so stored canonical reaction percentages are visible immediately.
