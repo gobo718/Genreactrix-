@@ -1,8 +1,0 @@
-Genreactrix v0.9.39.49 — Reaction Strip Vertical Clearance
-
-Scope is intentionally narrow.
-
-1. AI percentage labels move 3px upward relative to their primitive slot.
-2. The entire Judgment reaction array (emoji + rings + percentages) moves upward together by 2% of the reaction band.
-3. Horizontal ordering, brick geometry, custom reaction placement, ring/emoji centering, and Image View are unchanged.
-4. Customs CRUD and AI percentage behavior from v0.9.39.48 remain unchanged.

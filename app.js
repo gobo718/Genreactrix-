@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.93";
+const GENREACTRIX_BUILD="v0.9.39.94";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -865,11 +865,15 @@ const landscapeCustomSort={
 };
 const landscapeCustomScroll={reactions:0,themes:0,search:0};
 const AI_RERUN_LOCK_KEY="genreactrix-ai-rerun-lock-v1";
+const AI_RERUN_COMPONENTS=["reactions","themes","description"];
 let tabletAiRerunLocked=localStorage.getItem(AI_RERUN_LOCK_KEY)!=="0";
+let aiRerunInFlight=false;
 function syncTabletAiRerunControls(){
   const lock=$("tabletAiRerunLockBtn");
   lock?.setAttribute("aria-pressed",String(tabletAiRerunLocked));
-  ["tabletAiRerunReactionsBtn","tabletAiRerunThemesBtn","tabletAiRerunDescriptionBtn"].forEach(id=>{const b=$(id);if(b)b.disabled=tabletAiRerunLocked;});
+  ["tabletAiRerunReactionsBtn","tabletAiRerunThemesBtn","tabletAiRerunDescriptionBtn"].forEach(id=>{const b=$(id);if(b){b.disabled=tabletAiRerunLocked||aiRerunInFlight;b.setAttribute("aria-busy",String(aiRerunInFlight));}});
+  const full=$("rerunAiBtn");
+  if(full){full.disabled=aiRerunInFlight;full.setAttribute("aria-busy",String(aiRerunInFlight));}
 }
 
 function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
@@ -1697,15 +1701,48 @@ $("clearCurrentBtn").addEventListener("click",()=>{
 });
 $("directorUndoBtn").addEventListener("click",undo);
 $("directorRedoBtn").addEventListener("click",redo);
-$("rerunAiBtn").addEventListener("click",()=>{
+
+async function runCurrentAiRerun(components){
+  const requested=[...new Set((components||[]).filter(component=>AI_RERUN_COMPONENTS.includes(component)))];
+  if(!requested.length)throw new Error("No AI rerun component was selected.");
+  if(aiRerunInFlight)throw new Error("An AI rerun is already in progress.");
+  const imageId=currentKey(),recordEngine=window.genreactrixImageRecordEngine;
+  if(state.feedEmpty||!state.files.length||!recordEngine?.get?.(imageId,{touch:false}))throw new Error("No current image is available for AI rerun.");
+  const engine=window.genreactrixAiAnalysisEngine;
+  if(!engine?.createJob||!engine?.run)throw new Error("AI Analysis Engine is unavailable.");
+  if(!window.GenreactrixCloudApi?.isConfigured?.())throw new Error("AI Worker is not configured.");
+  const componentConfig=Object.fromEntries(AI_RERUN_COMPONENTS.map(component=>[component,{enabled:requested.includes(component),behavior:"reanalyze"}]));
+  aiRerunInFlight=true;syncTabletAiRerunControls();
+  try{
+    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false});
+    if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
+    await engine.run(job.id);
+    const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
+    if(finalJob.state!=="completed")throw new Error(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`);
+    renderAll();
+    renderTabletWorkbench();
+    return finalJob;
+  }finally{
+    aiRerunInFlight=false;syncTabletAiRerunControls();
+  }
+}
+
+$("rerunAiBtn").addEventListener("click",async()=>{
   if(!confirm("Rerun AI analysis for this image? The existing AI run will be kept in history.")) return;
-  const previous=currentAiRun();
-  const next={...JSON.parse(JSON.stringify(previous)),id:`${currentKey()}-${Date.now()}`,createdAt:new Date().toISOString(),model:"demo-static-rerun"};
-  state.aiRuns[currentKey()].push(next);
-  persistRecords();
-  const recordEngine=window.genreactrixImageRecordEngine;
-  if(recordEngine?.get?.(currentKey(),{touch:false})) recordEngine.update(currentKey(),{analysis:{ai:next},components:{aiReactions:"current",aiThemes:"current",aiDescription:"current"}},"ai-reanalyzed");
-  renderAll();
+  const button=$("rerunAiBtn"),originalLabel=button?.textContent||"Rerun AI Analysis";
+  if(button)button.textContent="Rerunning AI…";
+  try{
+    await runCurrentAiRerun(AI_RERUN_COMPONENTS);
+    setDirectorStatus("AI reactions, themes, and description rerun complete.");
+  }catch(error){
+    const message=String(error?.message||error);
+    console.error("AI rerun failed",error);
+    setDirectorStatus(`AI rerun failed: ${message}`);
+    alert(`AI rerun failed: ${message}`);
+  }finally{
+    if(button)button.textContent=originalLabel;
+    syncTabletAiRerunControls();
+  }
 });
 
 async function applyEngineWorkingFiles(files,{preserveId=null,preferredIndex=0,canonical=true}={}){
@@ -2174,16 +2211,18 @@ document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{
   if(opening)renderLandscapeCustoms();
 });
 
-function createComponentAiRerun(component){
-  if(tabletAiRerunLocked)return;
+async function createComponentAiRerun(component){
+  if(tabletAiRerunLocked||aiRerunInFlight)return;
   if(!confirm(`Rerun AI ${component} for this image? The prior AI analysis will remain in history.`))return;
-  const previous=currentAiRun()||defaultAiRun();
-  const next={...JSON.parse(JSON.stringify(previous)),id:`${currentKey()}-${Date.now()}`,createdAt:new Date().toISOString(),model:"demo-static-rerun",rerunComponent:component};
-  state.aiRuns[currentKey()] ||= [];
-  state.aiRuns[currentKey()].push(next);persistRecords();
-  const recordEngine=window.genreactrixImageRecordEngine;
-  if(recordEngine?.get?.(currentKey(),{touch:false}))recordEngine.update(currentKey(),{analysis:{ai:next},components:{aiReactions:"current",aiThemes:"current",aiDescription:"current"}},`ai-${component}-reanalyzed`);
-  renderAll();setDirectorStatus(`AI ${component} rerun recorded.`);
+  setDirectorStatus(`Rerunning AI ${component}…`);
+  try{
+    await runCurrentAiRerun([component]);
+    setDirectorStatus(`AI ${component} rerun complete.`);
+  }catch(error){
+    const message=String(error?.message||error);
+    console.error(`AI ${component} rerun failed`,error);
+    setDirectorStatus(`AI ${component} rerun failed: ${message}`);
+  }
 }
 $("tabletAiRerunLockBtn")?.addEventListener("click",()=>{tabletAiRerunLocked=!tabletAiRerunLocked;localStorage.setItem(AI_RERUN_LOCK_KEY,tabletAiRerunLocked?"1":"0");syncTabletAiRerunControls();});
 $("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>createComponentAiRerun("reactions"));

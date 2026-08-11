@@ -1,7 +1,0 @@
-v0.9.39.44 acceptance
-1. Judgment only: each primitive button owns symbol + ring + AI percentage.
-2. Ring and emoji share one center.
-3. AI percentage shares the slot X center.
-4. Top row remains 7 canonical primitives.
-5. Bottom row remains 7 canonical primitives at exact half-column midpoints.
-6. Image View and Customs are untouched.

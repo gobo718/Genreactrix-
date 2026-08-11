@@ -1,7 +1,0 @@
-Genreactrix v0.9.39.45
-Scope: Judgment reaction geometry only.
-- One explicit slot-center coordinate per primitive.
-- Ring and emoji share the exact center.
-- Bottom-row X slots are the exact half-step between top-row slots.
-- AI percentage is a child of the same slot and shares its X center.
-- No Image View or Customs changes.

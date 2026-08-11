@@ -1,8 +1,0 @@
-Genreactrix v0.9.39.62 — Image View Rendered-Bounds Centering
-
-Scope: Image View only.
-
-- Uses the rendered reaction-region and rendered formation bounding boxes to compute center delta.
-- Moves the finished formation as one rigid object.
-- Does not change ring size, emoji size, spacing, stagger, custom placement, or formation geometry.
-- Visible build version and app.js/styles.css cache-busting query strings are bumped to v0.9.39.62 so GitHub Pages/mobile browsers load the new assets.
