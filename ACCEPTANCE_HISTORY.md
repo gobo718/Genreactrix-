@@ -1,3 +1,10 @@
+## v0.9.39.91
+- Corrected the v0.9.39.90 Landscape image-fit implementation.
+- The workbench image and focused Image View now fill a fixed viewport box while
+  `object-fit: contain` preserves the source aspect ratio and shows the full image.
+- Letterboxing is allowed; automatic cropping is not.
+- Worker remains unchanged at v0.9.6.2.
+
 ## v0.9.39.90
 - Consolidated verified Landscape repair: full-image contain geometry, legacy/current AI Theme and Reaction adapters, exact shared AI/Customs four-button geometry, and booked state colors.
 - Flag severity is now Review (yellow), Delete (red), Reject (hot magenta); button label remains Flag. Long-press opens the existing action menu.

@@ -7115,3 +7115,29 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     outline:none!important;box-shadow:none!important;
   }
 }
+
+
+/* v0.9.39.91 — hard full-image containment correction.
+   The IMG owns the complete viewport box; object-fit:contain chooses the limiting
+   axis from the source aspect ratio. Unused space is letterboxed, never cropped. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #tabletImageViewBtn,
+  #landscapeImageView .landscape-image-view-canvas{
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+
+  #tabletWorkbenchImage,
+  #landscapeImageViewImage{
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    max-height:none!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+  }
+}
