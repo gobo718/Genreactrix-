@@ -7158,3 +7158,5 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     opacity:0!important;
   }
 }
+
+/* v0.9.39.97 — reaction percentage display normalization is implemented in app.js; no geometry change. */

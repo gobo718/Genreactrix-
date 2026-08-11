@@ -1,3 +1,15 @@
+# Genreactrix Release Notes
+
+## v0.9.39.97 — Reaction Percentage Total Normalization
+- Fixes reaction percentage sets that could visibly total more than 100% (for example, a legacy/raw set totaling 150%).
+- Stored AI reaction evidence is not rewritten or destroyed.
+- All 14 canonical reaction values are normalized only at the percentage presentation boundary.
+- Uses largest-remainder whole-number allocation, so the displayed canonical percentages total exactly 100% without rounding drift.
+- Current 114-point/minus-1 Worker results remain proportionally unchanged except for any necessary integer display rounding.
+- Landscape Judgment and the primitive percentage grids use the same normalization rule.
+- Visible build labels and asset cache-busters are v0.9.39.97.
+- Worker remains v0.9.6.4; PrimFusion Matrix remains v0.0.0.0.
+
 # Genreactrix
 
 ## v0.9.39.96 — Landscape Reaction Percentages + Deterministic Asset Refresh

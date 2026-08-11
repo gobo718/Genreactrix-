@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.96";
+const GENREACTRIX_BUILD="v0.9.39.97";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -428,6 +428,25 @@ function currentAiRun(){ return currentAiRuns().at(-1); }
 function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
 function currentAiWeights(){ return currentAiRun().weights || {}; }
 
+/* v0.9.39.97 — percentage presentation normalization.
+   Stored AI evidence remains untouched. Any canonical reaction vector shown with
+   percent signs is converted to whole-number shares whose displayed total is 100.
+   Largest-remainder allocation preserves proportions without rounding drift. */
+function displayReactionPercentages(source={}){
+  const rows=PRIMITIVES.map((p,index)=>({id:p.id,index,value:Math.max(0,Number(source?.[p.id])||0)}));
+  const total=rows.reduce((sum,row)=>sum+row.value,0);
+  if(!(total>0))return Object.fromEntries(rows.map(row=>[row.id,0]));
+  const scaled=rows.map(row=>{
+    const exact=row.value*100/total;
+    const whole=Math.floor(exact);
+    return {...row,exact,whole,fraction:exact-whole};
+  });
+  let remaining=100-scaled.reduce((sum,row)=>sum+row.whole,0);
+  const order=[...scaled].sort((a,b)=>b.fraction-a.fraction||b.value-a.value||a.index-b.index);
+  for(let i=0;i<remaining;i++)order[i%order.length].whole+=1;
+  return Object.fromEntries(scaled.map(row=>[row.id,row.whole]));
+}
+
 function classificationState(){
   return {
     selectedReactions:[...state.selectedReactions],
@@ -762,7 +781,7 @@ function renderPrimitiveWeights(target, {showDirector=false}={}){
   if(!target) return;
   target.innerHTML="";
   target.className="primitive-weight-grid" + (target.id==="homeAiPrimitives" ? " compact" : "");
-  const weights=currentAiWeights();
+  const weights=displayReactionPercentages(currentAiWeights());
   PRIMITIVES.forEach((p,index)=>{
     const item=document.createElement("div");
     item.className="primitive-weight-item"+(showDirector && state.selectedReactions.includes(index)?" director-selected":"");
@@ -1047,7 +1066,7 @@ function renderTabletWorkbench(){
   const pctRow=$("tabletWorkbenchPrimPcts");
   prims.innerHTML="";
   if(pctRow) pctRow.innerHTML="";
-  const weights=hasImage?currentAiWeights():{};
+  const weights=hasImage?displayReactionPercentages(currentAiWeights()):{};
   /* v0.9.39.49 — explicit canonical Judgment order by stable primitive ID.
      Avoid symbol matching so variation-selector differences can never create
      empty slots or shift later canonical/custom reactions. */
