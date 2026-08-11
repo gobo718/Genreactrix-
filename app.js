@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.39.89";
+const GENREACTRIX_BUILD="v0.9.39.90";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -237,7 +237,7 @@ const state = {
 const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v2";
 const LANDSCAPE_FILTER_LEGACY_KEY="genreactrix-landscape-filter-v1";
 const LANDSCAPE_INBOX_KEY="genreactrix-landscape-inbox-v1";
-const FILTER_CATEGORIES=["review","rejection","kept","parked","seen"];
+const FILTER_CATEGORIES=["review","rejection","reject","kept","parked","seen"];
 const SORT_MODES=new Set(["pack","newest","oldest","filename","random"]);
 const defaultLandscapeFilter=()=>({
   all:false,
@@ -302,12 +302,13 @@ window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(reco
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
+  if(key==="reject")return Boolean(record.attributes?.rejected);
   if(key==="kept")return Boolean(record.attributes?.saved);
   if(key==="parked")return Boolean(record.attributes?.parked);
   if(key==="seen")return Boolean(record.attributes?.seen);
   return false;
 }
-function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&record.workflow?.stage!=="archived";}
+function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage!=="archived";}
 function inboxPackById(id){return landscapeInbox.find(pack=>pack.id===id)||null;}
 function inboxImageIds(){return new Set(landscapeInbox.flatMap(pack=>pack.imageIds||[]));}
 function packOrderMap(){
@@ -335,7 +336,7 @@ function filteredLandscapeRecords(){
   const includeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.include[key]);
   let candidates=[];
   if(landscapeFilter.all)candidates=records;
-  else if(landscapeFilter.feed)candidates=records.filter(r=>!r.attributes?.parked&&!r.attributes?.rejectionFlagged);
+  else if(landscapeFilter.feed)candidates=records.filter(r=>!r.attributes?.parked&&!r.attributes?.rejectionFlagged&&!r.attributes?.rejected);
   else if(includeKeys.length)candidates=records.filter(r=>includeKeys.some(key=>recordMatchesFilterCategory(r,key)));
   // No base/include selection deliberately means zero images.
   const excludeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.exclude[key]);
@@ -357,18 +358,33 @@ function currentSource(){
 function canonicalAiRunFromRecord(record){
   const ai=record?.analysis?.ai;if(!ai)return null;
   const components=ai.components||{};
-  const rawReactions=components.reactions||ai.reactions||null;
+  const normalizeAiKey=value=>String(value??"").trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g,"");
+  const reactionAliases={P12:["Smart","Brain","Intelligence","Mind"]};
+  let rawReactions=components.reactions??components.aiReactions??ai.reactions??ai.aiReactions??ai.weights??null;
+  if(rawReactions&&typeof rawReactions==="object"&&!Array.isArray(rawReactions)&&rawReactions.reactions&&typeof rawReactions.reactions==="object")rawReactions=rawReactions.reactions;
+  const reactionRows=Array.isArray(rawReactions)?rawReactions:[];
+  const reactionObject=rawReactions&&typeof rawReactions==="object"&&!Array.isArray(rawReactions)?rawReactions:{};
+  const reactionObjectByKey=new Map(Object.entries(reactionObject).map(([key,value])=>[normalizeAiKey(key),value]));
   const weights=Object.fromEntries(PRIMITIVES.map(p=>{
-    const row=rawReactions?.[p.name];
-    const value=typeof row==="number"?row:(row?.confidence??row?.weight??ai.weights?.[p.id]??0);
+    const aliases=[p.id,p.name,...(reactionAliases[p.id]||[])];
+    let row=null;
+    for(const alias of aliases){const hit=reactionObjectByKey.get(normalizeAiKey(alias));if(hit!==undefined){row=hit;break;}}
+    if(row==null&&reactionRows.length){
+      row=reactionRows.find(item=>aliases.some(alias=>normalizeAiKey(item?.name??item?.id??item?.reaction??item?.label)===normalizeAiKey(alias)))??null;
+    }
+    const value=typeof row==="number"?row:(row?.percentage??row?.confidence??row?.score??row?.weight??row?.value??ai.weights?.[p.id]??0);
     return[p.id,Math.max(0,Math.min(100,Number(value)||0))];
   }));
-  const rawThemes=components.themes||ai.themes||[];
+  let rawThemes=components.themes??components.aiThemes??ai.themes??ai.aiThemes??[];
+  if(rawThemes&&typeof rawThemes==="object"&&!Array.isArray(rawThemes)&&Array.isArray(rawThemes.themes))rawThemes=rawThemes.themes;
   const themes=(Array.isArray(rawThemes)?rawThemes:[]).map((row,index)=>{
-    const label=String(row?.theme||row?.label||"").trim();if(!label)return null;
-    return{id:row.id||`ai-theme:${index}:${label.toLowerCase()}`,label,weight:Math.max(0,Math.min(100,Number(row?.confidence??row?.weight)||0)),evidence:row?.evidence||"",role:row?.role||""};
+    const label=String(typeof row==="string"?row:(row?.theme??row?.name??row?.proposedName??row?.label??row?.code??"")).trim();if(!label)return null;
+    const value=typeof row==="string"?0:(row?.percentage??row?.confidence??row?.score??row?.weight??0);
+    return{id:row?.id||row?.code||`ai-theme:${index}:${label.toLowerCase()}`,label,weight:Math.max(0,Math.min(100,Number(value)||0)),evidence:row?.evidence||row?.reason||"",role:row?.role||""};
   }).filter(Boolean);
-  const description=String(components.description??ai.description??"").trim();
+  let rawDescription=components.description??components.aiDescription??ai.description??ai.aiDescription??"";
+  if(rawDescription&&typeof rawDescription==="object")rawDescription=rawDescription.description??rawDescription.text??rawDescription.value??"";
+  const description=String(rawDescription).trim();
   return {
     id:ai.jobId||ai.id||`${record.id}-ai`,
     createdAt:ai.recordedAt||ai.analyzedAt||record.updatedAt||new Date().toISOString(),
@@ -688,13 +704,27 @@ function renderImage(){
   if($("tabletAiDescription")) $("tabletAiDescription").textContent=description;
   $("progressText").textContent=`${state.files.length?"Image":"Demo image"} ${position} / ${total}`;
 }
+function flagSeverityForRecord(record){
+  if(record?.attributes?.rejected)return "reject";
+  if(record?.attributes?.rejectionFlagged)return "delete";
+  if(record?.attributes?.flagged)return "review";
+  return "none";
+}
+function applyFlagButtonSeverity(button,severity){
+  if(!button)return;
+  const active=severity!=="none";
+  button.dataset.flagSeverity=severity;
+  button.setAttribute("aria-pressed",String(active));
+  button.setAttribute("aria-label",severity==="review"?"Flag — Review":severity==="delete"?"Flag — Delete":severity==="reject"?"Flag — Reject":"Flag");
+}
 function renderFlag(){
   const hasImage=!state.feedEmpty;
-  $("directorFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
-  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
-  $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
-  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   const record=hasImage?currentImageRecord():null;
+  const severity=hasImage?flagSeverityForRecord(record):"none";
+  applyFlagButtonSeverity($("directorFlagBtn"),severity);
+  applyFlagButtonSeverity($("tabletFlagBtn"),severity);
+  applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),severity);
+  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.parked)));
   // Filter highlight reflects actual record filtering only. Base population and sort order are not "on" states.
@@ -1081,7 +1111,7 @@ function renderTabletWorkbench(){
     contextualCustomsBtn.textContent=tabletLandscapeView.customs?"AI Analysis":"Customs";
     contextualCustomsBtn.setAttribute("aria-label",tabletLandscapeView.customs?"Return to AI Analysis":"Open Customs");
   }
-  $("tabletFlagBtn")?.setAttribute("aria-pressed",String(hasImage&&state.flagged));
+  applyFlagButtonSeverity($("tabletFlagBtn"),hasImage?flagSeverityForRecord(currentImageRecord()):"none");
   $("tabletParkBtn")?.setAttribute("aria-pressed",String(hasImage&&Boolean(currentImageRecord()?.attributes?.parked)));
   const keepOn=hasImage&&state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
@@ -2321,7 +2351,7 @@ function renderLandscapeImageView(){
       const row=document.createElement("div");row.className="landscape-image-view-theme";row.innerHTML=`<b>${i+1}</b><strong>${themeLabel(state.themes[i])}</strong>`;themeRoot.appendChild(row);
     }
   }
-  $("landscapeImageViewFlagBtn")?.setAttribute("aria-pressed",String(state.flagged));
+  applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),state.feedEmpty?"none":flagSeverityForRecord(currentImageRecord()));
 }
 function openLandscapeImageView(){
   landscapeImageViewState.open=true;
@@ -2365,7 +2395,16 @@ function finishFlagHold(e,cancelled=false){
   // Some Android browsers emit pointercancel during a stationary long hold.
   // Treat a ~2 second cancelled hold as the intended administrative gesture.
   if(cancelled&&!flagHoldState.long&&elapsed>=1900)openFlagAdminDialog();
-  if(!cancelled&&!flagHoldState.long&&elapsed<1900){$("directorFlagBtn")?.click();renderFlag();renderLandscapeImageView();}
+  if(!cancelled&&!flagHoldState.long&&elapsed<1900){
+    const record=currentImageRecord();
+    if(record){
+      const next=flagSeverityForRecord(record)==="review"?"none":"review";
+      window.genreactrixImagesEngine?.setFlagSeverity?.(record.id,next).then(updated=>{
+        state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;renderAll();renderLandscapeImageView();
+        setDirectorStatus(next==="review"?"Image flagged for Review.":"Review flag cleared.");
+      }).catch(error=>setDirectorStatus(`Flag could not be changed: ${error.message||error}`));
+    }
+  }
   flagHoldState.startedAt=0;flagHoldState.button=null;flagHoldState.pointerId=null;
   setTimeout(()=>flagHoldState.long=false,80);
 }
@@ -2383,13 +2422,14 @@ function finishFlagHold(e,cancelled=false){
 document.addEventListener("pointerup",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,false);},{passive:false});
 document.addEventListener("pointercancel",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,true);},{passive:false});
 $("flagForRejectionAction")?.addEventListener("click",async()=>{
-  $("flagAdminDialog")?.close();if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
-  const next=!Boolean(record.attributes?.rejectionFlagged);await window.genreactrixImagesEngine.setRejectionFlagged(id,next);landscapeFeedDirty=true;
-  setDirectorStatus(next?"Image flagged for deletion. It will leave Feed when you navigate away.":"Deletion flag cleared.");renderFlag();
+  $("flagAdminDialog")?.close();if(state.feedEmpty)return;const id=currentKey();
+  const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"delete");state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;
+  setDirectorStatus("Image flagged for Delete. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
 $("rejectImageAction")?.addEventListener("click",async()=>{
-  $("flagAdminDialog")?.close();if(state.feedEmpty)return;if(!confirm("Reject this image? Its full-resolution asset moves to Recycle; its Image Record, analysis, and history remain."))return;
-  const id=currentKey(),index=state.index;await window.genreactrixImagesEngine?.rejectImage?.(id);await rehydrateLandscapeFeed({preferredIndex:index});setDirectorStatus("Image rejected and moved to Recycle.");
+  $("flagAdminDialog")?.close();if(state.feedEmpty)return;
+  const id=currentKey(),index=state.index;await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"reject");landscapeFeedDirty=true;
+  await rehydrateLandscapeFeed({preferredIndex:index});setDirectorStatus("Image moved to the Reject pile.");
 });
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
@@ -2773,6 +2813,32 @@ function createImagesEngine(){
   function setFlagged(id,flagged=true){return records.update(id,{attributes:{flagged,needsReview:flagged},timestamps:{flaggedAt:flagged?now():null}},"flag-changed");}
   function setParked(id,parked=true){return records.update(id,{attributes:{parked:Boolean(parked)},timestamps:{parkedAt:parked?now():null}},"park-changed");}
   function setRejectionFlagged(id,flagged=true){return records.update(id,{attributes:{rejectionFlagged:Boolean(flagged)},timestamps:{rejectionFlaggedAt:flagged?now():null}},"rejection-flag-changed");}
+  function setFlagSeverity(id,severity="none"){
+    const record=records.get(id,{touch:false});if(!record)return null;
+    const normalized=["none","review","delete","reject"].includes(severity)?severity:"none";
+    const priorRejectStage=record.metadata?.extended?.rejectPriorStage||null;
+    const enteringReject=normalized==="reject"&&!record.attributes?.rejected;
+    const leavingReject=normalized!=="reject"&&Boolean(record.attributes?.rejected);
+    const restoredStage=leavingReject?(priorRejectStage||"ready-for-director"):record.workflow.stage;
+    return records.update(id,{
+      workflow:{stage:normalized==="reject"?"rejected-hold":restoredStage},
+      attributes:{
+        flagged:normalized==="review",needsReview:normalized==="review",
+        rejectionFlagged:normalized==="delete",rejected:normalized==="reject",
+        parked:normalized==="reject"?false:Boolean(record.attributes?.parked),
+        saved:normalized==="reject"?false:Boolean(record.attributes?.saved),
+        inRecycleBin:false
+      },
+      metadata:{extended:{rejectPriorStage:enteringReject?record.workflow.stage:(leavingReject?null:priorRejectStage)}},
+      timestamps:{
+        flaggedAt:normalized==="review"?now():null,
+        rejectionFlaggedAt:normalized==="delete"?now():null,
+        rejectedAt:normalized==="reject"?now():null,
+        parkedAt:normalized==="reject"?null:record.timestamps?.parkedAt||null,
+        savedAt:normalized==="reject"?null:record.timestamps?.savedAt||null
+      }
+    },"flag-severity-changed");
+  }
   function setSeen(id,seen=true){return records.update(id,{attributes:{seen:Boolean(seen)},timestamps:{seenAt:seen?now():null}},"landscape-seen");}
   async function saveReference(id){let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");if(record.storage.mode==="linked"){const response=await fetch(record.storage.hyperlink||record.source.originalUrl,{mode:"cors"});if(!response.ok)throw new Error(`HTTP ${response.status}`);const blob=await response.blob();if(!blob.type.startsWith("image/"))throw new Error("URL did not return an image");await imageBlobPut(id,blob);record=records.update(id,{storage:{mimeType:blob.type,size:blob.size,temporaryKey:id}},"reference-downloaded");}
     return records.update(id,{storage:{mode:"reference",referenceKey:id},attributes:{saved:true,hyperlinkOnly:false,inRecycleBin:false,rejectionFlagged:false,rejected:false},timestamps:{savedAt:now(),rejectionFlaggedAt:null,rejectedAt:null}},"reference-saved");
@@ -2795,15 +2861,7 @@ function createImagesEngine(){
       timestamps:{savedAt:null,flaggedAt:null,rejectionFlaggedAt:null,parkedAt:null}
     },"ai-failure-exported");
   }
-  async function rejectImage(id){
-    const record=records.get(id,{touch:false});if(!record)return null;if(record.attributes.inRecycleBin)return record;
-    return records.update(id,{
-      storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},
-      workflow:{stage:"rejected"},
-      attributes:{saved:false,flagged:false,needsReview:false,rejectionFlagged:false,parked:false,rejected:true,inRecycleBin:true},
-      timestamps:{savedAt:null,flaggedAt:null,rejectionFlaggedAt:null,parkedAt:null,rejectedAt:now()}
-    },"image-rejected");
-  }
+  async function rejectImage(id){return setFlagSeverity(id,"reject");}
   async function cleanupProcessed(){const candidates=records.all().filter(r=>r.workflow.stage==="director-complete"&&r.storage.mode==="temporary"&&!r.attributes.flagged&&!r.attributes.saved&&!r.attributes.rejectionFlagged&&!r.attributes.parked);for(const r of candidates)await moveToRecycle(r.id);return candidates.length;}
   async function restoreFromRecycle(id){
     const record=records.get(id,{touch:false});if(!record?.attributes.inRecycleBin)return null;const prior=record.storage.recycle||{};
@@ -2829,13 +2887,13 @@ function createImagesEngine(){
   async function purgeExpired(){const days=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.("recycle.retentionDays",30) ?? localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
   async function verifyStorage(){const issues=[];for(const record of records.all()){if(["temporary","reference","recycle"].includes(record.storage.mode)){const blob=await imageBlobGet(record.id).catch(()=>null);if(!blob){records.update(record.id,{storage:{missingReference:true}},"integrity");issues.push({imageId:record.id,type:"missing-blob"});}}}const recordIntegrity=records.integrity();const historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};}
   function allRecords(){return records.all();}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,setSeen,saveReference,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,setFlagSeverity,setSeen,saveReference,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","rejection-flag-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
   renderPortraitInboxControls();
 });
 

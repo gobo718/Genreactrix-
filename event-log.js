@@ -1,4 +1,4 @@
-/* Genreactrix v0.9.39.89 — lightweight live event log.
+/* Genreactrix v0.9.39.90 — lightweight live event log.
    Session-scoped diagnostic feed only; no workflow or Worker behavior changes. */
 (()=>{'use strict';
   const KEY='genreactrix-event-log-session-v1',MAX=400;

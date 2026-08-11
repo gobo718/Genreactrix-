@@ -7039,3 +7039,79 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .ai-cycle-button:hover{background:#24183d}
 .ai-cycle-button.is-running{border-color:#f59e0b;color:#fde68a;background:#2a1d08}
 .ai-cycle-status{font-size:.75rem;color:#cbd5e1;min-width:12ch}
+
+
+/* v0.9.39.90 — consolidated Landscape repair.
+   Full-image containment, legacy/current AI result adapters, exact shared AI/Customs
+   header geometry, Review/Delete/Reject flag severity, Reject filtering, and booked colors. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Full image: preserve intrinsic aspect ratio and fit the entire source in the available viewport. */
+  .landscape-image-region{min-height:0!important;overflow:hidden!important}
+  .landscape-image-button{
+    width:100%!important;height:100%!important;aspect-ratio:auto!important;
+    align-self:stretch!important;justify-self:stretch!important;
+    display:grid!important;place-items:center!important;overflow:hidden!important;
+  }
+  .landscape-image-button img{
+    width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important;
+    object-fit:contain!important;object-position:center center!important;
+  }
+  #landscapeImageView .landscape-image-view-canvas{
+    width:100%!important;height:100%!important;aspect-ratio:auto!important;
+    align-self:stretch!important;justify-self:stretch!important;display:grid!important;place-items:center!important;
+  }
+  #landscapeImageView .landscape-image-view-canvas img{
+    width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important;
+    object-fit:contain!important;object-position:center center!important;
+  }
+
+  /* AI and Customs top rows are literally the same four-column geometry. */
+  .landscape-sliding-drawer{padding-top:0!important}
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls,
+  #tabletCustomsDrawer .customs-tab-strip,
+  html.customs-search-focused #tabletCustomsDrawer .customs-tab-strip{
+    width:100%!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;margin:0!important;padding:0!important;box-sizing:border-box!important;
+  }
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls{
+    grid-template-rows:28px 28px!important;height:60px!important;min-height:60px!important;max-height:60px!important;
+  }
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls>button,
+  #tabletCustomsDrawer .customs-tab{
+    width:100%!important;min-width:0!important;height:28px!important;min-height:28px!important;max-height:28px!important;
+    margin:0!important;padding:3px 5px!important;border-radius:6px!important;
+    font-size:clamp(8px,.76vw,10.5px)!important;line-height:1!important;box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer.customs-workspace-v63{top:0!important}
+  #tabletCustomsDrawer .customs-tab-strip{height:28px!important;min-height:28px!important;max-height:28px!important;align-self:start!important}
+
+  /* Booked state colors. Button text remains unchanged. */
+  #tabletFilterBtn[aria-pressed="true"]{
+    background:#0097A7!important;border-color:#5BE7F2!important;color:#071416!important;
+    outline:2px solid #5BE7F2!important;outline-offset:-2px!important;box-shadow:none!important;
+  }
+  #tabletSaveBtn[aria-pressed="true"]{
+    background:#A6D900!important;border-color:#D8FF48!important;color:#111600!important;
+    outline:2px solid #D8FF48!important;outline-offset:-2px!important;box-shadow:none!important;
+  }
+  #tabletParkBtn[aria-pressed="true"]{
+    background:#493B86!important;border-color:#9B8CFF!important;color:#F1EDFF!important;
+    outline:2px solid #9B8CFF!important;outline-offset:-2px!important;box-shadow:none!important;
+  }
+  #tabletFlagBtn[data-flag-severity="review"],#landscapeImageViewFlagBtn[data-flag-severity="review"]{
+    background:#FFD600!important;border-color:#FFF07A!important;color:#171300!important;
+    outline:2px solid #FFF07A!important;outline-offset:-2px!important;box-shadow:none!important;
+  }
+  #tabletFlagBtn[data-flag-severity="delete"],#landscapeImageViewFlagBtn[data-flag-severity="delete"]{
+    background:#E53935!important;border-color:#FF7B78!important;color:#FFF8F8!important;
+    outline:2px solid #FF7B78!important;outline-offset:-2px!important;box-shadow:none!important;
+  }
+  #tabletFlagBtn[data-flag-severity="reject"],#landscapeImageViewFlagBtn[data-flag-severity="reject"]{
+    background:#FF00D4!important;border-color:#FF7BE9!important;color:#190015!important;
+    outline:2px solid #FF7BE9!important;outline-offset:-2px!important;box-shadow:none!important;
+  }
+  #tabletFlagBtn[data-flag-severity="none"],#landscapeImageViewFlagBtn[data-flag-severity="none"]{
+    background:var(--panel)!important;border:1px solid var(--line)!important;color:var(--text)!important;
+    outline:none!important;box-shadow:none!important;
+  }
+}

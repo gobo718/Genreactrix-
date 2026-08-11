@@ -1,3 +1,10 @@
+## v0.9.39.90
+- Consolidated verified Landscape repair: full-image contain geometry, legacy/current AI Theme and Reaction adapters, exact shared AI/Customs four-button geometry, and booked state colors.
+- Flag severity is now Review (yellow), Delete (red), Reject (hot magenta); button label remains Flag. Long-press opens the existing action menu.
+- Reject is now a held Landscape disposition, visible through All/Reject filtering and excluded from Feed instead of being immediately recycled.
+- Standard batch reporting excludes held Reject records; batch submission preserves them pending dedicated Reject export/finalization.
+- Worker unchanged at v0.9.6.2.
+
 ## v0.9.39.89
 - Tightened **Cycle** to a hard maximum of three total Missing passes for the frozen starting population.
 - Cycle stops earlier only when all selected components become current, the user stops it, or a provider/global failure pauses it.

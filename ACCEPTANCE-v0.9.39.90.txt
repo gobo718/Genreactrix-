@@ -1,0 +1,27 @@
+Genreactrix v0.9.39.90 — Consolidated Landscape Repair
+
+SCOPE
+Repairs verified Landscape defects on the v0.9.39.89 baseline. Worker remains unchanged.
+Filesystem-root exports and Reports-layout redesign remain separate future work.
+
+ACCEPTANCE
+1. Landscape normal view and Image View preserve the source image aspect ratio and display the complete image by scaling it to the available viewport; no forced 1:1 image socket crops the source.
+2. Landscape AI Reactions accepts current and legacy stored reaction shapes, including object/array forms and percentage/confidence/score/weight values.
+3. Landscape AI Themes accepts current and legacy stored Theme fields including theme, name, proposedName, label, and code.
+4. AI top four controls and Customs top four controls use the exact same four-column width, gap, height, padding, radius, and top alignment.
+5. A normal tap on Flag means Review. The button text always remains “Flag”; Review is shown by yellow.
+6. Long-pressing Flag opens the existing Flag actions dialog only.
+7. Choosing Flag for Deletion sets Delete severity and the Flag button red.
+8. Choosing Reject Image sets Reject severity and the Flag button hot magenta. It moves the image out of normal Feed into a held Reject pile; it does NOT immediately move the asset to Recycle.
+9. Flag severity is mutually exclusive: none, Review, Delete, or Reject.
+10. Filter includes a Reject criterion. All includes Reject records. Feed excludes Reject, Delete-flagged, and Parked records.
+11. The active Filter button uses the booked bluer teal (#0097A7).
+12. Active Keep uses booked lime (#A6D900). Active Park retains booked indigo (#493B86).
+13. Standard batch reports exclude held Reject records. Batch validation treats Reject as a resolved disposition, and batch submission does not recycle held Reject assets before their future rejection-export finalization.
+14. Cycle remains capped at three passes. Live Event Log remains available.
+15. Worker remains byte-for-byte unchanged at v0.9.6.2.
+
+DEFERRED / NOT IN THIS BUILD
+- Dedicated Internal Storage / Genreactrix filesystem root and subfolder writing.
+- Reject ZIP + rejection manifest finalization into the dedicated Reject Image folder. Until that export path is implemented, Reject assets are deliberately held rather than prematurely recycled.
+- Reports configuration screen responsive redesign.
