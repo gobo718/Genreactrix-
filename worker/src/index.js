@@ -1,418 +1,858 @@
-/* Genreactrix AI Worker v0.9.6.5 — true reanalyze behavior + balanced 114-point comparative Reaction scoring. */
-const API_VERSION='0.9.6.5';
-const BUILD_ID='prim-reactions-114-reanalyze-v2-theme-catalog-v0.0.0.0';
-const cors={
+/* Genreactrix AI Worker v0.9.6.13-registry
+   Registry-driven replacement Worker.
+   Source vocabulary is generated from primfusion-registry.json.
+*/
+const API_VERSION = '0.9.6.13-registry';
+const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
+const COMPONENT_IDS = ['reactions','themes','description','reactionReasons','genreReasons'];
+const CUSTOM_THEME_GENERATION_ENABLED = false;
+const PROVIDER_CALL_TIMEOUT_MS = 45000;
+
+const cors = {
   'access-control-allow-origin':'*',
   'access-control-allow-methods':'GET, POST, OPTIONS',
   'access-control-allow-headers':'content-type, x-analysis-key'
 };
-const json=(body,init={})=>new Response(JSON.stringify(body),{
+
+const json = (body, init={}) => new Response(JSON.stringify(body), {
   ...init,
   headers:{...cors,'content-type':'application/json; charset=utf-8',...(init.headers||{})}
 });
-const DEFAULT_MODEL='@cf/meta/llama-3.2-11b-vision-instruct';
-const COMPONENT_IDS=['reactions','themes','description','emotion','reactionReasons','genreReasons'];
-const REACTION_NAMES=['Beautiful','Adorable','Tragic','Funny','Intense','Weird','Ticket','Dreamy','Zazzly','Disgusting','Scary','Smart','Celebration','Angry'];
-const PROMPT_VERSIONS=Object.freeze({
-  reactions:'genreactrix-reactions-v4-114-point-balanced-rerun',
-  themes:'genreactrix-themes-v2-catalog',
-  description:'genreactrix-description-v1',
-  emotion:'genreactrix-emotion-v1',
-  reactionReasons:'genreactrix-reaction-reasons-v2-prims',
-  genreReasons:'genreactrix-genre-reasons-v1'
-});
-const REACTION_CATALOG=Object.freeze([
-  "Beautiful ✨ - Beauty, attractiveness, elegance, grace, harmony, radiance, artistry, gorgeousness, aesthetic pleasure, visual admiration, or striking appearance.",
-  "Adorable 🧸 - Cuteness, sweetness, affection, tenderness, innocence, softness, charm, vulnerability, preciousness, coziness, playfulness, or “aww.”",
-  "Tragic 😭 - Sadness, grief, loss, heartbreak, suffering, sorrow, regret, loneliness, helplessness, pity, emotional pain, or devastation.",
-  "Funny 🤣 - Humor, amusement, silliness, absurdity, wit, ridiculousness, comedy, playful surprise, awkwardness, slapstick, visual jokes, or laughter.",
-  "Intense 💥 - Energy, force, drama, urgency, power, excitement, extremity, passion, impact, danger, action, tension, chaos, spectacle, or overwhelming presence.",
-  "Weird 🌀 - Strangeness, oddity, bizarreness, uncanniness, eccentricity, surrealism, abnormality, unpredictability, mutation, impossibility, unfamiliarity, or “what the hell?”",
-  "Ticket 🎟️ - Inappropriate amusement, callousness, taboo enjoyment, schadenfreude, morbid fascination, cruel humor, social transgression, laughing at things that should not be funny, or emotional responses wildly opposed to what society considers acceptable. This captures enjoying cruelty, laughing at tragedy, amusement where empathy is expected, fascination with disturbing material, or reactions that sharply violate social norms.",
-  "Dreamy 🌌 - Fantasy, reverie, wonder, escapism, imagination, enchantment, altered reality, surrealism, nostalgia, longing, otherworldliness, or dream-state.",
-  "Zazzly 🌶️ - Sexual attraction, erotic appeal, sensuality, arousal, horniness, physical desire, temptation, sexual tension, hotness, or lustful interest.",
-  "Disgusting 🤢 - Disgust, revulsion, nausea, filth, contamination, rot, decay, slime, gore, bodily fluids, infestation, grossness, or recoil.",
-  "Scary 👻 - Fear, dread, threat, danger, horror, suspense, unease, menace, paranoia, terror, eerie atmosphere, playful spookiness, creepy fun, haunted vibes, Halloween, or frightening uncertainty.",
-  "Smart / Brain 🧠 - Thought, intelligence, imagination, ideas, cleverness, cognition, knowledge, reasoning, curiosity, strategy, invention, insight, memory, consciousness, psychology, learning, problem-solving, or mental engagement.",
-  "Celebration 🎉 - Joy, festivity, achievement, cheering, revelry, parties, ceremony, victory, congratulations, dancing, excitement, special occasions, or communal happiness.",
-  "Angry 🤬 - Anger, rage, hostility, irritation, annoyance, resentment, aggression, frustration, defiance, outrage, confrontation, fury, vengeance, antagonism, or “pisses you off.”"
-]);
-const REACTION_CATALOG_TEXT=REACTION_CATALOG.join('\n');
-const THEME_CATALOG=Object.freeze([
-  "PFM0102 [🧸✨] Cozy - Comforting, snug, warm, sheltered, or inviting; soft textures, warm lighting, blankets, relaxed intimate settings, or a feeling of ease, rest, or pleasant closeness.",
-  "PFM0103 [🧸😭] Pitiful - Arousing sympathy or compassion through visible helplessness, suffering, misfortune, weakness, neglect, injury, abandonment, or pleading.",
-  "PFM0104 [🧸🤣] Goofy - Silly, awkward, playful, foolish, or ridiculous in an amusing way; exaggerated expressions, clumsy antics, or playful visual absurdity.",
-  "PFM0105 [🧸💥] Joy - Happiness, delight, pleasure, or emotional uplift shown through smiling, laughter, delighted expressions, playful pleasure, or visible enjoyment.",
-  "PFM0106 [🧸🌀] Bizarre - Strange, unusual, unexpected, peculiar; improbable combinations, anomalous forms, or unexplained oddities.",
-  "PFM0107 [🧸🎟️] Camp - Exaggerated, theatrical, artificial, flamboyant, kitschy, or knowingly excessive styling and presentation.",
-  "PFM0108 [🧸🌌] Whimsical - Fanciful, playful, imaginative, lightly odd, or guided by charming logic; fantasy details, charming oddities, or impossible elements.",
-  "PFM0109 [🧸🌶️] Kawaii - A cute aesthetic emphasizing sweetness, softness, expressive features, or playful visual appeal; rounded forms, pastel styling, big eyes, or tiny proportions.",
-  "PFM0110 [🧸🤢] Grimy - Dirty, soiled, greasy, dingy, stained, or neglected; visible dirt, grease, soot, residue, or accumulated grime on surfaces.",
-  "PFM0111 [🧸👻] CreepyCute - Cute and unsettling at once; Halloween fun. Appealing subjects combined with eerie, spooky, uncanny, or disturbing features.",
-  "PFM0112 [🧸🧠] Innocence - Openness, inexperience, trust, simplicity, or freedom from corruption; childlike expressions, gentleness, or naive imagery.",
-  "PFM0113 [🧸🎉] Playful - Lighthearted, mischievous, teasing, game-like, curious, or inclined toward fun and experimentation; games, toys, teasing gestures, or spontaneous fun.",
-  "PFM0114 [🧸🤬] Saccharine - Excessively sweet, sentimental, precious, or cutesy to the point of irritation; sugary, pastel, cloying, aggressively sweet imagery.",
-  "PFM0203 [✨😭] Melancholic - Sad, wistful, reflective, or touched by longing and loss; downcast expressions, solitude, rain, fading light, or emotional heaviness.",
-  "PFM0204 [✨🤣] Charming - Pleasantly attractive, likable, engaging, or delightful in a way that wins affection; inviting expressions, warmth, approachable elegance, or pleasing details.",
-  "PFM0205 [✨💥] Majestic - Grand, dignified, regal, imposing, or awe-inspiring in scale, presence, or bearing; symmetry, noble posture, stately beauty, or impressive scenery.",
-  "PFM0206 [✨🌀] Surreal - Dreamlike, impossible, uncanny, or illogical in an altered reality; distorted scale, impossible spaces, or unexpected object combinations.",
-  "PFM0207 [✨🎟️] Irreverent - Disrespectful, cheeky, mocking, or dismissive toward seriousness, convention, authority, or decorum; visual disrespect toward sacred, formal, or authoritative symbols.",
-  "PFM0208 [✨🌌] Romance - Affection, longing, intimacy, courtship, tenderness, or romantic attraction; couples, affectionate gestures, closeness, or romantic settings.",
-  "PFM0209 [✨🌶️] Exposure - Being naked, indecently revealed, or too visibly exposed, especially in ways that feel shameful, embarrassing, humiliating, or sexually charged; visible nudity, uncovered body parts, flashing, revealing poses, or accidental bodily exposure.",
-  "PFM0210 [✨🤢] Grotesque - Whimsical or ornamental distortion mixing beauty, absurdity, or unease; hybrid human, animal, or plant forms, exaggerated features, decorative symmetry, or playful violations of natural law.",
-  "PFM0211 [✨👻] Vulnerable - Exposed to harm, rejection, injury, loss, or emotional pain; defenseless posture, exposed emotion, isolation, or injury.",
-  "PFM0212 [✨🧠] Elegant - Graceful, refined, tasteful, polished, restrained, or well composed; sophisticated detail, balanced composition, graceful forms, or controlled styling.",
-  "PFM0213 [✨🎉] Festive - Marked by celebration, holidays, ceremonies, or special occasions; decorations, costumes, lights, ornaments, seasonal styling, or celebratory settings.",
-  "PFM0214 [✨🤬] Pretentious - Affected, self-important, showy, or overly cultured or significant; conspicuous status display and affected refinement.",
-  "PFM0304 [😭🤣] Ironic - Tragic or unfortunate situations made funny through unexpected contrast, reversal, or coincidence. Or happy situations ruined by an unexpected reversal.",
-  "PFM0305 [😭💥] Devastating - Causing profound damage, loss, grief, shock, defeat, or emotional destruction; catastrophic ruin, collapse, severe aftermath, or overwhelming loss.",
-  "PFM0306 [😭🌀] Nightmarish - Resembling a nightmare; frightening, disturbing, unreal, oppressive, or horrifying, with dream logic, threatening distortions, darkness, or impossible danger.",
-  "PFM0307 [😭🎟️] Shame - Painful self-conscious disgrace, embarrassment, exposure, or feeling unworthy, judged, or wanting to hide; averted gaze, covered face, hiding posture, blushing, shrinking, or visibly caught embarrassment.",
-  "PFM0308 [😭🌌] Liminal - Vast, lonely spaces with sparse objects or people; emptiness, isolation, corridors, thresholds, sparse interiors, or uncanny stillness.",
-  "PFM0309 [😭🌶️] Humiliation - Being demeaned, degraded, ridiculed, exposed, rejected, or stripped of dignity by others or events; pointing or laughing onlookers, forced exposure, defeated posture, visible embarrassment, or submission.",
-  "PFM0310 [😭🤢] Despair - Hopelessness, anguish, defeat, or the sense that relief or improvement has disappeared; collapsed posture, ruin, isolation, or hopeless expressions.",
-  "PFM0311 [😭👻] Foreboding - Uneasy expectation that danger, trouble, harm, or an unwanted event is approaching; ominous shadows, stormy skies, suspense, or approaching threat.",
-  "PFM0312 [😭🧠] Poignant - Emotionally affecting through tenderness, sadness, meaning, or reflection; fragile moments, remembrance, meaningful loss, or emotional stillness.",
-  "PFM0313 [😭🎉] Bittersweet - Pleasure and sadness experienced together; joyful imagery touched by loss, nostalgia, farewell, memory, or impermanence.",
-  "PFM0314 [😭🤬] Dysphoria - Distress, dissatisfaction, unease, or disconnection involving self, body, identity, mood, or circumstance; bodily discomfort, alienation, or self-disconnection.",
-  "PFM0405 [🤣💥] Cringe - Painful awkwardness or embarrassment that causes secondhand discomfort; social blunders, failed interactions, awkward expressions, or embarrassing poses.",
-  "PFM0406 [🤣🌀] Zany - Eccentric, unconventional, comically strange, or offbeat; mismatched costumes, unusual poses, frantic antics, or energetic comic behavior.",
-  "PFM0407 [🤣🎟️] Satirical - Using humor, irony, exaggeration, or ridicule to expose or criticize faults, behavior, institutions, or ideas; visual mockery of politics, culture, or social conventions.",
-  "PFM0408 [🤣🌌] Absurd - Illogical, ridiculous, contradictory, pointless, impossible, or incompatible with ordinary sense; nonsensical juxtapositions, impossible logic, or ridiculous contradictions.",
-  "PFM0409 [🤣🌶️] Ribaldry - Coarse, bawdy, or sexually suggestive humor; sexual jokes, innuendo, vulgar comedy, bawdy gestures, or suggestive comic situations.",
-  "PFM0410 [🤣🤢] Grossout - Humor or spectacle built around filth, bodily functions, fluids, decay, gore, or revulsion; vomit, excrement, bodily fluids, or gross material used comically.",
-  "PFM0411 [🤣👻] Comedy Horror - Frightening or macabre material blended with humor, parody, absurdity, slapstick, jokes, or comic relief.",
-  "PFM0412 [🤣🧠] Witty - Clever, quick, inventive, or skillful humor and insight; visual puns, layered references, wordplay, or ingenious humorous juxtapositions.",
-  "PFM0413 [🤣🎉] PartyTime - Active social celebration centered on revelry, fun, gathering, or excitement; dancing, cheering, crowds, drinks, decorations, music, or confetti.",
-  "PFM0414 [🤣🤬] Trolling - Provoking, baiting, mocking, annoying, or misleading others for amusement or reaction; antagonistic jokes, mocking memes, baiting signs, or provocative gestures.",
-  "PFM0506 [💥🌀] Chaotic - Disordered, unstable, crowded, conflicting, or lacking control or organization; scattered objects, unstable motion, visual overload, or competing elements.",
-  "PFM0507 [💥🎟️] Outrageous - Shockingly excessive, bold, offensive, audacious, unconventional, or beyond restraint; extreme styling, taboo-breaking, flamboyance, or audacious behavior.",
-  "PFM0508 [💥🌌] Epic - Grand, heroic, or massive in scale, consequence, duration, drama, adventure, struggle, achievement, or spectacle; monumental scenery, heroic action, or high stakes.",
-  "PFM0509 [💥🌶️] Lust - Sexual desire, appetite, craving, fixation, or physical attraction; desirous gazes, sensual bodies, erotic focus, or visible craving.",
-  "PFM0510 [💥🤢] Brutal - Harsh, violent, cruel, punishing, damaging, or unsparing in force or effect; severe injury, destruction, cruelty, or punishing conditions.",
-  "PFM0511 [💥👻] Terror - Extreme fear, alarm, panic, dread, or immediate danger; terrified expressions, fleeing, overwhelming threat, or visible panic.",
-  "PFM0512 [💥🧠] Brilliant - Clever, inventive, insightful, creative, effective, or intellectually impressive; ingenious designs, exceptional craftsmanship, inventive solutions, or impressive execution.",
-  "PFM0513 [💥🎉] Pride - Satisfaction, self-respect, dignity, or affirmation tied to achievement, identity, belonging, or worth; gay or LGBT imagery; confident posture, identity symbols, or dignified self-presentation.",
-  "PFM0514 [💥🤬] Aggressive - Confrontational, forceful, hostile, threatening, domineering, or ready to attack; attack gestures, weapons, intimidation, forceful motion, or threatening posture.",
-  "PFM0607 [🌀🎟️] Freakshow - Bizarre or unsettling spectacle that provokes fascinated, guilty enjoyment; shocking anomalies, unusual performers, carnival-like display, or gawking attention.",
-  "PFM0608 [🌀🌌] Psychedelic - Hallucinatory, sensory-rich, perception-bending, or suggestive of expanded or distorted consciousness; vivid colors, swirling patterns, fractals, or hallucination-like effects.",
-  "PFM0609 [🌀🌶️] FreakyDeaky - Sexually playful, unconventional, eccentric, uninhibited, or erotic with an oddball edge; strange erotic styling, playful erotic imagery, or unconventional sexual presentation.",
-  "PFM0610 [🌀🤢] Mutant - Biological form altered from a known prototype through mutation, radiation, chemicals, genetics, abnormal development, hybridization, or evolution; extra limbs, altered organs, abnormal growths, or techno-organic fusion.",
-  "PFM0611 [🌀👻] Macabre - Gothic morbidity centered on death, corpses, decay, mortality, funerary imagery, or morbid fascination; skulls, graves, death rituals, or ornate morbid decoration.",
-  "PFM0612 [🌀🧠] Alien - Strange, foreign, unfamiliar, or nonhuman; suggesting intelligence, biology, places, or forms outside ordinary human experience. Unfamiliar beings, strange anatomy, spacecraft, foreign environments, otherworldly landscapes, or unfamiliar technology.",
-  "PFM0613 [🌀🎉] Delirious - Disoriented, feverish, ecstatic, manic, confused, or detached from stable reality; hallucinations, unstable visual reality, feverish expressions, or ecstatic chaos.",
-  "PFM0614 [🌀🤬] Monstrous - Awe-inspiring unnatural threat defined by immense scale, predation, mythic power, or eldritch otherness; colossal creatures, chimeric anatomy, predatory weapons, and impossible features.",
-  "PFM0708 [🎟️🌌] Medicated - Altered, softened, detached, or chemically influenced consciousness or perception; drowsy eyes, softened expressions, detached gaze, pills, or clinical sedation cues.",
-  "PFM0709 [🎟️🌶️] Exploitation - Using people, bodies, suffering, taboo, shock, or sensational material for advantage, attention, profit, or gratification; objectification, commodification, or spectacle built from others.",
-  "PFM0710 [🎟️🤢] Tasteless - Vulgar, crude, offensive, insensitive, indecent, or lacking judgment or restraint; socially or aesthetically offensive imagery or insensitive presentation.",
-  "PFM0711 [🎟️👻] Execrable - Hateful, detestable, contemptible, vile, cruel, or deserving condemnation; deliberately abhorrent content or visible malice.",
-  "PFM0712 [🎟️🧠] Parodic - Imitating a recognizable style, work, person, or convention through exaggeration, distortion, mockery, or comic transformation.",
-  "PFM0713 [🎟️🎉] Snarky - Sarcastic, cutting, mocking, dismissive, or contemptuous humor; eye-rolls, smirks, mocking gestures, sarcastic captions, or dismissive commentary.",
-  "PFM0714 [🎟️🤬] Wickedness - Wrongdoing, cruelty, malice, corruption, immorality, or pleasure in harmful behavior; deliberate harm, malicious intent, corruption, or gleeful wrongdoing.",
-  "PFM0809 [🌌🌶️] Limerence - Romantic infatuation marked by longing, idealization, uncertainty, fantasy, or desire for reciprocation; idealized crush imagery, fixation, longing gazes, or unreciprocated yearning.",
-  "PFM0810 [🌌🤢] Putrid - Rotten, decaying, foul, contaminated, corrupt, or unpleasant; decomposition, mold, slime, spoiled matter, or contamination.",
-  "PFM0811 [🌌👻] Eerie - Unsettling, haunting, uncanny, quiet, mysterious, or suggestive that something is wrong; strange shadows, emptiness, haunting stillness, or subtle wrongness.",
-  "PFM0812 [🌌🧠] Ethereal - Airy, delicate, luminous, weightless, otherworldly, or removed from ordinary physical substance; soft glow, translucence, mist, or delicate forms.",
-  "PFM0813 [🌌🎉] Magical - Enchanting, supernatural, wondrous, impossible, or governed by forces from a different reality; spells, glowing effects, impossible transformations, enchanted beings, or supernatural phenomena.",
-  "PFM0814 [🌌🤬] Phantasmagoric - Elaborate grotesque fantasy with bizarre creatures, impossible forms, or disturbing imagery.",
-  "PFM0910 [🌶️🤢] Lewd - Sexually explicit, vulgar, indecent, crude, suggestive, or offensively erotic; explicit exposure, crude sexual gestures, vulgar erotic jokes, or indecent posing.",
-  "PFM0911 [🌶️👻] Seduction - Attraction created through allure, temptation, mystery, danger, or sexual invitation; alluring poses, intimate gaze, revealing styling, or a dangerous sensual atmosphere.",
-  "PFM0912 [🌶️🧠] Kinky - Sexually unconventional, fetish-oriented, experimental, role-based, or involving nonstandard preferences or practices; fetish attire, bondage cues, role-play, or unconventional erotic props.",
-  "PFM0913 [🌶️🎉] Hedonism - Pleasure, gratification, sensual enjoyment, luxury, appetite, or indulgence elevated into an atmosphere or lifestyle; feasting, partying, lavish consumption, sensual abundance, or decadent excess.",
-  "PFM0914 [🌶️🤬] Sadomasochism - Erotic pleasure involving pain, domination, submission, humiliation, control, or suffering; bondage, power exchange, or controlled physical pain.",
-  "PFM1011 [🤢👻] Horror - Fear, dread, shock, or revulsion produced by disturbing, threatening, grotesque, supernatural, or violent material; monsters, gore, frightening scenes, or supernatural danger.",
-  "PFM1012 [🤢🧠] Greed - Excessive desire to possess, acquire, keep, or control wealth, resources, status, power, or advantage; hoarding, grabbing valuables, status fixation, or acquisitiveness.",
-  "PFM1013 [🤢🎉] Indulgent - Permissive toward pleasure, appetite, comfort, luxury, excess, or personal gratification; rich food, lounging, pampering, luxury, or overconsumption.",
-  "PFM1014 [🤢🤬] Repulsive - Immediate visceral disgust caused by decay, contamination, bodily fluids, wounds, infection, or organic breakdown; rotting flesh, pus, vomit, lesions, parasites, or formless slime.",
-  "PFM1112 [👻🧠] Paranoia - Persistent suspicion or fear of harm, deception, surveillance, persecution, or hidden threat; watchful fear, suspicious glances, defensive behavior, or surveillance imagery.",
-  "PFM1113 [👻🎉] Spirituality - Meaning, transcendence, sacredness, inner life, faith, ritual, or connection beyond ordinary material existence; prayer, meditation, worship, sacred symbols, or mystical connection.",
-  "PFM1114 [👻🤬] Violated - A boundary, body, trust, right, safety, privacy, or autonomy invaded or broken; forced intrusion, damaged privacy, assault aftermath, or breached safety.",
-  "PFM1213 [🧠🎉] Glory - Honor, acclaim, valor, prestige, or celebrated achievement; trophies, medals, military honors, victory displays, heroic poses, or public recognition.",
-  "PFM1214 [🧠🤬] Obsessive - Fixated, compulsive, preoccupied, repetitive, or unable to release attention from a person, idea, goal, or concern; repeated patterns, hoarding, compulsive arrangement, or relentless focus.",
-  "PFM1314 [🎉🤬] Revenge - Retaliation, payback, punishment, or action answering a perceived wrong or injury; retaliatory acts, targeting offenders, punishment, or settling scores."
-]);
-const THEME_CATALOG_TEXT=THEME_CATALOG.join('\n');
-const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
-const strip=text=>String(text||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-const parse=value=>{
-  if(value&&typeof value==='object')return value;
-  const clean=strip(value);
-  try{return JSON.parse(clean)}catch{}
-  const a=clean.indexOf('{'),b=clean.lastIndexOf('}');
-  if(a>=0&&b>a){try{return JSON.parse(clean.slice(a,b+1))}catch{}}
-  throw new Error('Vision provider returned invalid JSON');
-};
-const responseValue=p=>{
-  if(p&&typeof p==='object'){
-    if(Object.prototype.hasOwnProperty.call(p,'response'))return p.response;
-    if(p.result&&typeof p.result==='object'&&Object.prototype.hasOwnProperty.call(p.result,'response'))return p.result.response;
-    if(Object.prototype.hasOwnProperty.call(p,'output_text'))return p.output_text;
+const PRIMFUSION_REGISTRY = {"schemaVersion":1,"matrixVersion":"0.0.0.0","latestVersion":"0.0.0.0","codingRules":{"primFusionPrefix":"PFM","fusionPrimOrder":"ascending numeric primitive ID","pairOrderIndependent":true,"fusionCodesExcludeSelfPairs":true,"themeChoiceCount":105,"primCount":14,"fusionCount":91,"aiThemeChoiceCount":91},"researchRules":{"reactionAndThemeAnalysesIndependent":true,"reactionCodesAreReturnIdentifiersNotThemeReasoningInputs":true,"themeSelectionUsesCurrentMatrixVocabulary":true,"customThemeFallbackAllowed":false,"customThemeUseOrCreationTriggers":["AutoKeep","AutoFlag"],"aiThemeSelectionUsesFusionVocabularyOnly":true,"standalonePrimThemesExcludedFromAiThemeSelection":true},"source":{"kind":"live-site-app-js","repository":"gobo718/Genreactrix-","path":"app.js","extractedUtc":"2026-08-09T05:59:12.571064+00:00","note":"Fusion vocabulary synchronized to PRIMFUSION_THEME_DEFINITIONS-v0.0.0.0; Kawaii definition locked in the pre-batch 0.0.0.0 vocabulary. Custom AI Theme fallback is temporarily disabled for research while the feature remains implemented."},"primitives":[{"id":"P01","name":"Adorable","symbol":"🧸"},{"id":"P02","name":"Beautiful","symbol":"✨"},{"id":"P03","name":"Tragic","symbol":"😭"},{"id":"P04","name":"Funny","symbol":"🤣"},{"id":"P05","name":"Intense","symbol":"💥"},{"id":"P06","name":"Weird","symbol":"🌀"},{"id":"P07","name":"Ticket","symbol":"🎟️","aiMeaning":"Enjoyment mixed with guilt, shame, discomfort, or the feeling that you probably should not enjoy what you are seeing as much as you do."},{"id":"P08","name":"Dreamy","symbol":"🌌"},{"id":"P09","name":"Zazzly","symbol":"🌶️","aiMeaning":"Sexual attraction, horniness, erotic appeal, or a sexually charged reaction to what is being seen.","publicMeaningHidden":true},{"id":"P10","name":"Disgusting","symbol":"🤢"},{"id":"P11","name":"Scary","symbol":"👻"},{"id":"P12","name":"Smart","symbol":"🧠"},{"id":"P13","name":"Celebration","symbol":"🎉"},{"id":"P14","name":"Angry","symbol":"🤬"}],"fusions":[{"code":"PFM0102","name":"Cozy","primIds":["P01","P02"],"matrixVersion":"0.0.0.0","aiMeaning":"Comforting, snug, warm, sheltered, or inviting; soft textures, warm lighting, blankets, relaxed intimate settings, or a feeling of ease, rest, or pleasant closeness."},{"code":"PFM0103","name":"Pitiful","primIds":["P01","P03"],"matrixVersion":"0.0.0.0","aiMeaning":"Arousing sympathy or compassion through visible helplessness, suffering, misfortune, weakness, neglect, injury, abandonment, or pleading."},{"code":"PFM0104","name":"Goofy","primIds":["P01","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Silly, awkward, playful, foolish, or ridiculous in an amusing way; exaggerated expressions, clumsy antics, or playful visual absurdity."},{"code":"PFM0105","name":"Joy","primIds":["P01","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Happiness, delight, pleasure, or emotional uplift shown through smiling, laughter, delighted expressions, playful pleasure, or visible enjoyment."},{"code":"PFM0106","name":"Bizarre","primIds":["P01","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Strange, unusual, unexpected, peculiar; improbable combinations, anomalous forms, or unexplained oddities."},{"code":"PFM0107","name":"Camp","primIds":["P01","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Exaggerated, theatrical, artificial, flamboyant, kitschy, or knowingly excessive styling and presentation."},{"code":"PFM0108","name":"Whimsical","primIds":["P01","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Fanciful, playful, imaginative, lightly odd, or guided by charming logic; fantasy details, charming oddities, or impossible elements."},{"code":"PFM0109","name":"Kawaii","primIds":["P01","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Highly stylized Japanese cute aesthetic using exaggerated sweetness or toy-like, childlike, or chibi-style proportions."},{"code":"PFM0110","name":"Grimy","primIds":["P01","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Dirty, soiled, greasy, dingy, stained, or neglected; visible dirt, grease, soot, residue, or accumulated grime on surfaces."},{"code":"PFM0111","name":"CreepyCute","primIds":["P01","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Cute and unsettling at once; Halloween fun. Appealing subjects combined with eerie, spooky, uncanny, or disturbing features."},{"code":"PFM0112","name":"Innocence","primIds":["P01","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Openness, inexperience, trust, simplicity, or freedom from corruption; childlike expressions, gentleness, or naive imagery."},{"code":"PFM0113","name":"Playful","primIds":["P01","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Lighthearted, mischievous, teasing, game-like, curious, or inclined toward fun and experimentation; games, toys, teasing gestures, or spontaneous fun."},{"code":"PFM0114","name":"Saccharine","primIds":["P01","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Excessively sweet, sentimental, precious, or cutesy to the point of irritation; sugary, pastel, cloying, aggressively sweet imagery."},{"code":"PFM0203","name":"Melancholic","primIds":["P02","P03"],"matrixVersion":"0.0.0.0","aiMeaning":"Sad, wistful, reflective, or touched by longing and loss; downcast expressions, solitude, rain, fading light, or emotional heaviness."},{"code":"PFM0204","name":"Charming","primIds":["P02","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasantly attractive, likable, engaging, or delightful in a way that wins affection; inviting expressions, warmth, approachable elegance, or pleasing details."},{"code":"PFM0205","name":"Majestic","primIds":["P02","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Grand, dignified, regal, imposing, or awe-inspiring in scale, presence, or bearing; symmetry, noble posture, stately beauty, or impressive scenery."},{"code":"PFM0206","name":"Surreal","primIds":["P02","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Dreamlike, impossible, uncanny, or illogical in an altered reality; distorted scale, impossible spaces, or unexpected object combinations."},{"code":"PFM0207","name":"Irreverent","primIds":["P02","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Disrespectful, cheeky, mocking, or dismissive toward seriousness, convention, authority, or decorum; visual disrespect toward sacred, formal, or authoritative symbols."},{"code":"PFM0208","name":"Romance","primIds":["P02","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Affection, longing, intimacy, courtship, tenderness, or romantic attraction; couples, affectionate gestures, closeness, or romantic settings."},{"code":"PFM0209","name":"Exposure","primIds":["P02","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Being naked, indecently revealed, or too visibly exposed, especially in ways that feel shameful, embarrassing, humiliating, or sexually charged; visible nudity, uncovered body parts, flashing, revealing poses, or accidental bodily exposure."},{"code":"PFM0210","name":"Grotesque","primIds":["P02","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Whimsical or ornamental distortion mixing beauty, absurdity, or unease; hybrid human, animal, or plant forms, exaggerated features, decorative symmetry, or playful violations of natural law."},{"code":"PFM0211","name":"Vulnerable","primIds":["P02","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Exposed to harm, rejection, injury, loss, or emotional pain; defenseless posture, exposed emotion, isolation, or injury."},{"code":"PFM0212","name":"Elegant","primIds":["P02","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Graceful, refined, tasteful, polished, restrained, or well composed; sophisticated detail, balanced composition, graceful forms, or controlled styling."},{"code":"PFM0213","name":"Festive","primIds":["P02","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Marked by celebration, holidays, ceremonies, or special occasions; decorations, costumes, lights, ornaments, seasonal styling, or celebratory settings."},{"code":"PFM0214","name":"Pretentious","primIds":["P02","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Affected, self-important, showy, or overly cultured or significant; conspicuous status display and affected refinement."},{"code":"PFM0304","name":"Ironic","primIds":["P03","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Tragic or unfortunate situations made funny through unexpected contrast, reversal, or coincidence. Or happy situations ruined by an unexpected reversal."},{"code":"PFM0305","name":"Devastating","primIds":["P03","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Causing profound damage, loss, grief, shock, defeat, or emotional destruction; catastrophic ruin, collapse, severe aftermath, or overwhelming loss."},{"code":"PFM0306","name":"Nightmarish","primIds":["P03","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Resembling a nightmare; frightening, disturbing, unreal, oppressive, or horrifying, with dream logic, threatening distortions, darkness, or impossible danger."},{"code":"PFM0307","name":"Shame","primIds":["P03","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Painful self-conscious disgrace, embarrassment, exposure, or feeling unworthy, judged, or wanting to hide; averted gaze, covered face, hiding posture, blushing, shrinking, or visibly caught embarrassment."},{"code":"PFM0308","name":"Liminal","primIds":["P03","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Vast, lonely spaces with sparse objects or people; emptiness, isolation, corridors, thresholds, sparse interiors, or uncanny stillness."},{"code":"PFM0309","name":"Humiliation","primIds":["P03","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Being demeaned, degraded, ridiculed, exposed, rejected, or stripped of dignity by others or events; pointing or laughing onlookers, forced exposure, defeated posture, visible embarrassment, or submission."},{"code":"PFM0310","name":"Despair","primIds":["P03","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Hopelessness, anguish, defeat, or the sense that relief or improvement has disappeared; collapsed posture, ruin, isolation, or hopeless expressions."},{"code":"PFM0311","name":"Foreboding","primIds":["P03","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Uneasy expectation that danger, trouble, harm, or an unwanted event is approaching; ominous shadows, stormy skies, suspense, or approaching threat."},{"code":"PFM0312","name":"Poignant","primIds":["P03","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Emotionally affecting through tenderness, sadness, meaning, or reflection; fragile moments, remembrance, meaningful loss, or emotional stillness."},{"code":"PFM0313","name":"Bittersweet","primIds":["P03","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasure and sadness experienced together; joyful imagery touched by loss, nostalgia, farewell, memory, or impermanence."},{"code":"PFM0314","name":"Dysphoria","primIds":["P03","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Distress, dissatisfaction, unease, or disconnection involving self, body, identity, mood, or circumstance; bodily discomfort, alienation, or self-disconnection."},{"code":"PFM0405","name":"Cringe","primIds":["P04","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Painful awkwardness or embarrassment that causes secondhand discomfort; social blunders, failed interactions, awkward expressions, or embarrassing poses."},{"code":"PFM0406","name":"Zany","primIds":["P04","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Eccentric, unconventional, comically strange, or offbeat; mismatched costumes, unusual poses, frantic antics, or energetic comic behavior."},{"code":"PFM0407","name":"Satirical","primIds":["P04","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Using humor, irony, exaggeration, or ridicule to expose or criticize faults, behavior, institutions, or ideas; visual mockery of politics, culture, or social conventions."},{"code":"PFM0408","name":"Absurd","primIds":["P04","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Illogical, ridiculous, contradictory, pointless, impossible, or incompatible with ordinary sense; nonsensical juxtapositions, impossible logic, or ridiculous contradictions."},{"code":"PFM0409","name":"Ribaldry","primIds":["P04","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Coarse, bawdy, or sexually suggestive humor; sexual jokes, innuendo, vulgar comedy, bawdy gestures, or suggestive comic situations."},{"code":"PFM0410","name":"Grossout","primIds":["P04","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Humor or spectacle built around filth, bodily functions, fluids, decay, gore, or revulsion; vomit, excrement, bodily fluids, or gross material used comically."},{"code":"PFM0411","name":"Comedy Horror","primIds":["P04","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Frightening or macabre material blended with humor, parody, absurdity, slapstick, jokes, or comic relief."},{"code":"PFM0412","name":"Witty","primIds":["P04","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Clever, quick, inventive, or skillful humor and insight; visual puns, layered references, wordplay, or ingenious humorous juxtapositions."},{"code":"PFM0413","name":"PartyTime","primIds":["P04","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Active social celebration centered on revelry, fun, gathering, or excitement; dancing, cheering, crowds, drinks, decorations, music, or confetti."},{"code":"PFM0414","name":"Trolling","primIds":["P04","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Provoking, baiting, mocking, annoying, or misleading others for amusement or reaction; antagonistic jokes, mocking memes, baiting signs, or provocative gestures."},{"code":"PFM0506","name":"Chaotic","primIds":["P05","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Disordered, unstable, crowded, conflicting, or lacking control or organization; scattered objects, unstable motion, visual overload, or competing elements."},{"code":"PFM0507","name":"Outrageous","primIds":["P05","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Shockingly excessive, bold, offensive, audacious, unconventional, or beyond restraint; extreme styling, taboo-breaking, flamboyance, or audacious behavior."},{"code":"PFM0508","name":"Epic","primIds":["P05","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Grand, heroic, or massive in scale, consequence, duration, drama, adventure, struggle, achievement, or spectacle; monumental scenery, heroic action, or high stakes."},{"code":"PFM0509","name":"Lust","primIds":["P05","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexual desire, appetite, craving, fixation, or physical attraction; desirous gazes, sensual bodies, erotic focus, or visible craving."},{"code":"PFM0510","name":"Brutal","primIds":["P05","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Harsh, violent, cruel, punishing, damaging, or unsparing in force or effect; severe injury, destruction, cruelty, or punishing conditions."},{"code":"PFM0511","name":"Terror","primIds":["P05","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Extreme fear, alarm, panic, dread, or immediate danger; terrified expressions, fleeing, overwhelming threat, or visible panic."},{"code":"PFM0512","name":"Brilliant","primIds":["P05","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Clever, inventive, insightful, creative, effective, or intellectually impressive; ingenious designs, exceptional craftsmanship, inventive solutions, or impressive execution."},{"code":"PFM0513","name":"Pride","primIds":["P05","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Satisfaction, self-respect, dignity, or affirmation tied to achievement, identity, belonging, or worth; gay or LGBT imagery; confident posture, identity symbols, or dignified self-presentation."},{"code":"PFM0514","name":"Aggressive","primIds":["P05","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Confrontational, forceful, hostile, threatening, domineering, or ready to attack; attack gestures, weapons, intimidation, forceful motion, or threatening posture."},{"code":"PFM0607","name":"Freakshow","primIds":["P06","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Bizarre or unsettling spectacle that provokes fascinated, guilty enjoyment; shocking anomalies, unusual performers, carnival-like display, or gawking attention."},{"code":"PFM0608","name":"Psychedelic","primIds":["P06","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Hallucinatory, sensory-rich, perception-bending, or suggestive of expanded or distorted consciousness; vivid colors, swirling patterns, fractals, or hallucination-like effects."},{"code":"PFM0609","name":"FreakyDeaky","primIds":["P06","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually playful, unconventional, eccentric, uninhibited, or erotic with an oddball edge; strange erotic styling, playful erotic imagery, or unconventional sexual presentation."},{"code":"PFM0610","name":"Mutant","primIds":["P06","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Biological form altered from a known prototype through mutation, radiation, chemicals, genetics, abnormal development, hybridization, or evolution; extra limbs, altered organs, abnormal growths, or techno-organic fusion."},{"code":"PFM0611","name":"Macabre","primIds":["P06","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Gothic morbidity centered on death, corpses, decay, mortality, funerary imagery, or morbid fascination; skulls, graves, death rituals, or ornate morbid decoration."},{"code":"PFM0612","name":"Alien","primIds":["P06","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Strange, foreign, unfamiliar, or nonhuman; suggesting intelligence, biology, places, or forms outside ordinary human experience. Unfamiliar beings, strange anatomy, spacecraft, foreign environments, otherworldly landscapes, or unfamiliar technology."},{"code":"PFM0613","name":"Delirious","primIds":["P06","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Disoriented, feverish, ecstatic, manic, confused, or detached from stable reality; hallucinations, unstable visual reality, feverish expressions, or ecstatic chaos."},{"code":"PFM0614","name":"Monstrous","primIds":["P06","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Awe-inspiring unnatural threat defined by immense scale, predation, mythic power, or eldritch otherness; colossal creatures, chimeric anatomy, predatory weapons, and impossible features."},{"code":"PFM0708","name":"Medicated","primIds":["P07","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Altered, softened, detached, or chemically influenced consciousness or perception; drowsy eyes, softened expressions, detached gaze, pills, or clinical sedation cues."},{"code":"PFM0709","name":"Exploitation","primIds":["P07","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Using people, bodies, suffering, taboo, shock, or sensational material for advantage, attention, profit, or gratification; objectification, commodification, or spectacle built from others."},{"code":"PFM0710","name":"Tasteless","primIds":["P07","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Vulgar, crude, offensive, insensitive, indecent, or lacking judgment or restraint; socially or aesthetically offensive imagery or insensitive presentation."},{"code":"PFM0711","name":"Execrable","primIds":["P07","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Hateful, detestable, contemptible, vile, cruel, or deserving condemnation; deliberately abhorrent content or visible malice."},{"code":"PFM0712","name":"Parodic","primIds":["P07","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Imitating a recognizable style, work, person, or convention through exaggeration, distortion, mockery, or comic transformation."},{"code":"PFM0713","name":"Snarky","primIds":["P07","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Sarcastic, cutting, mocking, dismissive, or contemptuous humor; eye-rolls, smirks, mocking gestures, sarcastic captions, or dismissive commentary."},{"code":"PFM0714","name":"Wickedness","primIds":["P07","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Wrongdoing, cruelty, malice, corruption, immorality, or pleasure in harmful behavior; deliberate harm, malicious intent, corruption, or gleeful wrongdoing."},{"code":"PFM0809","name":"Limerence","primIds":["P08","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Romantic infatuation marked by longing, idealization, uncertainty, fantasy, or desire for reciprocation; idealized crush imagery, fixation, longing gazes, or unreciprocated yearning."},{"code":"PFM0810","name":"Putrid","primIds":["P08","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Rotten, decaying, foul, contaminated, corrupt, or unpleasant; decomposition, mold, slime, spoiled matter, or contamination."},{"code":"PFM0811","name":"Eerie","primIds":["P08","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Unsettling, haunting, uncanny, quiet, mysterious, or suggestive that something is wrong; strange shadows, emptiness, haunting stillness, or subtle wrongness."},{"code":"PFM0812","name":"Ethereal","primIds":["P08","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Airy, delicate, luminous, weightless, otherworldly, or removed from ordinary physical substance; soft glow, translucence, mist, or delicate forms."},{"code":"PFM0813","name":"Magical","primIds":["P08","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Enchanting, supernatural, wondrous, impossible, or governed by forces from a different reality; spells, glowing effects, impossible transformations, enchanted beings, or supernatural phenomena."},{"code":"PFM0814","name":"Phantasmagoric","primIds":["P08","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Elaborate grotesque fantasy with bizarre creatures, impossible forms, or disturbing imagery."},{"code":"PFM0910","name":"Lewd","primIds":["P09","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually explicit, vulgar, indecent, crude, suggestive, or offensively erotic; explicit exposure, crude sexual gestures, vulgar erotic jokes, or indecent posing."},{"code":"PFM0911","name":"Seduction","primIds":["P09","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Attraction created through allure, temptation, mystery, danger, or sexual invitation; alluring poses, intimate gaze, revealing styling, or a dangerous sensual atmosphere."},{"code":"PFM0912","name":"Kinky","primIds":["P09","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually unconventional, fetish-oriented, experimental, role-based, or involving nonstandard preferences or practices; fetish attire, bondage cues, role-play, or unconventional erotic props."},{"code":"PFM0913","name":"Hedonism","primIds":["P09","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasure, gratification, sensual enjoyment, luxury, appetite, or indulgence elevated into an atmosphere or lifestyle; feasting, partying, lavish consumption, sensual abundance, or decadent excess."},{"code":"PFM0914","name":"Sadomasochism","primIds":["P09","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Erotic pleasure involving pain, domination, submission, humiliation, control, or suffering; bondage, power exchange, or controlled physical pain."},{"code":"PFM1011","name":"Horror","primIds":["P10","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Fear, dread, shock, or revulsion produced by disturbing, threatening, grotesque, supernatural, or violent material; monsters, gore, frightening scenes, or supernatural danger."},{"code":"PFM1012","name":"Greed","primIds":["P10","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Excessive desire to possess, acquire, keep, or control wealth, resources, status, power, or advantage; hoarding, grabbing valuables, status fixation, or acquisitiveness."},{"code":"PFM1013","name":"Indulgent","primIds":["P10","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Permissive toward pleasure, appetite, comfort, luxury, excess, or personal gratification; rich food, lounging, pampering, luxury, or overconsumption."},{"code":"PFM1014","name":"Repulsive","primIds":["P10","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Immediate visceral disgust caused by decay, contamination, bodily fluids, wounds, infection, or organic breakdown; rotting flesh, pus, vomit, lesions, parasites, or formless slime."},{"code":"PFM1112","name":"Paranoia","primIds":["P11","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Persistent suspicion or fear of harm, deception, surveillance, persecution, or hidden threat; watchful fear, suspicious glances, defensive behavior, or surveillance imagery."},{"code":"PFM1113","name":"Spirituality","primIds":["P11","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Meaning, transcendence, sacredness, inner life, faith, ritual, or connection beyond ordinary material existence; prayer, meditation, worship, sacred symbols, or mystical connection."},{"code":"PFM1114","name":"Violated","primIds":["P11","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"A boundary, body, trust, right, safety, privacy, or autonomy invaded or broken; forced intrusion, damaged privacy, assault aftermath, or breached safety."},{"code":"PFM1213","name":"Glory","primIds":["P12","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Honor, acclaim, valor, prestige, or celebrated achievement; trophies, medals, military honors, victory displays, heroic poses, or public recognition."},{"code":"PFM1214","name":"Obsessive","primIds":["P12","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Fixated, compulsive, preoccupied, repetitive, or unable to release attention from a person, idea, goal, or concern; repeated patterns, hoarding, compulsive arrangement, or relentless focus."},{"code":"PFM1314","name":"Revenge","primIds":["P13","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Retaliation, payback, punishment, or action answering a perceived wrong or injury; retaliatory acts, targeting offenders, punishment, or settling scores."}],"themeChoices":[{"code":"P01","name":"Adorable","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P02","name":"Beautiful","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P03","name":"Tragic","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P04","name":"Funny","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P05","name":"Intense","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P06","name":"Weird","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P07","name":"Ticket","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P08","name":"Dreamy","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P09","name":"Zazzly","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P10","name":"Disgusting","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P11","name":"Scary","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P12","name":"Smart","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P13","name":"Celebration","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"P14","name":"Angry","kind":"prim","matrixVersion":"0.0.0.0"},{"code":"PFM0102","name":"Cozy","kind":"fusion","primIds":["P01","P02"],"matrixVersion":"0.0.0.0","aiMeaning":"Comforting, snug, warm, sheltered, or inviting; soft textures, warm lighting, blankets, relaxed intimate settings, or a feeling of ease, rest, or pleasant closeness."},{"code":"PFM0103","name":"Pitiful","kind":"fusion","primIds":["P01","P03"],"matrixVersion":"0.0.0.0","aiMeaning":"Arousing sympathy or compassion through visible helplessness, suffering, misfortune, weakness, neglect, injury, abandonment, or pleading."},{"code":"PFM0104","name":"Goofy","kind":"fusion","primIds":["P01","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Silly, awkward, playful, foolish, or ridiculous in an amusing way; exaggerated expressions, clumsy antics, or playful visual absurdity."},{"code":"PFM0105","name":"Joy","kind":"fusion","primIds":["P01","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Happiness, delight, pleasure, or emotional uplift shown through smiling, laughter, delighted expressions, playful pleasure, or visible enjoyment."},{"code":"PFM0106","name":"Bizarre","kind":"fusion","primIds":["P01","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Strange, unusual, unexpected, peculiar; improbable combinations, anomalous forms, or unexplained oddities."},{"code":"PFM0107","name":"Camp","kind":"fusion","primIds":["P01","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Exaggerated, theatrical, artificial, flamboyant, kitschy, or knowingly excessive styling and presentation."},{"code":"PFM0108","name":"Whimsical","kind":"fusion","primIds":["P01","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Fanciful, playful, imaginative, lightly odd, or guided by charming logic; fantasy details, charming oddities, or impossible elements."},{"code":"PFM0109","name":"Kawaii","kind":"fusion","primIds":["P01","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Highly stylized Japanese cute aesthetic using exaggerated sweetness or toy-like, childlike, or chibi-style proportions."},{"code":"PFM0110","name":"Grimy","kind":"fusion","primIds":["P01","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Dirty, soiled, greasy, dingy, stained, or neglected; visible dirt, grease, soot, residue, or accumulated grime on surfaces."},{"code":"PFM0111","name":"CreepyCute","kind":"fusion","primIds":["P01","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Cute and unsettling at once; Halloween fun. Appealing subjects combined with eerie, spooky, uncanny, or disturbing features."},{"code":"PFM0112","name":"Innocence","kind":"fusion","primIds":["P01","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Openness, inexperience, trust, simplicity, or freedom from corruption; childlike expressions, gentleness, or naive imagery."},{"code":"PFM0113","name":"Playful","kind":"fusion","primIds":["P01","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Lighthearted, mischievous, teasing, game-like, curious, or inclined toward fun and experimentation; games, toys, teasing gestures, or spontaneous fun."},{"code":"PFM0114","name":"Saccharine","kind":"fusion","primIds":["P01","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Excessively sweet, sentimental, precious, or cutesy to the point of irritation; sugary, pastel, cloying, aggressively sweet imagery."},{"code":"PFM0203","name":"Melancholic","kind":"fusion","primIds":["P02","P03"],"matrixVersion":"0.0.0.0","aiMeaning":"Sad, wistful, reflective, or touched by longing and loss; downcast expressions, solitude, rain, fading light, or emotional heaviness."},{"code":"PFM0204","name":"Charming","kind":"fusion","primIds":["P02","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasantly attractive, likable, engaging, or delightful in a way that wins affection; inviting expressions, warmth, approachable elegance, or pleasing details."},{"code":"PFM0205","name":"Majestic","kind":"fusion","primIds":["P02","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Grand, dignified, regal, imposing, or awe-inspiring in scale, presence, or bearing; symmetry, noble posture, stately beauty, or impressive scenery."},{"code":"PFM0206","name":"Surreal","kind":"fusion","primIds":["P02","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Dreamlike, impossible, uncanny, or illogical in an altered reality; distorted scale, impossible spaces, or unexpected object combinations."},{"code":"PFM0207","name":"Irreverent","kind":"fusion","primIds":["P02","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Disrespectful, cheeky, mocking, or dismissive toward seriousness, convention, authority, or decorum; visual disrespect toward sacred, formal, or authoritative symbols."},{"code":"PFM0208","name":"Romance","kind":"fusion","primIds":["P02","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Affection, longing, intimacy, courtship, tenderness, or romantic attraction; couples, affectionate gestures, closeness, or romantic settings."},{"code":"PFM0209","name":"Exposure","kind":"fusion","primIds":["P02","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Being naked, indecently revealed, or too visibly exposed, especially in ways that feel shameful, embarrassing, humiliating, or sexually charged; visible nudity, uncovered body parts, flashing, revealing poses, or accidental bodily exposure."},{"code":"PFM0210","name":"Grotesque","kind":"fusion","primIds":["P02","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Whimsical or ornamental distortion mixing beauty, absurdity, or unease; hybrid human, animal, or plant forms, exaggerated features, decorative symmetry, or playful violations of natural law."},{"code":"PFM0211","name":"Vulnerable","kind":"fusion","primIds":["P02","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Exposed to harm, rejection, injury, loss, or emotional pain; defenseless posture, exposed emotion, isolation, or injury."},{"code":"PFM0212","name":"Elegant","kind":"fusion","primIds":["P02","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Graceful, refined, tasteful, polished, restrained, or well composed; sophisticated detail, balanced composition, graceful forms, or controlled styling."},{"code":"PFM0213","name":"Festive","kind":"fusion","primIds":["P02","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Marked by celebration, holidays, ceremonies, or special occasions; decorations, costumes, lights, ornaments, seasonal styling, or celebratory settings."},{"code":"PFM0214","name":"Pretentious","kind":"fusion","primIds":["P02","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Affected, self-important, showy, or overly cultured or significant; conspicuous status display and affected refinement."},{"code":"PFM0304","name":"Ironic","kind":"fusion","primIds":["P03","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Tragic or unfortunate situations made funny through unexpected contrast, reversal, or coincidence. Or happy situations ruined by an unexpected reversal."},{"code":"PFM0305","name":"Devastating","kind":"fusion","primIds":["P03","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Causing profound damage, loss, grief, shock, defeat, or emotional destruction; catastrophic ruin, collapse, severe aftermath, or overwhelming loss."},{"code":"PFM0306","name":"Nightmarish","kind":"fusion","primIds":["P03","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Resembling a nightmare; frightening, disturbing, unreal, oppressive, or horrifying, with dream logic, threatening distortions, darkness, or impossible danger."},{"code":"PFM0307","name":"Shame","kind":"fusion","primIds":["P03","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Painful self-conscious disgrace, embarrassment, exposure, or feeling unworthy, judged, or wanting to hide; averted gaze, covered face, hiding posture, blushing, shrinking, or visibly caught embarrassment."},{"code":"PFM0308","name":"Liminal","kind":"fusion","primIds":["P03","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Vast, lonely spaces with sparse objects or people; emptiness, isolation, corridors, thresholds, sparse interiors, or uncanny stillness."},{"code":"PFM0309","name":"Humiliation","kind":"fusion","primIds":["P03","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Being demeaned, degraded, ridiculed, exposed, rejected, or stripped of dignity by others or events; pointing or laughing onlookers, forced exposure, defeated posture, visible embarrassment, or submission."},{"code":"PFM0310","name":"Despair","kind":"fusion","primIds":["P03","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Hopelessness, anguish, defeat, or the sense that relief or improvement has disappeared; collapsed posture, ruin, isolation, or hopeless expressions."},{"code":"PFM0311","name":"Foreboding","kind":"fusion","primIds":["P03","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Uneasy expectation that danger, trouble, harm, or an unwanted event is approaching; ominous shadows, stormy skies, suspense, or approaching threat."},{"code":"PFM0312","name":"Poignant","kind":"fusion","primIds":["P03","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Emotionally affecting through tenderness, sadness, meaning, or reflection; fragile moments, remembrance, meaningful loss, or emotional stillness."},{"code":"PFM0313","name":"Bittersweet","kind":"fusion","primIds":["P03","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasure and sadness experienced together; joyful imagery touched by loss, nostalgia, farewell, memory, or impermanence."},{"code":"PFM0314","name":"Dysphoria","kind":"fusion","primIds":["P03","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Distress, dissatisfaction, unease, or disconnection involving self, body, identity, mood, or circumstance; bodily discomfort, alienation, or self-disconnection."},{"code":"PFM0405","name":"Cringe","kind":"fusion","primIds":["P04","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Painful awkwardness or embarrassment that causes secondhand discomfort; social blunders, failed interactions, awkward expressions, or embarrassing poses."},{"code":"PFM0406","name":"Zany","kind":"fusion","primIds":["P04","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Eccentric, unconventional, comically strange, or offbeat; mismatched costumes, unusual poses, frantic antics, or energetic comic behavior."},{"code":"PFM0407","name":"Satirical","kind":"fusion","primIds":["P04","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Using humor, irony, exaggeration, or ridicule to expose or criticize faults, behavior, institutions, or ideas; visual mockery of politics, culture, or social conventions."},{"code":"PFM0408","name":"Absurd","kind":"fusion","primIds":["P04","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Illogical, ridiculous, contradictory, pointless, impossible, or incompatible with ordinary sense; nonsensical juxtapositions, impossible logic, or ridiculous contradictions."},{"code":"PFM0409","name":"Ribaldry","kind":"fusion","primIds":["P04","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Coarse, bawdy, or sexually suggestive humor; sexual jokes, innuendo, vulgar comedy, bawdy gestures, or suggestive comic situations."},{"code":"PFM0410","name":"Grossout","kind":"fusion","primIds":["P04","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Humor or spectacle built around filth, bodily functions, fluids, decay, gore, or revulsion; vomit, excrement, bodily fluids, or gross material used comically."},{"code":"PFM0411","name":"Comedy Horror","kind":"fusion","primIds":["P04","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Frightening or macabre material blended with humor, parody, absurdity, slapstick, jokes, or comic relief."},{"code":"PFM0412","name":"Witty","kind":"fusion","primIds":["P04","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Clever, quick, inventive, or skillful humor and insight; visual puns, layered references, wordplay, or ingenious humorous juxtapositions."},{"code":"PFM0413","name":"PartyTime","kind":"fusion","primIds":["P04","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Active social celebration centered on revelry, fun, gathering, or excitement; dancing, cheering, crowds, drinks, decorations, music, or confetti."},{"code":"PFM0414","name":"Trolling","kind":"fusion","primIds":["P04","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Provoking, baiting, mocking, annoying, or misleading others for amusement or reaction; antagonistic jokes, mocking memes, baiting signs, or provocative gestures."},{"code":"PFM0506","name":"Chaotic","kind":"fusion","primIds":["P05","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Disordered, unstable, crowded, conflicting, or lacking control or organization; scattered objects, unstable motion, visual overload, or competing elements."},{"code":"PFM0507","name":"Outrageous","kind":"fusion","primIds":["P05","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Shockingly excessive, bold, offensive, audacious, unconventional, or beyond restraint; extreme styling, taboo-breaking, flamboyance, or audacious behavior."},{"code":"PFM0508","name":"Epic","kind":"fusion","primIds":["P05","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Grand, heroic, or massive in scale, consequence, duration, drama, adventure, struggle, achievement, or spectacle; monumental scenery, heroic action, or high stakes."},{"code":"PFM0509","name":"Lust","kind":"fusion","primIds":["P05","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexual desire, appetite, craving, fixation, or physical attraction; desirous gazes, sensual bodies, erotic focus, or visible craving."},{"code":"PFM0510","name":"Brutal","kind":"fusion","primIds":["P05","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Harsh, violent, cruel, punishing, damaging, or unsparing in force or effect; severe injury, destruction, cruelty, or punishing conditions."},{"code":"PFM0511","name":"Terror","kind":"fusion","primIds":["P05","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Extreme fear, alarm, panic, dread, or immediate danger; terrified expressions, fleeing, overwhelming threat, or visible panic."},{"code":"PFM0512","name":"Brilliant","kind":"fusion","primIds":["P05","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Clever, inventive, insightful, creative, effective, or intellectually impressive; ingenious designs, exceptional craftsmanship, inventive solutions, or impressive execution."},{"code":"PFM0513","name":"Pride","kind":"fusion","primIds":["P05","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Satisfaction, self-respect, dignity, or affirmation tied to achievement, identity, belonging, or worth; gay or LGBT imagery; confident posture, identity symbols, or dignified self-presentation."},{"code":"PFM0514","name":"Aggressive","kind":"fusion","primIds":["P05","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Confrontational, forceful, hostile, threatening, domineering, or ready to attack; attack gestures, weapons, intimidation, forceful motion, or threatening posture."},{"code":"PFM0607","name":"Freakshow","kind":"fusion","primIds":["P06","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Bizarre or unsettling spectacle that provokes fascinated, guilty enjoyment; shocking anomalies, unusual performers, carnival-like display, or gawking attention."},{"code":"PFM0608","name":"Psychedelic","kind":"fusion","primIds":["P06","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Hallucinatory, sensory-rich, perception-bending, or suggestive of expanded or distorted consciousness; vivid colors, swirling patterns, fractals, or hallucination-like effects."},{"code":"PFM0609","name":"FreakyDeaky","kind":"fusion","primIds":["P06","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually playful, unconventional, eccentric, uninhibited, or erotic with an oddball edge; strange erotic styling, playful erotic imagery, or unconventional sexual presentation."},{"code":"PFM0610","name":"Mutant","kind":"fusion","primIds":["P06","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Biological form altered from a known prototype through mutation, radiation, chemicals, genetics, abnormal development, hybridization, or evolution; extra limbs, altered organs, abnormal growths, or techno-organic fusion."},{"code":"PFM0611","name":"Macabre","kind":"fusion","primIds":["P06","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Gothic morbidity centered on death, corpses, decay, mortality, funerary imagery, or morbid fascination; skulls, graves, death rituals, or ornate morbid decoration."},{"code":"PFM0612","name":"Alien","kind":"fusion","primIds":["P06","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Strange, foreign, unfamiliar, or nonhuman; suggesting intelligence, biology, places, or forms outside ordinary human experience. Unfamiliar beings, strange anatomy, spacecraft, foreign environments, otherworldly landscapes, or unfamiliar technology."},{"code":"PFM0613","name":"Delirious","kind":"fusion","primIds":["P06","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Disoriented, feverish, ecstatic, manic, confused, or detached from stable reality; hallucinations, unstable visual reality, feverish expressions, or ecstatic chaos."},{"code":"PFM0614","name":"Monstrous","kind":"fusion","primIds":["P06","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Awe-inspiring unnatural threat defined by immense scale, predation, mythic power, or eldritch otherness; colossal creatures, chimeric anatomy, predatory weapons, and impossible features."},{"code":"PFM0708","name":"Medicated","kind":"fusion","primIds":["P07","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Altered, softened, detached, or chemically influenced consciousness or perception; drowsy eyes, softened expressions, detached gaze, pills, or clinical sedation cues."},{"code":"PFM0709","name":"Exploitation","kind":"fusion","primIds":["P07","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Using people, bodies, suffering, taboo, shock, or sensational material for advantage, attention, profit, or gratification; objectification, commodification, or spectacle built from others."},{"code":"PFM0710","name":"Tasteless","kind":"fusion","primIds":["P07","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Vulgar, crude, offensive, insensitive, indecent, or lacking judgment or restraint; socially or aesthetically offensive imagery or insensitive presentation."},{"code":"PFM0711","name":"Execrable","kind":"fusion","primIds":["P07","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Hateful, detestable, contemptible, vile, cruel, or deserving condemnation; deliberately abhorrent content or visible malice."},{"code":"PFM0712","name":"Parodic","kind":"fusion","primIds":["P07","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Imitating a recognizable style, work, person, or convention through exaggeration, distortion, mockery, or comic transformation."},{"code":"PFM0713","name":"Snarky","kind":"fusion","primIds":["P07","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Sarcastic, cutting, mocking, dismissive, or contemptuous humor; eye-rolls, smirks, mocking gestures, sarcastic captions, or dismissive commentary."},{"code":"PFM0714","name":"Wickedness","kind":"fusion","primIds":["P07","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Wrongdoing, cruelty, malice, corruption, immorality, or pleasure in harmful behavior; deliberate harm, malicious intent, corruption, or gleeful wrongdoing."},{"code":"PFM0809","name":"Limerence","kind":"fusion","primIds":["P08","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Romantic infatuation marked by longing, idealization, uncertainty, fantasy, or desire for reciprocation; idealized crush imagery, fixation, longing gazes, or unreciprocated yearning."},{"code":"PFM0810","name":"Putrid","kind":"fusion","primIds":["P08","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Rotten, decaying, foul, contaminated, corrupt, or unpleasant; decomposition, mold, slime, spoiled matter, or contamination."},{"code":"PFM0811","name":"Eerie","kind":"fusion","primIds":["P08","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Unsettling, haunting, uncanny, quiet, mysterious, or suggestive that something is wrong; strange shadows, emptiness, haunting stillness, or subtle wrongness."},{"code":"PFM0812","name":"Ethereal","kind":"fusion","primIds":["P08","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Airy, delicate, luminous, weightless, otherworldly, or removed from ordinary physical substance; soft glow, translucence, mist, or delicate forms."},{"code":"PFM0813","name":"Magical","kind":"fusion","primIds":["P08","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Enchanting, supernatural, wondrous, impossible, or governed by forces from a different reality; spells, glowing effects, impossible transformations, enchanted beings, or supernatural phenomena."},{"code":"PFM0814","name":"Phantasmagoric","kind":"fusion","primIds":["P08","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Elaborate grotesque fantasy with bizarre creatures, impossible forms, or disturbing imagery."},{"code":"PFM0910","name":"Lewd","kind":"fusion","primIds":["P09","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually explicit, vulgar, indecent, crude, suggestive, or offensively erotic; explicit exposure, crude sexual gestures, vulgar erotic jokes, or indecent posing."},{"code":"PFM0911","name":"Seduction","kind":"fusion","primIds":["P09","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Attraction created through allure, temptation, mystery, danger, or sexual invitation; alluring poses, intimate gaze, revealing styling, or a dangerous sensual atmosphere."},{"code":"PFM0912","name":"Kinky","kind":"fusion","primIds":["P09","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually unconventional, fetish-oriented, experimental, role-based, or involving nonstandard preferences or practices; fetish attire, bondage cues, role-play, or unconventional erotic props."},{"code":"PFM0913","name":"Hedonism","kind":"fusion","primIds":["P09","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasure, gratification, sensual enjoyment, luxury, appetite, or indulgence elevated into an atmosphere or lifestyle; feasting, partying, lavish consumption, sensual abundance, or decadent excess."},{"code":"PFM0914","name":"Sadomasochism","kind":"fusion","primIds":["P09","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Erotic pleasure involving pain, domination, submission, humiliation, control, or suffering; bondage, power exchange, or controlled physical pain."},{"code":"PFM1011","name":"Horror","kind":"fusion","primIds":["P10","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Fear, dread, shock, or revulsion produced by disturbing, threatening, grotesque, supernatural, or violent material; monsters, gore, frightening scenes, or supernatural danger."},{"code":"PFM1012","name":"Greed","kind":"fusion","primIds":["P10","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Excessive desire to possess, acquire, keep, or control wealth, resources, status, power, or advantage; hoarding, grabbing valuables, status fixation, or acquisitiveness."},{"code":"PFM1013","name":"Indulgent","kind":"fusion","primIds":["P10","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Permissive toward pleasure, appetite, comfort, luxury, excess, or personal gratification; rich food, lounging, pampering, luxury, or overconsumption."},{"code":"PFM1014","name":"Repulsive","kind":"fusion","primIds":["P10","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Immediate visceral disgust caused by decay, contamination, bodily fluids, wounds, infection, or organic breakdown; rotting flesh, pus, vomit, lesions, parasites, or formless slime."},{"code":"PFM1112","name":"Paranoia","kind":"fusion","primIds":["P11","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Persistent suspicion or fear of harm, deception, surveillance, persecution, or hidden threat; watchful fear, suspicious glances, defensive behavior, or surveillance imagery."},{"code":"PFM1113","name":"Spirituality","kind":"fusion","primIds":["P11","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Meaning, transcendence, sacredness, inner life, faith, ritual, or connection beyond ordinary material existence; prayer, meditation, worship, sacred symbols, or mystical connection."},{"code":"PFM1114","name":"Violated","kind":"fusion","primIds":["P11","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"A boundary, body, trust, right, safety, privacy, or autonomy invaded or broken; forced intrusion, damaged privacy, assault aftermath, or breached safety."},{"code":"PFM1213","name":"Glory","kind":"fusion","primIds":["P12","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Honor, acclaim, valor, prestige, or celebrated achievement; trophies, medals, military honors, victory displays, heroic poses, or public recognition."},{"code":"PFM1214","name":"Obsessive","kind":"fusion","primIds":["P12","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Fixated, compulsive, preoccupied, repetitive, or unable to release attention from a person, idea, goal, or concern; repeated patterns, hoarding, compulsive arrangement, or relentless focus."},{"code":"PFM1314","name":"Revenge","kind":"fusion","primIds":["P13","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Retaliation, payback, punishment, or action answering a perceived wrong or injury; retaliatory acts, targeting offenders, punishment, or settling scores."}],"aiThemeChoices":[{"code":"PFM0102","name":"Cozy","kind":"fusion","primIds":["P01","P02"],"matrixVersion":"0.0.0.0","aiMeaning":"Comforting, snug, warm, sheltered, or inviting; soft textures, warm lighting, blankets, relaxed intimate settings, or a feeling of ease, rest, or pleasant closeness."},{"code":"PFM0103","name":"Pitiful","kind":"fusion","primIds":["P01","P03"],"matrixVersion":"0.0.0.0","aiMeaning":"Arousing sympathy or compassion through visible helplessness, suffering, misfortune, weakness, neglect, injury, abandonment, or pleading."},{"code":"PFM0104","name":"Goofy","kind":"fusion","primIds":["P01","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Silly, awkward, playful, foolish, or ridiculous in an amusing way; exaggerated expressions, clumsy antics, or playful visual absurdity."},{"code":"PFM0105","name":"Joy","kind":"fusion","primIds":["P01","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Happiness, delight, pleasure, or emotional uplift shown through smiling, laughter, delighted expressions, playful pleasure, or visible enjoyment."},{"code":"PFM0106","name":"Bizarre","kind":"fusion","primIds":["P01","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Strange, unusual, unexpected, peculiar; improbable combinations, anomalous forms, or unexplained oddities."},{"code":"PFM0107","name":"Camp","kind":"fusion","primIds":["P01","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Exaggerated, theatrical, artificial, flamboyant, kitschy, or knowingly excessive styling and presentation."},{"code":"PFM0108","name":"Whimsical","kind":"fusion","primIds":["P01","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Fanciful, playful, imaginative, lightly odd, or guided by charming logic; fantasy details, charming oddities, or impossible elements."},{"code":"PFM0109","name":"Kawaii","kind":"fusion","primIds":["P01","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Highly stylized Japanese cute aesthetic using exaggerated sweetness or toy-like, childlike, or chibi-style proportions."},{"code":"PFM0110","name":"Grimy","kind":"fusion","primIds":["P01","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Dirty, soiled, greasy, dingy, stained, or neglected; visible dirt, grease, soot, residue, or accumulated grime on surfaces."},{"code":"PFM0111","name":"CreepyCute","kind":"fusion","primIds":["P01","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Cute and unsettling at once; Halloween fun. Appealing subjects combined with eerie, spooky, uncanny, or disturbing features."},{"code":"PFM0112","name":"Innocence","kind":"fusion","primIds":["P01","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Openness, inexperience, trust, simplicity, or freedom from corruption; childlike expressions, gentleness, or naive imagery."},{"code":"PFM0113","name":"Playful","kind":"fusion","primIds":["P01","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Lighthearted, mischievous, teasing, game-like, curious, or inclined toward fun and experimentation; games, toys, teasing gestures, or spontaneous fun."},{"code":"PFM0114","name":"Saccharine","kind":"fusion","primIds":["P01","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Excessively sweet, sentimental, precious, or cutesy to the point of irritation; sugary, pastel, cloying, aggressively sweet imagery."},{"code":"PFM0203","name":"Melancholic","kind":"fusion","primIds":["P02","P03"],"matrixVersion":"0.0.0.0","aiMeaning":"Sad, wistful, reflective, or touched by longing and loss; downcast expressions, solitude, rain, fading light, or emotional heaviness."},{"code":"PFM0204","name":"Charming","kind":"fusion","primIds":["P02","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasantly attractive, likable, engaging, or delightful in a way that wins affection; inviting expressions, warmth, approachable elegance, or pleasing details."},{"code":"PFM0205","name":"Majestic","kind":"fusion","primIds":["P02","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Grand, dignified, regal, imposing, or awe-inspiring in scale, presence, or bearing; symmetry, noble posture, stately beauty, or impressive scenery."},{"code":"PFM0206","name":"Surreal","kind":"fusion","primIds":["P02","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Dreamlike, impossible, uncanny, or illogical in an altered reality; distorted scale, impossible spaces, or unexpected object combinations."},{"code":"PFM0207","name":"Irreverent","kind":"fusion","primIds":["P02","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Disrespectful, cheeky, mocking, or dismissive toward seriousness, convention, authority, or decorum; visual disrespect toward sacred, formal, or authoritative symbols."},{"code":"PFM0208","name":"Romance","kind":"fusion","primIds":["P02","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Affection, longing, intimacy, courtship, tenderness, or romantic attraction; couples, affectionate gestures, closeness, or romantic settings."},{"code":"PFM0209","name":"Exposure","kind":"fusion","primIds":["P02","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Being naked, indecently revealed, or too visibly exposed, especially in ways that feel shameful, embarrassing, humiliating, or sexually charged; visible nudity, uncovered body parts, flashing, revealing poses, or accidental bodily exposure."},{"code":"PFM0210","name":"Grotesque","kind":"fusion","primIds":["P02","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Whimsical or ornamental distortion mixing beauty, absurdity, or unease; hybrid human, animal, or plant forms, exaggerated features, decorative symmetry, or playful violations of natural law."},{"code":"PFM0211","name":"Vulnerable","kind":"fusion","primIds":["P02","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Exposed to harm, rejection, injury, loss, or emotional pain; defenseless posture, exposed emotion, isolation, or injury."},{"code":"PFM0212","name":"Elegant","kind":"fusion","primIds":["P02","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Graceful, refined, tasteful, polished, restrained, or well composed; sophisticated detail, balanced composition, graceful forms, or controlled styling."},{"code":"PFM0213","name":"Festive","kind":"fusion","primIds":["P02","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Marked by celebration, holidays, ceremonies, or special occasions; decorations, costumes, lights, ornaments, seasonal styling, or celebratory settings."},{"code":"PFM0214","name":"Pretentious","kind":"fusion","primIds":["P02","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Affected, self-important, showy, or overly cultured or significant; conspicuous status display and affected refinement."},{"code":"PFM0304","name":"Ironic","kind":"fusion","primIds":["P03","P04"],"matrixVersion":"0.0.0.0","aiMeaning":"Tragic or unfortunate situations made funny through unexpected contrast, reversal, or coincidence. Or happy situations ruined by an unexpected reversal."},{"code":"PFM0305","name":"Devastating","kind":"fusion","primIds":["P03","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Causing profound damage, loss, grief, shock, defeat, or emotional destruction; catastrophic ruin, collapse, severe aftermath, or overwhelming loss."},{"code":"PFM0306","name":"Nightmarish","kind":"fusion","primIds":["P03","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Resembling a nightmare; frightening, disturbing, unreal, oppressive, or horrifying, with dream logic, threatening distortions, darkness, or impossible danger."},{"code":"PFM0307","name":"Shame","kind":"fusion","primIds":["P03","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Painful self-conscious disgrace, embarrassment, exposure, or feeling unworthy, judged, or wanting to hide; averted gaze, covered face, hiding posture, blushing, shrinking, or visibly caught embarrassment."},{"code":"PFM0308","name":"Liminal","kind":"fusion","primIds":["P03","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Vast, lonely spaces with sparse objects or people; emptiness, isolation, corridors, thresholds, sparse interiors, or uncanny stillness."},{"code":"PFM0309","name":"Humiliation","kind":"fusion","primIds":["P03","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Being demeaned, degraded, ridiculed, exposed, rejected, or stripped of dignity by others or events; pointing or laughing onlookers, forced exposure, defeated posture, visible embarrassment, or submission."},{"code":"PFM0310","name":"Despair","kind":"fusion","primIds":["P03","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Hopelessness, anguish, defeat, or the sense that relief or improvement has disappeared; collapsed posture, ruin, isolation, or hopeless expressions."},{"code":"PFM0311","name":"Foreboding","kind":"fusion","primIds":["P03","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Uneasy expectation that danger, trouble, harm, or an unwanted event is approaching; ominous shadows, stormy skies, suspense, or approaching threat."},{"code":"PFM0312","name":"Poignant","kind":"fusion","primIds":["P03","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Emotionally affecting through tenderness, sadness, meaning, or reflection; fragile moments, remembrance, meaningful loss, or emotional stillness."},{"code":"PFM0313","name":"Bittersweet","kind":"fusion","primIds":["P03","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasure and sadness experienced together; joyful imagery touched by loss, nostalgia, farewell, memory, or impermanence."},{"code":"PFM0314","name":"Dysphoria","kind":"fusion","primIds":["P03","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Distress, dissatisfaction, unease, or disconnection involving self, body, identity, mood, or circumstance; bodily discomfort, alienation, or self-disconnection."},{"code":"PFM0405","name":"Cringe","kind":"fusion","primIds":["P04","P05"],"matrixVersion":"0.0.0.0","aiMeaning":"Painful awkwardness or embarrassment that causes secondhand discomfort; social blunders, failed interactions, awkward expressions, or embarrassing poses."},{"code":"PFM0406","name":"Zany","kind":"fusion","primIds":["P04","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Eccentric, unconventional, comically strange, or offbeat; mismatched costumes, unusual poses, frantic antics, or energetic comic behavior."},{"code":"PFM0407","name":"Satirical","kind":"fusion","primIds":["P04","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Using humor, irony, exaggeration, or ridicule to expose or criticize faults, behavior, institutions, or ideas; visual mockery of politics, culture, or social conventions."},{"code":"PFM0408","name":"Absurd","kind":"fusion","primIds":["P04","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Illogical, ridiculous, contradictory, pointless, impossible, or incompatible with ordinary sense; nonsensical juxtapositions, impossible logic, or ridiculous contradictions."},{"code":"PFM0409","name":"Ribaldry","kind":"fusion","primIds":["P04","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Coarse, bawdy, or sexually suggestive humor; sexual jokes, innuendo, vulgar comedy, bawdy gestures, or suggestive comic situations."},{"code":"PFM0410","name":"Grossout","kind":"fusion","primIds":["P04","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Humor or spectacle built around filth, bodily functions, fluids, decay, gore, or revulsion; vomit, excrement, bodily fluids, or gross material used comically."},{"code":"PFM0411","name":"Comedy Horror","kind":"fusion","primIds":["P04","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Frightening or macabre material blended with humor, parody, absurdity, slapstick, jokes, or comic relief."},{"code":"PFM0412","name":"Witty","kind":"fusion","primIds":["P04","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Clever, quick, inventive, or skillful humor and insight; visual puns, layered references, wordplay, or ingenious humorous juxtapositions."},{"code":"PFM0413","name":"PartyTime","kind":"fusion","primIds":["P04","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Active social celebration centered on revelry, fun, gathering, or excitement; dancing, cheering, crowds, drinks, decorations, music, or confetti."},{"code":"PFM0414","name":"Trolling","kind":"fusion","primIds":["P04","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Provoking, baiting, mocking, annoying, or misleading others for amusement or reaction; antagonistic jokes, mocking memes, baiting signs, or provocative gestures."},{"code":"PFM0506","name":"Chaotic","kind":"fusion","primIds":["P05","P06"],"matrixVersion":"0.0.0.0","aiMeaning":"Disordered, unstable, crowded, conflicting, or lacking control or organization; scattered objects, unstable motion, visual overload, or competing elements."},{"code":"PFM0507","name":"Outrageous","kind":"fusion","primIds":["P05","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Shockingly excessive, bold, offensive, audacious, unconventional, or beyond restraint; extreme styling, taboo-breaking, flamboyance, or audacious behavior."},{"code":"PFM0508","name":"Epic","kind":"fusion","primIds":["P05","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Grand, heroic, or massive in scale, consequence, duration, drama, adventure, struggle, achievement, or spectacle; monumental scenery, heroic action, or high stakes."},{"code":"PFM0509","name":"Lust","kind":"fusion","primIds":["P05","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexual desire, appetite, craving, fixation, or physical attraction; desirous gazes, sensual bodies, erotic focus, or visible craving."},{"code":"PFM0510","name":"Brutal","kind":"fusion","primIds":["P05","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Harsh, violent, cruel, punishing, damaging, or unsparing in force or effect; severe injury, destruction, cruelty, or punishing conditions."},{"code":"PFM0511","name":"Terror","kind":"fusion","primIds":["P05","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Extreme fear, alarm, panic, dread, or immediate danger; terrified expressions, fleeing, overwhelming threat, or visible panic."},{"code":"PFM0512","name":"Brilliant","kind":"fusion","primIds":["P05","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Clever, inventive, insightful, creative, effective, or intellectually impressive; ingenious designs, exceptional craftsmanship, inventive solutions, or impressive execution."},{"code":"PFM0513","name":"Pride","kind":"fusion","primIds":["P05","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Satisfaction, self-respect, dignity, or affirmation tied to achievement, identity, belonging, or worth; gay or LGBT imagery; confident posture, identity symbols, or dignified self-presentation."},{"code":"PFM0514","name":"Aggressive","kind":"fusion","primIds":["P05","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Confrontational, forceful, hostile, threatening, domineering, or ready to attack; attack gestures, weapons, intimidation, forceful motion, or threatening posture."},{"code":"PFM0607","name":"Freakshow","kind":"fusion","primIds":["P06","P07"],"matrixVersion":"0.0.0.0","aiMeaning":"Bizarre or unsettling spectacle that provokes fascinated, guilty enjoyment; shocking anomalies, unusual performers, carnival-like display, or gawking attention."},{"code":"PFM0608","name":"Psychedelic","kind":"fusion","primIds":["P06","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Hallucinatory, sensory-rich, perception-bending, or suggestive of expanded or distorted consciousness; vivid colors, swirling patterns, fractals, or hallucination-like effects."},{"code":"PFM0609","name":"FreakyDeaky","kind":"fusion","primIds":["P06","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually playful, unconventional, eccentric, uninhibited, or erotic with an oddball edge; strange erotic styling, playful erotic imagery, or unconventional sexual presentation."},{"code":"PFM0610","name":"Mutant","kind":"fusion","primIds":["P06","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Biological form altered from a known prototype through mutation, radiation, chemicals, genetics, abnormal development, hybridization, or evolution; extra limbs, altered organs, abnormal growths, or techno-organic fusion."},{"code":"PFM0611","name":"Macabre","kind":"fusion","primIds":["P06","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Gothic morbidity centered on death, corpses, decay, mortality, funerary imagery, or morbid fascination; skulls, graves, death rituals, or ornate morbid decoration."},{"code":"PFM0612","name":"Alien","kind":"fusion","primIds":["P06","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Strange, foreign, unfamiliar, or nonhuman; suggesting intelligence, biology, places, or forms outside ordinary human experience. Unfamiliar beings, strange anatomy, spacecraft, foreign environments, otherworldly landscapes, or unfamiliar technology."},{"code":"PFM0613","name":"Delirious","kind":"fusion","primIds":["P06","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Disoriented, feverish, ecstatic, manic, confused, or detached from stable reality; hallucinations, unstable visual reality, feverish expressions, or ecstatic chaos."},{"code":"PFM0614","name":"Monstrous","kind":"fusion","primIds":["P06","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Awe-inspiring unnatural threat defined by immense scale, predation, mythic power, or eldritch otherness; colossal creatures, chimeric anatomy, predatory weapons, and impossible features."},{"code":"PFM0708","name":"Medicated","kind":"fusion","primIds":["P07","P08"],"matrixVersion":"0.0.0.0","aiMeaning":"Altered, softened, detached, or chemically influenced consciousness or perception; drowsy eyes, softened expressions, detached gaze, pills, or clinical sedation cues."},{"code":"PFM0709","name":"Exploitation","kind":"fusion","primIds":["P07","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Using people, bodies, suffering, taboo, shock, or sensational material for advantage, attention, profit, or gratification; objectification, commodification, or spectacle built from others."},{"code":"PFM0710","name":"Tasteless","kind":"fusion","primIds":["P07","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Vulgar, crude, offensive, insensitive, indecent, or lacking judgment or restraint; socially or aesthetically offensive imagery or insensitive presentation."},{"code":"PFM0711","name":"Execrable","kind":"fusion","primIds":["P07","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Hateful, detestable, contemptible, vile, cruel, or deserving condemnation; deliberately abhorrent content or visible malice."},{"code":"PFM0712","name":"Parodic","kind":"fusion","primIds":["P07","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Imitating a recognizable style, work, person, or convention through exaggeration, distortion, mockery, or comic transformation."},{"code":"PFM0713","name":"Snarky","kind":"fusion","primIds":["P07","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Sarcastic, cutting, mocking, dismissive, or contemptuous humor; eye-rolls, smirks, mocking gestures, sarcastic captions, or dismissive commentary."},{"code":"PFM0714","name":"Wickedness","kind":"fusion","primIds":["P07","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Wrongdoing, cruelty, malice, corruption, immorality, or pleasure in harmful behavior; deliberate harm, malicious intent, corruption, or gleeful wrongdoing."},{"code":"PFM0809","name":"Limerence","kind":"fusion","primIds":["P08","P09"],"matrixVersion":"0.0.0.0","aiMeaning":"Romantic infatuation marked by longing, idealization, uncertainty, fantasy, or desire for reciprocation; idealized crush imagery, fixation, longing gazes, or unreciprocated yearning."},{"code":"PFM0810","name":"Putrid","kind":"fusion","primIds":["P08","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Rotten, decaying, foul, contaminated, corrupt, or unpleasant; decomposition, mold, slime, spoiled matter, or contamination."},{"code":"PFM0811","name":"Eerie","kind":"fusion","primIds":["P08","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Unsettling, haunting, uncanny, quiet, mysterious, or suggestive that something is wrong; strange shadows, emptiness, haunting stillness, or subtle wrongness."},{"code":"PFM0812","name":"Ethereal","kind":"fusion","primIds":["P08","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Airy, delicate, luminous, weightless, otherworldly, or removed from ordinary physical substance; soft glow, translucence, mist, or delicate forms."},{"code":"PFM0813","name":"Magical","kind":"fusion","primIds":["P08","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Enchanting, supernatural, wondrous, impossible, or governed by forces from a different reality; spells, glowing effects, impossible transformations, enchanted beings, or supernatural phenomena."},{"code":"PFM0814","name":"Phantasmagoric","kind":"fusion","primIds":["P08","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Elaborate grotesque fantasy with bizarre creatures, impossible forms, or disturbing imagery."},{"code":"PFM0910","name":"Lewd","kind":"fusion","primIds":["P09","P10"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually explicit, vulgar, indecent, crude, suggestive, or offensively erotic; explicit exposure, crude sexual gestures, vulgar erotic jokes, or indecent posing."},{"code":"PFM0911","name":"Seduction","kind":"fusion","primIds":["P09","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Attraction created through allure, temptation, mystery, danger, or sexual invitation; alluring poses, intimate gaze, revealing styling, or a dangerous sensual atmosphere."},{"code":"PFM0912","name":"Kinky","kind":"fusion","primIds":["P09","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Sexually unconventional, fetish-oriented, experimental, role-based, or involving nonstandard preferences or practices; fetish attire, bondage cues, role-play, or unconventional erotic props."},{"code":"PFM0913","name":"Hedonism","kind":"fusion","primIds":["P09","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Pleasure, gratification, sensual enjoyment, luxury, appetite, or indulgence elevated into an atmosphere or lifestyle; feasting, partying, lavish consumption, sensual abundance, or decadent excess."},{"code":"PFM0914","name":"Sadomasochism","kind":"fusion","primIds":["P09","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Erotic pleasure involving pain, domination, submission, humiliation, control, or suffering; bondage, power exchange, or controlled physical pain."},{"code":"PFM1011","name":"Horror","kind":"fusion","primIds":["P10","P11"],"matrixVersion":"0.0.0.0","aiMeaning":"Fear, dread, shock, or revulsion produced by disturbing, threatening, grotesque, supernatural, or violent material; monsters, gore, frightening scenes, or supernatural danger."},{"code":"PFM1012","name":"Greed","kind":"fusion","primIds":["P10","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Excessive desire to possess, acquire, keep, or control wealth, resources, status, power, or advantage; hoarding, grabbing valuables, status fixation, or acquisitiveness."},{"code":"PFM1013","name":"Indulgent","kind":"fusion","primIds":["P10","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Permissive toward pleasure, appetite, comfort, luxury, excess, or personal gratification; rich food, lounging, pampering, luxury, or overconsumption."},{"code":"PFM1014","name":"Repulsive","kind":"fusion","primIds":["P10","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Immediate visceral disgust caused by decay, contamination, bodily fluids, wounds, infection, or organic breakdown; rotting flesh, pus, vomit, lesions, parasites, or formless slime."},{"code":"PFM1112","name":"Paranoia","kind":"fusion","primIds":["P11","P12"],"matrixVersion":"0.0.0.0","aiMeaning":"Persistent suspicion or fear of harm, deception, surveillance, persecution, or hidden threat; watchful fear, suspicious glances, defensive behavior, or surveillance imagery."},{"code":"PFM1113","name":"Spirituality","kind":"fusion","primIds":["P11","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Meaning, transcendence, sacredness, inner life, faith, ritual, or connection beyond ordinary material existence; prayer, meditation, worship, sacred symbols, or mystical connection."},{"code":"PFM1114","name":"Violated","kind":"fusion","primIds":["P11","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"A boundary, body, trust, right, safety, privacy, or autonomy invaded or broken; forced intrusion, damaged privacy, assault aftermath, or breached safety."},{"code":"PFM1213","name":"Glory","kind":"fusion","primIds":["P12","P13"],"matrixVersion":"0.0.0.0","aiMeaning":"Honor, acclaim, valor, prestige, or celebrated achievement; trophies, medals, military honors, victory displays, heroic poses, or public recognition."},{"code":"PFM1214","name":"Obsessive","kind":"fusion","primIds":["P12","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Fixated, compulsive, preoccupied, repetitive, or unable to release attention from a person, idea, goal, or concern; repeated patterns, hoarding, compulsive arrangement, or relentless focus."},{"code":"PFM1314","name":"Revenge","kind":"fusion","primIds":["P13","P14"],"matrixVersion":"0.0.0.0","aiMeaning":"Retaliation, payback, punishment, or action answering a perceived wrong or injury; retaliatory acts, targeting offenders, punishment, or settling scores."}]};
+
+const strip = text => String(text||'')
+  .trim()
+  .replace(/^```(?:json)?\s*/i,'')
+  .replace(/\s*```$/,'')
+  .trim();
+
+const parse = text => {
+  const clean = strip(text);
+  try { return JSON.parse(clean); }
+  catch {
+    const a = clean.indexOf('{');
+    const b = clean.lastIndexOf('}');
+    if (a >= 0 && b > a) {
+      try { return JSON.parse(clean.slice(a,b+1)); } catch {}
+    }
+    throw new Error('Vision provider returned invalid JSON');
   }
-  return p;
 };
-const fetchBytes=async url=>{
-  if(!/^https:\/\//i.test(url)||url.length>2000)throw new Error('imageUrl must be HTTPS');
-  const r=await fetch(url,{headers:{accept:'image/*'}});
-  if(!r.ok)throw new Error(`Could not retrieve image (${r.status})`);
-  const bytes=new Uint8Array(await r.arrayBuffer());
-  if(!bytes.length)throw new Error('Image was empty');
-  if(bytes.length>6_000_000)throw new Error('Image exceeds 6 MB');
+
+const responseValue = payload =>
+  typeof payload === 'string'
+    ? payload
+    : (payload?.response ?? payload?.result?.response ?? payload?.output_text ?? '');
+
+const safeProviderDiagnostic = payload => {
+  const value = responseValue(payload);
+  const type = Array.isArray(value) ? 'array' : typeof value;
+  let preview = null;
+
+  if (typeof value === 'string') {
+    preview = value.slice(0,1200);
+  } else if (value && typeof value === 'object') {
+    try { preview = JSON.stringify(value).slice(0,1200); }
+    catch { preview = '[unserializable object]'; }
+  } else if (value != null) {
+    preview = String(value).slice(0,1200);
+  }
+
+  return {
+    phase:'parse',
+    payloadType:Array.isArray(payload) ? 'array' : typeof payload,
+    responseType:type,
+    responsePreview:preview
+  };
+};
+
+/**
+ * Attach provider diagnostics without mutating Error with an undeclared property.
+ * @returns {Error}
+ */
+const diagnosticError = (message, diagnostic) => {
+  const error = new Error(message);
+  Object.defineProperty(error,'providerDiagnostic',{
+    value:diagnostic,
+    enumerable:false,
+    configurable:true
+  });
+  return error;
+};
+
+const providerDiagnosticOf = error => {
+  if (!error || typeof error !== 'object') return null;
+  try { return Reflect.get(error,'providerDiagnostic') || null; }
+  catch { return null; }
+};
+
+const parseProviderResponse = payload => {
+  const value = responseValue(payload);
+  if (value && typeof value === 'object') return value;
+  try {
+    return parse(value);
+  } catch (error) {
+    throw diagnosticError(
+      error?.message || 'Vision provider returned invalid JSON',
+      safeProviderDiagnostic(payload)
+    );
+  }
+};
+
+const fetchBytes = async url => {
+  if (!/^https:\/\//i.test(url) || url.length > 2000) throw new Error('imageUrl must be HTTPS');
+  const response = await fetch(url,{headers:{accept:'image/*'}});
+  if (!response.ok) throw new Error(`Could not retrieve image (${response.status})`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.length) throw new Error('Image was empty');
+  if (bytes.length > 6_000_000) throw new Error('Image exceeds 6 MB');
   return Array.from(bytes);
 };
-const dataUrlBytes=value=>{
-  const m=String(value||'').match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/);
-  if(!m)throw new Error('imageDataUrl must be a base64 image');
-  const binary=atob(m[1]);
-  if(binary.length>6_000_000)throw new Error('Image exceeds 6 MB');
+
+const dataUrlBytes = value => {
+  const match = String(value||'').match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/);
+  if (!match) throw new Error('imageDataUrl must be a base64 image');
+  const binary = atob(match[1]);
+  if (binary.length > 6_000_000) throw new Error('Image exceeds 6 MB');
   return Array.from(binary,c=>c.charCodeAt(0));
 };
 
-const reactionAllocationSchema={
-  type:'object',
-  properties:{
-    points:{type:'integer',minimum:1,maximum:101},
-    reason:{type:'string'}
-  },
-  required:['points','reason'],
-  additionalProperties:false
-};
-const reactionProperties=Object.fromEntries(REACTION_NAMES.map(name=>[name,reactionAllocationSchema]));
-const componentSchemas={
-  reactions:{
+function validateRegistry(registry){
+  if (!registry || registry.matrixVersion !== '0.0.0.0') throw new Error('Unexpected PrimFusion Matrix version');
+  if (!Array.isArray(registry.primitives) || registry.primitives.length !== 14) throw new Error('PrimFusion registry must contain 14 Prims');
+  if (!Array.isArray(registry.fusions) || registry.fusions.length !== 91) throw new Error('PrimFusion registry must contain 91 fusions');
+  if (!Array.isArray(registry.themeChoices) || registry.themeChoices.length !== 105) throw new Error('PrimFusion registry must contain 105 total Theme choices');
+  if (!Array.isArray(registry.aiThemeChoices) || registry.aiThemeChoices.length !== 91) throw new Error('PrimFusion registry must contain 91 AI Theme choices');
+  for (const fusion of registry.fusions){
+    const [a,b] = fusion.primIds || [];
+    if (!a || !b || Number(a.slice(1)) >= Number(b.slice(1))) {
+      throw new Error(`Invalid low-to-high fusion code: ${fusion.code||'unknown'}`);
+    }
+  }
+  return registry;
+}
+
+validateRegistry(PRIMFUSION_REGISTRY);
+
+const matrixVersion = () => PRIMFUSION_REGISTRY.matrixVersion;
+
+function reactionPrompt(){
+  const lines = PRIMFUSION_REGISTRY.primitives.map(p => {
+    const meaning = p.aiMeaning ? ` Meaning: ${p.aiMeaning}` : '';
+    return `${p.id} — ${p.name}.${meaning}`;
+  }).join('\n');
+
+  return `You are performing Genreactrix Reaction Analysis.
+
+Analyze the image as a person choosing among all 14 Genreactrix reaction buttons at the same time.
+The P-codes are identifiers only. Reaction Analysis is independent from Theme/PrimFusion analysis.
+
+Your job is semantic comparison, NOT arithmetic and NOT 14 independent confidence ratings.
+For every reaction, assign a NONNEGATIVE RELATIVE WEIGHT from 0 to 100. The weights do NOT need to total 100 or any other number. A larger weight means that reaction deserves a larger share of the viewer's overall reaction field compared with the other 13 reactions.
+
+Rank ALL 14 reactions from strongest to weakest. Rank #1 is the primary reaction. Rank #2 is the required secondary reaction candidate: identify the best-supported alternative even when it is much weaker than the primary. Do not stop after finding one obvious reaction.
+
+Provide concise image-grounded notes for the first FOUR ranked reactions. Those notes are an effort check showing that the primary, secondary, and nearest alternatives were actually considered. A genuinely single-dominant image is allowed; if ranks 2-4 are weak or unsupported, say so rather than inventing support.
+
+Do not make every weight identical. Do not return all zeros. Do not use Theme names or Theme reasoning to choose the reactions.
+
+REACTION PRIMS:
+${lines}
+
+Return only the schema-conforming JSON object.`;
+}
+
+function reactionSchema(){
+  const ids = PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
+  const properties = Object.fromEntries(ids.map(id=>[id,{type:'number',minimum:0,maximum:100}]));
+  return {
     type:'object',
-    properties:{reactions:{type:'object',properties:reactionProperties,required:REACTION_NAMES,additionalProperties:false}},
-    required:['reactions'],
-    additionalProperties:false
-  },
-  themes:{
-    type:'object',
-    properties:{themes:{
-      type:'array',minItems:3,maxItems:3,
-      items:{
+    properties:{
+      weights:{
         type:'object',
-        properties:{
-          theme:{type:'string'},
-          confidence:{type:'number',minimum:0,maximum:100},
-          evidence:{type:'string'},
-          role:{type:'string',enum:['primary','secondary','ambiguous']}
-        },
-        required:['theme','confidence','evidence','role'],
+        properties,
+        required:ids,
         additionalProperties:false
+      },
+      ranking:{
+        type:'array',
+        minItems:14,
+        maxItems:14,
+        items:{type:'string',enum:ids}
+      },
+      notes:{
+        type:'array',
+        minItems:4,
+        maxItems:4,
+        items:{
+          type:'object',
+          properties:{
+            id:{type:'string',enum:ids},
+            reason:{type:'string'}
+          },
+          required:['id','reason'],
+          additionalProperties:false
+        }
       }
-    }},
+    },
+    required:['weights','ranking','notes'],
+    additionalProperties:false
+  };
+}
+
+function validateReactionAssessment(raw){
+  const ids = PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Reaction assessment was not an object');
+  const weights = {};
+  for (const id of ids){
+    const value = Number(raw.weights?.[id]);
+    if (!Number.isFinite(value) || value < 0 || value > 100) throw new Error(`Reaction relative weight for ${id} must be numeric from 0 to 100`);
+    weights[id] = value;
+  }
+  const total = ids.reduce((sum,id)=>sum+weights[id],0);
+  if (!(total > 0)) throw new Error('Reaction assessment returned all-zero relative weights');
+  const distinctWeights = new Set(ids.map(id=>weights[id]));
+  if (distinctWeights.size === 1) throw new Error('Reaction assessment was uninformative because all 14 relative weights were identical');
+
+  const ranking = Array.isArray(raw.ranking) ? raw.ranking.map(String) : [];
+  if (ranking.length !== ids.length || new Set(ranking).size !== ids.length || ranking.some(id=>!ids.includes(id))) {
+    throw new Error('Reaction assessment ranking must contain every P-code exactly once');
+  }
+  for (let i=1;i<ranking.length;i++){
+    if (weights[ranking[i]] > weights[ranking[i-1]] + 1e-9) throw new Error('Reaction assessment ranking contradicted the relative weights');
+  }
+
+  const notes = Array.isArray(raw.notes) ? raw.notes.map(item=>({id:String(item?.id||''),reason:String(item?.reason||'').trim()})) : [];
+  if (notes.length !== 4 || new Set(notes.map(x=>x.id)).size !== 4) throw new Error('Reaction assessment must provide four distinct effort-check notes');
+  for (let i=0;i<4;i++){
+    if (notes[i].id !== ranking[i]) throw new Error('Reaction effort-check notes must correspond to ranks 1 through 4 in order');
+    if (!notes[i].reason) throw new Error(`Reaction effort-check note for ${notes[i].id} was empty`);
+  }
+  return {weights,ranking,notes};
+}
+
+function allocateReactionPool(assessment){
+  const ids = PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
+  const total = ids.reduce((sum,id)=>sum+assessment.weights[id],0);
+  const rankIndex = new Map(assessment.ranking.map((id,index)=>[id,index]));
+  const rows = ids.map(id=>{
+    const exact = assessment.weights[id] * 100 / total;
+    const discretionary = Math.floor(exact);
+    return {id,exact,discretionary,fraction:exact-discretionary};
+  });
+  let remaining = 100 - rows.reduce((sum,row)=>sum+row.discretionary,0);
+  const remainderOrder = [...rows].sort((a,b)=>
+    b.fraction-a.fraction ||
+    (rankIndex.get(a.id)??99)-(rankIndex.get(b.id)??99) ||
+    a.id.localeCompare(b.id)
+  );
+  for (let i=0;i<remaining;i++) remainderOrder[i % remainderOrder.length].discretionary += 1;
+
+  const display = Object.fromEntries(rows.map(row=>[row.id,row.discretionary]));
+  const rawAllocation = Object.fromEntries(rows.map(row=>[row.id,row.discretionary+1]));
+  const displayTotal = Object.values(display).reduce((a,b)=>a+b,0);
+  const rawTotal = Object.values(rawAllocation).reduce((a,b)=>a+b,0);
+  if (displayTotal !== 100 || rawTotal !== 114) throw new Error('Worker reaction apportionment invariant failed');
+
+  const primaryId = assessment.ranking[0], secondaryId = assessment.ranking[1];
+  const pair = [primaryId,secondaryId].sort((a,b)=>Number(a.slice(1))-Number(b.slice(1)));
+  const primFusionCode = `PFM${pair[0].slice(1)}${pair[1].slice(1)}`;
+  const byId = new Map(PRIMFUSION_REGISTRY.primitives.map(p=>[p.id,p]));
+  return {
+    display,
+    diagnostics:{
+      scoringMethod:'ai-relative-weights-worker-hamilton-100-plus-14-baseline',
+      rawAiWeights:assessment.weights,
+      aiRanking:assessment.ranking,
+      effortNotes:assessment.notes,
+      discretionaryAllocation:display,
+      rawAllocation,
+      displayTotal,
+      rawTotal,
+      singleDominant:Object.values(assessment.weights).filter(v=>v>0).length===1,
+      reactionCombo:{
+        primaryId,
+        primaryName:byId.get(primaryId)?.name||primaryId,
+        secondaryId,
+        secondaryName:byId.get(secondaryId)?.name||secondaryId,
+        primFusionCode,
+        normalizedReactionIds:pair
+      }
+    }
+  };
+}
+
+function reactionRetryInstruction(error){
+  return `\n\nYour previous response was rejected by the Reaction effort/structure validator: ${String(error?.message||error||'unknown error').slice(0,500)}\nReassess the whole 14-reaction field from scratch. Return all 14 relative weights, a complete strongest-to-weakest ranking with no duplicates, and four non-empty notes for ranks 1-4. Do not perform percentage-total arithmetic.`;
+}
+
+async function runReactionAssessment(env,model,image,behavior='analyze'){
+  let lastError = null;
+  for (let attempt=1;attempt<=2;attempt++){
+    try{
+      const prompt = reactionPrompt() + (attempt===2 ? reactionRetryInstruction(lastError) : '');
+      const result = await runStructured(
+        env,model,image,prompt,reactionSchema(),2100,
+        attempt===1?'json_schema':'json_object',
+        {behavior,temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):0}
+      );
+      return validateReactionAssessment(result);
+    }catch(error){
+      lastError = error;
+      const message = String(error?.message||error);
+      const providerFailure = /Workers AI vision failed|timed out after/i.test(message);
+      if (attempt>=2 || providerFailure) break;
+    }
+  }
+  throw lastError || new Error('Reaction Analysis failed');
+}
+
+async function runReactionAllocation(env,model,image,behavior='analyze'){
+  const assessment = await runReactionAssessment(env,model,image,behavior);
+  return allocateReactionPool(assessment);
+}
+
+function themePrompt(){
+  // Deliberately expose code + semantic label only.
+  // Do NOT expose the P01/P02 provenance of PFM codes to the model:
+  // theme classification must remain independent of Reaction Analysis.
+  const choices = PRIMFUSION_REGISTRY.aiThemeChoices
+    .map(t => `${t.code} — ${t.name}${t.aiMeaning ? ` — Meaning: ${t.aiMeaning}` : ``}`)
+    .join('\n');
+
+  const fallbackRule = CUSTOM_THEME_GENERATION_ENABLED
+    ? `If an important Theme genuinely is not adequately represented by the current matrix vocabulary, one Custom Theme candidate may be used. A Custom candidate must be a concise reusable semantic Theme name, not a medium/style tag.`
+    : `Custom Theme generation is temporarily DISABLED for research. You MUST choose all three selections from the current matrix vocabulary. If the vocabulary is imperfect, choose the three closest valid matrix Themes rather than inventing a fallback. This restriction is intentional so vocabulary weaknesses remain observable.`;
+
+  const formats = CUSTOM_THEME_GENERATION_ENABLED
+    ? `1|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n2|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n3|custom|<PROPOSED_THEME_NAME>|<CONFIDENCE>|Brief image-grounded reason this Theme is needed`
+    : `1|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n2|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n3|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits`;
+
+  return `You are performing Genreactrix Theme Analysis.
+
+PrimFusion Matrix version: ${matrixVersion()}.
+
+Choose exactly three DIFFERENT Theme selections that best fit the image.
+Choose from the current PrimFusion fusion vocabulary below.
+Evaluate the semantic meaning of the Theme names from the image itself.
+Do not use reaction-analysis scores to make Theme choices.
+The codes are identifiers only.
+
+A Theme is a semantic/thematic classification. Do not use a visual medium, production format, or art technique as a Theme merely because it is visible. Those observations belong in the freeform AI Description.
+
+${fallbackRule}
+
+CURRENT AI-ELIGIBLE PRIMFUSION THEMES:
+${choices}
+
+Return exactly three ranked selections, strongest first, and nothing else.
+Use one line per selection in this exact pipe-delimited format:
+${formats}
+
+For matrix choices, field 3 must be one valid PFM code from the vocabulary above. Standalone Prims are intentionally not eligible AI Theme outputs.
+Field 4 is confidence from 0-100.
+Field 5 is a concise image-grounded rationale explaining why the Theme was selected.
+
+Do not repeat the same Theme, code, or semantic label under another rank.`;
+}
+
+function themeSchema(){
+  const validCodes = PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code);
+  const matrixChoice = {
+    type:'object',
+    properties:{
+      source:{type:'string',enum:['matrix']},
+      code:{type:'string',enum:validCodes},
+      confidence:{type:'number',minimum:0,maximum:100}
+    },
+    required:['source','code','confidence'],
+    additionalProperties:false
+  };
+  const itemSchema = CUSTOM_THEME_GENERATION_ENABLED ? {anyOf:[
+    matrixChoice,
+    {
+      type:'object',
+      properties:{
+        source:{type:'string',enum:['custom']},
+        proposedName:{type:'string'},
+        confidence:{type:'number',minimum:0,maximum:100}
+      },
+      required:['source','proposedName','confidence'],
+      additionalProperties:false
+    }
+  ]} : matrixChoice;
+  return {
+    type:'object',
+    properties:{themes:{type:'array',minItems:3,maxItems:3,items:itemSchema}},
     required:['themes'],
     additionalProperties:false
-  },
-  description:{
+  };
+}
+
+function descriptionPrompt(){
+  return `You are performing Genreactrix Freeform AI Description Analysis.
+
+Study the image closely and provide a robust, substantial freeform visual analysis rather than a short caption.
+Be curious and observant. Discuss whatever is materially useful or revealing about the image, without forcing the analysis into a fixed checklist.
+You may address subjects, objects, actions, setting, composition, medium or style, visible text, relationships, visual jokes, unusual juxtapositions, mood, tone, possible themes, symbolism, ambiguity, implied action, anomalies, or other grounded observations when relevant.
+
+Do not artificially limit the analysis to predefined categories.
+Do not invent hidden identity, biography, or facts that cannot reasonably be supported by the image.
+When moving beyond direct observation into interpretation, phrase it as interpretation rather than certainty.
+
+Return the freeform analysis directly as prose. Do not wrap it in JSON, Markdown code fences, or a field label.`;
+}
+
+function descriptionSchema(){
+  return {
     type:'object',
     properties:{description:{type:'string'}},
     required:['description'],
     additionalProperties:false
-  },
-  emotion:{
-    type:'object',
-    properties:{emotion:{
-      type:'object',
-      properties:{
-        dominant:{type:'array',items:{type:'string'}},
-        secondary:{type:'array',items:{type:'string'}},
-        tone:{type:'string'},
-        intensity:{type:'number',minimum:0,maximum:100},
-        contrasts:{type:'array',items:{type:'string'}},
-        causes:{type:'array',items:{type:'string'}}
-      },
-      required:['dominant','secondary','tone','intensity','contrasts','causes'],
-      additionalProperties:false
-    }},
-    required:['emotion'],
-    additionalProperties:false
-  },
-  reactionReasons:{
-    type:'object',
-    properties:{reactionReasons:{type:'object'}},
-    required:['reactionReasons'],
-    additionalProperties:false
-  },
-  genreReasons:{
-    type:'object',
-    properties:{genreReasons:{
-      type:'array',
-      items:{
-        type:'object',
-        properties:{theme:{type:'string'},reason:{type:'string'},evidence:{type:'array',items:{type:'string'}}},
-        required:['theme','reason','evidence'],
-        additionalProperties:false
-      }
-    }},
-    required:['genreReasons'],
-    additionalProperties:false
-  }
-};
-
-const promptFor=component=>{
-  const common='You are Genreactrix, a rigorous visual-research analyst. Analyze only visible evidence in the image. Do not infer hidden identity or backstory.';
-  const prompts={
-    reactions:`${common} Mimic a person choosing emoji reaction buttons from what the image feels like or what word essence it gives off. Consider every reaction using its supplied definition. Use one shared pool of exactly 114 WHOLE points across all 14 reactions. Give every reaction at least 1 point. Allocate the remaining 100 discretionary points according to relative reaction fit. Concentrate points on reactions a person would actually feel compelled to press, while giving some discretionary points to every reaction that has meaningful visible or felt support. Do not collapse to a winner-take-all 101/1/1/... allocation merely because one reaction is strongest; use that extreme only when the image genuinely has no meaningful secondary reaction. A reaction with no meaningful fit may receive only its required 1 point. When no reaction strongly dominates, spread discretionary points more evenly. Return every exact reaction key with integer points plus a concise reason grounded in visible evidence or felt essence. Smart is the output key for the 🧠 Brain/Mind reaction.\n\nCANONICAL PRIM REACTIONS\n${REACTION_CATALOG_TEXT}`,
-    themes:`${common} Return exactly THREE distinct Theme suggestions, ranked strongest to weakest. First compare the image against the complete canonical PrimFusion Theme catalog below and use the exact canonical Theme label whenever an existing Theme reasonably represents the concept. A different word, synonym, grammatical variation, broader or narrower wording, or an existing Theme combined with visible subject matter is NOT a Custom Theme. A Custom Theme is allowed only for a genuine semantic gap that the canonical catalog cannot reasonably express. Custom Theme labels must be one concise reusable abstract concept: never a setting, object, profession, standalone Prim name, or an "and" compound. Theme labels must be non-empty and unique ignoring capitalization and surrounding whitespace. Give confidence 0-100, concise visible evidence, and role primary, secondary, or ambiguous. Do not repeat the same Theme under alternate capitalization or trivial wording.\n\nCANONICAL PRIMFUSION THEMES — MATRIX v0.0.0.0\n${THEME_CATALOG_TEXT}`,
-    description:`${common} Write a detailed factual description of subjects, objects, actions, setting, composition, style, visible text, and unusual juxtapositions.`,
-    emotion:`${common} Describe visible emotional tone using dominant and secondary emotions, overall tone, 0-100 intensity, contrasts, and visible causes.`,
-    reactionReasons:`${common} Use the canonical Prim definitions below. Return an object keyed by relevant Genreactrix reaction name, with a detailed visible-evidence explanation for why a viewer may feel that reaction. Smart is the output key for the 🧠 Brain/Mind reaction.\n\nCANONICAL PRIM REACTIONS\n${REACTION_CATALOG_TEXT}`,
-    genreReasons:`${common} Return theme reasoning entries with theme, reason, and an array of visible evidence.`
   };
-  return prompts[component]||common;
-};
-
-function normalizedConfidence(value){
-  const n=Number(value);
-  if(!Number.isFinite(n))throw new Error('Confidence was not numeric');
-  return Math.max(0,Math.min(100,n));
-}
-function validateComponent(component,value){
-  if(component==='reactions'){
-    if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Reaction output was not an object');
-    const raw={},out={};let total=0;
-    for(const name of REACTION_NAMES){
-      const row=value[name];
-      if(!row||typeof row!=='object')throw new Error(`Reaction output omitted ${name}`);
-      const points=Number(row.points),reason=String(row.reason||'').trim();
-      if(!Number.isInteger(points))throw new Error(`Reaction allocation for ${name} was not a whole number`);
-      if(points<1||points>101)throw new Error(`Reaction allocation for ${name} must be between 1 and 101`);
-      if(!reason)throw new Error(`Reaction output omitted a reason for ${name}`);
-      raw[name]=points;total+=points;
-    }
-    if(total!==114)throw new Error(`Reaction allocation totaled ${total}; exactly 114 required`);
-    for(const name of REACTION_NAMES){
-      out[name]={confidence:raw[name]-1,allocationPoints:raw[name],reason:String(value[name].reason).trim()};
-    }
-    return out;
-  }
-  if(component==='themes'){
-    if(!Array.isArray(value))throw new Error('Theme output was not an array');
-    const normalized=value.map(row=>({
-      theme:String(row?.theme||'').trim(),
-      confidence:normalizedConfidence(row?.confidence),
-      evidence:String(row?.evidence||'').trim(),
-      role:['primary','secondary','ambiguous'].includes(row?.role)?row.role:'ambiguous'
-    })).filter(row=>row.theme&&row.evidence);
-    const seen=new Set(),unique=[];
-    for(const row of normalized){
-      const key=row.theme.toLocaleLowerCase();
-      if(seen.has(key))continue;
-      seen.add(key);unique.push(row);
-    }
-    if(unique.length!==3)throw new Error(`Theme output contained ${unique.length} unique valid selections; exactly 3 required`);
-    return unique;
-  }
-  if(component==='description'){
-    const text=String(value||'').trim();
-    if(!text)throw new Error('Description output was empty');
-    return text;
-  }
-  if(component==='emotion'){
-    if(!value||typeof value!=='object')throw new Error('Emotion output was not an object');
-    return value;
-  }
-  if(component==='reactionReasons'){
-    if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Reaction reasons output was not an object');
-    return value;
-  }
-  if(component==='genreReasons'){
-    if(!Array.isArray(value))throw new Error('Genre reasons output was not an array');
-    return value;
-  }
-  throw new Error(`Unsupported component ${component}`);
 }
 
-function isTransientProviderError(message){
-  return /json mode couldn'?t be met|rate.?limit|temporar|timeout|timed out|overload|capacity|unavailable|internal error|try again/i.test(String(message||''));
-}
-function isRecoverableOutputError(message){
-  return /invalid json|output|omitted|confidence|description|theme|reaction allocation|whole number|114 required/i.test(String(message||''));
+async function runStructured(env, model, image, prompt, schema, maxTokens=2600, responseMode='json_schema', options={}){
+  let payload;
+  const behavior = options.behavior === 'reanalyze' ? 'reanalyze' : 'analyze';
+  const freshRerun = behavior === 'reanalyze'
+    ? ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.'
+    : '';
+  const temperature = Number.isFinite(options.temperature)
+    ? options.temperature
+    : (behavior === 'reanalyze' ? 0.35 : 0.1);
+
+  try{
+    const request = {
+      prompt:prompt + freshRerun,
+      image,
+      max_tokens:maxTokens,
+      temperature
+    };
+    if (responseMode === 'json_schema') {
+      request.response_format = {type:'json_schema',json_schema:schema};
+    } else if (responseMode === 'json_object') {
+      request.response_format = {type:'json_object'};
+    }
+
+    payload = await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error(`Provider call timed out after ${Math.round(PROVIDER_CALL_TIMEOUT_MS/1000)}s`)),PROVIDER_CALL_TIMEOUT_MS);
+      Promise.resolve(env.AI.run(model,request)).then(
+        value=>{clearTimeout(timer);resolve(value)},
+        error=>{clearTimeout(timer);reject(error)}
+      );
+    });
+  }catch(error){
+    throw diagnosticError(
+      `Workers AI vision failed: ${error?.message||error}`,
+      {
+        phase:'provider-call',
+        errorName:error?.name || null,
+        errorMessage:String(error?.message || error).slice(0,1200)
+      }
+    );
+  }
+
+  const value = responseValue(payload);
+  if (value === '' || value == null) {
+    throw diagnosticError(
+      'Workers AI returned no analysis response',
+      safeProviderDiagnostic(payload)
+    );
+  }
+
+  if (responseMode === 'text') {
+    if (typeof value === 'string') return value.trim();
+    if (value && typeof value === 'object') return JSON.stringify(value);
+    return String(value).trim();
+  }
+
+  return parseProviderResponse(payload);
 }
 
-async function runComponent(env,model,image,component,behavior='analyze'){
-  const schema=componentSchemas[component];
-  if(!schema)throw new Error(`No structured schema for ${component}`);
-  let lastError=null;
-  for(let attempt=1;attempt<=3;attempt++){
-    const schemaMode=attempt<3;
-    const freshRerun=behavior==='reanalyze'?' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible allocation or wording; reconsider the relative evidence while remaining faithful to what is visible.':'';
-    const correction=attempt===1?'':` Previous attempt was unusable. Follow the requested structure exactly${component==='themes'?' and return three DISTINCT theme labels':''}${component==='reactions'?' and return all 14 integer point allocations totaling exactly 114 with minimum 1 each':''}.`;
-    try{
-      const payload=await env.AI.run(model,{
-        prompt:promptFor(component)+freshRerun+correction,
-        image,
-        max_tokens:component==='reactions'?2200:component==='description'?1600:1200,
-        temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):(attempt===2&&behavior==='reanalyze'?0.1:0),
-        response_format:schemaMode?{type:'json_schema',json_schema:schema}:{type:'json_object'}
+function themeRecoverySchema(){
+  const validCodes = PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code);
+  return {
+    type:'object',
+    properties:{
+      themes:{
+        type:'array',minItems:3,maxItems:3,
+        items:{
+          type:'object',
+          properties:{
+            source:{type:'string',enum:CUSTOM_THEME_GENERATION_ENABLED?['matrix','custom']:['matrix']},
+            value:{type:'string'},
+            confidence:{type:'number',minimum:0,maximum:100},
+            rationale:{type:'string'}
+          },
+          required:['source','value','confidence','rationale'],
+          additionalProperties:false
+        }
+      }
+    },
+    required:['themes'],
+    additionalProperties:false
+  };
+}
+
+function themeStructuredRecoveryPrompt(){
+  const example = CUSTOM_THEME_GENERATION_ENABLED
+    ? `{"themes":[{"source":"matrix","value":"PFM0205","confidence":92,"rationale":"image-grounded reason"},{"source":"matrix","value":"PFM0104","confidence":81,"rationale":"image-grounded reason"},{"source":"custom","value":"Distinct Custom Theme","confidence":70,"rationale":"image-grounded reason"}]}`
+    : `{"themes":[{"source":"matrix","value":"PFM0205","confidence":92,"rationale":"image-grounded reason"},{"source":"matrix","value":"PFM0104","confidence":81,"rationale":"image-grounded reason"},{"source":"matrix","value":"PFM0608","confidence":70,"rationale":"image-grounded reason"}]}`;
+  return `${themePrompt()}
+
+STRUCTURED RECOVERY MODE:
+The normal three-line response could not be parsed. Re-evaluate the image and return exactly one JSON object with exactly three DIFFERENT selections:
+${example}
+For source "matrix", value MUST be one valid PFM code from the vocabulary above.
+${CUSTOM_THEME_GENERATION_ENABLED ? 'For source "custom", value MUST be a concise semantic Theme name that does not duplicate a matrix Theme or standalone Prim.' : 'Custom Theme output is disabled. Every source MUST be "matrix".'}
+Return exactly three unique selections and use every required field.`;
+}
+
+function parseThemeStructured(raw){
+  const themes = Array.isArray(raw?.themes) ? raw.themes : [];
+  const byCode = new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
+  const existingNames = new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>String(t.name).trim().toLowerCase()));
+  const primitiveNames = new Set(PRIMFUSION_REGISTRY.primitives.map(p=>String(p.name).trim().toLowerCase()));
+  const usedCodes = new Set();
+  const usedNames = new Set();
+  const selections = [];
+
+  for (const item of themes){
+    if (!item || typeof item !== 'object') continue;
+    const source = String(item.source||'').toLowerCase();
+    const value = String(item.value||'').trim();
+    const confidence = Number(item.confidence);
+    const rationale = String(item.rationale||'').trim();
+    if (!value || !Number.isFinite(confidence)) continue;
+
+    if (source === 'matrix') {
+      const resolved = byCode.get(value);
+      if (!resolved || usedCodes.has(value)) continue;
+      const nameKey = String(resolved.name).trim().toLowerCase();
+      if (usedNames.has(nameKey)) continue;
+      usedCodes.add(value);
+      usedNames.add(nameKey);
+      selections.push({rank:selections.length+1,source:'matrix',code:value,confidence:Math.max(0,Math.min(100,confidence)),rationale});
+    } else if (source === 'custom' && CUSTOM_THEME_GENERATION_ENABLED) {
+      const nameKey = value.toLowerCase();
+      if (existingNames.has(nameKey) || primitiveNames.has(nameKey) || usedNames.has(nameKey)) continue;
+      usedNames.add(nameKey);
+      selections.push({rank:selections.length+1,source:'custom',proposedName:value,confidence:Math.max(0,Math.min(100,confidence)),rationale});
+    }
+  }
+
+  if (selections.length !== 3) {
+    throw diagnosticError(
+      `Theme structured recovery yielded ${selections.length} unique valid selections instead of 3`,
+      {
+        phase:'theme-structured-parse',
+        responseType:Array.isArray(raw) ? 'array' : typeof raw,
+        responsePreview:JSON.stringify(raw).slice(0,1200)
+      }
+    );
+  }
+
+  return selections;
+}
+
+function parseThemeText(raw){
+  const lines = String(raw).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const byCode = new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
+  const existingNames = new Map(
+    PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[String(t.name).trim().toLowerCase(),t])
+  );
+  const primitiveNames = new Set(PRIMFUSION_REGISTRY.primitives.map(p=>String(p.name).trim().toLowerCase()));
+  const selections = [];
+  const usedCodes = new Set();
+  const usedNames = new Set();
+
+  const addSelection = selection => {
+    const canonicalName = selection.source === 'matrix'
+      ? String(byCode.get(selection.code)?.name || '').trim()
+      : String(selection.proposedName || '').trim();
+
+    if (!canonicalName) return false;
+
+    const nameKey = canonicalName.toLowerCase();
+    if (selection.source === 'matrix') {
+      if (!byCode.has(selection.code) || usedCodes.has(selection.code) || usedNames.has(nameKey)) return false;
+    } else {
+      // A custom Theme is invalid if it merely duplicates any existing matrix Theme
+      // or a Theme already selected in this result.
+      if (existingNames.has(nameKey) || primitiveNames.has(nameKey) || usedNames.has(nameKey)) return false;
+    }
+
+    if (selection.source === 'matrix') usedCodes.add(selection.code);
+    usedNames.add(nameKey);
+    selections.push(selection);
+    return true;
+  };
+
+  for (const line of lines) {
+    const cleaned = line.replace(/^\s*[-*]\s*/, '');
+    const parts = cleaned.split('|').map(x=>x.trim());
+    if (parts.length < 4) continue;
+
+    const rank = Number(parts[0].replace(/[^0-9]/g,''));
+    const source = parts[1].toLowerCase();
+    const value = parts[2];
+    const confidence = Math.max(0, Math.min(100, Number(parts[3].replace(/[^0-9.]/g,''))));
+    const rationale = parts.slice(4).join('|').trim();
+
+    if (![1,2,3].includes(rank) || !Number.isFinite(confidence)) continue;
+
+    if (source === 'matrix' && byCode.has(value)) {
+      addSelection({
+        rank,
+        source:'matrix',
+        code:value,
+        confidence,
+        rationale
       });
-      const raw=responseValue(payload);
-      if(raw==null||raw==='')throw new Error('Workers AI returned no analysis text');
-      const parsed=parse(raw);
-      if(!Object.prototype.hasOwnProperty.call(parsed,component))throw new Error(`Provider omitted ${component}`);
-      return{value:validateComponent(component,parsed[component]),attempts:attempt,mode:schemaMode?'json_schema':'json_object-fallback'};
-    }catch(error){
-      lastError=error;
-      const message=String(error?.message||error);
-      if(attempt>=3||(!isTransientProviderError(message)&&!isRecoverableOutputError(message)))break;
-      await sleep(150*Math.pow(2,attempt-1));
+    } else if (source === 'custom' && CUSTOM_THEME_GENERATION_ENABLED && value) {
+      addSelection({
+        rank,
+        source:'custom',
+        proposedName:value,
+        confidence,
+        rationale
+      });
     }
   }
-  const message=String(lastError?.message||lastError||'Unknown provider failure');
-  if(/json mode couldn'?t be met/i.test(message))throw new Error(`Vision provider could not satisfy structured ${component} output after retry`);
-  throw new Error(message);
+
+  // Fallback for Markdown/prose output. Preserve the explanatory text from
+  // the line/paragraph around each code as rationale where possible.
+  if (selections.length < 3) {
+    const rawText = String(raw);
+    const codePattern = /\b(PFM(?:0[1-9]|1[0-4])(?:0[1-9]|1[0-4]))\b/g;
+    let match;
+
+    while ((match = codePattern.exec(rawText)) && selections.length < 3) {
+      const code = match[1];
+      if (!byCode.has(code) || usedCodes.has(code)) continue;
+
+      const lineStart = rawText.lastIndexOf('\n', match.index) + 1;
+      const lineEndRaw = rawText.indexOf('\n', match.index);
+      const lineEnd = lineEndRaw === -1 ? rawText.length : lineEndRaw;
+      const line = rawText.slice(lineStart, lineEnd).trim();
+
+      const added = addSelection({
+        rank:selections.length+1,
+        source:'matrix',
+        code,
+        confidence:Math.max(60,90-(selections.length*10)),
+        rationale:line
+      });
+
+      if (!added) continue;
+    }
+  }
+
+  selections.sort((a,b)=>a.rank-b.rank);
+
+  if (selections.length !== 3) {
+    throw diagnosticError(
+      `Theme provider response yielded ${selections.length} unique valid selections instead of 3`,
+      {
+        phase:'theme-text-parse',
+        responseType:'string',
+        responsePreview:String(raw).slice(0,1200)
+      }
+    );
+  }
+
+  // Normalize ranks after duplicate filtering/fallback.
+  return selections.slice(0,3).map((item,index)=>({...item,rank:index+1}));
+}
+
+function resolveThemes(rawThemes){
+  const byCode = new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
+  return rawThemes.map((item,index)=>{
+    if (item.source === 'matrix'){
+      const resolved = byCode.get(item.code);
+      if (!resolved) throw new Error(`Unknown matrix Theme code ${item.code}`);
+      return {
+        rank:index+1,
+        source:'matrix',
+        code:item.code,
+        name:resolved.name,
+        confidence:item.confidence,
+        rationale:String(item.rationale||'').trim(),
+        matrixVersion:matrixVersion()
+      };
+    }
+    return {
+      rank:index+1,
+      source:'custom',
+      proposedName:String(item.proposedName||'').trim(),
+      confidence:item.confidence,
+      rationale:String(item.rationale||'').trim(),
+      matrixVersion:matrixVersion()
+    };
+  });
 }
 
 async function analyze(env,body){
-  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
-  const requested=[...new Set((body.components||[]).filter(x=>COMPONENT_IDS.includes(x)))];
-  if(!body.imageId||!requested.length)throw new Error('imageId and components are required');
-  const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl);
-  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
-  const components={},diagnostics={};
-  for(const component of requested){
-    try{
-      const behavior=body.componentBehaviors?.[component]==='reanalyze'?'reanalyze':'analyze';
-      const result=await runComponent(env,model,image,component,behavior);
-      components[component]=result.value;
-      diagnostics[component]={attempts:result.attempts,mode:result.mode,behavior};
-      if(component==='reactions')Object.assign(diagnostics[component],{scoringMethod:'114-point-min1-minus1',rawAllocationTotal:114,derivedPercentageTotal:100});
-    }catch(error){
-      throw new Error(`${component}: ${String(error?.message||error)}`);
-    }
+  if (!env.AI?.run) throw new Error('Workers AI binding AI is not configured');
+
+  const requested = [...new Set((body.components||[]).filter(x=>COMPONENT_IDS.includes(x)))];
+  if (!body.imageId || !requested.length) throw new Error('imageId and components are required');
+
+  const image = body.imageDataUrl
+    ? dataUrlBytes(body.imageDataUrl)
+    : await fetchBytes(body.imageUrl);
+
+  const model = env.WORKERS_AI_VISION_MODEL || DEFAULT_MODEL;
+  const components = {};
+  const promptVersions = {};
+  let customThemeTriggered = false;
+
+  const behaviorFor = names => names.some(name=>requested.includes(name) && body.componentBehaviors?.[name] === 'reanalyze') ? 'reanalyze' : 'analyze';
+
+  // Reaction and Theme families are intentionally analyzed independently.
+  // Info outputs share the exact same underlying assessment as their paired classification
+  // when both are requested, so research reasoning cannot drift away from the result it explains.
+  if (requested.includes('reactions') || requested.includes('reactionReasons')){
+    const behavior = behaviorFor(['reactions','reactionReasons']);
+    const reactionResult = await runReactionAllocation(env,model,image,behavior);
+    components.reactionDiagnostics = reactionResult.diagnostics;
+    if (requested.includes('reactions')) components.reactions = reactionResult.display;
+    if (requested.includes('reactionReasons')) components.reactionReasons = {
+      rawAiWeights:reactionResult.diagnostics.rawAiWeights,
+      ranking:reactionResult.diagnostics.aiRanking,
+      notes:reactionResult.diagnostics.effortNotes,
+      reactionCombo:reactionResult.diagnostics.reactionCombo,
+      singleDominant:reactionResult.diagnostics.singleDominant
+    };
+    promptVersions.reactions = 'genreactrix-reactions-registry-v5-relative-worker-apportionment';
+    if (requested.includes('reactionReasons')) promptVersions.reactionReasons = 'genreactrix-reaction-info-v1-shared-assessment';
   }
-  return{
-    schemaVersion:1,
+
+  if (requested.includes('themes') || requested.includes('genreReasons')){
+    const behavior = behaviorFor(['themes','genreReasons']);
+    const rawThemes = await runStructured(env,model,image,themePrompt(),themeSchema(),2200,'text',{behavior});
+    let parsedThemes;
+    let firstError = null;
+    let retryRaw = null;
+    try{
+      parsedThemes = parseThemeText(rawThemes);
+    }catch(error){
+      if (!/unique valid selections instead of 3/i.test(String(error?.message||''))) throw error;
+      firstError = error;
+      const recoveryPrompt = `${themePrompt()}
+
+RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid Theme selections. Re-evaluate the image independently and return exactly three DIFFERENT valid ranked matrix Theme selections. Do not repeat a Theme code or Theme name. Custom Theme output is disabled for this research phase. Return only the required three-line format.`;
+      retryRaw = await runStructured(env,model,image,recoveryPrompt,themeSchema(),2200,'text',{behavior});
+      try{
+        parsedThemes = parseThemeText(retryRaw);
+      }catch(retryError){
+        if (!/unique valid selections instead of 3/i.test(String(retryError?.message||''))) throw retryError;
+        const structured = await runStructured(
+          env,model,image,themeStructuredRecoveryPrompt(),themeRecoverySchema(),2200,'json_schema',
+          {behavior,temperature:0}
+        );
+        parsedThemes = parseThemeStructured(structured);
+        components.themeRecovery = {
+          recovered:true,mode:'structured-json-fallback',reason:String(firstError?.message||firstError||''),
+          firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
+        };
+      }
+    }
+    if (firstError && !components.themeRecovery) {
+      components.themeRecovery = {
+        recovered:true,mode:'text-retry',reason:String(firstError.message||firstError),
+        firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
+      };
+    }
+    const resolvedThemes = resolveThemes(parsedThemes);
+    if (requested.includes('themes')) components.themes = resolvedThemes;
+    if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
+      rank:item.rank,code:item.code||null,name:item.name||item.proposedName||'',confidence:item.confidence,
+      rationale:item.rationale,matrixVersion:item.matrixVersion
+    }));
+    customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
+    promptVersions.themes = 'genreactrix-themes-pfm-v5-matrix-only-research';
+    if (requested.includes('genreReasons')) promptVersions.genreReasons = 'genreactrix-theme-info-v1-shared-assessment';
+  }
+
+  if (requested.includes('description')){
+    const behavior = behaviorFor(['description']);
+    const description = await runStructured(env,model,image,descriptionPrompt(),descriptionSchema(),3200,'text',{behavior});
+    if (typeof description !== 'string' || !description.trim()) throw new Error('Description provider response did not contain description text');
+    components.description = description.trim();
+    promptVersions.description = 'genreactrix-freeform-v1';
+  }
+
+  return {
+    schemaVersion:3,
     imageId:body.imageId,
     analyzedAt:new Date().toISOString(),
-    provider:{id:'cloudflare-workers-ai',displayName:'Genreactrix Vision · Cloudflare Workers AI',model,workerVersion:API_VERSION,build:BUILD_ID},
+    provider:{id:'cloudflare-workers-ai',displayName:'Genreactrix Vision · Cloudflare Workers AI',model},
     model,
-    promptVersions:Object.fromEntries(requested.map(id=>[id,PROMPT_VERSIONS[id]||'genreactrix-v1'])),
-    components,
-    diagnostics
+    primFusionMatrixVersion:matrixVersion(),
+    promptVersions,
+    researchConfiguration:{customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED},
+    reviewDirectives:{
+      autoKeep:customThemeTriggered,
+      autoFlag:customThemeTriggered,
+      reason:customThemeTriggered ? 'custom-theme-use-or-creation' : null
+    },
+    components
   };
 }
 
-export default{
+export default {
   async fetch(request,env={}){
-    const url=new URL(request.url);
-    if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{...cors,'access-control-max-age':'86400'}});
-    if(request.method==='GET'&&url.pathname==='/api/health')return json({
-      ok:true,service:'Genreactrix AI',version:API_VERSION,build:BUILD_ID,
-      vision:env.AI?'configured':'not-configured',provider:'cloudflare-workers-ai',structuredOutput:'component-json-schema'
-    });
+    const url = new URL(request.url);
+
+    if (request.method === 'OPTIONS'){
+      return new Response(null,{
+        status:204,
+        headers:{...cors,'access-control-max-age':'86400'}
+      });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/health'){
+      return json({
+        ok:true,
+        service:'Genreactrix AI',
+        version:API_VERSION,
+        vision:env.AI?'configured':'not-configured',
+        provider:'cloudflare-workers-ai',
+        primFusionMatrixVersion:matrixVersion(),
+        primCount:PRIMFUSION_REGISTRY.primitives.length,
+        fusionCount:PRIMFUSION_REGISTRY.fusions.length,
+        themeChoiceCount:PRIMFUSION_REGISTRY.aiThemeChoices.length,
+        totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
+        components:COMPONENT_IDS,
+        customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED
+      });
+    }
+
     try{
-      if(request.method==='POST'&&url.pathname==='/api/genreactrix/analyze'){
-        if(!env.ANALYSIS_KEY)return json({ok:false,error:'Analysis access is not configured',workerVersion:API_VERSION},{status:503});
-        if(request.headers.get('x-analysis-key')!==env.ANALYSIS_KEY)return json({ok:false,error:'Unauthorized',workerVersion:API_VERSION},{status:401});
-        const body=await request.json().catch(()=>null);
-        if(!body)return json({ok:false,error:'JSON body required',workerVersion:API_VERSION},{status:400});
-        return json({ok:true,result:await analyze(env,body),workerVersion:API_VERSION});
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+
+        const body = await request.json().catch(()=>null);
+        if (!body) return json({ok:false,error:'JSON body required'},{status:400});
+
+        return json({ok:true,result:await analyze(env,body)});
       }
     }catch(error){
-      return json({ok:false,error:String(error?.message||error),workerVersion:API_VERSION,build:BUILD_ID},{status:500});
+      const body = {ok:false,error:error?.message || String(error)};
+      const diagnostic = providerDiagnosticOf(error);
+      if (diagnostic) body.providerDiagnostic = diagnostic;
+      return json(body,{status:500});
     }
-    return json({ok:false,error:'Not found',workerVersion:API_VERSION},{status:404});
+
+    return json({ok:false,error:'Not found'},{status:404});
   }
 };
+
