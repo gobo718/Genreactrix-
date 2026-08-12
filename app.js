@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.6";
+const GENREACTRIX_BUILD="v0.9.40.7";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -298,7 +298,11 @@ function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.st
 function saveLandscapeInbox(){localStorage.setItem(LANDSCAPE_INBOX_KEY,JSON.stringify(landscapeInbox));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
 function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
-function recordAlreadyPushedToInbox(record){return Array.isArray(record?.metadata?.extended?.inboxPackIds)&&record.metadata.extended.inboxPackIds.length>0;}
+function recordAlreadyPushedToInbox(record){
+  const active=Array.isArray(record?.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
+  const history=Array.isArray(record?.metadata?.extended?.inboxHistoryPackIds)?record.metadata.extended.inboxHistoryPackIds:[];
+  return active.length>0||history.length>0||Boolean(record?.metadata?.extended?.lastInboxBatchId);
+}
 function recordReadyForInbox(record){return Boolean(record)&&recordHasRequestedAi(record)&&!recordAlreadyPushedToInbox(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
 function readyRecordsForInbox(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordReadyForInbox);}
 function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyPushedToInbox(record));}
@@ -316,6 +320,48 @@ function recordMatchesFilterCategory(record,key){
 function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage!=="archived";}
 function inboxPackById(id){return landscapeInbox.find(pack=>pack.id===id)||null;}
 function inboxImageIds(){return new Set(landscapeInbox.flatMap(pack=>pack.imageIds||[]));}
+function inboxContainsImage(imageId){return inboxImageIds().has(String(imageId));}
+async function finalizeInboxBatchImages(imageIds,{batchId=null,submittedAt=null}={}){
+  const target=new Set((imageIds||[]).map(String));
+  if(!target.size)return{removedImages:0,removedPacks:0,remainingPacks:landscapeInbox.length};
+  const beforePacks=[...landscapeInbox];
+  const removedMemberships=new Map();
+  for(const pack of beforePacks){
+    for(const imageId of pack.imageIds||[]){
+      const id=String(imageId);
+      if(!target.has(id))continue;
+      if(!removedMemberships.has(id))removedMemberships.set(id,[]);
+      removedMemberships.get(id).push(pack.id);
+    }
+  }
+  landscapeInbox=beforePacks.map(pack=>({...pack,imageIds:(pack.imageIds||[]).filter(id=>!target.has(String(id)))})).filter(pack=>pack.imageIds.length>0);
+  const removedPackIds=new Set(beforePacks.filter(pack=>!landscapeInbox.some(current=>current.id===pack.id)).map(pack=>pack.id));
+  if(landscapeFilter.packId&&removedPackIds.has(landscapeFilter.packId)){landscapeFilter.packId=null;saveLandscapeFilter();}
+  saveLandscapeInbox();
+  const recordEngine=window.genreactrixImageRecordEngine;
+  const when=submittedAt||new Date().toISOString();
+  for(const imageId of target){
+    const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;
+    const activeIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
+    const priorHistory=Array.isArray(record.metadata?.extended?.inboxHistoryPackIds)?record.metadata.extended.inboxHistoryPackIds:[];
+    const removed=removedMemberships.get(imageId)||activeIds;
+    if(!removed.length)continue;
+    recordEngine.update(imageId,{metadata:{extended:{
+      inboxPackIds:activeIds.filter(id=>!removed.includes(id)),
+      inboxHistoryPackIds:[...new Set([...priorHistory,...removed])],
+      inboxBatchedAt:when,
+      lastInboxBatchId:batchId||record.metadata?.extended?.lastInboxBatchId||null
+    }}},'inbox-batch-finalized');
+  }
+  await rehydrateLandscapeFeed();
+  renderPortraitInboxControls();
+  return{removedImages:removedMemberships.size,removedPacks:removedPackIds.size,remainingPacks:landscapeInbox.length};
+}
+window.genreactrixInboxLifecycle={
+  contains:inboxContainsImage,
+  activeImageIds:()=>[...inboxImageIds()],
+  finalizeBatchImages:finalizeInboxBatchImages
+};
 function packOrderMap(){
   const order=new Map();let n=0;
   const packs=landscapeFilter.packId?[inboxPackById(landscapeFilter.packId)].filter(Boolean):landscapeInbox;
@@ -1202,14 +1248,15 @@ async function refreshPortraitControlStation(){
     const savedTotal=records.filter(r=>r?.attributes?.saved || r?.saved).length;
     const flaggedTotal=records.filter(r=>r?.attributes?.flagged || r?.flagged).length;
     const set=(id,value)=>{const el=$(id);if(el)el.textContent=String(value ?? 0)};
-    set('portraitBatchName',b.activeBatch?.name||'No active batch');
-    set('portraitBatchTotal',b.counts?.total||0);
-    set('portraitReadyBatchCount',b.counts?.ready||0);
-    set('portraitBatchRemaining',b.counts?.remaining||0);
+    const inboxWork=b.inboxWork||{total:0,ready:0,remaining:0,saved:0,flagged:0};
+    set('portraitBatchName',inboxWork.total?'Inbox work':'No Inbox work');
+    set('portraitBatchTotal',inboxWork.total||0);
+    set('portraitReadyBatchCount',inboxWork.ready||0);
+    set('portraitBatchRemaining',inboxWork.remaining||0);
     set('portraitSavedTotal',savedTotal);
     set('portraitFlaggedTotal',flaggedTotal);
-    set('portraitSavedCurrent',b.counts?.saved||0);
-    set('portraitFlaggedCurrent',b.counts?.flagged||0);
+    set('portraitSavedCurrent',inboxWork.saved||0);
+    set('portraitFlaggedCurrent',inboxWork.flagged||0);
     set('portraitBatchOutcomeKeep',b.pending?.keep||0);
     set('portraitBatchOutcomeReview',b.pending?.review||0);
     set('portraitBatchOutcomeRecycle',b.pending?.recycle||0);
@@ -1228,7 +1275,7 @@ async function refreshPortraitControlStation(){
     set('portraitQueueRunningCount',q.running||0);
     set('portraitQueuedCount',q.queued||0);
     set('portraitQueueFailedCount',(q.failed||0)+(q.blocked||0));
-    set('portraitQueueDirectorCount',q.directorRemaining ?? b.counts?.remaining ?? 0);
+    set('portraitQueueDirectorCount',q.directorRemaining ?? inboxWork.remaining ?? 0);
     set('portraitQueueReadyCount',b.pending?.total ?? q.readyToBatch ?? b.counts?.ready ?? 0);
     const sorted=[...(reports||[])].sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
     const lastAuto=sorted.find(r=>r.automatic);
