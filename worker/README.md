@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.22-registry.
+Current bundled Worker: v0.9.6.23-registry.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
