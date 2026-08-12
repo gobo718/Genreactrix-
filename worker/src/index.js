@@ -2,7 +2,7 @@
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.23-registry';
+const API_VERSION = '0.9.6.24-import-proxy';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -978,6 +978,28 @@ export default {
     }
 
     try{
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/image'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+        const body = await request.json().catch(()=>null);
+        const imageUrl = String(body?.imageUrl||'').trim();
+        if (!/^https:\/\//i.test(imageUrl) || imageUrl.length > 2000){
+          return json({ok:false,error:'imageUrl must be HTTPS'},{status:400});
+        }
+        const upstream = await fetch(imageUrl,{headers:{accept:'image/*'}});
+        if (!upstream.ok) return json({ok:false,error:`Could not retrieve image (${upstream.status})`},{status:502});
+        const contentType = String(upstream.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+        if (!contentType.startsWith('image/')) return json({ok:false,error:'URL did not return an image'},{status:415});
+        const bytes = new Uint8Array(await upstream.arrayBuffer());
+        if (!bytes.length) return json({ok:false,error:'Image was empty'},{status:422});
+        if (bytes.length > 6_000_000) return json({ok:false,error:'Image exceeds 6 MB'},{status:413});
+        return new Response(bytes,{status:200,headers:{...cors,'content-type':contentType,'cache-control':'no-store','content-length':String(bytes.length)}});
+      }
+
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
         if (!env.ANALYSIS_KEY){
           return json({ok:false,error:'Analysis access is not configured'},{status:503});
