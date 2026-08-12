@@ -7200,3 +7200,133 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   #aiWorkspace .ai-assist-actions{display:grid;grid-template-columns:1fr 1fr;white-space:normal}
   #aiWorkspace .ai-assist-actions button{width:100%;font-size:.68rem}
 }
+
+
+/* v0.9.40.12 — restore the accepted compact mid-button geometry.
+   Source geometry: v0.9.39.27 containment pass (25px controls, 54px two-row AI band).
+   Customs' four header buttons deliberately use the exact same 25px control height.
+   This final override exists because historical Landscape CSS contains several later
+   !important rules that otherwise re-expand the same controls to 28/30/34px. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-rows:25px 25px!important;
+    gap:4px!important;
+    height:54px!important;
+    min-height:54px!important;
+    max-height:54px!important;
+    margin:0!important;
+    padding:0!important;
+    align-items:stretch!important;
+    overflow:visible!important;
+    box-sizing:border-box!important;
+  }
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls>button{
+    width:100%!important;
+    min-width:0!important;
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+    margin:0!important;
+    padding:2px 5px!important;
+    border-radius:6px!important;
+    font-size:clamp(8px,.76vw,10.5px)!important;
+    line-height:1.05!important;
+    box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer .customs-tab-strip,
+  html.customs-search-focused #tabletCustomsDrawer .customs-tab-strip{
+    width:100%!important;
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;
+    margin:0!important;
+    padding:0!important;
+    align-items:stretch!important;
+    align-self:start!important;
+    box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer .customs-tab{
+    width:100%!important;
+    min-width:0!important;
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+    margin:0!important;
+    padding:2px 5px!important;
+    border-radius:6px!important;
+    font-size:clamp(8px,.76vw,10.5px)!important;
+    line-height:1.05!important;
+    box-sizing:border-box!important;
+  }
+}
+
+
+/* v0.9.40.12 — Landscape geometry restoration + no-footprint Description guidance.
+   These values are restored from earlier solved Landscape rules, not newly estimated:
+   - static Director theme area: v0.9.39.6 canonical split = 16.5% of left image/theme region;
+   - Image View Director theme buttons: v0.9.39.30 compact fields = 36px;
+   - AI control band remains v0.9.39.27 compact geometry = 25px controls / 54px band;
+   - Customs tabs remain exactly matched to those 25px AI controls.
+   The Description guidance prompt is implemented in app.js and adds no layout footprint. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  /* Restore the compact normal/static Landscape balance between image and the three Director theme fields. */
+  .landscape-image-region{
+    grid-template-rows:minmax(0,1fr) 16.5%!important;
+    gap:.45%!important;
+  }
+  .landscape-director-themes{
+    display:grid!important;
+    grid-template-rows:repeat(3,minmax(0,1fr))!important;
+    gap:1.7%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .landscape-director-themes .tablet-theme-cell{
+    height:100%!important;
+    min-height:0!important;
+    padding:.15em .45em!important;
+    line-height:1!important;
+  }
+
+  /* Restore the last compact Image View left-field geometry before the later 42px expansion. */
+  #landscapeImageView .landscape-image-view-themes{
+    grid-template-rows:repeat(3,36px)!important;
+    gap:6px!important;
+  }
+  #landscapeImageView .landscape-image-view-theme{
+    height:36px!important;
+    min-height:36px!important;
+    padding:5px 8px!important;
+    font-size:10px!important;
+    border-radius:7px!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Final authority for the already-restored middle controls. */
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls{
+    grid-template-rows:25px 25px!important;
+    height:54px!important;
+    min-height:54px!important;
+    max-height:54px!important;
+    gap:4px!important;
+  }
+  .landscape-sliding-drawer:not(.customs-active) .landscape-ai-controls>button,
+  #tabletCustomsDrawer .customs-tab{
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+    padding:2px 5px!important;
+    line-height:1.05!important;
+    box-sizing:border-box!important;
+  }
+  #tabletCustomsDrawer .customs-tab-strip,
+  html.customs-search-focused #tabletCustomsDrawer .customs-tab-strip{
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+  }
+}

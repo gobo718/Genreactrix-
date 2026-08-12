@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.10";
+const GENREACTRIX_BUILD="v0.9.40.12";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -491,7 +491,7 @@ function currentAiRun(){ return currentAiRuns().at(-1); }
 function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
 function currentAiWeights(){ return currentAiRun().weights || {}; }
 
-/* v0.9.40.10 — whole-number presentation for the 60/40 hybrid.
+/* v0.9.40.12 — whole-number presentation for the 60/40 hybrid.
    Stored hybrid evidence may contain decimal tenths from the direct-AI × .4 share.
    Largest-remainder presentation keeps the displayed vector at exactly 100 without
    changing the stored 60/40 calculation. Existing integer 100-point vectors remain unchanged. */
@@ -2344,10 +2344,20 @@ $("aiThemeFailsafeBtn")?.addEventListener("click",async()=>{
 async function createComponentAiRerun(component){
   if(tabletAiRerunLocked||aiRerunInFlight)return;
   if(!confirm(`Rerun AI ${component} for this image? The prior AI analysis will remain in history.`))return;
+  let rerunOptions={};
+  if(component==="description"){
+    const priorGuidance=$("aiReanalysisGuidance")?.value?.trim()||"";
+    const entered=window.prompt("Optional re-analysis guidance — tell the AI what it missed or got wrong. Leave blank for a normal Description rerun.",priorGuidance);
+    if(entered===null)return;
+    const guidance=String(entered||"").trim().slice(0,1200);
+    const sharedGuidance=$("aiReanalysisGuidance");
+    if(sharedGuidance)sharedGuidance.value=guidance;
+    rerunOptions={analysisGuidance:guidance};
+  }
   setDirectorStatus(`Rerunning AI ${component}…`);
   try{
-    await runCurrentAiRerun([component],component==="description"?{analysisGuidance:$("aiReanalysisGuidance")?.value?.trim()||""}:{});
-    setDirectorStatus(`AI ${component} rerun complete.`);
+    await runCurrentAiRerun([component],rerunOptions);
+    setDirectorStatus(component==="description"&&rerunOptions.analysisGuidance?"AI description rerun with Director guidance complete.":`AI ${component} rerun complete.`);
   }catch(error){
     const message=String(error?.message||error);
     console.error(`AI ${component} rerun failed`,error);

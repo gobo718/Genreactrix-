@@ -1,4 +1,4 @@
-## v0.9.40.10 — confidence-weighted Theme contribution for 60/40 AI Reactions
+## v0.9.40.12 — confidence-weighted Theme contribution for 60/40 AI Reactions
 
 - Keeps the same three-pronged AI update from v0.9.40.9.
 - Refines only the Reaction hybrid math: the Theme side still owns 60 total points, but those 60 are now divided across the three AI Themes by their relative confidence values instead of flat 20-point-per-theme weighting.
@@ -8,7 +8,7 @@
 
 # Genreactrix
 
-## v0.9.40.10 — Three-pronged AI usability update
+## v0.9.40.12 — Three-pronged AI usability update
 - Adds optional Director text guidance for a freeform image-analysis rerun.
 - Adds an explicit Theme failsafe that reruns Themes from the image with the existing AI freeform analysis as supplemental guidance. Normal Theme analysis remains image-only.
 - AI Reaction output now uses a 60/40 hybrid: the three selected PrimFusion Themes contribute six 10-point Prim slots (60 total; repeated Prims accumulate) and the current direct AI Reaction vector contributes the remaining 40 points.
