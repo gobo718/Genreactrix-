@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.5</title>
-<link href="styles.css?v=0.9.40.5" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.6</title>
+<link href="styles.css?v=0.9.40.6" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.5</span>
+<span>v0.9.40.6</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.5</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.6</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -120,6 +120,7 @@
 </div>
 <div class="portrait-batch-summary-row"><div class="portrait-batch-name" id="portraitBatchName">New Batch</div><button data-portrait-status="batch-total" type="button">Total <strong id="portraitBatchTotal">0</strong></button></div>
 <div class="portrait-batch-progress"><button data-portrait-status="batch-remaining" type="button">Remaining <strong id="portraitBatchRemaining">0</strong></button><button data-portrait-status="batch-ready" type="button">Ready <strong id="portraitReadyBatchCount">0</strong></button></div>
+<div class="portrait-batch-outcomes" aria-label="Resolved Inbox images waiting to batch by outcome"><button data-portrait-status="batch-pending" type="button">Keep <strong id="portraitBatchOutcomeKeep">0</strong></button><button data-portrait-status="batch-pending" type="button">Review <strong id="portraitBatchOutcomeReview">0</strong></button><button data-portrait-status="batch-pending" type="button">Recycle <strong id="portraitBatchOutcomeRecycle">0</strong></button><button data-portrait-status="batch-pending" type="button">Reject <strong id="portraitBatchOutcomeReject">0</strong></button><button data-portrait-status="batch-pending" type="button">No move <strong id="portraitBatchOutcomeLinked">0</strong></button></div>
 <div aria-label="Batch and queue status" class="portrait-metric-grid"><button data-portrait-status="saved-total" type="button"><span>Saved</span><strong><span id="portraitSavedTotal">0</span> <small>(+<span id="portraitSavedCurrent">0</span>)</small></strong></button><button data-portrait-status="flagged-total" type="button"><span>Flagged</span><strong><span id="portraitFlaggedTotal">0</span> <small>(+<span id="portraitFlaggedCurrent">0</span>)</small></strong></button></div>
 </section><section aria-label="AI" class="portrait-panel portrait-ai-panel" data-quick-module="ai">
 <div class="portrait-module-row">
@@ -830,6 +831,7 @@
 <div class="batch-count-grid">
 <button data-batch-filter="all" type="button">Total <strong id="batchTotal">0</strong></button>
 <button data-batch-filter="ready" type="button">Ready <strong id="batchReady">0</strong></button>
+<button data-batch-filter="rejected" type="button">Rejected <strong id="batchRejected">0</strong></button>
 <button data-batch-filter="incomplete" type="button">Incomplete <strong id="batchIncomplete">0</strong></button>
 <button data-batch-filter="partial" type="button">Partial <strong id="batchPartial">0</strong></button>
 <button data-batch-filter="flagged" type="button">Flagged <strong id="batchFlagged">0</strong></button>
@@ -837,7 +839,10 @@
 <button data-batch-filter="inaccessible" type="button">Blocked <strong id="batchInaccessible">0</strong></button>
 <button data-batch-filter="submitted" type="button">Submitted <strong id="batchSubmitted">0</strong></button>
 </div>
+<div class="batch-outcome-heading">On submit</div>
+<div class="batch-outcome-grid" aria-label="Current batch post-submit outcomes"><span>Keep <strong id="batchOutcomeKeep">0</strong></span><span>Review hold <strong id="batchOutcomeReview">0</strong></span><span>Recycle <strong id="batchOutcomeRecycle">0</strong></span><span>Reject hold <strong id="batchOutcomeReject">0</strong></span><span>No file move <strong id="batchOutcomeLinked">0</strong></span></div>
 <div class="batch-actions">
+<button id="batchStageInbox" type="button">Stage resolved Inbox</button>
 <label>Add <input id="batchAddCount" min="1" step="1" type="number" value="100"></label>
 <button id="batchAddAvailable" type="button">Add next</button>
 <button id="batchAddAll" type="button">Add all</button>
@@ -940,7 +945,7 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.5"></script>
+<script src="app.js?v=0.9.40.6"></script>
 <script src="images-console.js?v=0.9.39.85"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -955,7 +960,7 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="queue-engine.js?v=0.9.39.85"></script>
+<script src="queue-engine.js?v=0.9.40.6"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.39.85"></script>
 <script src="reports-engine.js?v=0.9.39.85"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
@@ -968,7 +973,7 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="batch-engine.js?v=0.9.14.0"></script>
+<script src="batch-engine.js?v=0.9.40.6"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-analysis-engine.js?v=0.9.39.93"></script>

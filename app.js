@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.5";
+const GENREACTRIX_BUILD="v0.9.40.6";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1197,7 +1197,7 @@ async function refreshPortraitControlStation(){
     ]);
     const queueSnapshot=window.genreactrixQueueEngine?.snapshot?.() || {summary:{}};
     const q=queueSnapshot.summary||{};
-    const b=batchSnapshot || window.genreactrixBatchEngine?.snapshotCached || {activeBatch:null,counts:{total:0,ready:0,remaining:0,saved:0,flagged:0}};
+    const b=batchSnapshot || window.genreactrixBatchEngine?.snapshotCached || {activeBatch:null,counts:{total:0,ready:0,remaining:0,saved:0,flagged:0},pending:{total:0,keep:0,review:0,recycle:0,reject:0,linked:0,retain:0}};
     const a=aiSnapshot || window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {ready:0,pending:0,bufferTarget:25,items:[]};
     const savedTotal=records.filter(r=>r?.attributes?.saved || r?.saved).length;
     const flaggedTotal=records.filter(r=>r?.attributes?.flagged || r?.flagged).length;
@@ -1210,6 +1210,11 @@ async function refreshPortraitControlStation(){
     set('portraitFlaggedTotal',flaggedTotal);
     set('portraitSavedCurrent',b.counts?.saved||0);
     set('portraitFlaggedCurrent',b.counts?.flagged||0);
+    set('portraitBatchOutcomeKeep',b.pending?.keep||0);
+    set('portraitBatchOutcomeReview',b.pending?.review||0);
+    set('portraitBatchOutcomeRecycle',b.pending?.recycle||0);
+    set('portraitBatchOutcomeReject',b.pending?.reject||0);
+    set('portraitBatchOutcomeLinked',(b.pending?.linked||0)+(b.pending?.retain||0));
     set('portraitAvailableCount',imageEngine.available||0);
     set('portraitTempImageCount',imageEngine.temporary||0);
     set('portraitLinkedImageCount',imageEngine.linked||0);
@@ -1224,7 +1229,7 @@ async function refreshPortraitControlStation(){
     set('portraitQueuedCount',q.queued||0);
     set('portraitQueueFailedCount',(q.failed||0)+(q.blocked||0));
     set('portraitQueueDirectorCount',q.directorRemaining ?? b.counts?.remaining ?? 0);
-    set('portraitQueueReadyCount',q.readyToBatch ?? b.counts?.ready ?? 0);
+    set('portraitQueueReadyCount',b.pending?.total ?? q.readyToBatch ?? b.counts?.ready ?? 0);
     const sorted=[...(reports||[])].sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
     const lastAuto=sorted.find(r=>r.automatic);
     const lastCustom=sorted.find(r=>!r.automatic);
@@ -2798,7 +2803,8 @@ function createImageRecordEngine(){
       parkedAt:record.timestamps?.parkedAt||null,
       rejectionFlaggedAt:record.timestamps?.rejectionFlaggedAt||null,
       rejectedAt:record.timestamps?.rejectedAt||null,
-      seenAt:record.timestamps?.seenAt||null
+      seenAt:record.timestamps?.seenAt||null,
+      batchedAt:record.timestamps?.batchedAt||null
     },
     error:record.error||""
   });
@@ -3042,9 +3048,9 @@ const QUICK_ACTIONS={
     run:p=>openImageIntakeDialog({quantity:p.quantity})
   },
   "batch.current":{
-    module:"batch",name:"Batch current work",defaultLabel:"Batch current",
-    fields:[],summarize:()=>["Target: Current import","Standard report: Automatic"],
-    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch submitted. ${result.report.counts.total} images · report generated.`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
+    module:"batch",name:"Batch resolved Inbox work",defaultLabel:"Batch current",
+    fields:[],summarize:()=>["Target: Resolved Inbox images","Review: Exact post-batch outcomes before submit"],
+    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch prepared · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · ${result.outcomes.reject} Reject · ${result.outcomes.recycle} Recycle · ${result.outcomes.keep} Keep · ${result.outcomes.review} Review`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
   },
   "ai.analyze-more":{
     module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",

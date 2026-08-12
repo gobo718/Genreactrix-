@@ -1,5 +1,18 @@
 # Genreactrix
 
+## v0.9.40.6 — Batch outcome staging and active-batch repair
+
+- Fixes the direct cause of the inert Batch control: `batch-engine.js` exported an undefined `snapshotCached` identifier, throwing during module initialization before `window.genreactrixBatchEngine` could be installed. The export now initializes from the real snapshot cache.
+- Repairs Batch startup when batch records exist but the active-batch pointer is missing; the engine now restores a usable active batch instead of leaving the dashboard at “No active batch.”
+- Bumps the Batch IndexedDB schema version so missing Batch metadata/report stores can be repaired on existing devices.
+- Resolved Inbox images now have an explicit pending-batch population. Reject Image counts as resolved batch work rather than disappearing from “To batch.” Parked, recycled, archived, already-batched, inaccessible, and incomplete records are not staged as resolved work.
+- Batch current stages the resolved Inbox population before opening submission verification. The Batch console also has a literal “Stage resolved Inbox” control.
+- Pending batch work is separated by the post-submit action: Keep, Review hold, Recycle, Reject hold, or No file move. The Portrait Batch panel shows the same disposition split.
+- Submission verification now reports those exact outcomes. Reject records are excluded from the standard report and held for the rejection workflow; they are no longer incorrectly counted as “To recycle.”
+- Submitted Reject records receive batch-submission metadata/timestamps while remaining in Reject hold, preventing the same Reject decision from appearing as perpetually unbatched.
+- Queue “To batch” now reflects all resolved Inbox work waiting for batch, including Reject decisions, rather than only ordinary Ready classifications.
+- Worker, PrimFusion Matrix vocabulary, AI prompts, and reaction/theme classification are unchanged in this site-only workflow repair.
+
 ## v0.9.40.4 — Fold 6 unfolded safe-control gutter
 
 - Fixes the unfolded router so a Fold 6 opened in the wider physical orientation enters the unfolded wrapper instead of remaining on the normal responsive index page.
