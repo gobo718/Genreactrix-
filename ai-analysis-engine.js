@@ -8,6 +8,36 @@
   ['reactionReasons','Reactions Info','aiReactionReasons'],['genreReasons','Themes Info','aiGenreReasons']
  ];
  const clone=v=>v==null?v:structuredClone(v),now=()=>new Date().toISOString(),id=p=>`${p}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`;
+ const REACTION_PRIM_IDS=Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`);
+ const reactionNumber=value=>{const n=typeof value==='number'?value:Number(value?.percentage??value?.confidence??value?.score??value?.weight??value?.value??value);return Number.isFinite(n)?Math.max(0,n):0};
+ function reactionMap(raw){const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};return Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,reactionNumber(source[pid])]));}
+ function themePrimIds(theme){const code=String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase(),m=code.match(/^PFM(\d{2})(\d{2})$/);if(!m)return[];const ids=[`P${m[1]}`,`P${m[2]}`];return ids.every(pid=>REACTION_PRIM_IDS.includes(pid))?ids:[];}
+ const themeConfidence=theme=>{const n=typeof theme?.confidence==='number'?theme.confidence:Number(theme?.confidence??theme?.percentage??theme?.score??theme?.weight??theme?.value??0);return Number.isFinite(n)&&n>0?n:0};
+ function buildHybridReactions(components){
+  const themes=Array.isArray(components?.themes)?components.themes.slice(0,3):[];
+  if(themes.length!==3)return null;
+  const parsed=themes.map(theme=>({theme,ids:themePrimIds(theme),confidence:themeConfidence(theme)}));
+  if(parsed.some(row=>row.ids.length!==2))return null;
+  const confidenceTotal=parsed.reduce((sum,row)=>sum+row.confidence,0);
+  const equalFallback=!(confidenceTotal>0);
+  const themeAllocations=parsed.map((row,index)=>({
+   code:String(row.theme?.code||row.theme?.id||row.theme?.value||''),
+   primIds:[...row.ids],
+   confidence:row.confidence,
+   themePoints:equalFallback?20:(60*row.confidence/confidenceTotal),
+   index
+  }));
+  const themePoints=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,0]));
+  for(const row of themeAllocations){const share=row.themePoints/2;for(const pid of row.primIds)themePoints[pid]+=share;}
+  const directSource=components?.directReactions||components?.reactionDiagnostics?.discretionaryAllocation||(!components?.reactionHybridDiagnostics?components?.reactions:null);
+  if(!directSource)return null;
+  const direct=reactionMap(directSource),directTotal=REACTION_PRIM_IDS.reduce((sum,pid)=>sum+direct[pid],0);
+  if(!(directTotal>0))return null;
+  const direct40=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,direct[pid]*40/directTotal]));
+  const hybrid=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,themePoints[pid]+direct40[pid]]));
+  return{hybrid,direct,themePoints,direct40,themeTotal:60,directTotal:40,total:100,confidenceTotal,equalFallback,themeAllocations,method:'theme-confidence-60-direct-40'};
+ }
+ function applyHybridReactions(components){const built=buildHybridReactions(components);if(!built)return components;if(!components.directReactions)components.directReactions=clone(built.direct);components.reactions=built.hybrid;components.reactionHybridDiagnostics={method:built.method,themePoints:built.themePoints,direct40:built.direct40,themeTotal:60,directTotal:40,total:100,confidenceTotal:built.confidenceTotal,equalFallback:built.equalFallback,themeAllocations:built.themeAllocations};return components;}
  const openDb=()=>new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(JOBS)){const s=db.createObjectStore(JOBS,{keyPath:'id'});s.createIndex('state','state');s.createIndex('createdAt','createdAt')}if(!db.objectStoreNames.contains(ITEMS)){const s=db.createObjectStore(ITEMS,{keyPath:'id'});s.createIndex('jobId','jobId');s.createIndex('state','state');s.createIndex('imageId','imageId')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
  const tx=(store,mode,fn)=>openDb().then(db=>new Promise((resolve,reject)=>{const t=db.transaction(store,mode),s=t.objectStore(store);let out;try{out=fn(s,t)}catch(e){db.close();reject(e);return}t.oncomplete=()=>{db.close();resolve(out)};t.onerror=()=>{db.close();reject(t.error)}}));
  const put=(store,value)=>tx(store,'readwrite',s=>s.put(clone(value)));
@@ -67,13 +97,15 @@
     const requested=group.map(c=>c.component);
     const componentBehaviors=Object.fromEntries(group.map(c=>[c.component,c.behavior]));
     try{
-      const payload=await window.GenreactrixCloudApi.analyzeImage({imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},...input},window.GenreactrixCloudApi.getKey());
+      const existingDescription=String(record.analysis?.ai?.components?.description||record.analysis?.ai?.description||'').trim();
+      const payload=await window.GenreactrixCloudApi.analyzeImage({imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,1200),themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',...input},window.GenreactrixCloudApi.getKey());
       const result=payload.result||payload.report||payload;
       if(!result||typeof result!=='object')throw new Error('AI provider returned no structured result');
       for(const c of group)if(!Object.prototype.hasOwnProperty.call(result.components||{},c.component))throw new Error(`AI provider omitted ${c.component}`);
 
       const returned={};
       for(const c of group){c.state='complete';returned[c.component]=result.components[c.component]}
+      if(requested.includes('reactions')&&result.components?.reactions) returned.directReactions=clone(result.components.reactions);
       if(result.components?.reactionDiagnostics) returned.reactionDiagnostics=result.components.reactionDiagnostics;
       if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
 
@@ -81,9 +113,10 @@
       const previous=record.analysis?.ai||{};
       const componentUpdates={};
       for(const c of group){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];componentUpdates[field]='current'}
-      const analysis={...previous,components:{...(previous.components||{}),...returned},provider:result.provider||previous.provider||{},model:result.model||result.provider?.model||previous.model||'',promptVersions:{...(previous.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(previous.requested||[]),...requested])],researchConfiguration:{...(previous.researchConfiguration||{}),...(result.researchConfiguration||{})},recordedAt:now(),jobId:job.id};
+      const mergedComponents=applyHybridReactions({...(previous.components||{}),...returned});
+      const analysis={...previous,components:mergedComponents,provider:result.provider||previous.provider||{},model:result.model||result.provider?.model||previous.model||'',promptVersions:{...(previous.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(previous.requested||[]),...requested])],researchConfiguration:{...(previous.researchConfiguration||{}),...(result.researchConfiguration||{})},recordedAt:now(),jobId:job.id};
       window.genreactrixImageRecordEngine.attachAI(record.id,analysis,componentUpdates);
-      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{analysis:{components:returned,provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id},componentUpdates,partial:false}});
+      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{analysis:{components:{...returned,...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id},componentUpdates,partial:false}});
     }catch(error){
       const message=`${requested.join('+')}: ${String(error.message||error)}`;errors.push(message);
       for(const c of group){c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}

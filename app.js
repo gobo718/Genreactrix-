@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.7";
+const GENREACTRIX_BUILD="v0.9.40.10";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -491,14 +491,19 @@ function currentAiRun(){ return currentAiRuns().at(-1); }
 function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
 function currentAiWeights(){ return currentAiRun().weights || {}; }
 
-/* v0.9.39.97 — percentage presentation normalization.
-   Stored AI evidence remains untouched. Any canonical reaction vector shown with
-   percent signs is converted to whole-number shares whose displayed total is 100.
-   Largest-remainder allocation preserves proportions without rounding drift. */
+/* v0.9.40.10 — whole-number presentation for the 60/40 hybrid.
+   Stored hybrid evidence may contain decimal tenths from the direct-AI × .4 share.
+   Largest-remainder presentation keeps the displayed vector at exactly 100 without
+   changing the stored 60/40 calculation. Existing integer 100-point vectors remain unchanged. */
 function displayReactionPercentages(source={}){
-  // v0.9.40.0 — Worker owns canonical shared-pool apportionment.
-  // Preserve its exact per-Prim percentages instead of re-normalizing them in the client.
-  return Object.fromEntries(PRIMITIVES.map(p=>[p.id,Math.max(0,Math.min(100,Math.round(Number(source?.[p.id])||0)))]));
+  const rows=PRIMITIVES.map((p,index)=>({id:p.id,index,value:Math.max(0,Number(source?.[p.id])||0)}));
+  const total=rows.reduce((sum,row)=>sum+row.value,0);
+  if(!(total>0))return Object.fromEntries(rows.map(row=>[row.id,0]));
+  rows.forEach(row=>{row.exact=row.value*100/total;row.whole=Math.floor(row.exact);row.fraction=row.exact-row.whole;});
+  let remaining=100-rows.reduce((sum,row)=>sum+row.whole,0);
+  const order=[...rows].sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
+  for(let i=0;i<remaining;i++)order[i%order.length].whole++;
+  return Object.fromEntries(rows.map(row=>[row.id,row.whole]));
 }
 
 function classificationState(){
@@ -744,6 +749,8 @@ function renderThemes(){
   }
 }
 function renderImage(){
+  const guidanceInput=$("aiReanalysisGuidance");
+  if(guidanceInput){const imageId=currentKey();if(guidanceInput.dataset.imageId!==imageId){guidanceInput.value="";guidanceInput.dataset.imageId=imageId;}}
   const src=currentSource();
   if(state.feedEmpty){
     $("mainImage").removeAttribute("src");
@@ -947,6 +954,7 @@ function syncTabletAiRerunControls(){
   ["tabletAiRerunReactionsBtn","tabletAiRerunThemesBtn","tabletAiRerunDescriptionBtn"].forEach(id=>{const b=$(id);if(b){b.disabled=tabletAiRerunLocked||aiRerunInFlight;b.setAttribute("aria-busy",String(aiRerunInFlight));}});
   const full=$("rerunAiBtn");
   if(full){full.disabled=aiRerunInFlight;full.setAttribute("aria-busy",String(aiRerunInFlight));}
+  ["aiGuidedDescriptionRerunBtn","aiThemeFailsafeBtn"].forEach(id=>{const b=$(id);if(b){b.disabled=aiRerunInFlight;b.setAttribute("aria-busy",String(aiRerunInFlight));}});
 }
 
 function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
@@ -1783,7 +1791,7 @@ $("clearCurrentBtn").addEventListener("click",()=>{
 $("directorUndoBtn").addEventListener("click",undo);
 $("directorRedoBtn").addEventListener("click",redo);
 
-async function runCurrentAiRerun(components){
+async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false}={}){
   const requested=[...new Set((components||[]).filter(component=>AI_RERUN_COMPONENTS.includes(component)))];
   if(!requested.length)throw new Error("No AI rerun component was selected.");
   if(aiRerunInFlight)throw new Error("An AI rerun is already in progress.");
@@ -1793,9 +1801,10 @@ async function runCurrentAiRerun(components){
   if(!engine?.createJob||!engine?.run)throw new Error("AI Analysis Engine is unavailable.");
   if(!window.GenreactrixCloudApi?.isConfigured?.())throw new Error("AI Worker is not configured.");
   const componentConfig=Object.fromEntries(AI_RERUN_COMPONENTS.map(component=>[component,{enabled:requested.includes(component),behavior:"reanalyze"}]));
+  const guidance=String(analysisGuidance||"").trim().slice(0,1200);
   aiRerunInFlight=true;syncTabletAiRerunControls();
   try{
-    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false});
+    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis)});
     if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
     await engine.run(job.id);
     const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
@@ -1818,7 +1827,8 @@ $("rerunAiBtn").addEventListener("click",async()=>{
   const button=$("rerunAiBtn"),originalLabel=button?.textContent||"Rerun AI Analysis";
   if(button)button.textContent="Rerunning AI…";
   try{
-    await runCurrentAiRerun(AI_RERUN_COMPONENTS);
+    const guidance=$("aiReanalysisGuidance")?.value?.trim()||"";
+    await runCurrentAiRerun(AI_RERUN_COMPONENTS,{analysisGuidance:guidance});
     setDirectorStatus("AI reactions, themes, and description rerun complete.");
   }catch(error){
     const message=String(error?.message||error);
@@ -2297,12 +2307,46 @@ document.getElementById("tabletCustomsBtn")?.addEventListener("click",()=>{
   if(opening)renderLandscapeCustoms();
 });
 
+$("aiGuidedDescriptionRerunBtn")?.addEventListener("click",async()=>{
+  if(aiRerunInFlight)return;
+  const guidance=$("aiReanalysisGuidance")?.value?.trim()||"";
+  setDirectorStatus("Rerunning image analysis…");
+  try{
+    await runCurrentAiRerun(["description"],{analysisGuidance:guidance});
+    setDirectorStatus(guidance?"Image analysis rerun with Director guidance complete.":"Image analysis rerun complete.");
+  }catch(error){
+    const message=String(error?.message||error);
+    console.error("Guided image analysis rerun failed",error);
+    setDirectorStatus(`Image analysis rerun failed: ${message}`);
+    alert(`Image analysis rerun failed: ${message}`);
+  }
+});
+
+$("aiThemeFailsafeBtn")?.addEventListener("click",async()=>{
+  if(aiRerunInFlight)return;
+  const description=String(currentAiRun()?.description||"").trim();
+  if(!description){
+    const message="No existing AI analysis is available to guide the Theme failsafe.";
+    setDirectorStatus(message);alert(message);return;
+  }
+  setDirectorStatus("Rerunning Themes with image + AI analysis…");
+  try{
+    await runCurrentAiRerun(["themes"],{themeUseAnalysis:true});
+    setDirectorStatus("Theme failsafe rerun complete.");
+  }catch(error){
+    const message=String(error?.message||error);
+    console.error("Theme failsafe rerun failed",error);
+    setDirectorStatus(`Theme failsafe failed: ${message}`);
+    alert(`Theme failsafe failed: ${message}`);
+  }
+});
+
 async function createComponentAiRerun(component){
   if(tabletAiRerunLocked||aiRerunInFlight)return;
   if(!confirm(`Rerun AI ${component} for this image? The prior AI analysis will remain in history.`))return;
   setDirectorStatus(`Rerunning AI ${component}…`);
   try{
-    await runCurrentAiRerun([component]);
+    await runCurrentAiRerun([component],component==="description"?{analysisGuidance:$("aiReanalysisGuidance")?.value?.trim()||""}:{});
     setDirectorStatus(`AI ${component} rerun complete.`);
   }catch(error){
     const message=String(error?.message||error);
