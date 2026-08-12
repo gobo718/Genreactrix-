@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.22-registry
+/* Genreactrix AI Worker v0.9.6.23-registry
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.22-registry';
+const API_VERSION = '0.9.6.23-registry';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -451,7 +451,7 @@ async function runReactionAllocation(env,model,image,behavior='analyze'){
   return allocateReactionPool(assessment);
 }
 
-function themePrompt(){
+function themePrompt(analysisContext=""){
   // Deliberately expose code + semantic label only.
   // Do NOT expose the P01/P02 provenance of PFM codes to the model:
   // theme classification must remain independent of Reaction Analysis.
@@ -466,6 +466,8 @@ function themePrompt(){
   const formats = CUSTOM_THEME_GENERATION_ENABLED
     ? `1|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n2|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n3|custom|<PROPOSED_THEME_NAME>|<CONFIDENCE>|Brief image-grounded reason this Theme is needed`
     : `1|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n2|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n3|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits`;
+  const context=String(analysisContext||'').trim().slice(0,6000);
+  const failsafe=context ? `\n\nTHEME FAILSAFE CONTEXT:\nUse the existing AI freeform analysis below as additional guidance together with the image. It is a steering input for this rerun; continue judging the Themes from the image as well.\n\n${context}` : '';
 
   return `You are performing Genreactrix Theme Analysis.
 
@@ -479,7 +481,7 @@ The codes are identifiers only.
 
 A Theme is a semantic/thematic classification. Do not use a visual medium, production format, or art technique as a Theme merely because it is visible. Those observations belong in the freeform AI Description.
 
-${fallbackRule}
+${fallbackRule}${failsafe}
 
 CURRENT AI-ELIGIBLE PRIMFUSION THEMES:
 ${choices}
@@ -528,7 +530,9 @@ function themeSchema(){
   };
 }
 
-function descriptionPrompt(){
+function descriptionPrompt(directorGuidance=""){
+  const guidance=String(directorGuidance||'').trim().slice(0,1200);
+  const guidanceBlock=guidance ? `\n\nDIRECTOR RE-ANALYSIS GUIDANCE:\nThe Director is pointing out something the prior analysis may have missed or misread. Use this guidance while examining the image again and incorporate it into the analysis where relevant:\n${guidance}` : '';
   return `You are performing Genreactrix Freeform AI Description Analysis.
 
 Study the image closely and provide a robust, substantial freeform visual analysis rather than a short caption.
@@ -537,7 +541,7 @@ You may address subjects, objects, actions, setting, composition, medium or styl
 
 Do not artificially limit the analysis to predefined categories.
 Do not invent hidden identity, biography, or facts that cannot reasonably be supported by the image.
-When moving beyond direct observation into interpretation, phrase it as interpretation rather than certainty.
+When moving beyond direct observation into interpretation, phrase it as interpretation rather than certainty.${guidanceBlock}
 
 Return the freeform analysis directly as prose. Do not wrap it in JSON, Markdown code fences, or a field label.`;
 }
@@ -637,11 +641,11 @@ function themeRecoverySchema(){
   };
 }
 
-function themeStructuredRecoveryPrompt(){
+function themeStructuredRecoveryPrompt(analysisContext=""){
   const example = CUSTOM_THEME_GENERATION_ENABLED
     ? `{"themes":[{"source":"matrix","value":"PFM0205","confidence":92,"rationale":"image-grounded reason"},{"source":"matrix","value":"PFM0104","confidence":81,"rationale":"image-grounded reason"},{"source":"custom","value":"Distinct Custom Theme","confidence":70,"rationale":"image-grounded reason"}]}`
     : `{"themes":[{"source":"matrix","value":"PFM0205","confidence":92,"rationale":"image-grounded reason"},{"source":"matrix","value":"PFM0104","confidence":81,"rationale":"image-grounded reason"},{"source":"matrix","value":"PFM0608","confidence":70,"rationale":"image-grounded reason"}]}`;
-  return `${themePrompt()}
+  return `${themePrompt(analysisContext)}
 
 STRUCTURED RECOVERY MODE:
 The normal three-line response could not be parsed. Re-evaluate the image and return exactly one JSON object with exactly three DIFFERENT selections:
@@ -873,7 +877,8 @@ async function analyze(env,body){
 
   if (requested.includes('themes') || requested.includes('genreReasons')){
     const behavior = behaviorFor(['themes','genreReasons']);
-    const rawThemes = await runStructured(env,model,image,themePrompt(),themeSchema(),2200,'text',{behavior});
+    const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
+    const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
     let parsedThemes;
     let firstError = null;
     let retryRaw = null;
@@ -882,7 +887,7 @@ async function analyze(env,body){
     }catch(error){
       if (!/unique valid selections instead of 3/i.test(String(error?.message||''))) throw error;
       firstError = error;
-      const recoveryPrompt = `${themePrompt()}
+      const recoveryPrompt = `${themePrompt(themeAnalysisContext)}
 
 RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid Theme selections. Re-evaluate the image independently and return exactly three DIFFERENT valid ranked matrix Theme selections. Do not repeat a Theme code or Theme name. Custom Theme output is disabled for this research phase. Return only the required three-line format.`;
       retryRaw = await runStructured(env,model,image,recoveryPrompt,themeSchema(),2200,'text',{behavior});
@@ -891,7 +896,7 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
       }catch(retryError){
         if (!/unique valid selections instead of 3/i.test(String(retryError?.message||''))) throw retryError;
         const structured = await runStructured(
-          env,model,image,themeStructuredRecoveryPrompt(),themeRecoverySchema(),2200,'json_schema',
+          env,model,image,themeStructuredRecoveryPrompt(themeAnalysisContext),themeRecoverySchema(),2200,'json_schema',
           {behavior,temperature:0}
         );
         parsedThemes = parseThemeStructured(structured);
@@ -914,16 +919,16 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
       rationale:item.rationale,matrixVersion:item.matrixVersion
     }));
     customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
-    promptVersions.themes = 'genreactrix-themes-pfm-v5-matrix-only-research';
+    promptVersions.themes = themeAnalysisContext ? 'genreactrix-themes-pfm-v6-analysis-failsafe' : 'genreactrix-themes-pfm-v5-matrix-only-research';
     if (requested.includes('genreReasons')) promptVersions.genreReasons = 'genreactrix-theme-info-v1-shared-assessment';
   }
 
   if (requested.includes('description')){
     const behavior = behaviorFor(['description']);
-    const description = await runStructured(env,model,image,descriptionPrompt(),descriptionSchema(),3200,'text',{behavior});
+    const description = await runStructured(env,model,image,descriptionPrompt(body.directorGuidance),descriptionSchema(),3200,'text',{behavior});
     if (typeof description !== 'string' || !description.trim()) throw new Error('Description provider response did not contain description text');
     components.description = description.trim();
-    promptVersions.description = 'genreactrix-freeform-v1';
+    promptVersions.description = String(body.directorGuidance||'').trim() ? 'genreactrix-freeform-v2-director-guidance' : 'genreactrix-freeform-v1';
   }
 
   return {
