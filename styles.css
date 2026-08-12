@@ -6737,12 +6737,12 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media(max-width:620px){.queue-dialog{height:min(92dvh,92vh);max-height:min(92dvh,92vh);overflow:hidden}.queue-shell{box-sizing:border-box;height:100%;max-height:none;overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(16px,env(safe-area-inset-bottom))}.queue-shell>header{position:sticky;top:0;z-index:2;background:var(--panel);padding-bottom:6px}}
 
 
-/* v0.9.39.80 — canonical Landscape feed, Park and Filter controls. */
+/* v0.9.39.80 — canonical Landscape feed, Depot and Filter controls. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .landscape-toolbar{grid-template-columns:repeat(9,minmax(0,1fr))!important;gap:.26%!important}
   .landscape-toolbar button{font-size:min(1.12vw,2.35vh)!important;padding:0 .3em!important}
-  #tabletParkBtn{background:#29204d!important;border-color:#5e51a8!important;color:#e2ddff!important}
-  #tabletParkBtn[aria-pressed="true"]{background:#493b86!important;border-color:#9b8cff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}
+  #tabletDepotBtn{background:#29204d!important;border-color:#5e51a8!important;color:#e2ddff!important}
+  #tabletDepotBtn[aria-pressed="true"]{background:#493b86!important;border-color:#9b8cff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}
   #tabletFilterBtn{background:#123f43!important;border-color:#237c83!important;color:#d7fbff!important}
   #tabletFilterBtn[aria-pressed="true"]{background:#17656b!important;border-color:#61d5dd!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}
 }
@@ -6812,7 +6812,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
 }
 
-/* v0.9.39.85 — restore the approved Landscape workstation; only Park + Filter are added. */
+/* v0.9.39.85 — restore the approved Landscape workstation; only Depot + Filter are added. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   /* Preserve the canonical seven-button toolbar treatment, expanded only by the two requested buttons. */
   .landscape-toolbar{
@@ -6832,7 +6832,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     outline:none!important;
   }
   /* New controls look like ordinary toolbar buttons until their state is actually active. */
-  #tabletParkBtn[aria-pressed="true"]{
+  #tabletDepotBtn[aria-pressed="true"]{
     background:#493b86!important;
     border-color:#9b8cff!important;
     color:#f1edff!important;
@@ -6867,7 +6867,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
    Sort order is never treated as an active Filter state. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   #tabletSaveBtn[aria-pressed="false"],
-  #tabletParkBtn[aria-pressed="false"],
+  #tabletDepotBtn[aria-pressed="false"],
   #tabletFilterBtn[aria-pressed="false"]{
     background:var(--panel)!important;
     border:1px solid var(--line)!important;
@@ -6876,8 +6876,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     box-shadow:none!important;
   }
 
-  /* Park is blue only while the current image is actually parked. */
-  #tabletParkBtn[aria-pressed="true"]{
+  /* Depot is blue only while the current image is actually sent to Depot. */
+  #tabletDepotBtn[aria-pressed="true"]{
     background:#173f6b!important;
     border-color:#62aef8!important;
     color:#eef7ff!important;
@@ -6921,14 +6921,14 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
 
 /* v0.9.39.86 — narrow Fold-landscape correction only.
-   1) Park active state returns to the booked indigo/purple-blue identity.
+   1) Depot active state uses the booked indigo/purple-blue identity.
    2) Customs header is one exact four-slot grid, matching the AI top-row geometry.
    3) Idle stateful toolbar controls remain ordinary toolbar buttons; Filter sort order
       is not an active-filter light trigger (logic preserved from v0.9.39.85). */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
-  /* Park ON = indigo, blue leaning toward purple. Idle is inherited from the
+  /* Depot ON = indigo, blue leaning toward purple. Idle is inherited from the
      ordinary toolbar-button rule already authoritative above. */
-  #tabletParkBtn[aria-pressed="true"]{
+  #tabletDepotBtn[aria-pressed="true"]{
     background:#493b86!important;
     border-color:#9b8cff!important;
     color:#f1edff!important;
@@ -7099,7 +7099,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     background:#A6D900!important;border-color:#D8FF48!important;color:#111600!important;
     outline:2px solid #D8FF48!important;outline-offset:-2px!important;box-shadow:none!important;
   }
-  #tabletParkBtn[aria-pressed="true"]{
+  #tabletDepotBtn[aria-pressed="true"]{
     background:#493B86!important;border-color:#9B8CFF!important;color:#F1EDFF!important;
     outline:2px solid #9B8CFF!important;outline-offset:-2px!important;box-shadow:none!important;
   }
@@ -7329,4 +7329,66 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     min-height:25px!important;
     max-height:25px!important;
   }
+}
+
+/* v0.9.40.13 — temporary Portrait housekeeping.
+   Each temporary console is scaled as one unit so its proportions and hierarchy stay intact.
+   Landscape geometry is intentionally untouched. */
+@media (max-width:599px) and (orientation:portrait){
+  .images-console-dialog,
+  .ai-analysis-dialog,
+  .batch-dialog,
+  .queue-dialog{
+    width:98vw;
+    max-width:98vw;
+    max-height:96dvh;
+    overflow:hidden;
+  }
+
+  /* + Images: scale the complete console, including the tab strip, as one surface. */
+  .images-console{
+    zoom:.76;
+    width:131.58%;
+    max-height:none;
+  }
+  .images-console-body{overflow:visible}
+  .images-console-nav{
+    overflow:visible;
+    flex-wrap:nowrap;
+  }
+  .images-console-nav button{
+    flex:1 1 0;
+    min-width:0;
+    padding-inline:5px;
+    text-align:center;
+  }
+  .images-record-list{max-height:42dvh;overflow:auto;overscroll-behavior:contain}
+
+  /* AI: one uniform scale; only dynamic job history remains independently scrollable. */
+  .ai-analysis-form{
+    zoom:.70;
+    width:142.86%;
+    max-height:none;
+    overflow:visible;
+  }
+  .ai-job-list{max-height:24dvh;overflow:auto;overscroll-behavior:contain}
+
+  /* Batch: one uniform scale; a long selected-image list scrolls inside its own list only. */
+  .batch-dialog-shell{
+    zoom:.80;
+    width:125%;
+    max-height:none;
+    overflow:visible;
+  }
+  .batch-contents{max-height:34dvh;overflow:auto;overscroll-behavior:contain}
+
+  /* Queue: scale the complete console; only a long job list scrolls independently. */
+  .queue-shell{
+    zoom:.86;
+    width:116.28%;
+    height:auto;
+    max-height:none;
+    overflow:visible;
+  }
+  .queue-job-list{max-height:56dvh;overflow:auto;overscroll-behavior:contain}
 }

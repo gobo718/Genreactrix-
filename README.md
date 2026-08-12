@@ -1,3 +1,59 @@
+## v0.9.40.13 — Inbox terminal lifecycle + Portrait housekeeping
+
+Current implementation authority: 2026-08-12 Director review. This release migrates the live website away from the ambiguous legacy sideline / Ready / To batch / No Move model. Historical sections below are retained as history and may describe superseded behavior.
+
+### Current Inbox workflow
+- Images remain in **Inbox until Batch**. Before Batch they are simply being worked.
+- Exactly one workflow terminal may be selected at a time: **Yellow Flag / Review**, **Depot**, **Red Delete**, or **Hot Magenta Reject**. Selecting one clears the other three.
+- **Yellow Flag / Review** stays in Inbox and is not Batch-eligible.
+- **Depot**, **Red Delete**, and **Hot Magenta Reject** are Batch-eligible.
+- **Keep** is an independent full-resolution retention attribute. It may coexist with any terminal, including Red Delete and Hot Magenta Reject. Turning Keep off only clears Keep.
+- **Save** remains distinct from Keep: Save preserves editable working evaluation data; Keep preserves the full-resolution asset.
+
+### Flag and Depot controls
+- Landscape **Flag tap** = Yellow Flag / Review.
+- Landscape **Flag long press** opens Exclusion: **Red Delete** or **Hot Magenta Reject**.
+- **Depot** is the explicit Director-finished-for-now terminal.
+- Legacy sidelining behavior migrates to Yellow Review; Depot is a new explicit terminal rather than a blind rename.
+- Landscape geometry from v0.9.40.12 is preserved; only the requested control/state behavior was changed.
+
+### Import and storage
+- A permanent **64×64 thumbnail is created at Import**, for temporary copies and hyperlink-only imports. Batch does not create thumbnails.
+- URL intake can load URLs from text/CSV/TSV/JSON/HTML/Markdown and from DOCX/XLSX/ODS package contents.
+- Wording is now **Prefetch, then Import**. Prefetch only inspects and stops.
+- Direct remote image retrieval falls back to the authenticated Worker image proxy when browser CORS blocks the source. Bundled Worker: **v0.9.6.24-import-proxy**.
+- Keep ON commits the full-resolution asset to **Kept Images** storage and a matching lightweight **Kept Images ID** record using the same stable Image ID basename with different extensions.
+- Keep OFF + temporary copy goes to Recycle after Batch; default full-resolution purge remains 30 days. Image Record + thumbnail remain.
+- Keep OFF + hyperlink-only leaves the full-resolution source at Origin; Image Record + Origin Metadata + thumbnail remain.
+- Red Delete and Hot Magenta Reject both retain separate historical exclusion records plus the permanent thumbnail for later research.
+
+### Batch / Queue / AI
+- Batch eligibility is explicit: **Depot + Red Delete + Hot Magenta Reject**. Yellow and ordinary Working items remain in Inbox.
+- Batch no longer presents Ready, To batch, No Move, or legacy multi-batch staging controls as Director workflow choices.
+- Queue shows Queue-owned Running / Queued / Paused / Failed only. Director, To batch, and visible Blocked counts are removed. Generic blocked capability remains internal for future use.
+- **AI Output** replaces workflow AI Ready / AI Complete wording. AI remains a standalone workspace/service.
+
+### Records and manifests
+- Manifest/Records are lightweight direct records/indexes. They do not duplicate full-resolution images.
+- Ordinary records are not bundled into ZIPs for routine retrieval. ZIP remains appropriate for deliberate export/transfer/backup operations such as AI failure export.
+- Current-facing source terminology is **Origin Metadata**.
+
+### Temporary Portrait housekeeping
+- + Images, AI, Batch, and Queue dialogs are uniformly scaled in Fold portrait so their full temporary control surfaces fit without page-level scrolling; long dynamic lists retain their own local scroll area.
+- + Images keeps all eight tabs visible together.
+
+### Migration / compatibility
+- Existing legacy sidelined record state is interpreted as Yellow Review, not Depot.
+- Existing ready-for-director / ready-director / ai-complete internal record stages normalize to `inbox-working`.
+- Existing historical evaluations and Batch records are not rewritten.
+
+### Worker deployment from the project root
+- `npm run deploy` now installs the local Wrangler dev dependency automatically before deployment, then deploys using `worker/wrangler.toml`. This avoids the previous root-level `wrangler: not found` failure when dependencies had not yet been installed.
+- The Worker can still be managed directly from the `worker/` folder if preferred.
+
+### Known launch dependency
+Cross-browser/device durability for Custom Reactions, Custom Themes, and AI project configuration still requires a canonical server-side project datastore. The bundled Genreactrix Worker currently has Workers AI but no D1/KV project-data binding, so this release does **not** pretend browser-local Customs/configuration are cross-browser durable. That backend persistence pass remains required before launch. Backup/restore also remains under repair and must not be trusted to preserve full-resolution image bytes yet.
+
 ## v0.9.40.12 — confidence-weighted Theme contribution for 60/40 AI Reactions
 
 - Keeps the same three-pronged AI update from v0.9.40.9.

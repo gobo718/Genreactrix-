@@ -22,6 +22,12 @@
   getBaseUrl:()=>base,isConfigured:()=>Boolean(base),getKey:()=>storedKey(),setKey:value=>{const key=String(value||'');window.genreactrixSettingsEngine?.set?.('ai.worker.accessKey',key);if(key)localStorage.setItem(KEY_KEY,key);else localStorage.removeItem(KEY_KEY);return key;},
   reload(){base=normalize(window.genreactrixSettingsEngine?.get?.('ai.worker.base','')||localStorage.getItem(BASE_KEY)||window.GENREACTRIX_AI_WORKER_BASE||base||'');return base;},
   health:()=>request('/api/health',{method:'GET'}),verifyConnection,
+  fetchImage:async(imageUrl,key=storedKey())=>{
+    if(!base)throw new Error('AI Worker URL is not configured');
+    const response=await fetch(`${base}/api/genreactrix/image`,{method:'POST',headers:{'content-type':'application/json','x-analysis-key':String(key||'')},body:JSON.stringify({imageUrl:String(imageUrl||'')})});
+    if(!response.ok){const payload=await response.json().catch(()=>({}));throw new Error(payload.error||`Image proxy failed (${response.status})`)}
+    const blob=await response.blob();if(!blob.type?.startsWith('image/'))throw new Error('Image proxy did not return an image');return blob;
+  },
   analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)})
  });
  window.addEventListener('genreactrix:settings-ready',()=>window.GenreactrixCloudApi.reload(),{once:true});

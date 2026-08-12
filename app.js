@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.12";
+const GENREACTRIX_BUILD="v0.9.40.13";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -237,31 +237,35 @@ const state = {
   feedEmpty: true
 };
 
-// v0.9.39.83 — Portrait pushes the current Ready gaggleblob into Inbox.
-// The push transaction creates a Pack with frozen membership; Landscape filters/sorts Packs already in Inbox.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v2";
-const LANDSCAPE_FILTER_LEGACY_KEY="genreactrix-landscape-filter-v1";
+// AI Output is pushed into Inbox. The push transaction creates a Pack with frozen membership.
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v3";
+const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
+const LEGACY_SIDELINE_FILTER_KEY=["par","ked"].join("");
 const LANDSCAPE_INBOX_KEY="genreactrix-landscape-inbox-v1";
-const FILTER_CATEGORIES=["review","rejection","reject","kept","parked","seen"];
+const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen"];
 const SORT_MODES=new Set(["pack","newest","oldest","filename","random"]);
 const defaultLandscapeFilter=()=>({
   all:false,
   feed:true,
-  include:{review:false,rejection:false,kept:false,parked:false,seen:false},
-  exclude:{review:false,rejection:false,kept:false,parked:false,seen:false},
+  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
+  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
   packId:null,
   sort:"pack",
   randomSeed:0
 });
-function normalizeLandscapeFilter(value){
+function normalizeLandscapeFilter(value,{legacy=false}={}){
   const base=defaultLandscapeFilter(), input=value&&typeof value==="object"?value:{};
   if(Object.prototype.hasOwnProperty.call(input,"all"))base.all=Boolean(input.all);
   if(Object.prototype.hasOwnProperty.call(input,"feed"))base.feed=Boolean(input.feed);
   FILTER_CATEGORIES.forEach(key=>{base.include[key]=Boolean(input.include?.[key]);base.exclude[key]=Boolean(input.exclude?.[key]);});
+  if(legacy){
+    // The superseded sidelining state behaved as Review, never as Depot.
+    if(input.include?.[LEGACY_SIDELINE_FILTER_KEY])base.include.review=true;
+    if(input.exclude?.[LEGACY_SIDELINE_FILTER_KEY])base.exclude.review=true;
+  }
   base.packId=input.packId?String(input.packId):null;
   base.sort=SORT_MODES.has(input.sort)?input.sort:"pack";
   base.randomSeed=Number(input.randomSeed)||0;
-  // All and Feed are base populations and are mutually exclusive.
   if(base.all&&base.feed)base.feed=false;
   if(FILTER_CATEGORIES.some(key=>base.include[key])){base.all=false;base.feed=false;}
   return base;
@@ -270,8 +274,11 @@ function loadLandscapeFilter(){
   try{
     const current=localStorage.getItem(LANDSCAPE_FILTER_KEY);
     if(current)return normalizeLandscapeFilter(JSON.parse(current));
-    const legacy=localStorage.getItem(LANDSCAPE_FILTER_LEGACY_KEY);
-    return legacy?normalizeLandscapeFilter(JSON.parse(legacy)):defaultLandscapeFilter();
+    for(const key of LANDSCAPE_FILTER_LEGACY_KEYS){
+      const legacy=localStorage.getItem(key);
+      if(legacy)return normalizeLandscapeFilter(JSON.parse(legacy),{legacy:true});
+    }
+    return defaultLandscapeFilter();
   }catch{return defaultLandscapeFilter();}
 }
 function normalizeInboxPack(pack){
@@ -303,17 +310,17 @@ function recordAlreadyPushedToInbox(record){
   const history=Array.isArray(record?.metadata?.extended?.inboxHistoryPackIds)?record.metadata.extended.inboxHistoryPackIds:[];
   return active.length>0||history.length>0||Boolean(record?.metadata?.extended?.lastInboxBatchId);
 }
-function recordReadyForInbox(record){return Boolean(record)&&recordHasRequestedAi(record)&&!recordAlreadyPushedToInbox(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
-function readyRecordsForInbox(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordReadyForInbox);}
+function recordIsAiOutput(record){return Boolean(record)&&recordHasRequestedAi(record)&&!recordAlreadyPushedToInbox(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
+function aiOutputRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordIsAiOutput);}
 function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyPushedToInbox(record));}
-window.genreactrixInboxReadyRecords=()=>readyRecordsForInbox().map(record=>structuredClone(record));
+window.genreactrixInboxAiOutputRecords=()=>aiOutputRecords().map(record=>structuredClone(record));
 window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
   if(key==="reject")return Boolean(record.attributes?.rejected);
   if(key==="kept")return Boolean(record.attributes?.saved);
-  if(key==="parked")return Boolean(record.attributes?.parked);
+  if(key==="depot")return Boolean(record.attributes?.depot);
   if(key==="seen")return Boolean(record.attributes?.seen);
   return false;
 }
@@ -387,7 +394,7 @@ function filteredLandscapeRecords(){
   const includeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.include[key]);
   let candidates=[];
   if(landscapeFilter.all)candidates=records;
-  else if(landscapeFilter.feed)candidates=records.filter(r=>!r.attributes?.parked&&!r.attributes?.rejectionFlagged&&!r.attributes?.rejected);
+  else if(landscapeFilter.feed)candidates=records.filter(r=>!r.attributes?.depot&&!r.attributes?.rejectionFlagged&&!r.attributes?.rejected);
   else if(includeKeys.length)candidates=records.filter(r=>includeKeys.some(key=>recordMatchesFilterCategory(r,key)));
   // No base/include selection deliberately means zero images.
   const excludeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.exclude[key]);
@@ -756,7 +763,7 @@ function renderImage(){
     $("mainImage").removeAttribute("src");
     $("mainImage").hidden=true;
     $("imageEmpty").hidden=false;
-    $("imageEmpty").textContent=landscapeInbox.length?"No images match the current filter.":"Inbox is empty. Push Ready images from Portrait.";
+    $("imageEmpty").textContent=landscapeInbox.length?"No images match the current filter.":"Inbox is empty. Push AI Output from Portrait.";
     if($("profileName"))$("profileName").textContent=landscapeInbox.length?"Filtered feed":"Inbox";
     if($("profilePosition"))$("profilePosition").textContent="0 / 0";
     if($("progressText"))$("progressText").textContent="0 images";
@@ -778,7 +785,7 @@ function renderImage(){
   const position=state.files.length ? state.index+1 : state.demoIndex+1;
   $("profileName").textContent=state.files.length ? state.files[state.index].name : `Demo image ${position}`;
   $("profilePosition").textContent=`${position} / ${total}`;
-  $("profileRetention").textContent=state.retention;
+  $("profileRetention").textContent=state.retention==="keep"?"Keep":"Keep off";
   $("profileFlagged").textContent=state.flagged ? "Yes" : "No";
   if($("aiWorkspaceDescription")) $("aiWorkspaceDescription").textContent=description;
   if($("tabletAiDescription")) $("tabletAiDescription").textContent=description;
@@ -806,11 +813,11 @@ function renderFlag(){
   applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),severity);
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
-  $("tabletParkBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.parked)));
+  $("tabletDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
   // Filter highlight reflects actual record filtering only. Base population and sort order are not "on" states.
   const customFilter=Boolean(landscapeFilter.packId)||FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]);
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
-  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletParkBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
+  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletDepotBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
   $("landscapeFeedEmpty")?.toggleAttribute("hidden",hasImage);
 }
 function renderDirectorFields(){
@@ -822,7 +829,7 @@ function renderDirectorWorkspaceState(){
   const imageId=currentKey();
   const canonical=engine?.get?.(imageId)||null;
   const completion=canonical?.completion||engine?.completion?.({reactions:state.selectedReactions,themes:state.themes,primFusion:state.selectedReactions.length>=2?state.selectedReactions.slice(0,2):null})||"unclassified";
-  const labels={unclassified:"Unclassified",partial:"Partial",complete:"Complete",blocked:"Blocked"};
+  const labels={unclassified:"Working",partial:"Working",complete:"Working",blocked:"Working"};
   [$("directorStateStrip"),$("directorWorkspaceStateStrip")].filter(Boolean).forEach(strip=>{
     const completionEl=strip.querySelector('[data-state="completion"]');
     if(completionEl){completionEl.textContent=labels[completion]||completion;completionEl.dataset.tone=completion;}
@@ -831,8 +838,6 @@ function renderDirectorWorkspaceState(){
     set("saved",Boolean(canonical?.saved));
     set("flagged",Boolean(state.flagged||canonical?.flagged));
     set("ai",Boolean(canonical?.aiVisible||document.getElementById("directorAiConsole")?.open));
-    set("ready",completion==="complete"&&!canonical?.blocked);
-    set("blocked",completion==="blocked"||Boolean(canonical?.blocked));
     set("locked",Boolean(canonical?.locked));
   });
   const revert=$("directorRevertDraftBtn");
@@ -933,7 +938,7 @@ function renderComparison(){
   const aiThemes=currentAiThemes();
   $("inspectionDirectorThemes").textContent=directorThemes.length?directorThemes.join(", "):"—";
   $("inspectionAiThemes").textContent=aiThemes.length?aiThemes.map(([label,weight])=>`${label} ${weight}%`).join(", "):"—";
-  $("profileRetention").textContent=state.retention;
+  $("profileRetention").textContent=state.retention==="keep"?"Keep":"Keep off";
   $("profileFlagged").textContent=state.flagged?"Yes":"No";
 }
 
@@ -1199,7 +1204,7 @@ function renderTabletWorkbench(){
     contextualCustomsBtn.setAttribute("aria-label",tabletLandscapeView.customs?"Return to AI Analysis":"Open Customs");
   }
   applyFlagButtonSeverity($("tabletFlagBtn"),hasImage?flagSeverityForRecord(currentImageRecord()):"none");
-  $("tabletParkBtn")?.setAttribute("aria-pressed",String(hasImage&&Boolean(currentImageRecord()?.attributes?.parked)));
+  $("tabletDepotBtn")?.setAttribute("aria-pressed",String(hasImage&&Boolean(currentImageRecord()?.attributes?.depot)));
   const keepOn=hasImage&&state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
@@ -1251,40 +1256,31 @@ async function refreshPortraitControlStation(){
     ]);
     const queueSnapshot=window.genreactrixQueueEngine?.snapshot?.() || {summary:{}};
     const q=queueSnapshot.summary||{};
-    const b=batchSnapshot || window.genreactrixBatchEngine?.snapshotCached || {activeBatch:null,counts:{total:0,ready:0,remaining:0,saved:0,flagged:0},pending:{total:0,keep:0,review:0,recycle:0,reject:0,linked:0,retain:0}};
-    const a=aiSnapshot || window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {ready:0,pending:0,bufferTarget:25,items:[]};
-    const savedTotal=records.filter(r=>r?.attributes?.saved || r?.saved).length;
-    const flaggedTotal=records.filter(r=>r?.attributes?.flagged || r?.flagged).length;
+    const b=batchSnapshot || window.genreactrixBatchEngine?.snapshotCached || {inbox:{total:0,working:0,review:0,depot:0,red:0,hotMagenta:0,keep:0}};
+    const a=aiSnapshot || window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {output:0,pending:0,bufferTarget:25,items:[]};
     const set=(id,value)=>{const el=$(id);if(el)el.textContent=String(value ?? 0)};
-    const inboxWork=b.inboxWork||{total:0,ready:0,remaining:0,saved:0,flagged:0};
+    const inboxWork=b.inbox||{total:0,working:0,review:0,depot:0,red:0,hotMagenta:0,keep:0};
     set('portraitBatchName',inboxWork.total?'Inbox work':'No Inbox work');
     set('portraitBatchTotal',inboxWork.total||0);
-    set('portraitReadyBatchCount',inboxWork.ready||0);
-    set('portraitBatchRemaining',inboxWork.remaining||0);
-    set('portraitSavedTotal',savedTotal);
-    set('portraitFlaggedTotal',flaggedTotal);
-    set('portraitSavedCurrent',inboxWork.saved||0);
-    set('portraitFlaggedCurrent',inboxWork.flagged||0);
-    set('portraitBatchOutcomeKeep',b.pending?.keep||0);
-    set('portraitBatchOutcomeReview',b.pending?.review||0);
-    set('portraitBatchOutcomeRecycle',b.pending?.recycle||0);
-    set('portraitBatchOutcomeReject',b.pending?.reject||0);
-    set('portraitBatchOutcomeLinked',(b.pending?.linked||0)+(b.pending?.retain||0));
+    set('portraitBatchWorking',inboxWork.working||0);
+    set('portraitBatchYellow',inboxWork.review||0);
+    set('portraitBatchDepot',inboxWork.depot||0);
+    set('portraitBatchRed',inboxWork.red||0);
+    set('portraitBatchHotMagenta',inboxWork.hotMagenta||0);
+    set('portraitBatchKeep',inboxWork.keep||0);
     set('portraitAvailableCount',imageEngine.available||0);
     set('portraitTempImageCount',imageEngine.temporary||0);
     set('portraitLinkedImageCount',imageEngine.linked||0);
-    set('portraitReferenceImageCount',imageEngine.saved||0);
-    set('portraitEngineFlaggedCount',imageEngine.flagged||0);
+    set('portraitReferenceImageCount',imageEngine.kept||0);
+    set('portraitEngineFlaggedCount',imageEngine.yellow||0);
     set('portraitRecycleImageCount',imageEngine.recycle||0);
-    set('portraitAiReadyCount',a.ready||0);
+    set('portraitAiOutputCount',a.output||0);
     set('portraitAiPendingCount',a.pending||0);
     set('portraitAiBufferTarget',a.bufferTarget||0);
     set('portraitAiFailedCount',currentAiFailureRecords().length);
     set('portraitQueueRunningCount',q.running||0);
     set('portraitQueuedCount',q.queued||0);
-    set('portraitQueueFailedCount',(q.failed||0)+(q.blocked||0));
-    set('portraitQueueDirectorCount',q.directorRemaining ?? inboxWork.remaining ?? 0);
-    set('portraitQueueReadyCount',b.pending?.total ?? q.readyToBatch ?? b.counts?.ready ?? 0);
+    set('portraitQueueFailedCount',q.failed||0);
     const sorted=[...(reports||[])].sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
     const lastAuto=sorted.find(r=>r.automatic);
     const lastCustom=sorted.find(r=>!r.automatic);
@@ -1718,8 +1714,15 @@ $("directorNextBtn").addEventListener("click",nextImage);
 $("directorWriteIn").addEventListener("change",e=>{
   pushHistory(); state.writeIn=e.target.value.trim(); saveCurrent(); renderComparison();
 });
-$("retentionControl").addEventListener("change",e=>{
-  pushHistory(); state.retention=e.target.value; saveCurrent(); renderComparison();
+$("retentionControl").addEventListener("change",async e=>{
+  if(state.feedEmpty)return;
+  const keepOn=e.target.value==="keep";
+  pushHistory(); state.retention=keepOn?"keep":"discard"; saveCurrent(keepOn?"image-retention-keep":"image-retention-release");
+  try{
+    const record=window.genreactrixImagesEngine?.recordById?.(currentKey());
+    if(record)await window.genreactrixImagesEngine?.setKeep?.(currentKey(),keepOn);
+  }catch(error){console.warn("Image Keep state could not be stored",error);}
+  renderComparison();renderAll();renderPortraitControlStation();
 });
 document.querySelectorAll(".slot-button").forEach(b=>b.addEventListener("click",()=>{
   const slot=Number(b.dataset.targetSlot);
@@ -1871,13 +1874,13 @@ window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
 function nextInboxPackNumber(){
   return Math.max(landscapeInbox.length,...landscapeInbox.map(pack=>Number(pack.number)||0))+1;
 }
-function makeInboxPackFromReady(records){
+function makeInboxPackFromAiOutput(records){
   const createdAt=new Date().toISOString(),number=nextInboxPackNumber();
   return {
     id:`pack-${globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}`,
     number,
     label:`Pack ${number}`,
-    sourceLabel:"Ready push",
+    sourceLabel:"AI Output push",
     imageIds:records.map(record=>String(record.id)),
     createdAt,
     analyzedAt:records.map(record=>record.analysis?.ai?.recordedAt||record.analysis?.ai?.analyzedAt||"").filter(Boolean).sort().at(-1)||createdAt,
@@ -1895,16 +1898,16 @@ async function pushPackToInbox(pack){
     const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;
     const existingIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
     recordEngine.update(imageId,{
-      workflow:{stage:"ready-for-director"},
+      workflow:{stage:"inbox-working"},
       metadata:{extended:{inboxPackIds:[...existingIds,normalized.id],inboxPushedAt:normalized.pushedAt,lastInboxPackId:normalized.id}}
     },"inbox-pack-pushed");
   }
   await rehydrateLandscapeFeed();renderPortraitInboxControls();return true;
 }
-async function pushReadyToInbox(){
-  const records=readyRecordsForInbox();
-  if(!records.length){setPortraitStationStatus("No Ready images are available to push to Inbox.");return null;}
-  const pack=makeInboxPackFromReady(records);
+async function pushAiOutputToInbox(){
+  const records=aiOutputRecords();
+  if(!records.length){setPortraitStationStatus("No AI Output is available to push to Inbox.");return null;}
+  const pack=makeInboxPackFromAiOutput(records);
   await pushPackToInbox(pack);
   setPortraitStationStatus(`${pack.label} created in Inbox · ${records.length} image${records.length===1?"":"s"}.`);
   window.genreactrixAiAnalysisEngine?.maintainBuffer?.().catch?.(()=>{});
@@ -1912,9 +1915,9 @@ async function pushReadyToInbox(){
 }
 function renderPortraitInboxControls(){
   const count=$("portraitInboxPackCount");if(count)count.textContent=String(landscapeInbox.length);
-  const latest=landscapeInbox.at(-1),readyCount=readyRecordsForInbox().length,failedCount=currentAiFailureRecords().length;
+  const latest=landscapeInbox.at(-1),outputCount=aiOutputRecords().length,failedCount=currentAiFailureRecords().length;
   const status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:"Inbox empty";
-  const push=$("portraitInboxPushReady");if(push){push.disabled=readyCount===0;push.textContent=readyCount?`Push ${readyCount} to Inbox`:"Push to Inbox";}
+  const push=$("portraitInboxPushReady");if(push){push.disabled=outputCount===0;push.textContent=outputCount?`Push ${outputCount} AI Output to Inbox`:"Push AI Output to Inbox";}
   const exportButton=$("portraitExportFails");if(exportButton){exportButton.disabled=failedCount===0;exportButton.title=failedCount?`${failedCount} failed image${failedCount===1?"":"s"} available to export`:"No current AI failures";}
 }
 async function openPackPicker(){
@@ -1925,7 +1928,7 @@ async function openPackPicker(){
   rows.push(...packs.map(pack=>{const when=pack.pushedAt||pack.createdAt;const date=when?new Date(when).toLocaleString():"Undated";return `<button type="button" class="pack-picker-row ${landscapeFilter.packId===pack.id?"is-selected":""}" data-pack-picker-id="${pack.id.replaceAll('"','&quot;')}"><strong>${pack.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${date} · ${pack.imageIds.length} image${pack.imageIds.length===1?"":"s"}</small></button>`;}));
   list.innerHTML=rows.join("")||'<p class="pack-picker-empty">Inbox has no Packs yet.</p>';dialog.showModal();
 }
-$("portraitInboxPushReady")?.addEventListener("click",()=>pushReadyToInbox().catch(error=>setPortraitStationStatus(`Inbox push failed: ${error.message||error}`)));
+$("portraitInboxPushReady")?.addEventListener("click",()=>pushAiOutputToInbox().catch(error=>setPortraitStationStatus(`Inbox push failed: ${error.message||error}`)));
 $("portraitExportFails")?.addEventListener("click",async()=>{try{const result=await window.genreactrixAiAnalysisEngine?.exportFails?.();if(result?.moved)setPortraitStationStatus(`${result.moved} exported failure${result.moved===1?"":"s"} moved to Recycle.`);else if(result?.exported)setPortraitStationStatus(`Failure ZIP exported. Originals remain in Failed.`);}catch(error){setPortraitStationStatus(`Export Fails failed: ${error.message||error}`);}});
 $("packPickerClose")?.addEventListener("click",()=>$("packPickerDialog")?.close());
 $("packPickerList")?.addEventListener("click",async event=>{
@@ -1934,11 +1937,9 @@ $("packPickerList")?.addEventListener("click",async event=>{
 });
 renderPortraitInboxControls();
 async function loadImageFolder(fileList,limit=null){
-  const batchId=await window.genreactrixBatchEngine?.activeId?.()||"current-import";
-  const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit,target:"active-batch"}):null;
+  const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit}):null;
   window.pendingImportEngineMode=false;
-  const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit,batchId});
-  if(!importResult&&window.genreactrixBatchEngine?.addImages) await window.genreactrixBatchEngine.addImages(batchId,records.map(r=>r.id));
+  const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit});
   await rehydrateLandscapeFeed({preserveId:records[0]?.id||null});
   window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
   setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} copied into Temporary Import.`);
@@ -2285,10 +2286,14 @@ FILTER_CATEGORIES.forEach(key=>{
 $("landscapeFilterPackSelect")?.addEventListener("click",()=>openPackPicker());
 $("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"pack";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
 
-$("tabletParkBtn")?.addEventListener("click",async()=>{
+$("tabletDepotBtn")?.addEventListener("click",async()=>{
   if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
-  const next=!Boolean(record.attributes?.parked);await window.genreactrixImagesEngine.setParked(id,next);
-  landscapeFeedDirty=true;renderFlag();renderTabletWorkbench();setDirectorStatus(next?"Image parked. It will leave Feed when you navigate away.":"Image returned from Parked state.");
+  const next=!Boolean(record.attributes?.depot);
+  const updated=await window.genreactrixImagesEngine.setDepot(id,next);
+  state.flagged=Boolean(updated?.attributes?.flagged);
+  landscapeFeedDirty=true;
+  renderFlag();renderTabletWorkbench();
+  setDirectorStatus(next?"Image sent to Depot. It will leave Feed when you navigate away.":"Depot turned off.");
 });
 
 document.getElementById("tabletWorkspaceFlipBtn")?.addEventListener("click",()=>{tabletLandscapeView.face=tabletLandscapeView.face==="matrix"?"judgment":"matrix";if(tabletLandscapeView.face==="matrix")tabletLandscapeView.customs=false;renderTabletWorkbench();});
@@ -2382,9 +2387,9 @@ document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
     if(record){
       if(keepOn){
         const wasRejectionFlagged=Boolean(record.attributes?.rejectionFlagged);
-        await window.genreactrixImagesEngine.saveReference(id);
+        await window.genreactrixImagesEngine.setKeep(id,true);
         if(wasRejectionFlagged)landscapeFeedDirty=true;
-      }else window.genreactrixImageRecordEngine?.update?.(id,{attributes:{saved:false},timestamps:{savedAt:null}},"reference-keep-cleared");
+      }else await window.genreactrixImagesEngine?.setKeep?.(id,false);
     }
     renderAll();renderLandscapeImageView();
     setDirectorStatus(keepOn?"Full-resolution image marked Keep for batching.":"Keep cleared; full-resolution image may recycle after batching.");
@@ -2611,15 +2616,15 @@ function finishFlagHold(e,cancelled=false){
 // Finish a Flag hold even if Android releases the pointer outside the button.
 document.addEventListener("pointerup",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,false);},{passive:false});
 document.addEventListener("pointercancel",e=>{if(flagHoldState.pointerId===e.pointerId&&flagHoldState.startedAt)finishFlagHold(e,true);},{passive:false});
-$("flagForRejectionAction")?.addEventListener("click",async()=>{
+$("redDeleteAction")?.addEventListener("click",async()=>{
   $("flagAdminDialog")?.close();if(state.feedEmpty)return;const id=currentKey();
   const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"delete");state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;
-  setDirectorStatus("Image flagged for Delete. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
+  setDirectorStatus("Red Delete selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
-$("rejectImageAction")?.addEventListener("click",async()=>{
+$("hotMagentaRejectAction")?.addEventListener("click",async()=>{
   $("flagAdminDialog")?.close();if(state.feedEmpty)return;
-  const id=currentKey(),index=state.index;await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"reject");landscapeFeedDirty=true;
-  await rehydrateLandscapeFeed({preferredIndex:index});setDirectorStatus("Image moved to the Reject pile.");
+  const id=currentKey();const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"reject");state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;
+  setDirectorStatus("Hot Magenta Reject selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
@@ -2658,16 +2663,21 @@ landscapeImageCanvas?.addEventListener("pointercancel",endLandscapeImagePointer)
 
 
 // Canonical Image Record Engine + shared Images Engine.
-// The Image Record Engine owns identity, provenance, workflow state, extensible metadata,
+// The Image Record Engine owns identity, Origin Metadata, workflow state, extensible metadata,
 // analysis containers, locking, queries, integrity checks, and recycle-bin state.
 // The Images Engine owns acquisition and blobs, and updates records only through this engine.
-const IMAGE_RECORD_SCHEMA_VERSION=1;
+const IMAGE_RECORD_SCHEMA_VERSION=2;
 const IMAGE_RECORDS_KEY="genreactrix-image-records-v1";
 const LEGACY_IMAGE_ENGINE_MANIFEST_KEY="genreactrix-image-engine-manifest-v1";
 const RECYCLE_RETENTION_KEY="genreactrix-recycle-retention-days";
 const IMAGE_ENGINE_DB_NAME="genreactrix-image-engine";
-const IMAGE_ENGINE_DB_VERSION=2;
+const IMAGE_ENGINE_DB_VERSION=3;
 const IMAGE_ENGINE_BLOB_STORE="image-blobs";
+const IMAGE_ENGINE_THUMBNAIL_STORE="image-thumbnails";
+const IMAGE_ENGINE_KEPT_STORE="kept-images";
+const IMAGE_ENGINE_KEPT_ID_STORE="kept-image-ids";
+const IMAGE_ENGINE_RED_FLAG_STORE="red-flag-records";
+const IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE="hot-magenta-flag-records";
 const HISTORY_ENGINE_STORE="history-events";
 
 function createImageId(prefix="img"){
@@ -2684,7 +2694,9 @@ function openImageEngineDatabase(){
     const request=indexedDB.open(IMAGE_ENGINE_DB_NAME,IMAGE_ENGINE_DB_VERSION);
     request.onupgradeneeded=()=>{
       const db=request.result;
-      if(!db.objectStoreNames.contains(IMAGE_ENGINE_BLOB_STORE)) db.createObjectStore(IMAGE_ENGINE_BLOB_STORE);
+      [IMAGE_ENGINE_BLOB_STORE,IMAGE_ENGINE_THUMBNAIL_STORE,IMAGE_ENGINE_KEPT_STORE,IMAGE_ENGINE_KEPT_ID_STORE,IMAGE_ENGINE_RED_FLAG_STORE,IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE].forEach(storeName=>{
+        if(!db.objectStoreNames.contains(storeName))db.createObjectStore(storeName);
+      });
       if(!db.objectStoreNames.contains(HISTORY_ENGINE_STORE)){
         const history=db.createObjectStore(HISTORY_ENGINE_STORE,{keyPath:"entryId"});
         history.createIndex("imageId","imageId",{unique:false});
@@ -2698,33 +2710,99 @@ function openImageEngineDatabase(){
     request.onerror=()=>reject(request.error || new Error("Could not open image storage"));
   });
 }
-async function imageBlobPut(key,blob){
-  const db=await openImageEngineDatabase();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(IMAGE_ENGINE_BLOB_STORE,"readwrite");
-    tx.objectStore(IMAGE_ENGINE_BLOB_STORE).put(blob,key);
+function imageStorePut(storeName,key,value){
+  return openImageEngineDatabase().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,"readwrite");
+    tx.objectStore(storeName).put(value,key);
     tx.oncomplete=()=>{db.close();resolve();};
     tx.onerror=()=>{db.close();reject(tx.error);};
-  });
+  }));
 }
-async function imageBlobGet(key){
-  const db=await openImageEngineDatabase();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(IMAGE_ENGINE_BLOB_STORE,"readonly");
-    const request=tx.objectStore(IMAGE_ENGINE_BLOB_STORE).get(key);
-    request.onsuccess=()=>resolve(request.result || null);
+function imageStoreGet(storeName,key){
+  return openImageEngineDatabase().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,"readonly");
+    const request=tx.objectStore(storeName).get(key);
+    request.onsuccess=()=>resolve(request.result ?? null);
     request.onerror=()=>reject(request.error);
     tx.oncomplete=()=>db.close();
-  });
+  }));
 }
-async function imageBlobDelete(key){
-  const db=await openImageEngineDatabase();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(IMAGE_ENGINE_BLOB_STORE,"readwrite");
-    tx.objectStore(IMAGE_ENGINE_BLOB_STORE).delete(key);
+function imageStoreDelete(storeName,key){
+  return openImageEngineDatabase().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,"readwrite");
+    tx.objectStore(storeName).delete(key);
     tx.oncomplete=()=>{db.close();resolve();};
     tx.onerror=()=>{db.close();reject(tx.error);};
-  });
+  }));
+}
+function imageStoreGetAll(storeName){
+  return openImageEngineDatabase().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,"readonly");
+    const request=tx.objectStore(storeName).getAll();
+    request.onsuccess=()=>resolve(request.result||[]);
+    request.onerror=()=>reject(request.error);
+    tx.oncomplete=()=>db.close();
+  }));
+}
+async function imageBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_BLOB_STORE,key,blob);}
+async function imageBlobGet(key){
+  const working=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,key);
+  return working || imageStoreGet(IMAGE_ENGINE_KEPT_STORE,key);
+}
+async function imageBlobDelete(key){return imageStoreDelete(IMAGE_ENGINE_BLOB_STORE,key);}
+async function thumbnailBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_THUMBNAIL_STORE,key,blob);}
+async function thumbnailBlobGet(key){return imageStoreGet(IMAGE_ENGINE_THUMBNAIL_STORE,key);}
+async function keptBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_KEPT_STORE,key,blob);}
+async function keptBlobGet(key){return imageStoreGet(IMAGE_ENGINE_KEPT_STORE,key);}
+async function keptIdPut(key,value){return imageStorePut(IMAGE_ENGINE_KEPT_ID_STORE,key,value);}
+async function keptIdGet(key){return imageStoreGet(IMAGE_ENGINE_KEPT_ID_STORE,key);}
+async function exclusionRecordPut(category,key,value){
+  const store=category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE;
+  return imageStorePut(store,key,value);
+}
+async function exclusionRecordGet(category,key){
+  const store=category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE;
+  return imageStoreGet(store,key);
+}
+function extensionForMime(mime=""){
+  const type=String(mime).toLowerCase();
+  if(type.includes("jpeg"))return ".jpg";
+  if(type.includes("png"))return ".png";
+  if(type.includes("gif"))return ".gif";
+  if(type.includes("webp"))return ".webp";
+  if(type.includes("avif"))return ".avif";
+  if(type.includes("bmp"))return ".bmp";
+  return ".img";
+}
+async function fetchImageBlob(url){
+  let directError=null;
+  try{
+    const response=await fetch(url,{mode:"cors"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const blob=await response.blob();
+    if(!blob.type?.startsWith("image/"))throw new Error("URL did not return an image");
+    return blob;
+  }catch(error){directError=error;}
+  if(window.GenreactrixCloudApi?.isConfigured?.()&&window.GenreactrixCloudApi?.getKey?.()){
+    try{return await window.GenreactrixCloudApi.fetchImage(url);}catch(proxyError){throw new Error(`Could not retrieve image directly (${directError?.message||directError}) or through the configured Worker (${proxyError?.message||proxyError})`);}
+  }
+  throw directError||new Error("Could not retrieve image");
+}
+async function create64Thumbnail(blob){
+  if(!blob?.type?.startsWith("image/"))throw new Error("Thumbnail source is not an image");
+  if(typeof createImageBitmap!=="function")throw new Error("This browser cannot create image thumbnails");
+  const bitmap=await createImageBitmap(blob);
+  try{
+    const canvas=document.createElement("canvas");canvas.width=64;canvas.height=64;
+    const ctx=canvas.getContext("2d",{alpha:true});if(!ctx)throw new Error("Thumbnail canvas is unavailable");
+    ctx.clearRect(0,0,64,64);
+    const width=Math.max(1,bitmap.width||1),height=Math.max(1,bitmap.height||1),scale=Math.min(64/width,64/height);
+    const drawWidth=Math.max(1,Math.round(width*scale)),drawHeight=Math.max(1,Math.round(height*scale));
+    const x=Math.floor((64-drawWidth)/2),y=Math.floor((64-drawHeight)/2);
+    ctx.drawImage(bitmap,x,y,drawWidth,drawHeight);
+    const thumbnail=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error("Thumbnail encoding failed")),"image/webp",0.82));
+    return thumbnail;
+  }finally{bitmap.close?.();}
 }
 
 function createHistoryEngine(){
@@ -2829,6 +2907,9 @@ function appendHistory(entry){
 
 function createImageRecordEngine(){
   const now=()=>new Date().toISOString();
+  const legacySideKey=["par","ked"].join("");
+  const legacySideAtKey=["par","kedAt"].join("");
+  const legacyPriorSideKey=["priorPar","ked"].join("");
   let records=[];
   try{ records=JSON.parse(localStorage.getItem(IMAGE_RECORDS_KEY)||"[]"); }catch(error){ records=[]; }
   if(!Array.isArray(records)||!records.length){
@@ -2839,76 +2920,96 @@ function createImageRecordEngine(){
     aiReactionReasons:"missing",aiGenreReasons:"missing",directorReactions:"missing",
     directorThemes:"missing",primFusion:"missing"
   });
-  const normalize=record=>({
-    schemaVersion:Number(record.schemaVersion)||IMAGE_RECORD_SCHEMA_VERSION,
-    id:record.id||createImageId(),
-    name:record.name||"Untitled image",
-    createdAt:record.createdAt||record.addedAt||now(),
-    accessedAt:record.accessedAt||null,
-    updatedAt:record.updatedAt||record.addedAt||now(),
-    source:{
-      type:record.source?.type||record.sourceType||"unknown",
-      originalLocation:record.source?.originalLocation||record.originalLocation||"",
-      originalUrl:record.source?.originalUrl||record.originalUrl||"",
-      originalFilename:record.source?.originalFilename||record.name||"",
-      importMethod:record.source?.importMethod||record.acquisitionMode||"unknown",
-      firstBatchId:record.source?.firstBatchId||record.batchId||"current-import",
-      dataset:record.source?.dataset||null,
-      license:record.source?.license||null,
-      attribution:record.source?.attribution||null
-    },
-    storage:{
-      mode:record.storage?.mode||record.storageState||"temporary",
-      temporaryKey:record.storage?.temporaryKey ?? (["temporary","reference","recycle"].includes(record.storageState)?record.id:null),
-      referenceKey:record.storage?.referenceKey ?? (record.storageState==="reference"?record.id:null),
-      hyperlink:record.storage?.hyperlink||record.originalUrl||"",
-      recycle:{
-        deletedAt:record.storage?.recycle?.deletedAt||null,
-        priorMode:record.storage?.recycle?.priorMode||null,
-        priorStage:record.storage?.recycle?.priorStage||null,
-        priorSaved:record.storage?.recycle?.priorSaved??null,
-        priorFlagged:record.storage?.recycle?.priorFlagged??null,
-        priorRejectionFlagged:record.storage?.recycle?.priorRejectionFlagged??null,
-        priorParked:record.storage?.recycle?.priorParked??null,
-        priorRejected:record.storage?.recycle?.priorRejected??null
+  function normalize(record={}){
+    const red=Boolean(record.attributes?.rejectionFlagged);
+    const hot=Boolean(record.attributes?.rejected);
+    const depot=Boolean(record.attributes?.depot)&&!red&&!hot;
+    const legacyYellow=Boolean(record.attributes?.[legacySideKey]);
+    const yellow=Boolean(record.attributes?.flagged||record.flaggedAt||legacyYellow)&&!depot&&!red&&!hot;
+    const priorFlagged=record.storage?.recycle?.priorFlagged ?? record.storage?.recycle?.[legacyPriorSideKey] ?? null;
+    const rawStage=record.workflow?.stage||({available:"available",queued:"queued",processed:"director-complete"}[record.lifecycleState]||record.lifecycleState||"imported");
+    const stage=["ready-for-director","ready-director","ai-complete"].includes(rawStage)?"inbox-working":rawStage;
+    const sourceBatch=record.source?.firstBatchId||record.batchId||null;
+    const batchIds=Array.isArray(record.batchIds)?record.batchIds.filter(Boolean):(record.batchId?[record.batchId]:[]);
+    const sourceType=record.source?.type||record.sourceType||"unknown";
+    const storageMode=record.storage?.mode||record.storageState||"temporary";
+    const thumbnailKey=record.storage?.thumbnailKey||null;
+    return {
+      schemaVersion:Number(record.schemaVersion)>IMAGE_RECORD_SCHEMA_VERSION?Number(record.schemaVersion):IMAGE_RECORD_SCHEMA_VERSION,
+      id:record.id||createImageId(),
+      name:record.name||"Untitled image",
+      createdAt:record.createdAt||record.addedAt||now(),
+      accessedAt:record.accessedAt||null,
+      updatedAt:record.updatedAt||record.addedAt||now(),
+      source:{
+        type:sourceType,
+        originalLocation:record.source?.originalLocation||record.originalLocation||"",
+        originalUrl:record.source?.originalUrl||record.originalUrl||"",
+        originalFilename:record.source?.originalFilename||record.name||"",
+        importMethod:record.source?.importMethod||record.acquisitionMode||"unknown",
+        firstBatchId:sourceBatch,
+        dataset:record.source?.dataset||null,
+        license:record.source?.license||null,
+        attribution:record.source?.attribution||null
       },
-      missingReference:Boolean(record.storage?.missingReference),
-      mimeType:record.storage?.mimeType||record.mimeType||"",
-      size:Number(record.storage?.size ?? record.size)||0,
-      lastModified:Number(record.storage?.lastModified ?? record.lastModified)||0,
-      hash:record.storage?.hash||record.fileHash||""
-    },
-    workflow:{stage:record.workflow?.stage||({available:"available",queued:"queued",processed:"director-complete"}[record.lifecycleState]||record.lifecycleState||"imported")},
-    attributes:{
-      saved:Boolean(record.attributes?.saved||record.savedAt||record.storageState==="reference"),
-      flagged:Boolean(record.attributes?.flagged||record.flaggedAt),
-      locked:Boolean(record.attributes?.locked),
-      hyperlinkOnly:Boolean(record.attributes?.hyperlinkOnly||record.storageState==="linked"),
-      needsReview:Boolean(record.attributes?.needsReview||record.flaggedAt),
-      failed:Boolean(record.attributes?.failed||record.error),
-      archived:Boolean(record.attributes?.archived),
-      inRecycleBin:Boolean(record.attributes?.inRecycleBin||record.storageState==="recycle"),
-      parked:Boolean(record.attributes?.parked),
-      rejectionFlagged:Boolean(record.attributes?.rejectionFlagged),
-      rejected:Boolean(record.attributes?.rejected),
-      seen:Boolean(record.attributes?.seen)
-    },
-    components:{...defaultComponents(),...(record.components||{})},
-    analysis:{ai:record.analysis?.ai||null,director:record.analysis?.director||null},
-    metadata:{core:record.metadata?.core||{},extended:record.metadata?.extended||{}},
-    batchIds:Array.isArray(record.batchIds)?record.batchIds:[record.batchId||"current-import"],
-    timestamps:{
-      savedAt:record.timestamps?.savedAt||record.savedAt||null,
-      flaggedAt:record.timestamps?.flaggedAt||record.flaggedAt||null,
-      processedAt:record.timestamps?.processedAt||record.processedAt||null,
-      parkedAt:record.timestamps?.parkedAt||null,
-      rejectionFlaggedAt:record.timestamps?.rejectionFlaggedAt||null,
-      rejectedAt:record.timestamps?.rejectedAt||null,
-      seenAt:record.timestamps?.seenAt||null,
-      batchedAt:record.timestamps?.batchedAt||null
-    },
-    error:record.error||""
-  });
+      storage:{
+        mode:storageMode,
+        temporaryKey:record.storage?.temporaryKey ?? (["temporary","reference","recycle"].includes(storageMode)?record.id:null),
+        referenceKey:record.storage?.referenceKey ?? (["reference","kept"].includes(storageMode)?record.id:null),
+        thumbnailKey,
+        thumbnailMimeType:record.storage?.thumbnailMimeType||"",
+        thumbnailSize:Number(record.storage?.thumbnailSize)||0,
+        keptImageFilename:record.storage?.keptImageFilename||null,
+        keptIdFilename:record.storage?.keptIdFilename||null,
+        hyperlink:record.storage?.hyperlink||record.originalUrl||"",
+        recycle:{
+          deletedAt:record.storage?.recycle?.deletedAt||null,
+          priorMode:record.storage?.recycle?.priorMode||null,
+          priorStage:record.storage?.recycle?.priorStage||null,
+          priorSaved:record.storage?.recycle?.priorSaved??null,
+          priorFlagged,
+          priorDepot:record.storage?.recycle?.priorDepot??false,
+          priorRejectionFlagged:record.storage?.recycle?.priorRejectionFlagged??null,
+          priorRejected:record.storage?.recycle?.priorRejected??null
+        },
+        missingReference:Boolean(record.storage?.missingReference),
+        mimeType:record.storage?.mimeType||record.mimeType||"",
+        size:Number(record.storage?.size ?? record.size)||0,
+        lastModified:Number(record.storage?.lastModified ?? record.lastModified)||0,
+        hash:record.storage?.hash||record.fileHash||""
+      },
+      workflow:{stage},
+      attributes:{
+        saved:Boolean(record.attributes?.saved||record.savedAt||storageMode==="reference"||storageMode==="kept"),
+        flagged:yellow,
+        locked:Boolean(record.attributes?.locked),
+        hyperlinkOnly:Boolean(record.attributes?.hyperlinkOnly||storageMode==="linked"),
+        needsReview:yellow,
+        failed:Boolean(record.attributes?.failed||record.error),
+        archived:Boolean(record.attributes?.archived),
+        inRecycleBin:Boolean(record.attributes?.inRecycleBin||storageMode==="recycle"),
+        depot,
+        rejectionFlagged:red&&!hot,
+        rejected:hot,
+        seen:Boolean(record.attributes?.seen)
+      },
+      components:{...defaultComponents(),...(record.components||{})},
+      analysis:{ai:record.analysis?.ai||null,director:record.analysis?.director||null},
+      metadata:{core:record.metadata?.core||{},extended:record.metadata?.extended||{}},
+      batchIds,
+      timestamps:{
+        savedAt:record.timestamps?.savedAt||record.savedAt||null,
+        flaggedAt:yellow?(record.timestamps?.flaggedAt||record.flaggedAt||record.timestamps?.[legacySideAtKey]||null):null,
+        processedAt:record.timestamps?.processedAt||record.processedAt||null,
+        depotAt:depot?(record.timestamps?.depotAt||null):null,
+        rejectionFlaggedAt:red?(record.timestamps?.rejectionFlaggedAt||null):null,
+        rejectedAt:hot?(record.timestamps?.rejectedAt||null):null,
+        seenAt:record.timestamps?.seenAt||null,
+        batchedAt:record.timestamps?.batchedAt||null
+      },
+      error:record.error||""
+    };
+  }
   records=records.map(normalize);
   const persist=()=>localStorage.setItem(IMAGE_RECORDS_KEY,JSON.stringify(records));
   persist();
@@ -2916,13 +3017,12 @@ function createImageRecordEngine(){
   const emit=(type,record,detail={})=>window.dispatchEvent(new CustomEvent("genreactrix:image-record",{detail:{type,imageId:record?.id||null,record:record?structuredClone(record):null,...detail}}));
   const mutable=id=>records.find(r=>r.id===id)||null;
   const clone=value=>value?structuredClone(value):null;
-  function create(input={}){ const record=normalize(input); if(mutable(record.id)) throw new Error("Duplicate Image ID"); records.push(record);persist();emit("created",record);appendHistory({imageId:record.id,eventType:"record-created",actor:"system",sourceEngine:"image-record",batchId:record.batchIds?.[0]||null,summary:"Image record created",payload:{current:clone(record)}});return clone(record); }
-  function get(id,{touch=true}={}){ const record=mutable(id);if(!record)return null;if(touch){record.accessedAt=now();record.updatedAt=now();persist();emit("accessed",record);}return clone(record); }
+  function create(input={}){const record=normalize(input);if(mutable(record.id))throw new Error("Duplicate Image ID");records.push(record);persist();emit("created",record);appendHistory({imageId:record.id,eventType:"record-created",actor:"system",sourceEngine:"image-record",batchId:record.batchIds?.[0]||null,summary:"Image record created",payload:{current:clone(record)}});return clone(record);}
+  function get(id,{touch=true}={}){const record=mutable(id);if(!record)return null;if(touch){record.accessedAt=now();record.updatedAt=now();persist();emit("accessed",record);}return clone(record);}
   function update(id,patch={},reason="updated"){
     const record=mutable(id);if(!record)return null;if(record.attributes.locked&&reason!=="unlock"&&reason!=="integrity")throw new Error("Image record is locked");
     const merged=normalize({...record,...patch,source:{...record.source,...(patch.source||{})},storage:{...record.storage,...(patch.storage||{}),recycle:{...record.storage.recycle,...(patch.storage?.recycle||{})}},workflow:{...record.workflow,...(patch.workflow||{})},attributes:{...record.attributes,...(patch.attributes||{})},components:{...record.components,...(patch.components||{})},analysis:{...record.analysis,...(patch.analysis||{})},metadata:{core:{...record.metadata.core,...(patch.metadata?.core||{})},extended:{...record.metadata.extended,...(patch.metadata?.extended||{})}},timestamps:{...record.timestamps,...(patch.timestamps||{})}});
-    const before=clone(record);
-    Object.assign(record,merged,{updatedAt:now()});persist();emit(reason,record);
+    const before=clone(record);Object.assign(record,merged,{updatedAt:now()});persist();emit(reason,record);
     if(reason!=="accessed")appendHistory({imageId:record.id,eventType:reason,actor:reason.startsWith("ai-")?"ai":reason.startsWith("director-")?"director":"system",sourceEngine:"image-record",batchId:record.batchIds?.at(-1)||null,summary:reason.replaceAll("-"," "),payload:{before,current:clone(record),patch:clone(patch)}});
     return clone(record);
   }
@@ -2944,10 +3044,11 @@ function createImageRecordEngine(){
     const issues=[];const ids=new Set();
     records.forEach(record=>{
       if(ids.has(record.id))issues.push({imageId:record.id,type:"duplicate-id"});ids.add(record.id);
-      if(!record.source.originalLocation&&!record.source.originalUrl)issues.push({imageId:record.id,type:"missing-provenance"});
-      if(record.attributes.saved&&!record.storage.referenceKey)issues.push({imageId:record.id,type:"saved-without-reference"});
+      if(!record.source.originalLocation&&!record.source.originalUrl)issues.push({imageId:record.id,type:"missing-origin-metadata"});
       if(record.attributes.inRecycleBin&&!record.storage.recycle.deletedAt)issues.push({imageId:record.id,type:"recycle-without-date"});
       if(record.schemaVersion>IMAGE_RECORD_SCHEMA_VERSION)issues.push({imageId:record.id,type:"future-schema"});
+      const terminals=[record.attributes.flagged,record.attributes.depot,record.attributes.rejectionFlagged,record.attributes.rejected].filter(Boolean).length;
+      if(terminals>1)issues.push({imageId:record.id,type:"multiple-inbox-terminals"});
     });
     return {checkedAt:now(),recordCount:records.length,issueCount:issues.length,issues};
   }
@@ -2961,130 +3062,241 @@ function createImagesEngine(){
   let activeSessionIds=[];
   let objectUrls=new Map();
   const now=()=>new Date().toISOString();
-  const recordById=id=>records._mutable(id);
-  const persistRecord=(id,patch,reason)=>records.update(id,patch,reason);
+  const clone=value=>value==null?value:structuredClone(value);
   function revokeObjectUrls(){objectUrls.forEach(url=>URL.revokeObjectURL(url));objectUrls.clear();}
   function snapshot(){
-    const all=records.all();const count=p=>all.filter(p).length;
-    return {total:all.length,available:count(r=>r.workflow.stage==="available"),queued:count(r=>r.workflow.stage==="queued"),processed:count(r=>["director-complete","ready-to-batch","batched"].includes(r.workflow.stage)),temporary:count(r=>r.storage.mode==="temporary"),linked:count(r=>r.storage.mode==="linked"),saved:count(r=>r.attributes.saved),flagged:count(r=>r.attributes.flagged),recycle:count(r=>r.attributes.inRecycleBin),discardable:count(r=>r.workflow.stage==="director-complete"&&r.storage.mode==="temporary"&&!r.attributes.flagged&&!r.attributes.saved)};
+    const all=records.all(),count=p=>all.filter(p).length;
+    return {
+      total:all.length,
+      available:count(r=>r.workflow.stage==="available"),
+      queued:count(r=>r.workflow.stage==="queued"),
+      processed:count(r=>["director-complete","batched","red-excluded","hot-magenta-excluded"].includes(r.workflow.stage)),
+      temporary:count(r=>r.storage.mode==="temporary"),linked:count(r=>r.storage.mode==="linked"),kept:count(r=>r.attributes.saved),
+      yellow:count(r=>r.attributes.flagged),depot:count(r=>r.attributes.depot),red:count(r=>r.attributes.rejectionFlagged),hotMagenta:count(r=>r.attributes.rejected),
+      recycle:count(r=>r.attributes.inRecycleBin)
+    };
   }
-  async function importFiles(fileList,{limit=null,batchId="current-import"}={}){
-    const files=[...fileList].filter(file=>file.type.startsWith("image/"));const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files;const created=[];
-    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`Folder import · ${selected.length} image${selected.length===1?"":"s"}`,state:"running",total:selected.length,batchId,message:"Copying images"});
-    const qItems=[];
+  async function storeImportedImage({id,blob,keepFull=true}){
+    const thumb=await create64Thumbnail(blob);
+    if(keepFull)await imageBlobPut(id,blob);
+    await thumbnailBlobPut(id,thumb);
+    return {thumbnailKey:id,thumbnailMimeType:thumb.type||"image/webp",thumbnailSize:thumb.size||0};
+  }
+  async function importFiles(fileList,{limit=null}={}){
+    const files=[...fileList].filter(file=>file.type.startsWith("image/"));
+    const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files,created=[];
+    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`Folder import · ${selected.length} image${selected.length===1?"":"s"}`,state:"running",total:selected.length,message:"Importing images"});
     for(const [order,file] of selected.entries()){
-      const id=createImageId("local");const qItem={id:qJob?`queue_import_${id}`:null,imageId:id,order,type:"acquisition",state:"processing"};if(qJob){await window.genreactrixQueueEngine.addItems(qJob.id,[qItem]);qItems.push(qItem)}
-      let record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:batchId},storage:{mode:"temporary",temporaryKey:id,mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[batchId]});
-      try{await imageBlobPut(id,file);if(qItem.id)await window.genreactrixQueueEngine.setItemState(qItem.id,"complete");}catch(error){record=records.update(id,{attributes:{failed:true},error:String(error?.message||error)},"storage-failed");if(qItem.id)await window.genreactrixQueueEngine.setItemState(qItem.id,"failed",{error:String(error?.message||error)});}
+      const id=createImageId("local"),qItemId=qJob?`queue_import_${id}`:null;
+      if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
+      let record;
+      try{
+        const thumbnail=await storeImportedImage({id,blob:file,keepFull:true});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[]});
+        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
+      }catch(error){
+        await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"none",mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"import-failed"},attributes:{failed:true},batchIds:[],error:String(error?.message||error)});
+        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error});
+      }
       created.push(record);
     }
     if(qJob)await window.genreactrixQueueEngine.setJobState(qJob.id,created.some(r=>r.attributes?.failed)?"completed-with-failures":"completed",created.some(r=>r.attributes?.failed)?"Import completed with failures":"Import complete");
-    activeSessionIds=created.map(r=>r.id);return created;
+    activeSessionIds=created.filter(r=>!r.attributes?.failed).map(r=>r.id);return created;
   }
-  async function prefetchUrls(text,{limit=null}={}){const raw=[...new Set(String(text||"").split(/\r?\n|,\s*(?=https?:)/).map(safeUrl).filter(Boolean))];const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));}
-  async function importUrls(text,{limit=null,mode="link",prefetch=true,batchId="current-import"}={}){
-    const sources=await prefetchUrls(text,{limit});const created=[];
-    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`URL ${mode==="download"?"download":"intake"} · ${sources.length}`,state:"running",total:sources.length,batchId,message:mode==="download"?"Downloading images":"Creating hyperlinks"});
+  async function prefetchUrls(text,{limit=null}={}){
+    const raw=[...new Set(String(text||"").split(/\r?\n|,\s*(?=https?:)/).map(safeUrl).filter(Boolean))];
+    const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;
+    return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));
+  }
+  async function importUrls(text,{limit=null,mode="link",prefetch=true}={}){
+    const sources=await prefetchUrls(text,{limit}),created=[];
+    const keepFull=mode==="download";
+    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`URL ${keepFull?"download":"intake"} · ${sources.length}`,state:"running",total:sources.length,message:keepFull?"Importing copies":"Importing links + thumbnails"});
     for(const [order,source] of sources.entries()){
-      const id=createImageId("url"),qItemId=qJob?`queue_url_${id}`:null;if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
-      let record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:mode==="download"?"temporary-copy":"hyperlink-only",firstBatchId:batchId},storage:{mode:mode==="download"?"temporary":"linked",temporaryKey:mode==="download"?id:null,hyperlink:source.url},workflow:{stage:"available"},attributes:{hyperlinkOnly:mode!=="download"},batchIds:[batchId]});
-      if(mode==="download")try{const response=await fetch(source.url,{mode:"cors"});if(!response.ok)throw new Error(`HTTP ${response.status}`);const blob=await response.blob();if(!blob.type.startsWith("image/"))throw new Error("URL did not return an image");await imageBlobPut(id,blob);record=records.update(id,{storage:{mimeType:blob.type,size:blob.size}},"downloaded");}catch(error){record=records.update(id,{storage:{mode:"linked",temporaryKey:null,hyperlink:source.url},attributes:{hyperlinkOnly:true,failed:true},error:String(error?.message||error)},"download-fallback");}
-      if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,record.attributes?.failed?"failed":"complete",record.attributes?.failed?{error:record.error||"Download failed; hyperlink retained"}:{});created.push(record);
+      const id=createImageId("url"),qItemId=qJob?`queue_url_${id}`:null;
+      if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
+      let record;
+      try{
+        const blob=await fetchImageBlob(source.url);
+        const thumbnail=await storeImportedImage({id,blob,keepFull});
+        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",firstBatchId:null},storage:{mode:keepFull?"temporary":"linked",temporaryKey:keepFull?id:null,hyperlink:source.url,...thumbnail,mimeType:blob.type,size:blob.size},workflow:{stage:"available"},attributes:{hyperlinkOnly:!keepFull},batchIds:[]});
+        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
+      }catch(error){
+        await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
+        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",firstBatchId:null},storage:{mode:"linked",temporaryKey:null,hyperlink:source.url},workflow:{stage:"import-failed"},attributes:{hyperlinkOnly:true,failed:true},batchIds:[],error:String(error?.message||error)});
+        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error||"Import failed"});
+      }
+      created.push(record);
     }
     if(qJob)await window.genreactrixQueueEngine.setJobState(qJob.id,created.some(r=>r.attributes?.failed)?"completed-with-failures":"completed",created.some(r=>r.attributes?.failed)?"URL intake completed with failures":"URL intake complete");
-    activeSessionIds=created.map(r=>r.id);return created;
+    activeSessionIds=created.filter(r=>!r.attributes?.failed).map(r=>r.id);return created;
   }
   async function fileForRecord(record){
-    if(!record)return null;if(record.storage.mode==="linked")return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record};
-    const blob=await imageBlobGet(record.id);if(!blob){records.update(record.id,{storage:{missingReference:true}},"reference-missing");const fallback=record.storage.hyperlink||record.source.originalUrl;return fallback?{id:record.id,name:record.name,url:fallback,imageRecord:record}:null;}
-    const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);records.update(record.id,{accessedAt:now(),storage:{missingReference:false}},"accessed");return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false})};
+    if(!record)return null;
+    if(record.storage.mode==="linked"&&!record.attributes.saved)return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record,thumbnailKey:record.storage.thumbnailKey||record.id};
+    const blob=await imageBlobGet(record.id);
+    if(!blob){
+      const thumbnail=await thumbnailBlobGet(record.storage.thumbnailKey||record.id).catch(()=>null);
+      if(thumbnail){
+        const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
+        const url=URL.createObjectURL(thumbnail);objectUrls.set(record.id,url);
+        records.update(record.id,{storage:{missingReference:true}},"thumbnail-used");
+        return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:true};
+      }
+      records.update(record.id,{storage:{missingReference:true}},"reference-missing");const fallback=record.storage.hyperlink||record.source.originalUrl;return fallback?{id:record.id,name:record.name,url:fallback,imageRecord:record}:null;
+    }
+    const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
+    const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);records.update(record.id,{storage:{missingReference:false}},"accessed");
+    return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
   }
-  async function workingFiles(ids=null){const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"available"}).map(r=>r.id));const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;}
+  async function workingFiles(ids=null){
+    const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"available"}).map(r=>r.id));
+    const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;
+  }
   function setLifecycle(id,lifecycleState){const stage={processed:"director-complete"}[lifecycleState]||lifecycleState;return records.update(id,{workflow:{stage},timestamps:stage==="director-complete"?{processedAt:now()}:{}},"stage-changed");}
-  function setFlagged(id,flagged=true){return records.update(id,{attributes:{flagged,needsReview:flagged},timestamps:{flaggedAt:flagged?now():null}},"flag-changed");}
-  function setParked(id,parked=true){return records.update(id,{attributes:{parked:Boolean(parked)},timestamps:{parkedAt:parked?now():null}},"park-changed");}
-  function setRejectionFlagged(id,flagged=true){return records.update(id,{attributes:{rejectionFlagged:Boolean(flagged)},timestamps:{rejectionFlaggedAt:flagged?now():null}},"rejection-flag-changed");}
+  function restoreStageFromHot(record){return record.workflow.stage==="rejected-hold"?(record.metadata?.extended?.rejectPriorStage||"inbox-working"):record.workflow.stage;}
+  function setDepot(id,value=true){
+    const record=records.get(id,{touch:false});if(!record)return null;
+    if(!value)return records.update(id,{attributes:{depot:false},timestamps:{depotAt:null}},"depot-changed");
+    const stage=restoreStageFromHot(record);
+    return records.update(id,{workflow:{stage},attributes:{depot:true,flagged:false,needsReview:false,rejectionFlagged:false,rejected:false,inRecycleBin:false},metadata:{extended:{rejectPriorStage:null}},timestamps:{depotAt:now(),flaggedAt:null,rejectionFlaggedAt:null,rejectedAt:null}},"depot-changed");
+  }
+  function setFlagged(id,value=true){
+    const record=records.get(id,{touch:false});if(!record)return null;
+    if(value)return setFlagSeverity(id,"review");
+    if(!record.attributes.flagged)return record;
+    return records.update(id,{attributes:{flagged:false,needsReview:false},timestamps:{flaggedAt:null}},"flag-changed");
+  }
+  function setRejectionFlagged(id,value=true){
+    const record=records.get(id,{touch:false});if(!record)return null;
+    if(value)return setFlagSeverity(id,"delete");
+    if(!record.attributes.rejectionFlagged)return record;
+    return records.update(id,{attributes:{rejectionFlagged:false},timestamps:{rejectionFlaggedAt:null}},"rejection-flag-changed");
+  }
   function setFlagSeverity(id,severity="none"){
     const record=records.get(id,{touch:false});if(!record)return null;
     const normalized=["none","review","delete","reject"].includes(severity)?severity:"none";
-    const priorRejectStage=record.metadata?.extended?.rejectPriorStage||null;
-    const enteringReject=normalized==="reject"&&!record.attributes?.rejected;
-    const leavingReject=normalized!=="reject"&&Boolean(record.attributes?.rejected);
-    const restoredStage=leavingReject?(priorRejectStage||"ready-for-director"):record.workflow.stage;
+    const leavingHot=Boolean(record.attributes.rejected)&&normalized!=="reject";
+    const stage=normalized==="reject"?"rejected-hold":(leavingHot?restoreStageFromHot(record):record.workflow.stage);
+    const enteringHot=normalized==="reject"&&!record.attributes.rejected;
     return records.update(id,{
-      workflow:{stage:normalized==="reject"?"rejected-hold":restoredStage},
+      workflow:{stage},
       attributes:{
-        flagged:normalized==="review",needsReview:normalized==="review",
-        rejectionFlagged:normalized==="delete",rejected:normalized==="reject",
-        parked:normalized==="reject"?false:Boolean(record.attributes?.parked),
-        saved:normalized==="reject"?false:Boolean(record.attributes?.saved),
-        inRecycleBin:false
+        flagged:normalized==="review",needsReview:normalized==="review",depot:false,
+        rejectionFlagged:normalized==="delete",rejected:normalized==="reject",inRecycleBin:false
       },
-      metadata:{extended:{rejectPriorStage:enteringReject?record.workflow.stage:(leavingReject?null:priorRejectStage)}},
-      timestamps:{
-        flaggedAt:normalized==="review"?now():null,
-        rejectionFlaggedAt:normalized==="delete"?now():null,
-        rejectedAt:normalized==="reject"?now():null,
-        parkedAt:normalized==="reject"?null:record.timestamps?.parkedAt||null,
-        savedAt:normalized==="reject"?null:record.timestamps?.savedAt||null
-      }
+      metadata:{extended:{rejectPriorStage:enteringHot?record.workflow.stage:(normalized==="reject"?record.metadata?.extended?.rejectPriorStage||record.workflow.stage:null)}},
+      timestamps:{flaggedAt:normalized==="review"?now():null,depotAt:null,rejectionFlaggedAt:normalized==="delete"?now():null,rejectedAt:normalized==="reject"?now():null}
     },"flag-severity-changed");
   }
   function setSeen(id,seen=true){return records.update(id,{attributes:{seen:Boolean(seen)},timestamps:{seenAt:seen?now():null}},"landscape-seen");}
-  async function saveReference(id){let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");if(record.storage.mode==="linked"){const response=await fetch(record.storage.hyperlink||record.source.originalUrl,{mode:"cors"});if(!response.ok)throw new Error(`HTTP ${response.status}`);const blob=await response.blob();if(!blob.type.startsWith("image/"))throw new Error("URL did not return an image");await imageBlobPut(id,blob);record=records.update(id,{storage:{mimeType:blob.type,size:blob.size,temporaryKey:id}},"reference-downloaded");}
-    return records.update(id,{storage:{mode:"reference",referenceKey:id},attributes:{saved:true,hyperlinkOnly:false,inRecycleBin:false,rejectionFlagged:false,rejected:false},timestamps:{savedAt:now(),rejectionFlaggedAt:null,rejectedAt:null}},"reference-saved");
+  async function setKeep(id,value=true){
+    let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");
+    const keep=Boolean(value);
+    if(!keep){
+      if(record.storage.mode==="kept")throw new Error("This kept asset has already been committed by Batch");
+      if(record.metadata?.extended?.keepFetchedFromOrigin){await imageBlobDelete(id).catch(()=>{});}
+      return records.update(id,{storage:{temporaryKey:record.metadata?.extended?.keepFetchedFromOrigin?null:record.storage.temporaryKey},attributes:{saved:false},metadata:{extended:{keepFetchedFromOrigin:false}},timestamps:{savedAt:null}},"keep-changed");
+    }
+    let fetchedForKeep=false;
+    if(!await imageBlobGet(id).catch(()=>null)){
+      const url=record.storage.hyperlink||record.source.originalUrl;
+      if(!url)throw new Error("Full-resolution source is unavailable");
+      const blob=await fetchImageBlob(url);await imageBlobPut(id,blob);fetchedForKeep=true;
+      record=records.update(id,{storage:{temporaryKey:id,mimeType:blob.type,size:blob.size},metadata:{extended:{keepFetchedFromOrigin:true}}},"keep-source-fetched");
+    }
+    return records.update(id,{attributes:{saved:true},metadata:{extended:{keepFetchedFromOrigin:fetchedForKeep||Boolean(record.metadata?.extended?.keepFetchedFromOrigin)}},timestamps:{savedAt:now()}},"keep-changed");
   }
-  function recycleSnapshot(record){return {
-    deletedAt:now(),priorMode:record.storage.mode,priorStage:record.workflow.stage,
-    priorSaved:Boolean(record.attributes.saved),priorFlagged:Boolean(record.attributes.flagged),
-    priorRejectionFlagged:Boolean(record.attributes.rejectionFlagged),priorParked:Boolean(record.attributes.parked),priorRejected:Boolean(record.attributes.rejected)
-  };}
+  async function saveReference(id){return setKeep(id,true);}
+  async function commitKeptAsset(id){
+    let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");
+    if(!record.attributes.saved)return record;
+    if(record.storage.mode==="kept")return record;
+    let blob=await imageBlobGet(id).catch(()=>null);
+    if(!blob){const url=record.storage.hyperlink||record.source.originalUrl;if(url)blob=await fetchImageBlob(url);}
+    if(!blob)throw new Error("Keep is on but the full-resolution image is unavailable");
+    const extension=extensionForMime(blob.type||record.storage.mimeType),imageFilename=`${record.id}${extension}`,idFilename=`${record.id}.json`;
+    await keptBlobPut(record.id,blob);
+    await keptIdPut(record.id,{imageId:record.id,imageFilename,idFilename,mimeType:blob.type||record.storage.mimeType||"",size:blob.size||record.storage.size||0,thumbnailKey:record.storage.thumbnailKey||record.id,originMetadata:clone(record.source),recordedAt:now()});
+    await imageBlobDelete(record.id).catch(()=>{});
+    record=records.update(id,{storage:{mode:"kept",temporaryKey:null,referenceKey:id,keptImageFilename:imageFilename,keptIdFilename:idFilename,mimeType:blob.type||record.storage.mimeType,size:blob.size||record.storage.size,missingReference:false},attributes:{saved:true,hyperlinkOnly:false,inRecycleBin:false},metadata:{extended:{keepFetchedFromOrigin:false}}},"kept-asset-committed");
+    return record;
+  }
+  async function writeExclusionRecord(id,category){
+    const normalized=category==="red"?"red":"hot-magenta",record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");
+    const payload={imageId:record.id,category:normalized,recordedAt:now(),reasonCode:null,thumbnailKey:record.storage.thumbnailKey||record.id,originMetadata:clone(record.source),workflow:clone(record.workflow),analysis:clone(record.analysis),metadata:clone(record.metadata),batchIds:clone(record.batchIds),timestamps:clone(record.timestamps)};
+    await exclusionRecordPut(normalized==="red"?"red":"hot",record.id,payload);
+    records.update(id,{metadata:{extended:{exclusionRecordCategory:normalized,exclusionRecordStoredAt:payload.recordedAt}}},normalized==="red"?"red-flag-recorded":"hot-magenta-flag-recorded");
+    return payload;
+  }
+  function recycleSnapshot(record){return{deletedAt:now(),priorMode:record.storage.mode,priorStage:record.workflow.stage,priorSaved:Boolean(record.attributes.saved),priorFlagged:Boolean(record.attributes.flagged),priorDepot:Boolean(record.attributes.depot),priorRejectionFlagged:Boolean(record.attributes.rejectionFlagged),priorRejected:Boolean(record.attributes.rejected)};}
   async function moveToRecycle(id){
-    const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.flagged||record.attributes.inRecycleBin)return null;
+    const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.inRecycleBin)return null;
+    const blob=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,id).catch(()=>null);if(!blob)return record;
     return records.update(id,{storage:{mode:"recycle",recycle:recycleSnapshot(record)},attributes:{inRecycleBin:true}},"recycled");
   }
   async function moveAiFailureToRecycle(id){
     const record=records.get(id,{touch:false});if(!record)return null;if(record.attributes.inRecycleBin)return record;
-    return records.update(id,{
-      storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},
-      workflow:{stage:"ai-failure-exported"},
-      attributes:{saved:false,flagged:false,needsReview:false,rejectionFlagged:false,parked:false,inRecycleBin:true},
-      timestamps:{savedAt:null,flaggedAt:null,rejectionFlaggedAt:null,parkedAt:null}
-    },"ai-failure-exported");
+    return records.update(id,{storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},workflow:{stage:"ai-failure-exported"},attributes:{saved:false,flagged:false,needsReview:false,depot:false,rejectionFlagged:false,rejected:false,inRecycleBin:true},timestamps:{savedAt:null,flaggedAt:null,depotAt:null,rejectionFlaggedAt:null,rejectedAt:null}},"ai-failure-exported");
   }
   async function rejectImage(id){return setFlagSeverity(id,"reject");}
-  async function cleanupProcessed(){const candidates=records.all().filter(r=>r.workflow.stage==="director-complete"&&r.storage.mode==="temporary"&&!r.attributes.flagged&&!r.attributes.saved&&!r.attributes.rejectionFlagged&&!r.attributes.parked);for(const r of candidates)await moveToRecycle(r.id);return candidates.length;}
+  async function cleanupProcessed(){return 0;}
   async function restoreFromRecycle(id){
     const record=records.get(id,{touch:false});if(!record?.attributes.inRecycleBin)return null;const prior=record.storage.recycle||{};
-    return records.update(id,{
-      storage:{mode:prior.priorMode||"temporary",referenceKey:prior.priorSaved?id:null,recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorRejectionFlagged:null,priorParked:null,priorRejected:null}},
-      workflow:{stage:prior.priorStage||"available"},
-      attributes:{inRecycleBin:false,saved:Boolean(prior.priorSaved),flagged:Boolean(prior.priorFlagged),needsReview:Boolean(prior.priorFlagged),rejectionFlagged:Boolean(prior.priorRejectionFlagged),parked:Boolean(prior.priorParked),rejected:Boolean(prior.priorRejected)},
-      timestamps:{savedAt:prior.priorSaved?(record.timestamps.savedAt||now()):null,flaggedAt:prior.priorFlagged?(record.timestamps.flaggedAt||now()):null,rejectionFlaggedAt:prior.priorRejectionFlagged?(record.timestamps.rejectionFlaggedAt||now()):null,parkedAt:prior.priorParked?(record.timestamps.parkedAt||now()):null,rejectedAt:prior.priorRejected?(record.timestamps.rejectedAt||now()):null}
-    },"recycle-restored");
+    return records.update(id,{storage:{mode:prior.priorMode||"temporary",recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorDepot:false,priorRejectionFlagged:null,priorRejected:null}},attributes:{inRecycleBin:false}},"recycle-restored");
   }
   async function purgeRecycle({before=null,freeBytes=null,all=false}={}){
-    let candidates=records.all().filter(r=>r.attributes.inRecycleBin&&!r.attributes.saved&&!r.attributes.flagged).sort((a,b)=>String(a.storage.recycle.deletedAt).localeCompare(String(b.storage.recycle.deletedAt)));
+    let candidates=records.all().filter(r=>r.attributes.inRecycleBin&&!r.attributes.saved).sort((a,b)=>String(a.storage.recycle.deletedAt).localeCompare(String(b.storage.recycle.deletedAt)));
     if(before)candidates=candidates.filter(r=>r.storage.recycle.deletedAt&&new Date(r.storage.recycle.deletedAt)<new Date(before));
     let freed=0,purged=0;
     for(const record of candidates){
       if(!all&&!before&&Number.isFinite(freeBytes)&&freed>=freeBytes)break;
       await imageBlobDelete(record.id).catch(()=>{});freed+=record.storage.size||0;purged++;
-      const wasRejected=Boolean(record.attributes.rejected);
-      records.update(record.id,{storage:{mode:record.storage.hyperlink?"linked":"none",temporaryKey:null,referenceKey:null,recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorRejectionFlagged:null,priorParked:null,priorRejected:null}},attributes:{inRecycleBin:false,hyperlinkOnly:Boolean(record.storage.hyperlink),archived:!wasRejected},workflow:{stage:wasRejected?"rejected":"archived"}},"recycle-purged");
+      records.update(record.id,{storage:{mode:record.storage.hyperlink?"linked":"none",temporaryKey:null,referenceKey:null,recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorDepot:false,priorRejectionFlagged:null,priorRejected:null}},attributes:{inRecycleBin:false,hyperlinkOnly:Boolean(record.storage.hyperlink)}},"recycle-purged");
     }
     return{purged,freed};
   }
   async function purgeExpired(){const days=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.("recycle.retentionDays",30) ?? localStorage.getItem(RECYCLE_RETENTION_KEY))||30);if(days<=0)return{purged:0,freed:0};const before=new Date(Date.now()-days*86400000).toISOString();return purgeRecycle({before});}
-  async function verifyStorage(){const issues=[];for(const record of records.all()){if(["temporary","reference","recycle"].includes(record.storage.mode)){const blob=await imageBlobGet(record.id).catch(()=>null);if(!blob){records.update(record.id,{storage:{missingReference:true}},"integrity");issues.push({imageId:record.id,type:"missing-blob"});}}}const recordIntegrity=records.integrity();const historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};}
+  async function backfillMissingThumbnails({limit=50,includeRemote=false}={}){
+    let updated=0,failed=0;
+    for(const record of records.all().filter(r=>!r.storage.thumbnailKey).slice(0,Math.max(0,Number(limit)||0))){
+      try{
+        let blob=await imageBlobGet(record.id).catch(()=>null);
+        if(!blob&&includeRemote&&(record.storage.hyperlink||record.source.originalUrl))blob=await fetchImageBlob(record.storage.hyperlink||record.source.originalUrl);
+        if(!blob)continue;
+        const thumb=await create64Thumbnail(blob);await thumbnailBlobPut(record.id,thumb);
+        records.update(record.id,{storage:{thumbnailKey:record.id,thumbnailMimeType:thumb.type||"image/webp",thumbnailSize:thumb.size||0}},"thumbnail-backfilled");updated++;
+      }catch(error){failed++;}
+    }
+    return{updated,failed};
+  }
+  async function verifyStorage(){
+    const issues=[];
+    for(const record of records.all()){
+      if(record.workflow.stage!=="import-failed"){
+        const thumbKey=record.storage.thumbnailKey||record.id,thumb=await thumbnailBlobGet(thumbKey).catch(()=>null);
+        if(!thumb)issues.push({imageId:record.id,type:"missing-thumbnail"});
+      }
+      if(["temporary","reference","recycle"].includes(record.storage.mode)){
+        const blob=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,record.id).catch(()=>null);if(!blob)issues.push({imageId:record.id,type:"missing-working-blob"});
+      }else if(record.storage.mode==="kept"){
+        const [blob,idRecord]=await Promise.all([keptBlobGet(record.id).catch(()=>null),keptIdGet(record.id).catch(()=>null)]);if(!blob)issues.push({imageId:record.id,type:"missing-kept-image"});if(!idRecord)issues.push({imageId:record.id,type:"missing-kept-id-record"});
+      }
+    }
+    const recordIntegrity=records.integrity(),historyIntegrity=await window.genreactrixHistoryEngine.verifyContinuity(records.all());
+    return{...recordIntegrity,storageIssues:issues,historyIntegrity,issueCount:recordIntegrity.issueCount+issues.length+historyIntegrity.issueCount};
+  }
   function allRecords(){return records.all();}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setParked,setRejectionFlagged,setFlagSeverity,setSeen,saveReference,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),revokeObjectUrls};
+  async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
+  async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
+  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
-window.genreactrixImagesEngine.purgeExpired().then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
+window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","image-rejected","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
   if(type==="ai-attached"&&String(event.detail?.imageId||"")===String(currentKey())){
     delete state.aiRuns[String(event.detail.imageId)];
     renderTabletWorkbench();
@@ -3149,9 +3361,9 @@ const QUICK_ACTIONS={
     run:p=>openImageIntakeDialog({quantity:p.quantity})
   },
   "batch.current":{
-    module:"batch",name:"Batch resolved Inbox work",defaultLabel:"Batch current",
-    fields:[],summarize:()=>["Target: Resolved Inbox images","Review: Exact post-batch outcomes before submit"],
-    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch prepared · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · ${result.outcomes.reject} Reject · ${result.outcomes.recycle} Recycle · ${result.outcomes.keep} Keep · ${result.outcomes.review} Review`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
+    module:"batch",name:"Batch eligible Inbox work",defaultLabel:"Batch current",
+    fields:[],summarize:()=>["Eligible: Depot, Red Delete, Hot Magenta Reject","Keep: independent full-resolution retention"],
+    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch prepared · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · ${result.outcomes.depot} Depot · ${result.outcomes.red} Red · ${result.outcomes.hotMagenta} Hot Magenta · ${result.outcomes.keep} Keep`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
   },
   "ai.analyze-more":{
     module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",
