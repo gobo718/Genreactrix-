@@ -49,7 +49,7 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.22</title>
+<title>Genreactrix v0.9.40.23</title>
 <link href="styles.css?v=0.9.40.22" rel="stylesheet"/>
 </head>
 <body>
@@ -57,7 +57,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.22</span>
+<span>v0.9.40.23</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.22</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.23</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -143,7 +143,7 @@
 <span>Failed <strong id="portraitAiFailedCount">0</strong></span></div>
 <div class="portrait-inbox-push" aria-label="AI Output and failed export actions">
   <span class="portrait-inbox-label">Inbox <strong id="portraitInboxPackCount">0</strong></span>
-  <button id="portraitInboxPushReady" type="button">Push AI Output to Inbox</button>
+  <span class="portrait-inbox-auto" title="Successful AI Output enters Inbox automatically">AI → Inbox automatic</span>
   <button id="portraitExportFails" type="button">Export Fails</button>
 </div>
 </section><section aria-label="Queue" class="portrait-panel portrait-queue-panel" data-quick-module="queue">
@@ -572,7 +572,7 @@
 <div class="image-description-row">
 <div class="image-viewport" id="imageViewport">
 <img alt="Current image" id="mainImage"/>
-<div class="image-empty" id="imageEmpty">Inbox is empty. Push AI Output from Portrait.</div>
+<div class="image-empty" id="imageEmpty">Inbox is empty. Successful AI Output enters automatically.</div>
 </div>
 <article class="ai-description">
 <div class="console-label">AI freeform description</div>
@@ -928,7 +928,7 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.22"></script>
+<script src="app.js?v=0.9.40.23"></script>
 <script src="images-console.js?v=0.9.40.19"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -959,7 +959,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="batch-engine.js?v=0.9.40.14"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.14"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.23"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">
@@ -978,7 +978,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <div class="research-dashboard-columns"><section><h3>Priority queue</h3><div class="research-dashboard-priorities" id="researchDashboardPriorities"></div></section><section><h3>Research goals</h3><div class="dashboard-goal-form"><input id="dashboardGoalName" placeholder="Goal name"><select id="dashboardGoalMetric"><option value="directorComplete">Post-Batch images</option><option value="images">Images</option><option value="saved">Saved</option><option value="reports">Reports</option></select><input id="dashboardGoalTarget" type="number" min="1" value="100"><button id="researchDashboardAddGoal" type="button">Add</button></div><div id="researchDashboardGoals"></div></section></div>
 <section><h3>Research timeline</h3><div class="research-dashboard-timeline" id="researchDashboardTimeline"></div></section>
 </section></dialog>
-<script src="research-dashboard-engine.js?v=0.9.40.14"></script>
+<script src="research-dashboard-engine.js?v=0.9.40.23"></script>
 <dialog class="correlation-dialog" id="correlationDialog">
 <section class="correlation-shell">
 <header><div><h2>Correlation Discovery Laboratory</h2><p id="correlationStatus">Ready</p></div><button id="correlationClose" type="button" aria-label="Close">×</button></header>

@@ -1359,3 +1359,12 @@ OUT OF SCOPE
 - AI Description retains the remaining lower-right rectangle beside the AI Theme stack.
 - Reaction geometry, Customs Drawer, Image View, Portrait, Import, and IndexedDB behavior are not redesigned in this release.
 - Busts the stale Landscape stylesheet cache key so browsers load the restored geometry instead of an older cached CSS file.
+
+## v0.9.40.23 — AI automatic Inbox handoff
+- Fixes a process mismatch that left completed AI Output outside Inbox until the Director pressed a manual Push button.
+- Successful AI items now enter Inbox automatically when their AI job finishes.
+- Completed items from a job that has some failures still enter Inbox; failed items remain in the AI failure/retry workflow.
+- On first load after this update, existing fully analyzed AI Output that was stranded outside Inbox is automatically migrated into an Inbox Pack without rerunning AI.
+- Removes the visible manual Push AI Output to Inbox control and updates stale empty-state/research-dashboard wording.
+- Bumps the ai-analysis-engine cache key so Chrome cannot keep using the older handoff logic.
+- No Landscape CSS or geometry changes in this release. The v0.9.40.22 Landscape override remains a temporary checkpoint pending the separately booked CSS excavation/consolidation.

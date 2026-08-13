@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.22";
+const GENREACTRIX_BUILD="v0.9.40.23";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1874,13 +1874,13 @@ window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
 function nextInboxPackNumber(){
   return Math.max(landscapeInbox.length,...landscapeInbox.map(pack=>Number(pack.number)||0))+1;
 }
-function makeInboxPackFromAiOutput(records){
+function makeInboxPackFromAiOutput(records,{sourceLabel="AI automatic handoff"}={}){
   const createdAt=new Date().toISOString(),number=nextInboxPackNumber();
   return {
     id:`pack-${globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}`,
     number,
     label:`Pack ${number}`,
-    sourceLabel:"AI Output push",
+    sourceLabel,
     imageIds:records.map(record=>String(record.id)),
     createdAt,
     analyzedAt:records.map(record=>record.analysis?.ai?.recordedAt||record.analysis?.ai?.analyzedAt||"").filter(Boolean).sort().at(-1)||createdAt,
@@ -1904,20 +1904,35 @@ async function pushPackToInbox(pack){
   }
   await rehydrateLandscapeFeed();renderPortraitInboxControls();return true;
 }
+async function pushAiRecordsToInbox(records,{sourceLabel="AI automatic handoff",announce=false}={}){
+  const unique=[];
+  const seen=new Set();
+  for(const candidate of records||[]){
+    const record=typeof candidate==="string"?window.genreactrixImageRecordEngine?.get?.(candidate,{touch:false}):candidate;
+    if(!record||seen.has(String(record.id))||!recordIsAiOutput(record))continue;
+    seen.add(String(record.id));unique.push(record);
+  }
+  if(!unique.length)return null;
+  const pack=makeInboxPackFromAiOutput(unique,{sourceLabel});
+  await pushPackToInbox(pack);
+  if(announce)setPortraitStationStatus(`${pack.label} created in Inbox · ${unique.length} image${unique.length===1?"":"s"}.`);
+  return pack;
+}
 async function pushAiOutputToInbox(){
   const records=aiOutputRecords();
-  if(!records.length){setPortraitStationStatus("No AI Output is available to push to Inbox.");return null;}
-  const pack=makeInboxPackFromAiOutput(records);
-  await pushPackToInbox(pack);
-  setPortraitStationStatus(`${pack.label} created in Inbox · ${records.length} image${records.length===1?"":"s"}.`);
+  if(!records.length)return null;
+  const pack=await pushAiRecordsToInbox(records,{sourceLabel:"AI automatic handoff",announce:true});
   window.genreactrixAiAnalysisEngine?.maintainBuffer?.().catch?.(()=>{});
   return pack;
 }
+window.genreactrixAutoPushAiOutputToInbox=async function(imageIds=null,{sourceLabel="AI automatic handoff",announce=false}={}){
+  const records=Array.isArray(imageIds)?imageIds.map(id=>window.genreactrixImageRecordEngine?.get?.(String(id),{touch:false})).filter(Boolean):aiOutputRecords();
+  return pushAiRecordsToInbox(records,{sourceLabel,announce});
+};
 function renderPortraitInboxControls(){
   const count=$("portraitInboxPackCount");if(count)count.textContent=String(landscapeInbox.length);
   const latest=landscapeInbox.at(-1),outputCount=aiOutputRecords().length,failedCount=currentAiFailureRecords().length;
   const status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:"Inbox empty";
-  const push=$("portraitInboxPushReady");if(push){push.disabled=outputCount===0;push.textContent=outputCount?`Push ${outputCount} AI Output to Inbox`:"Push AI Output to Inbox";}
   const exportButton=$("portraitExportFails");if(exportButton){exportButton.disabled=failedCount===0;exportButton.title=failedCount?`${failedCount} failed image${failedCount===1?"":"s"} available to export`:"No current AI failures";}
 }
 async function openPackPicker(){
@@ -1928,7 +1943,6 @@ async function openPackPicker(){
   rows.push(...packs.map(pack=>{const when=pack.pushedAt||pack.createdAt;const date=when?new Date(when).toLocaleString():"Undated";return `<button type="button" class="pack-picker-row ${landscapeFilter.packId===pack.id?"is-selected":""}" data-pack-picker-id="${pack.id.replaceAll('"','&quot;')}"><strong>${pack.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${date} · ${pack.imageIds.length} image${pack.imageIds.length===1?"":"s"}</small></button>`;}));
   list.innerHTML=rows.join("")||'<p class="pack-picker-empty">Inbox has no Packs yet.</p>';dialog.showModal();
 }
-$("portraitInboxPushReady")?.addEventListener("click",()=>pushAiOutputToInbox().catch(error=>setPortraitStationStatus(`Inbox push failed: ${error.message||error}`)));
 $("portraitExportFails")?.addEventListener("click",async()=>{try{const result=await window.genreactrixAiAnalysisEngine?.exportFails?.();if(result?.moved)setPortraitStationStatus(`${result.moved} exported failure${result.moved===1?"":"s"} moved to Recycle.`);else if(result?.exported)setPortraitStationStatus(`Failure ZIP exported. Originals remain in Failed.`);}catch(error){setPortraitStationStatus(`Export Fails failed: ${error.message||error}`);}});
 $("packPickerClose")?.addEventListener("click",()=>$("packPickerDialog")?.close());
 $("packPickerList")?.addEventListener("click",async event=>{

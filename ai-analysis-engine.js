@@ -153,7 +153,19 @@
   }
   job=(await all(JOBS)).find(j=>j.id===job.id);
   if(fatalMessage){const message=`Paused after provider failure: ${fatalMessage}`;await updateJob(job,{state:'paused',processing:0,message});await q()?.setJobState?.(`queue_${job.id}`,'paused',message);render();return;}
-  const stopped=job.stopRequested||job.state==='cancelled';const finalState=stopped?'cancelled':(job.failed?'completed-with-failures':'completed'),finalMessage=stopped?'Stopped safely':(job.failed?`Completed with ${job.failed} failure(s)`:'Completed');await updateJob(job,{state:finalState,completedAt:now(),message:finalMessage});await q()?.setJobState?.(`queue_${job.id}`,finalState,finalMessage);render();
+  const stopped=job.stopRequested||job.state==='cancelled';const finalState=stopped?'cancelled':(job.failed?'completed-with-failures':'completed');
+  let finalMessage=stopped?'Stopped safely':(job.failed?`Completed with ${job.failed} failure(s)`:'Completed');
+  if(!stopped){
+   try{
+    const finishedItems=await byIndex(ITEMS,'jobId',job.id),completedImageIds=[...new Set(finishedItems.filter(row=>row.state==='complete').map(row=>String(row.imageId)).filter(Boolean))];
+    const pack=await window.genreactrixAutoPushAiOutputToInbox?.(completedImageIds,{sourceLabel:`AI job ${job.id} automatic handoff`});
+    if(pack?.imageIds?.length)finalMessage+=` · ${pack.imageIds.length} to Inbox`;
+   }catch(error){
+    finalMessage+=` · Inbox handoff failed: ${String(error?.message||error)}`;
+    console.error('AI automatic Inbox handoff failed',error);
+   }
+  }
+  await updateJob(job,{state:finalState,completedAt:now(),message:finalMessage});await q()?.setJobState?.(`queue_${job.id}`,finalState,finalMessage);render();
  }
  async function pause(id){const j=(await all(JOBS)).find(x=>x.id===id);if(j?.state==='running'){await updateJob(j,{state:'paused',message:'Paused safely'});await q()?.setJobState?.(`queue_${id}`,'paused','Paused safely')}}
  async function resume(id){const j=(await all(JOBS)).find(x=>x.id===id);if(j&&['paused','queued'].includes(j.state)){await updateJob(j,{state:'queued',message:'Resuming'});await q()?.setJobState?.(`queue_${id}`,'queued','Resuming');run(id)}}
@@ -326,5 +338,5 @@
  }
 
  async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});return{jobCount:jobs.length,itemCount:items.length,issueCount:issues.length,issues}}
- const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainBuffer,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainBuffer().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());
+ const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainBuffer,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();await window.genreactrixAutoPushAiOutputToInbox?.(null,{sourceLabel:'Existing AI Output automatic handoff'}).catch?.(error=>console.error('Existing AI Output handoff failed',error));const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainBuffer().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());
 })();
