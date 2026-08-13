@@ -1,4 +1,4 @@
-## v0.9.40.18 — Single-file selection/import repair
+## v0.9.40.19 — Single-file selection/import repair
 - **Choose File now stages one selected image**; the main **Import** button imports that specific file. This matches the rest of the Add panel instead of silently auto-importing on file selection.
 - Fixed stale cache-busting: `import-engine.js` was still requested as `?v=0.9.40.14` while the page was v0.9.40.16, which could leave Chrome/GitHub Pages running older import logic.
 - File intake now accepts image files by MIME type **or image filename extension** so Android file pickers that return an empty/odd MIME type do not discard a valid image.
@@ -1331,9 +1331,15 @@ OUT OF SCOPE
 - Tapping a different Theme target still activates that target normally.
 - No Worker, Matrix vocabulary, AI, or unfolded-orientation behavior changed.
 
-## v0.9.40.18 — Android folder picker repair
+## v0.9.40.19 — Android folder picker repair
 - Folder inputs no longer pass `accept="image/*"` to Android/Chrome while using `webkitdirectory`.
 - Android can therefore enumerate the selected folder instead of reporting `Upload 0 files` before Genreactrix receives the selection.
 - Genreactrix still filters the returned files to supported image MIME types/extensions in application code, so non-image files in the folder are ignored.
 - Single-file **Choose File** still uses `accept="image/*"`.
 - No Worker change.
+
+
+## v0.9.40.19 browser parity repair
+- Chrome/Chromium folder intake now prefers `showDirectoryPicker()` and recursively enumerates image files, with the existing `webkitdirectory` input retained only as a fallback.
+- Fold6 folded-landscape CSS now remains active through a 699px reported landscape viewport height so browsers with different toolbar/chrome heights render the same physical screen using the same folded geometry.
+- Browser-local IndexedDB/localStorage is still isolated per browser. This build does not falsely merge Chrome and DuckDuckGo data; durable cross-browser project/image storage still requires the planned server-side persistence layer.

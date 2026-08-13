@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.18";
+const GENREACTRIX_BUILD="v0.9.40.19";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1945,6 +1945,52 @@ async function loadImageFolder(fileList,limit=null){
   setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} copied into Temporary Import.`);
 }
 let pendingPortraitImportLimit=null;
+const IMAGE_FOLDER_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
+function folderFileLooksLikeImage(file){
+  const type=String(file?.type||"").toLowerCase();
+  return type.startsWith("image/") || IMAGE_FOLDER_FILE_RE.test(String(file?.name||""));
+}
+async function collectDirectoryImageFiles(directoryHandle,limit=null){
+  const files=[];
+  const max=limit==null?Infinity:Math.max(1,Number(limit)||1);
+  async function walk(handle){
+    for await(const entry of handle.values()){
+      if(files.length>=max)break;
+      if(entry.kind==="file"){
+        const file=await entry.getFile();
+        if(folderFileLooksLikeImage(file))files.push(file);
+      }else if(entry.kind==="directory"){
+        await walk(entry);
+      }
+    }
+  }
+  await walk(directoryHandle);
+  return files;
+}
+async function chooseImageFolder({limit=null,importEngineMode=false}={}){
+  // Chrome/Chromium on Android supports File System Access. Prefer the real
+  // directory picker because <input webkitdirectory> can be handed an empty
+  // FileList by some Android picker/browser combinations.
+  if(typeof window.showDirectoryPicker==="function"){
+    try{
+      const handle=await window.showDirectoryPicker({id:"genreactrix-images",mode:"read",startIn:"pictures"});
+      const files=await collectDirectoryImageFiles(handle,limit);
+      if(!files.length)throw new Error("No image files found in the selected folder.");
+      window.pendingImportEngineMode=Boolean(importEngineMode);
+      await loadImageFolder(files,limit);
+      return true;
+    }catch(error){
+      if(error?.name==="AbortError")return false;
+      setPortraitStationStatus(`Folder import failed: ${error.message||error}`);
+      return false;
+    }
+  }
+  pendingPortraitImportLimit=limit==null?null:Math.max(1,Number(limit)||1);
+  window.pendingImportEngineMode=Boolean(importEngineMode);
+  $("folderInput")?.click();
+  return true;
+}
+window.genreactrixChooseImageFolder=chooseImageFolder;
 $("folderInput").addEventListener("change",async e=>{
   try{ await loadImageFolder(e.target.files,pendingPortraitImportLimit); }
   catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
@@ -3357,7 +3403,7 @@ const QUICK_ACTIONS={
     module:"images",name:"Add from folder",defaultLabel:"Folder · Add",
     fields:[{key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>portraitDefaultAmount()}],
     summarize:p=>[`Source: Folder`,`Quantity: ${p.quantity}`],
-    run:p=>{ pendingPortraitImportLimit=Math.max(1,Number(p.quantity)||portraitDefaultAmount()); document.getElementById("folderInput")?.click(); }
+    run:p=>{ const limit=Math.max(1,Number(p.quantity)||portraitDefaultAmount()); chooseImageFolder({limit,importEngineMode:false}); }
   },
   "images.add-urls":{
     module:"images",name:"Add from URLs",defaultLabel:"URLs · Add",
@@ -3609,10 +3655,9 @@ function openImageIntakeDialog({quantity=null}={}){
 }
 $("imageIntakeClose")?.addEventListener("click",()=>$("imageIntakeDialog")?.close());
 $("imageIntakeFolderBtn")?.addEventListener("click",()=>{
-  pendingPortraitImportLimit=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
-  window.pendingImportEngineMode=true;
+  const limit=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
   $("imageIntakeDialog")?.close();
-  $("folderInput")?.click();
+  chooseImageFolder({limit,importEngineMode:true});
 });
 $("imageUrlPreviewBtn")?.addEventListener("click",async()=>{
   const quantity=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
