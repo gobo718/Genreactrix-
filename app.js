@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.20";
+const GENREACTRIX_BUILD="v0.9.40.21";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2759,7 +2759,7 @@ const IMAGE_RECORDS_KEY="genreactrix-image-records-v1";
 const LEGACY_IMAGE_ENGINE_MANIFEST_KEY="genreactrix-image-engine-manifest-v1";
 const RECYCLE_RETENTION_KEY="genreactrix-recycle-retention-days";
 const IMAGE_ENGINE_DB_NAME="genreactrix-image-engine";
-const IMAGE_ENGINE_DB_VERSION=3;
+const IMAGE_ENGINE_DB_VERSION=4;
 const IMAGE_ENGINE_BLOB_STORE="image-blobs";
 const IMAGE_ENGINE_THUMBNAIL_STORE="image-thumbnails";
 const IMAGE_ENGINE_KEPT_STORE="kept-images";

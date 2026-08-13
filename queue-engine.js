@@ -1,7 +1,7 @@
 /* Genreactrix Queue Engine v1
    Shared persistent scheduling/state for engine-owned work. Domain engines retain business logic. */
 (()=>{'use strict';
- const DB='genreactrix-queue',VERSION=1,JOBS='jobs',ITEMS='items';
+ const DB='genreactrix-queue',VERSION=2,JOBS='jobs',ITEMS='items';
  const now=()=>new Date().toISOString(),uid=p=>`${p}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`,clone=v=>v==null?v:structuredClone(v);
  const adapters=new Map(),listeners=new Set();
  let cache={jobs:[],items:[],summary:{queued:0,running:0,paused:0,failed:0,blocked:0,completedToday:0,acquisitionPending:0,aiPending:0,reportsPending:0}};

@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const DB='genreactrix-import-jobs'; const VERSION=1; const STORE='jobs';
+  const DB='genreactrix-import-jobs'; const VERSION=2; const STORE='jobs';
   const now=()=>new Date().toISOString();
   let dbPromise;
   function openDb(){if(dbPromise)return dbPromise;dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('status','status');s.createIndex('sourceType','sourceType')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});return dbPromise}
