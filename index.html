@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.13</title>
-<link href="styles.css?v=0.9.40.13" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.15</title>
+<link href="styles.css?v=0.9.40.14" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.13</span>
+<span>v0.9.40.15</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.13</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.15</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -109,7 +109,7 @@
 <label class="portrait-default-amount">
           Add <input aria-label="Default quick-add image amount" id="portraitDefaultAmount" inputmode="numeric" min="1" step="1" type="number"/> images
         </label>
-<div aria-label="Image storage status" class="portrait-image-engine-status"><button data-portrait-status="images-available" type="button">Available <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-temp" type="button">Temp <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="images-links" type="button">Links <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="images-saved" type="button">Keep <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="images-flagged" type="button">Yellow <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="images-recycle" type="button">Recycle <strong id="portraitRecycleImageCount">0</strong></button></div>
+<div aria-label="Image storage status" class="portrait-image-engine-status"><button data-portrait-status="images-available" type="button">Available <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-temp" type="button">Temp <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="images-links" type="button">Links <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="images-saved" type="button">Keep <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="images-flagged" type="button">Review <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="images-recycle" type="button">Recycle <strong id="portraitRecycleImageCount">0</strong></button></div>
 </section><section aria-label="Batch" class="portrait-panel portrait-batch-panel" data-quick-module="batch">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="batch">
@@ -119,8 +119,8 @@
 <button class="portrait-module-button" data-module-button="batch" id="portraitBatchMenuBtn" type="button">Batch</button>
 </div>
 <div class="portrait-batch-summary-row"><div class="portrait-batch-name" id="portraitBatchName">New Batch</div><button data-portrait-status="batch-total" type="button">Total <strong id="portraitBatchTotal">0</strong></button></div>
-<div class="portrait-batch-progress"><button data-portrait-status="batch-working" type="button">Working <strong id="portraitBatchWorking">0</strong></button><button data-portrait-status="batch-yellow" type="button">Yellow <strong id="portraitBatchYellow">0</strong></button></div>
-<div class="portrait-batch-outcomes" aria-label="Inbox terminal states and independent Keep attribute"><button data-portrait-status="batch-depot" type="button">Depot <strong id="portraitBatchDepot">0</strong></button><button data-portrait-status="batch-red" type="button">Red <strong id="portraitBatchRed">0</strong></button><button data-portrait-status="batch-hot-magenta" type="button">Hot Magenta <strong id="portraitBatchHotMagenta">0</strong></button><button data-portrait-status="batch-keep" type="button">Keep <strong id="portraitBatchKeep">0</strong></button></div>
+<div class="portrait-batch-progress"><button data-portrait-status="batch-working" type="button">Working <strong id="portraitBatchWorking">0</strong></button><button data-portrait-status="batch-yellow" type="button">Review <strong id="portraitBatchYellow">0</strong></button></div>
+<div class="portrait-batch-outcomes" aria-label="Inbox terminal states and independent Keep attribute"><button data-portrait-status="batch-depot" type="button">Depot <strong id="portraitBatchDepot">0</strong></button><button data-portrait-status="batch-red" type="button">Delete <strong id="portraitBatchRed">0</strong></button><button data-portrait-status="batch-hot-magenta" type="button">Reject <strong id="portraitBatchHotMagenta">0</strong></button><button data-portrait-status="batch-keep" type="button">Keep <strong id="portraitBatchKeep">0</strong></button></div>
 </section><section aria-label="AI" class="portrait-panel portrait-ai-panel" data-quick-module="ai">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="ai">
@@ -519,8 +519,8 @@
   <form method="dialog" class="flag-admin-shell">
     <header><h2>Exclusion</h2><button value="cancel" aria-label="Close">×</button></header>
     <p>Choose the exclusion terminal for this image.</p>
-    <button id="redDeleteAction" type="button">🔴 Red Delete</button>
-    <button id="hotMagentaRejectAction" class="danger-action" type="button">🩷 Hot Magenta Reject</button>
+    <button id="redDeleteAction" class="exclusion-action delete-action" type="button">DELETE</button>
+    <button id="hotMagentaRejectAction" class="exclusion-action reject-action" type="button">REJECT</button>
     <button value="cancel" type="submit">Cancel</button>
   </form>
 </dialog>
@@ -535,8 +535,8 @@
     <div class="landscape-filter-grid" role="group" aria-label="Include and exclude filter categories">
       <strong>Include</strong><span></span><strong>Exclude</strong>
       <input id="landscapeFilterInclude_review" type="checkbox" aria-label="Include Flagged for Review"><label>Flagged for Review</label><input id="landscapeFilterExclude_review" type="checkbox" aria-label="Exclude Flagged for Review">
-      <input id="landscapeFilterInclude_rejection" type="checkbox" aria-label="Include Red Delete"><label>Red Delete</label><input id="landscapeFilterExclude_rejection" type="checkbox" aria-label="Exclude Red Delete">
-      <input id="landscapeFilterInclude_reject" type="checkbox" aria-label="Include Hot Magenta Reject"><label>Hot Magenta Reject</label><input id="landscapeFilterExclude_reject" type="checkbox" aria-label="Exclude Hot Magenta Reject">
+      <input id="landscapeFilterInclude_rejection" type="checkbox" aria-label="Include Delete"><label>Delete</label><input id="landscapeFilterExclude_rejection" type="checkbox" aria-label="Exclude Delete">
+      <input id="landscapeFilterInclude_reject" type="checkbox" aria-label="Include Reject"><label>Reject</label><input id="landscapeFilterExclude_reject" type="checkbox" aria-label="Exclude Reject">
       <input id="landscapeFilterInclude_kept" type="checkbox" aria-label="Include Kept"><label>Kept</label><input id="landscapeFilterExclude_kept" type="checkbox" aria-label="Exclude Kept">
       <input id="landscapeFilterInclude_depot" type="checkbox" aria-label="Include Depot"><label>Depot</label><input id="landscapeFilterExclude_depot" type="checkbox" aria-label="Exclude Depot">
       <input id="landscapeFilterInclude_seen" type="checkbox" aria-label="Include Seen"><label>Seen</label><input id="landscapeFilterExclude_seen" type="checkbox" aria-label="Exclude Seen">
@@ -585,7 +585,7 @@
 <div aria-label="Resize Image and Director consoles" aria-orientation="vertical" class="console-divider" id="consoleDivider" role="separator" tabindex="0"></div>
 <section aria-label="Director classification" class="console director-console">
 <button class="expand-button" data-open="directorWorkspace" title="Expand Director console">↗</button>
-<div class="director-heading-row"><div class="console-label">Director</div><div class="director-state-strip" id="directorStateStrip" aria-live="polite"><span data-state="completion">Working</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Keep</span><span data-state="flagged" hidden>Yellow Flag</span><span data-state="ai" hidden>AI viewed</span><span data-state="locked" hidden>Locked</span></div></div>
+<div class="director-heading-row"><div class="console-label">Director</div><div class="director-state-strip" id="directorStateStrip" aria-live="polite"><span data-state="completion">Working</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Keep</span><span data-state="flagged" hidden>Review</span><span data-state="ai" hidden>AI viewed</span><span data-state="locked" hidden>Locked</span></div></div>
 <div aria-label="Primitive reactions" class="reaction-bar" id="reactionBar"></div>
 <div class="theme-fields">
 <button class="theme-field" data-slot="1">
@@ -785,7 +785,7 @@
 <div class="workspace-shell">
 <header class="workspace-header director-workspace-header">
 <button class="back-button" data-close="directorWorkspace">‹ Back</button>
-<div><h2>Director Console</h2><div class="director-state-strip expanded" id="directorWorkspaceStateStrip" aria-live="polite"><span data-state="completion">Working</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Keep</span><span data-state="flagged" hidden>Yellow Flag</span><span data-state="ai" hidden>AI viewed</span><span data-state="locked" hidden>Locked</span></div></div>
+<div><h2>Director Console</h2><div class="director-state-strip expanded" id="directorWorkspaceStateStrip" aria-live="polite"><span data-state="completion">Working</span><span data-state="draft" hidden>Draft</span><span data-state="saved" hidden>Keep</span><span data-state="flagged" hidden>Review</span><span data-state="ai" hidden>AI viewed</span><span data-state="locked" hidden>Locked</span></div></div>
 <button class="primfusion-shortcut" id="directorPrimFusionBtn">PrimFusion Matrix</button>
 </header>
 <div aria-label="Current image" class="portrait-only-image-viewport director-portrait-image-preview">
@@ -829,14 +829,14 @@
 <div class="batch-count-grid">
 <button data-batch-filter="all" type="button">Total <strong id="batchTotal">0</strong></button>
 <button data-batch-filter="working" type="button">Working <strong id="batchWorking">0</strong></button>
-<button data-batch-filter="review" type="button">Yellow <strong id="batchYellow">0</strong></button>
+<button data-batch-filter="review" type="button">Review <strong id="batchYellow">0</strong></button>
 <button data-batch-filter="depot" type="button">Depot <strong id="batchDepot">0</strong></button>
-<button data-batch-filter="red" type="button">Red <strong id="batchRed">0</strong></button>
-<button data-batch-filter="hot" type="button">Hot Magenta <strong id="batchHotMagenta">0</strong></button>
+<button data-batch-filter="red" type="button">Delete <strong id="batchRed">0</strong></button>
+<button data-batch-filter="hot" type="button">Reject <strong id="batchHotMagenta">0</strong></button>
 <button data-batch-filter="keep" type="button">Keep <strong id="batchKeep">0</strong></button>
 </div>
 <div class="batch-outcome-heading">Eligible when Batch is pressed</div>
-<div class="batch-outcome-grid" aria-label="Batch-eligible Inbox terminal states"><span>Depot <strong id="batchEligibleDepot">0</strong></span><span>Red Delete <strong id="batchEligibleRed">0</strong></span><span>Hot Magenta Reject <strong id="batchEligibleHotMagenta">0</strong></span><span>Keep is independent <strong id="batchEligibleKeep">0</strong></span></div>
+<div class="batch-outcome-grid" aria-label="Batch-eligible Inbox terminal states"><span>Depot <strong id="batchEligibleDepot">0</strong></span><span>Delete <strong id="batchEligibleRed">0</strong></span><span>Reject <strong id="batchEligibleHotMagenta">0</strong></span><span>Keep is independent <strong id="batchEligibleKeep">0</strong></span></div>
 <div class="batch-actions"><button id="batchStageInbox" type="button">Load eligible Inbox</button></div>
 <div class="batch-list-tools"><label><input id="batchSelectAll" type="checkbox"> Select visible</label><span id="batchVisibleCount">0 visible</span></div>
 <div class="batch-contents" id="batchContents"></div>
@@ -895,8 +895,8 @@
 </dialog>
 <script src="validation-engine.js?v=0.9.24.0"></script>
 <script src="import-job-engine.js?v=0.9.24.0"></script>
-<script src="import-engine.js?v=0.9.40.13"></script>
-<script src="maintenance-engine.js?v=0.9.40.13"></script>
+<script src="import-engine.js?v=0.9.40.14"></script>
+<script src="maintenance-engine.js?v=0.9.40.14"></script>
 <script src="settings-engine.js?v=0.9.39.93"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -928,8 +928,8 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.13"></script>
-<script src="images-console.js?v=0.9.40.13"></script>
+<script src="app.js?v=0.9.40.14"></script>
+<script src="images-console.js?v=0.9.40.14"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
@@ -943,8 +943,8 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="queue-engine.js?v=0.9.40.13"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.40.13"></script>
+<script src="queue-engine.js?v=0.9.40.14"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.40.14"></script>
 <script src="reports-engine.js?v=0.9.39.85"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
@@ -956,10 +956,10 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="batch-engine.js?v=0.9.40.13"></script>
+<script src="batch-engine.js?v=0.9.40.14"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.13"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.14"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">
@@ -978,7 +978,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <div class="research-dashboard-columns"><section><h3>Priority queue</h3><div class="research-dashboard-priorities" id="researchDashboardPriorities"></div></section><section><h3>Research goals</h3><div class="dashboard-goal-form"><input id="dashboardGoalName" placeholder="Goal name"><select id="dashboardGoalMetric"><option value="directorComplete">Post-Batch images</option><option value="images">Images</option><option value="saved">Saved</option><option value="reports">Reports</option></select><input id="dashboardGoalTarget" type="number" min="1" value="100"><button id="researchDashboardAddGoal" type="button">Add</button></div><div id="researchDashboardGoals"></div></section></div>
 <section><h3>Research timeline</h3><div class="research-dashboard-timeline" id="researchDashboardTimeline"></div></section>
 </section></dialog>
-<script src="research-dashboard-engine.js?v=0.9.40.13"></script>
+<script src="research-dashboard-engine.js?v=0.9.40.14"></script>
 <dialog class="correlation-dialog" id="correlationDialog">
 <section class="correlation-shell">
 <header><div><h2>Correlation Discovery Laboratory</h2><p id="correlationStatus">Ready</p></div><button id="correlationClose" type="button" aria-label="Close">×</button></header>

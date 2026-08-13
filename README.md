@@ -1,20 +1,30 @@
+## v0.9.40.15 — Portrait console fit + plain workflow labels
+
+- Flag tap now toggles Review immediately. The previous handler incorrectly treated the synchronous image-record update as a Promise, so the record changed immediately but the UI did not repaint until a later render.
+- Long press behavior is unchanged: it still opens the Exclusion menu.
+- Exclusion menu buttons are now visually literal: solid red **DELETE** and solid hot-magenta **REJECT**. Emoji markers were removed.
+- Landscape geometry is otherwise unchanged from v0.9.40.14.
+- Portrait + Images, AI, Batch, Queue, and Reports dialogs are now hard-constrained to the phone viewport so their uniformly scaled temporary surfaces cannot widen beyond the dialog and clip off-screen.
+- The previous 116–143% width compensation used with CSS zoom was removed; it was the direct cause of the horizontal clipping shown on Android.
+- User-facing workflow labels are now **Review**, **Delete**, and **Reject**. Color remains visual styling only, not part of the button/state name.
+
 ## v0.9.40.13 — Inbox terminal lifecycle + Portrait housekeeping
 
 Current implementation authority: 2026-08-12 Director review. This release migrates the live website away from the ambiguous legacy sideline / Ready / To batch / No Move model. Historical sections below are retained as history and may describe superseded behavior.
 
 ### Current Inbox workflow
 - Images remain in **Inbox until Batch**. Before Batch they are simply being worked.
-- Exactly one workflow terminal may be selected at a time: **Yellow Flag / Review**, **Depot**, **Red Delete**, or **Hot Magenta Reject**. Selecting one clears the other three.
-- **Yellow Flag / Review** stays in Inbox and is not Batch-eligible.
-- **Depot**, **Red Delete**, and **Hot Magenta Reject** are Batch-eligible.
-- **Keep** is an independent full-resolution retention attribute. It may coexist with any terminal, including Red Delete and Hot Magenta Reject. Turning Keep off only clears Keep.
+- Exactly one workflow terminal may be selected at a time: **Review**, **Depot**, **Delete**, or **Reject**. Selecting one clears the other three.
+- **Review** stays in Inbox and is not Batch-eligible.
+- **Depot**, **Delete**, and **Reject** are Batch-eligible.
+- **Keep** is an independent full-resolution retention attribute. It may coexist with any terminal, including Delete and Reject. Turning Keep off only clears Keep.
 - **Save** remains distinct from Keep: Save preserves editable working evaluation data; Keep preserves the full-resolution asset.
 
 ### Flag and Depot controls
-- Landscape **Flag tap** = Yellow Flag / Review.
-- Landscape **Flag long press** opens Exclusion: **Red Delete** or **Hot Magenta Reject**.
+- Landscape **Flag tap** = Review.
+- Landscape **Flag long press** opens Exclusion: **Delete** or **Reject**.
 - **Depot** is the explicit Director-finished-for-now terminal.
-- Legacy sidelining behavior migrates to Yellow Review; Depot is a new explicit terminal rather than a blind rename.
+- Legacy sidelining behavior migrates to Review; Depot is a new explicit terminal rather than a blind rename.
 - Landscape geometry from v0.9.40.12 is preserved; only the requested control/state behavior was changed.
 
 ### Import and storage
@@ -25,10 +35,10 @@ Current implementation authority: 2026-08-12 Director review. This release migra
 - Keep ON commits the full-resolution asset to **Kept Images** storage and a matching lightweight **Kept Images ID** record using the same stable Image ID basename with different extensions.
 - Keep OFF + temporary copy goes to Recycle after Batch; default full-resolution purge remains 30 days. Image Record + thumbnail remain.
 - Keep OFF + hyperlink-only leaves the full-resolution source at Origin; Image Record + Origin Metadata + thumbnail remain.
-- Red Delete and Hot Magenta Reject both retain separate historical exclusion records plus the permanent thumbnail for later research.
+- Delete and Reject both retain separate historical exclusion records plus the permanent thumbnail for later research.
 
 ### Batch / Queue / AI
-- Batch eligibility is explicit: **Depot + Red Delete + Hot Magenta Reject**. Yellow and ordinary Working items remain in Inbox.
+- Batch eligibility is explicit: **Depot + Delete + Reject**. Review and ordinary Working items remain in Inbox.
 - Batch no longer presents Ready, To batch, No Move, or legacy multi-batch staging controls as Director workflow choices.
 - Queue shows Queue-owned Running / Queued / Paused / Failed only. Director, To batch, and visible Blocked counts are removed. Generic blocked capability remains internal for future use.
 - **AI Output** replaces workflow AI Ready / AI Complete wording. AI remains a standalone workspace/service.
@@ -43,7 +53,7 @@ Current implementation authority: 2026-08-12 Director review. This release migra
 - + Images keeps all eight tabs visible together.
 
 ### Migration / compatibility
-- Existing legacy sidelined record state is interpreted as Yellow Review, not Depot.
+- Existing legacy sidelined record state is interpreted as Review, not Depot.
 - Existing ready-for-director / ready-director / ai-complete internal record stages normalize to `inbox-working`.
 - Existing historical evaluations and Batch records are not rewritten.
 

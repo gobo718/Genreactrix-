@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.13";
+const GENREACTRIX_BUILD="v0.9.40.15";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2594,10 +2594,11 @@ function finishFlagHold(e,cancelled=false){
     const record=currentImageRecord();
     if(record){
       const next=flagSeverityForRecord(record)==="review"?"none":"review";
-      window.genreactrixImagesEngine?.setFlagSeverity?.(record.id,next).then(updated=>{
+      try{
+        const updated=window.genreactrixImagesEngine?.setFlagSeverity?.(record.id,next);
         state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;renderAll();renderLandscapeImageView();
         setDirectorStatus(next==="review"?"Image flagged for Review.":"Review flag cleared.");
-      }).catch(error=>setDirectorStatus(`Flag could not be changed: ${error.message||error}`));
+      }catch(error){setDirectorStatus(`Flag could not be changed: ${error.message||error}`);}
     }
   }
   flagHoldState.startedAt=0;flagHoldState.button=null;flagHoldState.pointerId=null;
@@ -2619,12 +2620,12 @@ document.addEventListener("pointercancel",e=>{if(flagHoldState.pointerId===e.poi
 $("redDeleteAction")?.addEventListener("click",async()=>{
   $("flagAdminDialog")?.close();if(state.feedEmpty)return;const id=currentKey();
   const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"delete");state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;
-  setDirectorStatus("Red Delete selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
+  setDirectorStatus("Delete selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
 $("hotMagentaRejectAction")?.addEventListener("click",async()=>{
   $("flagAdminDialog")?.close();if(state.feedEmpty)return;
   const id=currentKey();const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(id,"reject");state.flagged=Boolean(updated?.attributes?.flagged);landscapeFeedDirty=true;
-  setDirectorStatus("Hot Magenta Reject selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
+  setDirectorStatus("Reject selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
@@ -3362,8 +3363,8 @@ const QUICK_ACTIONS={
   },
   "batch.current":{
     module:"batch",name:"Batch eligible Inbox work",defaultLabel:"Batch current",
-    fields:[],summarize:()=>["Eligible: Depot, Red Delete, Hot Magenta Reject","Keep: independent full-resolution retention"],
-    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch prepared · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · ${result.outcomes.depot} Depot · ${result.outcomes.red} Red · ${result.outcomes.hotMagenta} Hot Magenta · ${result.outcomes.keep} Keep`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
+    fields:[],summarize:()=>["Eligible: Depot, Delete, Reject","Keep: independent full-resolution retention"],
+    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch prepared · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · ${result.outcomes.depot} Depot · ${result.outcomes.red} Delete · ${result.outcomes.hotMagenta} Reject · ${result.outcomes.keep} Keep`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
   },
   "ai.analyze-more":{
     module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",

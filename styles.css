@@ -7392,3 +7392,140 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
   .queue-job-list{max-height:56dvh;overflow:auto;overscroll-behavior:contain}
 }
+
+/* v0.9.40.14 — exclusion menu clarity. */
+.flag-admin-shell .exclusion-action{font-weight:800;letter-spacing:.04em}
+.flag-admin-shell .delete-action{background:#E53935!important;border-color:#FF7B78!important;color:#FFF!important}
+.flag-admin-shell .reject-action{background:#FF00D4!important;border-color:#FF7BE9!important;color:#190015!important}
+
+/* v0.9.40.15 — Portrait console viewport fit + compact temporary screens.
+   The previous v0.9.40.13 zoom compensation widened inner surfaces to 116–143%,
+   which made Android portrait dialogs clip off-screen. Keep the uniform scale,
+   but never expand the scaled surface beyond its dialog. Landscape untouched. */
+@media (max-width:599px) and (orientation:portrait){
+  .images-console-dialog,
+  .ai-analysis-dialog,
+  .batch-dialog,
+  .queue-dialog,
+  .reports-dialog{
+    box-sizing:border-box!important;
+    width:calc(100dvw - 12px)!important;
+    max-width:calc(100dvw - 12px)!important;
+    min-width:0!important;
+    max-height:calc(100dvh - 12px)!important;
+    margin:auto!important;
+    overflow:hidden!important;
+  }
+
+  .images-console,
+  .ai-analysis-form,
+  .batch-dialog-shell,
+  .queue-shell,
+  .reports-shell{
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin-inline:auto!important;
+    overflow-x:hidden!important;
+  }
+
+  .images-console *,
+  .ai-analysis-form *,
+  .batch-dialog-shell *,
+  .queue-shell *,
+  .reports-shell *{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+
+  /* Uniform temporary scaling. No width compensation: that was the clipping bug. */
+  .images-console{zoom:.90!important;max-height:calc((100dvh - 12px)/.90)!important}
+  .ai-analysis-form{zoom:.82!important;max-height:calc((100dvh - 12px)/.82)!important}
+  .batch-dialog-shell{zoom:.90!important;max-height:calc((100dvh - 12px)/.90)!important}
+  .queue-shell{zoom:.92!important;max-height:calc((100dvh - 12px)/.92)!important}
+  .reports-shell{zoom:.85!important;max-height:calc((100dvh - 12px)/.85)!important}
+
+  /* + Images: all eight tabs visible at once, with compact Add controls. */
+  .images-console-header{padding:9px 11px 5px!important}
+  .images-console-header h2{font-size:1rem!important}
+  .images-console-header button{font-size:22px!important;min-height:30px!important}
+  .images-console-nav{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;
+    padding:0 9px 6px!important;
+    overflow:visible!important;
+  }
+  .images-console-nav button{
+    width:100%!important;
+    padding:5px 3px!important;
+    min-height:28px!important;
+    font-size:.72rem!important;
+    line-height:1.05!important;
+  }
+  .images-console-body{padding:0 10px 8px!important;overflow:auto!important}
+  .images-console-body section{gap:7px!important}
+  .images-add-actions,.images-console-actions{gap:6px!important}
+  .images-add-actions button,.images-console-actions button{min-height:30px!important;padding:5px 8px!important}
+  .images-console-body textarea{height:74px!important;min-height:74px!important;resize:none!important}
+  .images-console-grid{gap:7px!important}
+  .images-console-body input,.images-console-body select{min-height:30px!important;padding:5px 7px!important}
+  .image-prefetch-option{margin:0!important}
+  .images-console-summary,.images-console-status{padding:5px 10px!important;min-height:0!important}
+  .images-record-list{max-height:40dvh!important}
+
+  /* AI: preserve section order, shrink the full temporary console uniformly,
+     and compact whitespace so the controls remain visible instead of clipping. */
+  .ai-analysis-form{padding:9px!important;gap:7px!important;overflow:auto!important}
+  .ai-analysis-form .image-intake-header{min-height:32px!important}
+  .ai-analysis-form .image-intake-header h2{font-size:1rem!important}
+  .ai-analysis-form .image-intake-header button{min-width:30px!important;min-height:30px!important}
+  .ai-job-summary{font-size:.72rem!important;line-height:1.15!important}
+  .ai-console-section{padding:7px!important;gap:6px!important;border-radius:8px!important}
+  .ai-console-section h3{font-size:.78rem!important}
+  .ai-console-section label{gap:3px!important;font-size:.68rem!important}
+  .ai-console-section input,.ai-console-section select{padding:5px 6px!important;min-height:28px!important}
+  .ai-component-grid,.ai-console-grid{gap:5px!important}
+  .ai-component-option{padding:5px!important;gap:5px!important}
+  .ai-provider-row,.ai-job-controls,.ai-job-counts{gap:5px!important}
+  .ai-provider-row button,.ai-job-controls button,.ai-run-actions button{min-height:28px!important;padding:4px 7px!important}
+  .ai-job-counts span{padding:4px 6px!important}
+  .ai-job-list{max-height:18dvh!important}
+  .ai-job-row{padding:5px!important;gap:5px!important}
+
+  /* Batch: compact, width-safe, and named by action rather than flag color. */
+  .batch-dialog-shell{padding:9px!important;gap:7px!important;overflow:auto!important}
+  .batch-dialog header{gap:5px!important}.batch-dialog header h2{font-size:1rem!important}
+  .batch-dialog button,.batch-dialog select,.batch-dialog input{min-height:30px!important;padding:5px 7px!important}
+  .batch-count-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+  .batch-count-grid button{padding:6px!important}
+  .batch-outcome-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+  .batch-outcome-grid span{padding:6px!important}
+  .batch-contents{max-height:26dvh!important}
+  .batch-image-row{padding:5px!important;gap:5px!important}
+  .batch-report-row{padding:5px 0!important}
+
+  /* Queue: true viewport fit; only an actually long job list scrolls. */
+  .queue-shell{padding:9px!important;gap:7px!important;overflow:auto!important}
+  .queue-shell>header{gap:6px!important}.queue-shell>header h2{font-size:1rem!important}
+  .queue-count-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+  .queue-count-grid span{padding:6px!important}
+  .queue-toolbar{gap:5px!important}.queue-toolbar button{min-height:30px!important;padding:5px 7px!important}
+  .queue-job-list{max-height:54dvh!important}
+
+  /* Reports functionality is still deferred; this only makes the temporary shell usable on phone. */
+  .reports-shell{padding:9px!important;gap:7px!important;overflow:auto!important}
+  .reports-shell>header{gap:6px!important}.reports-shell>header h2{font-size:1rem!important}
+  .reports-shell button,.reports-shell input,.reports-shell select{min-height:29px!important;padding:5px 7px!important}
+  .report-builder,.reports-shell>section{gap:6px!important}
+  .report-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+  .report-grid label{gap:2px!important;font-size:.68rem!important}
+  .report-modules{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+  .report-modules label{padding:5px!important;gap:4px!important;font-size:.7rem!important}
+  .report-condition{grid-template-columns:1fr 1fr!important;gap:5px!important}
+  .report-condition [data-role=value]{grid-column:1/-1!important}
+  .report-actions,.report-condition-header,.report-output-header{gap:5px!important;flex-wrap:wrap!important}
+  .report-output{max-height:22dvh!important;padding:7px!important}
+}
