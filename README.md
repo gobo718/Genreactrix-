@@ -1,3 +1,10 @@
+## v0.9.40.16 — Single image file intake
+
+- Added **Choose File** beside **Choose folder** in the Portrait + Images Add panel.
+- Choose File accepts one specific image (`image/*`) and imports exactly that selected file into the normal import/Queue path.
+- The permanent 64×64 thumbnail continues to be created at Import by the existing image import engine.
+- No Worker change.
+
 ## v0.9.40.15 — Portrait console fit + plain workflow labels
 
 - Flag tap now toggles Review immediately. The previous handler incorrectly treated the synchronous image-record update as a Promise, so the record changed immediately but the UI did not repaint until a later render.

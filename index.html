@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.15</title>
-<link href="styles.css?v=0.9.40.14" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.16</title>
+<link href="styles.css?v=0.9.40.16" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.15</span>
+<span>v0.9.40.16</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.15</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.16</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -217,7 +217,7 @@
 </nav>
 <div class="images-console-body">
 <section data-images-panel="add">
-<div class="images-add-actions"><button id="imagesConsoleFolder" type="button">Choose folder</button><button id="imagesConsoleUrlFileBtn" type="button">Load URL document / spreadsheet</button><input id="imagesConsoleUrlFile" type="file" accept=".txt,.csv,.tsv,.json,.html,.htm,.md,.docx,.xlsx,.ods" hidden></div>
+<div class="images-add-actions"><button id="imagesConsoleFolder" type="button">Choose folder</button><button id="imagesConsoleFileBtn" type="button">Choose File</button><button id="imagesConsoleUrlFileBtn" type="button">Load URL document / spreadsheet</button><input id="imagesConsoleSingleFile" type="file" accept="image/*" hidden><input id="imagesConsoleUrlFile" type="file" accept=".txt,.csv,.tsv,.json,.html,.htm,.md,.docx,.xlsx,.ods" hidden></div>
 <label>URLs<textarea id="imagesConsoleUrls" rows="7" placeholder="One URL per line"></textarea></label>
 <div class="images-console-grid"><label>Amount<input id="imagesConsoleQuantity" type="number" min="1" step="1" value="100"></label><label>Mode<select id="imagesConsoleMode"><option value="link">Hyperlink only</option><option value="download">Temporary copies</option><option value="prefetch">Prefetch only</option></select></label></div>
 <label class="image-prefetch-option"><input id="imagesConsolePrefetch" type="checkbox" checked> Prefetch, then Import</label>
@@ -928,8 +928,8 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.14"></script>
-<script src="images-console.js?v=0.9.40.14"></script>
+<script src="app.js?v=0.9.40.16"></script>
+<script src="images-console.js?v=0.9.40.16"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
