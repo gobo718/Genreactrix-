@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.16";
+const GENREACTRIX_BUILD="v0.9.40.18";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -3083,21 +3083,25 @@ function createImagesEngine(){
     await thumbnailBlobPut(id,thumb);
     return {thumbnailKey:id,thumbnailMimeType:thumb.type||"image/webp",thumbnailSize:thumb.size||0};
   }
+  const IMAGE_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
+  function isImageFile(file){const type=String(file?.type||"").toLowerCase();return type.startsWith("image/")||IMAGE_FILE_RE.test(String(file?.name||""))}
+  function imageMimeForFile(file){const type=String(file?.type||"").toLowerCase();if(type.startsWith("image/"))return type;const name=String(file?.name||"").toLowerCase();if(/\.jpe?g$/.test(name))return "image/jpeg";if(/\.png$/.test(name))return "image/png";if(/\.gif$/.test(name))return "image/gif";if(/\.webp$/.test(name))return "image/webp";if(/\.bmp$/.test(name))return "image/bmp";if(/\.avif$/.test(name))return "image/avif";if(/\.heic$/.test(name))return "image/heic";if(/\.heif$/.test(name))return "image/heif";return type}
   async function importFiles(fileList,{limit=null}={}){
-    const files=[...fileList].filter(file=>file.type.startsWith("image/"));
+    const files=[...fileList].filter(isImageFile);
     const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files,created=[];
-    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`Folder import · ${selected.length} image${selected.length===1?"":"s"}`,state:"running",total:selected.length,message:"Importing images"});
+    const folderImport=selected.some(file=>Boolean(file.webkitRelativePath));
+    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`${folderImport?"Folder":"File"} import · ${selected.length} image${selected.length===1?"":"s"}`,state:"running",total:selected.length,message:"Importing images"});
     for(const [order,file] of selected.entries()){
       const id=createImageId("local"),qItemId=qJob?`queue_import_${id}`:null;
       if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
       let record;
       try{
         const thumbnail=await storeImportedImage({id,blob:file,keepFull:true});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[]});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[]});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
       }catch(error){
         await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"none",mimeType:file.type,size:file.size,lastModified:file.lastModified},workflow:{stage:"import-failed"},attributes:{failed:true},batchIds:[],error:String(error?.message||error)});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"none",mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"import-failed"},attributes:{failed:true},batchIds:[],error:String(error?.message||error)});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error});
       }
       created.push(record);

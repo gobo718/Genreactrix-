@@ -1,3 +1,9 @@
+## v0.9.40.18 — Single-file selection/import repair
+- **Choose File now stages one selected image**; the main **Import** button imports that specific file. This matches the rest of the Add panel instead of silently auto-importing on file selection.
+- Fixed stale cache-busting: `import-engine.js` was still requested as `?v=0.9.40.14` while the page was v0.9.40.16, which could leave Chrome/GitHub Pages running older import logic.
+- File intake now accepts image files by MIME type **or image filename extension** so Android file pickers that return an empty/odd MIME type do not discard a valid image.
+- Single-file imports are labeled as file imports rather than folder imports.
+
 ## v0.9.40.16 — Single image file intake
 
 - Added **Choose File** beside **Choose folder** in the Portrait + Images Add panel.
@@ -1324,3 +1330,10 @@ OUT OF SCOPE
 - With no Theme target highlighted, PrimFusion/theme taps cannot accidentally replace a Theme.
 - Tapping a different Theme target still activates that target normally.
 - No Worker, Matrix vocabulary, AI, or unfolded-orientation behavior changed.
+
+## v0.9.40.18 — Android folder picker repair
+- Folder inputs no longer pass `accept="image/*"` to Android/Chrome while using `webkitdirectory`.
+- Android can therefore enumerate the selected folder instead of reporting `Upload 0 files` before Genreactrix receives the selection.
+- Genreactrix still filters the returned files to supported image MIME types/extensions in application code, so non-image files in the folder are ignored.
+- Single-file **Choose File** still uses `accept="image/*"`.
+- No Worker change.

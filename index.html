@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.16</title>
-<link href="styles.css?v=0.9.40.16" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.18</title>
+<link href="styles.css?v=0.9.40.18" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.16</span>
+<span>v0.9.40.18</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -78,14 +78,14 @@
 <button class="tablet-layout-control" id="saveLayoutBtn" title="Save current workspace layout">Save Layout</button>
 <label class="folder-button" title="Load image folder">
           ＋ Images
-          <input accept="image/*" id="folderInput" multiple="" type="file" webkitdirectory=""/>
+          <input id="folderInput" multiple="" type="file" webkitdirectory=""/>
 </label>
 </div>
 <div class="progress-text" id="progressText">Inbox empty</div>
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.16</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.18</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -414,7 +414,7 @@
 <button aria-pressed="false" id="tabletDepotBtn" type="button">Depot</button>
 <button aria-pressed="false" id="tabletFilterBtn" type="button">Filter</button>
 <button id="tabletWorkspaceFlipBtn" type="button" aria-label="Flip Matrix and Judgment workspace">Flip</button>
-<input accept="image/*" id="tabletFolderInput" multiple="" type="file" webkitdirectory="" hidden/>
+<input id="tabletFolderInput" multiple="" type="file" webkitdirectory="" hidden/>
 </header>
 <section class="landscape-workspace" aria-label="Classification workspace">
 <div class="landscape-workspace-face landscape-matrix-face" id="tabletMatrixFace">
@@ -895,7 +895,7 @@
 </dialog>
 <script src="validation-engine.js?v=0.9.24.0"></script>
 <script src="import-job-engine.js?v=0.9.24.0"></script>
-<script src="import-engine.js?v=0.9.40.14"></script>
+<script src="import-engine.js?v=0.9.40.18"></script>
 <script src="maintenance-engine.js?v=0.9.40.14"></script>
 <script src="settings-engine.js?v=0.9.39.93"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
@@ -928,8 +928,8 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.16"></script>
-<script src="images-console.js?v=0.9.40.16"></script>
+<script src="app.js?v=0.9.40.18"></script>
+<script src="images-console.js?v=0.9.40.18"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
