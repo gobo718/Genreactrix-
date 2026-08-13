@@ -7535,3 +7535,69 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
    Chrome and privacy browsers report different usable landscape heights because
    their browser chrome is different. The folded layout is intentionally allowed
    through 699px so the same physical Fold6 screen receives the same geometry. */
+
+/* v0.9.40.22 — canonical Landscape square-anchor restoration.
+   Restores the geometry established in v0.9.39.8 and used by the accepted
+   Judgment composition: the left image viewport is one fixed square, the
+   three Director theme rows fill the remainder directly beneath it, and the
+   existing runtime measurement mirrors that exact Director stack into the
+   three AI Theme rows beside it. The AI Description then owns the remaining
+   lower-right rectangle. This override intentionally does not alter Customs,
+   Image View, reaction coordinates, or Portrait geometry. */
+@media (orientation:landscape){
+  .landscape-frame{
+    --landscape-image-square:min(62dvh,32vw)!important;
+    grid-template-columns:var(--landscape-image-square) minmax(0,1fr)!important;
+  }
+  .landscape-image-region{
+    grid-template-rows:var(--landscape-image-square) minmax(0,1fr)!important;
+    gap:.34%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-button{
+    width:var(--landscape-image-square)!important;
+    height:var(--landscape-image-square)!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    aspect-ratio:1/1!important;
+    align-self:start!important;
+    justify-self:start!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  .landscape-image-button img{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+  }
+  .landscape-director-themes{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-rows:repeat(3,minmax(0,1fr))!important;
+    gap:1.7%!important;
+    overflow:hidden!important;
+  }
+  .landscape-director-themes .tablet-theme-cell{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:100%!important;
+    padding:.15em .45em!important;
+    line-height:1!important;
+  }
+}

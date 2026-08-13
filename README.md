@@ -1349,3 +1349,13 @@ OUT OF SCOPE
 - Bumps Queue and Import Job IndexedDB schemas to force the same missing-store repair if an older browser database is incomplete.
 - Refreshes cache keys for app.js, queue-engine.js, and import-job-engine.js so Chrome does not mix stale engine scripts with the current build.
 - No Worker change.
+
+
+## v0.9.40.22 — Landscape square-anchor restoration
+
+- Restores the established square Landscape image viewport as the geometry anchor.
+- Director Theme 1/2/3 fill the left-column remainder directly beneath the square.
+- Existing measured AI Theme placement again mirrors Director theme width/height/vertical position row-for-row.
+- AI Description retains the remaining lower-right rectangle beside the AI Theme stack.
+- Reaction geometry, Customs Drawer, Image View, Portrait, Import, and IndexedDB behavior are not redesigned in this release.
+- Busts the stale Landscape stylesheet cache key so browsers load the restored geometry instead of an older cached CSS file.
