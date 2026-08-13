@@ -7398,7 +7398,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .flag-admin-shell .delete-action{background:#E53935!important;border-color:#FF7B78!important;color:#FFF!important}
 .flag-admin-shell .reject-action{background:#FF00D4!important;border-color:#FF7BE9!important;color:#190015!important}
 
-/* v0.9.40.19 — staged single-file intake + Android MIME/cache repair; v0.9.40.16 — single-file intake; v0.9.40.15 Portrait console viewport fit + compact temporary screens.
+/* v0.9.40.20 — staged single-file intake + Android MIME/cache repair; v0.9.40.16 — single-file intake; v0.9.40.15 Portrait console viewport fit + compact temporary screens.
    The previous v0.9.40.13 zoom compensation widened inner surfaces to 116–143%,
    which made Android portrait dialogs clip off-screen. Keep the uniform scale,
    but never expand the scaled surface beyond its dialog. Landscape untouched. */
@@ -7531,7 +7531,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.40.19 — Fold6 browser viewport normalization.
+/* v0.9.40.20 — Fold6 browser viewport normalization.
    Chrome and privacy browsers report different usable landscape heights because
    their browser chrome is different. The folded layout is intentionally allowed
    through 699px so the same physical Fold6 screen receives the same geometry. */

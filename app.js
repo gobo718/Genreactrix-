@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.19";
+const GENREACTRIX_BUILD="v0.9.40.20";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1967,15 +1967,33 @@ async function collectDirectoryImageFiles(directoryHandle,limit=null){
   await walk(directoryHandle);
   return files;
 }
+function isAndroidFolderPickerEnvironment(){
+  const ua=String(navigator.userAgent||"");
+  const platform=String(navigator.userAgentData?.platform||"");
+  return /Android/i.test(ua)||/Android/i.test(platform);
+}
+function openFolderFilesFallback({limit=null,importEngineMode=false}={}){
+  pendingPortraitImportLimit=limit==null?null:Math.max(1,Number(limit)||1);
+  window.pendingImportEngineMode=Boolean(importEngineMode);
+  setPortraitStationStatus("Select the image files from the folder. Use Select all in the Android file picker when available.");
+  $("folderFilesFallback")?.click();
+  return true;
+}
 async function chooseImageFolder({limit=null,importEngineMode=false}={}){
-  // Chrome/Chromium on Android supports File System Access. Prefer the real
-  // directory picker because <input webkitdirectory> can be handed an empty
-  // FileList by some Android picker/browser combinations.
+  // On this project's Android/Chrome target, both webkitdirectory and
+  // showDirectoryPicker can return an empty selection for a folder that
+  // visibly contains images. Use a plain multi-file picker on Android so the
+  // browser hands Genreactrix the actual File objects; Genreactrix then filters
+  // images and applies the requested import limit.
+  if(isAndroidFolderPickerEnvironment())return openFolderFilesFallback({limit,importEngineMode});
   if(typeof window.showDirectoryPicker==="function"){
     try{
       const handle=await window.showDirectoryPicker({id:"genreactrix-images",mode:"read",startIn:"pictures"});
       const files=await collectDirectoryImageFiles(handle,limit);
-      if(!files.length)throw new Error("No image files found in the selected folder.");
+      if(!files.length){
+        setPortraitStationStatus("Folder picker returned 0 image files. Choose the folder again using the fallback file selector.");
+        return false;
+      }
       window.pendingImportEngineMode=Boolean(importEngineMode);
       await loadImageFolder(files,limit);
       return true;
@@ -1992,10 +2010,33 @@ async function chooseImageFolder({limit=null,importEngineMode=false}={}){
 }
 window.genreactrixChooseImageFolder=chooseImageFolder;
 $("folderInput").addEventListener("change",async e=>{
-  try{ await loadImageFolder(e.target.files,pendingPortraitImportLimit); }
-  catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
-  pendingPortraitImportLimit=null;
-  e.target.value="";
+  try{
+    if(!e.target.files?.length){
+      setPortraitStationStatus("Folder picker returned 0 files. Use Choose folder again and select the image files from that folder.");
+      return;
+    }
+    await loadImageFolder(e.target.files,pendingPortraitImportLimit);
+  }catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
+  finally{
+    pendingPortraitImportLimit=null;
+    e.target.value="";
+  }
+});
+$("folderFilesFallback")?.addEventListener("change",async e=>{
+  try{
+    const selected=[...(e.target.files||[])];
+    const imageCount=selected.filter(folderFileLooksLikeImage).length;
+    if(!imageCount){
+      setPortraitStationStatus("No image files were selected.");
+      return;
+    }
+    setPortraitStationStatus(`${imageCount} image file${imageCount===1?"":"s"} selected. Importing…`);
+    await loadImageFolder(selected,pendingPortraitImportLimit);
+  }catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
+  finally{
+    pendingPortraitImportLimit=null;
+    e.target.value="";
+  }
 });
 $("tabletFolderInput")?.addEventListener("change",e=>loadImageFolder(e.target.files));
 

@@ -1,3 +1,10 @@
+## v0.9.40.20 — Android folder intake fallback
+
+- Chrome on the Fold target returned an empty directory from both the legacy `webkitdirectory` route and the newer directory-handle route even when the selected folder contained images.
+- On Android, **Choose folder** now opens a plain multi-file selector. Navigate to the folder and use the native **Select all** action when available; Genreactrix filters supported image files and honors the requested Amount limit.
+- Desktop/non-Android browsers keep the true directory picker path when supported.
+- No Worker change.
+
 ## v0.9.40.19 — Single-file selection/import repair
 - **Choose File now stages one selected image**; the main **Import** button imports that specific file. This matches the rest of the Add panel instead of silently auto-importing on file selection.
 - Fixed stale cache-busting: `import-engine.js` was still requested as `?v=0.9.40.14` while the page was v0.9.40.16, which could leave Chrome/GitHub Pages running older import logic.
