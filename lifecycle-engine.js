@@ -12,6 +12,7 @@
   POST_PROCESSING:'post-processing',
   PURGATORY:'purgatory',
   QUARANTINE:'quarantine',
+  DEFECTIVE:'defective',
   BATCHED:'batched',
   RED_EXCLUDED:'red-excluded',
   HOT_EXCLUDED:'hot-magenta-excluded',
@@ -55,24 +56,32 @@
   return next;
  }
  function markQueueWaiting(id,reason='queue-waiting'){return setStage(id,STAGES.QUEUE_WAITING,reason);}
- function markAiProcessing(id,{jobId=null,attemptId=null}={}){return setStage(id,STAGES.AI_PROCESSING,'ai-processing-started',{activeAiJobId:jobId,activeAiAttemptId:attemptId});}
- function neighboringRecords(record){const rows=records().filter(r=>!r.attributes?.archived).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))||String(a.id).localeCompare(String(b.id))),index=rows.findIndex(r=>String(r.id)===String(record.id));return{previous:index>0?rows[index-1]:null,next:index>=0&&index<rows.length-1?rows[index+1]:null};}
- function evaluateIsolatedFailure(id){
+ function markAiProcessing(id,{jobId=null,attemptId=null}={}){const record=get(id);if(!record||[STAGES.QUARANTINE,STAGES.DEFECTIVE].includes(record.workflow?.stage))return record;return setStage(id,STAGES.AI_PROCESSING,'ai-processing-started',{activeAiJobId:jobId,activeAiAttemptId:attemptId});}
+ function neighboringRecords(record){const rows=records().filter(r=>!r.attributes?.archived).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))||String(a.id).localeCompare(String(b.id))),index=rows.findIndex(r=>String(r.id)===String(record.id));return{rows,index,previous:index>0?rows[index-1]:null,next:index>=0&&index<rows.length-1?rows[index+1]:null};}
+ function normalSurroundings(record){const {rows,index,previous,next}=neighboringRecords(record);if(index<0)return null;let peers=[];if(previous&&next)peers=[previous,next];else if(index===0)peers=rows.slice(1,3);else if(index===rows.length-1)peers=rows.slice(Math.max(0,index-2),index).reverse();if(peers.length<2||peers.some(r=>!primaryState(r).complete))return null;return peers;}
+ function evaluateIsolatedFailure(id,context={}){
   let record=get(id);if(!record)return null;const p=primaryState(record),ext=record.metadata?.extended||{};
-  if(p.complete){if(Number(ext.isolatedAiFailureStreak)||0)record=update(id,{metadata:{extended:{isolatedAiFailureStreak:0}}},'ai-isolated-failure-streak-reset')||record;return record;}
+  if([STAGES.QUARANTINE,STAGES.DEFECTIVE].includes(record.workflow?.stage))return record;
+  if(p.complete){if(Number(ext.isolatedAiFailureStreak)||0)record=update(id,{metadata:{extended:{isolatedAiFailureStreak:0,isolatedAiFailureEvidence:[]}}},'ai-isolated-failure-streak-reset')||record;return record;}
   const failed=PRIMARY.some(key=>record.components?.[key]==='failed');if(!failed)return record;
-  const attemptId=ext.lastAiAttemptId||null;if(!attemptId||ext.lastIsolationCountedAttemptId===attemptId)return record;
-  const neighbors=neighboringRecords(record);if(!neighbors.previous||!neighbors.next||!primaryState(neighbors.previous).complete||!primaryState(neighbors.next).complete)return record;
-  const streak=(Number(ext.isolatedAiFailureStreak)||0)+1;record=update(id,{metadata:{extended:{isolatedAiFailureStreak:streak,lastIsolationCountedAttemptId:attemptId,lastIsolatedAiFailureAt:now(),problemImage:streak>=3}}},'ai-isolated-failure-recorded')||record;
-  if(streak>=3)record=setStage(id,STAGES.QUARANTINE,'ai-quarantined',{quarantineReason:'three-isolated-ai-failures',quarantinedAt:now(),problemImage:true})||record;
+  const attemptId=String(context.attemptId||ext.lastAiAttemptId||'');if(!attemptId||ext.lastIsolationCountedAttemptId===attemptId)return record;
+  const globalFailure=Boolean(context.globalFailure??ext.lastAiFailureGlobal);if(globalFailure)return record;
+  const surroundings=normalSurroundings(record);if(!surroundings)return record;
+  const at=now(),error=String(context.error||ext.lastAiFailureMessage||''),jobId=context.jobId||ext.lastAiJobId||null,priorEvidence=Array.isArray(ext.isolatedAiFailureEvidence)?ext.isolatedAiFailureEvidence:[],evidence=[...priorEvidence.filter(x=>String(x.attemptId)!==attemptId),{attemptId,jobId,error,at}].slice(-20),streak=(Number(ext.isolatedAiFailureStreak)||0)+1;
+  record=update(id,{metadata:{extended:{isolatedAiFailureStreak:streak,isolatedAiFailureEvidence:evidence,lastIsolationCountedAttemptId:attemptId,lastIsolatedAiFailureAt:at,problemImage:streak>=3}}},'ai-isolated-failure-recorded')||record;
+  if(streak>=3){
+    record=setStage(id,STAGES.QUARANTINE,'ai-quarantined',{quarantineReason:'three-isolated-ai-failures',quarantinedAt:at,problemImage:true})||record;
+    const c=window.genreactrixQuarantineEngine?.openCase?.({imageId:id,attemptId,jobId,error,streak,evidence:{kind:'isolated-ai-failures',neighborImageIds:surroundings.map(r=>r.id)},attempts:evidence});
+    if(c)record=update(id,{metadata:{extended:{quarantineCaseId:c.id}}},'quarantine-case-linked')||record;
+  }
   return record;
  }
- function reevaluateNeighborFailures(id){const current=get(id);if(!current)return;const rows=records().filter(r=>!r.attributes?.archived).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))||String(a.id).localeCompare(String(b.id))),index=rows.findIndex(r=>String(r.id)===String(id));for(const candidate of [rows[index-1],rows[index+1]])if(candidate)evaluateIsolatedFailure(candidate.id);}
- function reconcileAfterAi(id,{jobId=null,attemptId=null}={}){
-  const record=get(id);if(!record)return null;
-  const stage=stageAfterAi(record),reason=stage===STAGES.STAGED?'ai-staged':stage===STAGES.AI_PARTIAL?'ai-partial':'ai-returned-to-queue';
-  let next=setStage(id,stage,reason,{activeAiJobId:null,activeAiAttemptId:null,lastAiJobId:jobId||record.metadata?.extended?.lastAiJobId||null,lastAiAttemptId:attemptId||record.metadata?.extended?.lastAiAttemptId||null});
-  next=evaluateIsolatedFailure(id)||next;reevaluateNeighborFailures(id);return next;
+ function reevaluateNeighborFailures(id){const current=get(id);if(!current)return;const rows=records().filter(r=>!r.attributes?.archived).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))||String(a.id).localeCompare(String(b.id))),index=rows.findIndex(r=>String(r.id)===String(id));for(const candidate of [rows[index-2],rows[index-1],rows[index+1],rows[index+2]])if(candidate){const ext=candidate.metadata?.extended||{};evaluateIsolatedFailure(candidate.id,{attemptId:ext.lastAiAttemptId||null,jobId:ext.lastAiJobId||null,error:ext.lastAiFailureMessage||'',globalFailure:Boolean(ext.lastAiFailureGlobal)});}}
+ function reconcileAfterAi(id,{jobId=null,attemptId=null,error='',globalFailure=false}={}){
+  const record=get(id);if(!record)return null;if([STAGES.QUARANTINE,STAGES.DEFECTIVE].includes(record.workflow?.stage))return record;
+  const stage=stageAfterAi(record),reason=stage===STAGES.STAGED?'ai-staged':stage===STAGES.AI_PARTIAL?'ai-partial':'ai-returned-to-queue',failureMessage=String(error||'');
+  let next=setStage(id,stage,reason,{activeAiJobId:null,activeAiAttemptId:null,lastAiJobId:jobId||record.metadata?.extended?.lastAiJobId||null,lastAiAttemptId:attemptId||record.metadata?.extended?.lastAiAttemptId||null,lastAiFailureMessage:failureMessage||null,lastAiFailureGlobal:Boolean(globalFailure)});
+  next=evaluateIsolatedFailure(id,{jobId,attemptId,error:failureMessage,globalFailure})||next;reevaluateNeighborFailures(id);return next;
  }
  function markInbox(id,bundleId){return setStage(id,STAGES.INBOX_WORKING,'bundle-entered-inbox',{lastInboxBundleId:bundleId||null});}
  function markPostProcessing(id,batchId){return setStage(id,STAGES.POST_PROCESSING,'post-processing-started',{activeBatchId:batchId||null});}
@@ -88,7 +97,7 @@
   if(['available','imported'].includes(raw))stage=STAGES.QUEUE_WAITING;
   else if(['ready-for-director','ready-director','ai-complete'].includes(raw))stage=members.current.length?STAGES.INBOX_WORKING:stageAfterAi(record);
   else if(raw==='queued'&&primaryState(record).complete&&!members.current.length)stage=STAGES.STAGED;
-  if(members.current.length&&![STAGES.POST_PROCESSING,STAGES.PURGATORY,STAGES.BATCHED,STAGES.RED_EXCLUDED,STAGES.HOT_EXCLUDED,STAGES.ARCHIVED].includes(stage))stage=STAGES.INBOX_WORKING;
+  if(members.current.length&&![STAGES.POST_PROCESSING,STAGES.PURGATORY,STAGES.QUARANTINE,STAGES.DEFECTIVE,STAGES.BATCHED,STAGES.RED_EXCLUDED,STAGES.HOT_EXCLUDED,STAGES.ARCHIVED].includes(stage))stage=STAGES.INBOX_WORKING;
   if(stage!==raw){patch.workflow={stage};patch.metadata.extended.preLifecycleV1Stage=ext.preLifecycleV1Stage||raw;changed=true;}
   if(Number(ext.lifecycleSchemaVersion||0)!==1)changed=true;
   if(!changed)return null;

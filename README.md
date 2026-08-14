@@ -1,3 +1,56 @@
+## v0.9.40.32 — Quarantine + Defective
+
+This release completes the next bounded lifecycle migration after the accepted v0.9.40.31 Origin Gates pass. It turns the preliminary Quarantine stage into a real Queue-owned investigation hold with durable case history and the two canonical manual outcomes: Release or Defective.
+
+### Quarantine trigger
+- A suspected Problem Image enters **Quarantine** only after **three distinct isolated AI attempts** fail on that image while the surrounding Queue images process normally.
+- AI attempts now carry a unique per-attempt ID even when the same AI job item is retried. This repairs the older preliminary counter, which reused one item ID and therefore could not reliably reach three.
+- Interior images require the immediate image before and after them to have completed normally. A first/last Queue image may use the next/previous two normal images so an edge item cannot retry forever merely because it lacks two-sided neighbors.
+- Adjacent/broad failure clusters are not treated as isolated Problem Images.
+- Provider-wide conditions such as authentication, connection/network, rate-limit, quota, or missing Worker configuration do not increment the isolated-image streak.
+- `Workers AI vision failed` is no longer automatically classified as provider-wide; if it occurs on one image while surrounding images succeed, it can contribute legitimate image-specific Quarantine evidence.
+
+### Quarantine ownership and retry safety
+- Added `quarantine-engine.js`, owned by Queue.
+- Each open Quarantine Case stores Image ID, trigger, isolated-attempt IDs, linked AI Job IDs, ordered error evidence, timestamps, and final resolution.
+- Quarantine is outside normal Queue ordering and remains part of Active processing exactly once.
+- Automatic Flow-through, Buffer, Cycle/Missing, ordinary AI job retry, stranded-job resume, and generic Failed targeting all exclude Quarantine.
+- **Daily Housekeeping does not touch Quarantine.**
+- Existing records already carrying `workflow.stage = quarantine` are migrated into an explicit Quarantine Case without rewriting image assets.
+
+### Manual investigation outcomes
+- The existing Queue console now shows open Quarantine cases in its existing list area.
+- **Release** clears current/partial AI working data, preserves diagnostic History, resets the isolated-failure streak, and returns the Image Record to Queue as a fresh AI candidate.
+- Once released, normal Queue/AI behavior may pick the image up again; the retry is no longer occurring *inside* Quarantine.
+- **Defective** is a destructive technical finalization and requires confirmation.
+- Defective deletes the full-resolution working/kept asset directly rather than routing it through Recycle.
+- The permanent 64×64 thumbnail, Image Record, Origin Metadata, AI diagnostics/history, and Quarantine Case remain.
+- Defective is a final historical/reporting state. It is excluded from Active counts, generic AI-failure export, and all future AI candidate/retry paths.
+- Defective remains distinct from Director Reject.
+
+### Queue presentation
+- The existing six-cell Queue summary geometry is preserved.
+- Its former generic **Failed** summary cell now displays **Quarantine**, because Quarantine is the canonical Queue-owned technical hold; ordinary job failures remain visible in the existing job list/details.
+- No new Queue panel, breakpoint, Portrait/Landscape composition, or CSS rule was added.
+
+### Preservation
+- `styles.css` is byte-for-byte identical to v0.9.40.31.
+- Existing non-script `index.html` structure remains exactly 1,549 elements with the same 673 IDs and the same tag/ID/class signature.
+- No Origin/Dupe/Repeat semantics, Batch, Post-processing, Purgatory, Keep, Recycle, Director Evaluation, PrimFusion, Reaction 60/40 mathematics, Worker prompts, or accepted Portrait/Landscape geometry is redesigned.
+- One new nonvisual root engine is added: `quarantine-engine.js`.
+
+### Verification performed
+- JavaScript syntax validation passes across all root project engines and Worker JavaScript sources.
+- Quarantine lifecycle tests pass for: three unique isolated failures; ordered three-attempt case evidence; Release → fresh Queue; Defective finalization; provider-global failure exclusion; first/last Queue edge handling; and adjacent failure-cluster exclusion.
+- Home-count test passes: Quarantine remains Active exactly once; Defective is final and excluded from Active.
+- Structural preservation check passes: CSS checksum is unchanged and the non-script HTML tag/ID/class structure is identical to v0.9.40.31.
+
+### Real-device acceptance gate
+1. Confirm an ordinary healthy image still follows Queue → AI → Staged normally and that Portrait/Landscape remain visually unchanged.
+2. If you have an image that repeatedly fails AI while neighboring images succeed, allow three distinct attempts. It should stop automatically in **Queue → Quarantine** rather than continuing to spend AI attempts.
+3. Open Queue. The Quarantine row should show **Release** and **Defective**.
+4. Release should return it to Queue for a fresh try. If you intentionally test Defective instead, confirm the warning: the full-resolution image is deleted directly while its permanent thumbnail/record/diagnostics remain.
+
 ## v0.9.40.31 — Origin Gates
 
 This release implements the next bounded lifecycle migration after the accepted v0.9.40.30 Home-count pass. It makes Dupe, Repeat, true Import Failure, and Retry Import Source first-class **Origin** behavior instead of silently skipping duplicate-looking sources or creating pre-admission failures as ordinary Image Records.

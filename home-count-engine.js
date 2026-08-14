@@ -2,7 +2,7 @@
    Authoritative active-processing accounting. Counts image populations by current owner/location.
    Group, storage/history, and process telemetry are exposed separately and are never added to Active. */
 (()=>{'use strict';
- const FINAL_STAGES=new Set(['batched','red-excluded','hot-magenta-excluded','archived','import-failed','ai-failure-exported']);
+ const FINAL_STAGES=new Set(['batched','red-excluded','hot-magenta-excluded','defective','archived','import-failed','ai-failure-exported']);
  const QUEUE_STAGES=new Set(['queued','ai-processing','ai-partial','staged']);
  const clone=v=>v==null?v:structuredClone(v);
  let cached=null,importJobsCache=[],importJobsLoaded=false,importJobsLoad=null;

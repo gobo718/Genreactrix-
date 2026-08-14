@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.28";
+const GENREACTRIX_BUILD="v0.9.40.32";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -295,7 +295,7 @@ function recordAlreadyInInbox(record){
 }
 function recordIsStaged(record){return Boolean(record)&&record.workflow?.stage==="staged"&&recordHasRequestedAi(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
 function aiOutputRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordIsStaged);}
-function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyInInbox(record));}
+function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!['quarantine','defective'].includes(String(record.workflow?.stage||''))&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyInInbox(record));}
 window.genreactrixInboxAiOutputRecords=()=>aiOutputRecords().map(record=>structuredClone(record));
 window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
 function recordMatchesFilterCategory(record,key){
@@ -2958,7 +2958,7 @@ function createImageRecordEngine(){
     if(["available","imported"].includes(rawStage))stage=primaryCurrent?"staged":"queued";
     else if(["ready-for-director","ready-director","ai-complete"].includes(rawStage))stage=currentBundles.length?"inbox-working":(primaryCurrent?"staged":"queued");
     else if(rawStage==="queued"&&primaryCurrent&&!currentBundles.length)stage="staged";
-    if(currentBundles.length&&!['post-processing','purgatory','batched','red-excluded','hot-magenta-excluded','archived'].includes(stage))stage="inbox-working";
+    if(currentBundles.length&&!['post-processing','purgatory','quarantine','defective','batched','red-excluded','hot-magenta-excluded','archived'].includes(stage))stage="inbox-working";
     const sourceBatch=record.source?.firstBatchId||record.batchId||null;
     const batchIds=Array.isArray(record.batchIds)?record.batchIds.filter(Boolean):(record.batchId?[record.batchId]:[]);
     const sourceType=record.source?.type||record.sourceType||"unknown";
@@ -3277,6 +3277,24 @@ function createImagesEngine(){
     records.update(id,{metadata:{extended:{exclusionRecordCategory:normalized,exclusionRecordStoredAt:payload.recordedAt}}},normalized==="red"?"red-flag-recorded":"hot-magenta-flag-recorded");
     return payload;
   }
+  async function finalizeDefective(id,{quarantineCaseId=null}={}){
+    let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");
+    if(record.workflow?.stage!=="quarantine")throw new Error("Only a Quarantined image can be finalized as Defective");
+    if(record.attributes?.locked)throw new Error("Image record is locked");
+    const deletedAt=now();
+    await imageBlobDelete(record.id).catch(()=>{});
+    await keptBlobDelete(record.id).catch(()=>{});
+    await keptIdDelete(record.id).catch(()=>{});
+    const oldUrl=objectUrls.get(record.id);if(oldUrl){URL.revokeObjectURL(oldUrl);objectUrls.delete(record.id);}
+    record=records.update(record.id,{
+      storage:{mode:"none",temporaryKey:null,referenceKey:null,keptImageFilename:null,keptIdFilename:null,hyperlink:"",missingReference:false,recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorDepot:false,priorRejectionFlagged:null,priorRejected:null}},
+      workflow:{stage:"defective"},
+      attributes:{saved:false,flagged:false,needsReview:false,depot:false,rejectionFlagged:false,rejected:false,inRecycleBin:false},
+      metadata:{extended:{problemImage:true,quarantineCaseId:quarantineCaseId||record.metadata?.extended?.quarantineCaseId||null,finalDisposition:"defective",defectiveAt:deletedAt,fullResolutionDeletedAt:deletedAt}},
+      timestamps:{savedAt:null,flaggedAt:null,depotAt:null,rejectionFlaggedAt:null,rejectedAt:null}
+    },"defective-finalized");
+    return record;
+  }
   async function finalizePostProcessingPlan(plan={}){
     const id=String(plan.imageId||""),batchId=String(plan.batchId||""),planId=String(plan.id||"");
     if(!id||!batchId||!planId)throw new Error("Post-processing plan is incomplete");
@@ -3394,13 +3412,13 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported","defective-finalized"].includes(type))scheduleLandscapeRehydrate();
   if(type==="ai-attached"&&String(event.detail?.imageId||"")===String(currentKey())){
     delete state.aiRuns[String(event.detail.imageId)];
     renderTabletWorkbench();
