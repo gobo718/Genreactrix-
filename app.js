@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.23";
+const GENREACTRIX_BUILD="v0.9.40.24";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -237,20 +237,19 @@ const state = {
   feedEmpty: true
 };
 
-// AI Output is pushed into Inbox. The push transaction creates a Pack with frozen membership.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v3";
-const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
+// Queue owns AI-complete images as Staged until the Bundle Engine moves them into Inbox.
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v4";
+const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
 const LEGACY_SIDELINE_FILTER_KEY=["par","ked"].join("");
-const LANDSCAPE_INBOX_KEY="genreactrix-landscape-inbox-v1";
 const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen"];
-const SORT_MODES=new Set(["pack","newest","oldest","filename","random"]);
+const SORT_MODES=new Set(["bundle","newest","oldest","filename","random"]);
 const defaultLandscapeFilter=()=>({
   all:false,
   feed:true,
   include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
   exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
-  packId:null,
-  sort:"pack",
+  bundleId:null,
+  sort:"bundle",
   randomSeed:0
 });
 function normalizeLandscapeFilter(value,{legacy=false}={}){
@@ -263,8 +262,9 @@ function normalizeLandscapeFilter(value,{legacy=false}={}){
     if(input.include?.[LEGACY_SIDELINE_FILTER_KEY])base.include.review=true;
     if(input.exclude?.[LEGACY_SIDELINE_FILTER_KEY])base.exclude.review=true;
   }
-  base.packId=input.packId?String(input.packId):null;
-  base.sort=SORT_MODES.has(input.sort)?input.sort:"pack";
+  base.bundleId=input.bundleId?String(input.bundleId):(input.packId?String(input.packId):null);
+  const incomingSort=input.sort==="pack"?"bundle":input.sort;
+  base.sort=SORT_MODES.has(incomingSort)?incomingSort:"bundle";
   base.randomSeed=Number(input.randomSeed)||0;
   if(base.all&&base.feed)base.feed=false;
   if(FILTER_CATEGORIES.some(key=>base.include[key])){base.all=false;base.feed=false;}
@@ -281,38 +281,21 @@ function loadLandscapeFilter(){
     return defaultLandscapeFilter();
   }catch{return defaultLandscapeFilter();}
 }
-function normalizeInboxPack(pack){
-  if(!pack?.id)return null;
-  return {
-    id:String(pack.id),
-    number:Number(pack.number)||null,
-    label:String(pack.label||"Pack"),
-    sourceLabel:String(pack.sourceLabel||""),
-    imageIds:[...new Set((pack.imageIds||[]).map(String))],
-    createdAt:pack.createdAt||null,
-    analyzedAt:pack.analyzedAt||pack.completedAt||null,
-    pushedAt:pack.pushedAt||new Date().toISOString()
-  };
-}
-function loadLandscapeInbox(){
-  try{const value=JSON.parse(localStorage.getItem(LANDSCAPE_INBOX_KEY)||"[]");return Array.isArray(value)?value.map(normalizeInboxPack).filter(Boolean):[];}catch{return [];}
-}
 let landscapeFilter=loadLandscapeFilter();
-let landscapeInbox=loadLandscapeInbox();
 let landscapeFeedDirty=false;
 let landscapeRehydrateTimer=0;
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
-function saveLandscapeInbox(){localStorage.setItem(LANDSCAPE_INBOX_KEY,JSON.stringify(landscapeInbox));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
 function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
-function recordAlreadyPushedToInbox(record){
-  const active=Array.isArray(record?.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
-  const history=Array.isArray(record?.metadata?.extended?.inboxHistoryPackIds)?record.metadata.extended.inboxHistoryPackIds:[];
-  return active.length>0||history.length>0||Boolean(record?.metadata?.extended?.lastInboxBatchId);
+function recordAlreadyInInbox(record){
+  const ext=record?.metadata?.extended||{};
+  const active=[...(Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:[]),...(Array.isArray(ext.inboxPackIds)?ext.inboxPackIds:[])];
+  const history=[...(Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:[]),...(Array.isArray(ext.inboxHistoryPackIds)?ext.inboxHistoryPackIds:[])];
+  return record?.workflow?.stage==="inbox-working"||active.length>0||history.length>0||Boolean(ext.lastInboxBatchId);
 }
-function recordIsAiOutput(record){return Boolean(record)&&recordHasRequestedAi(record)&&!recordAlreadyPushedToInbox(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
-function aiOutputRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordIsAiOutput);}
-function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyPushedToInbox(record));}
+function recordIsStaged(record){return Boolean(record)&&record.workflow?.stage==="staged"&&recordHasRequestedAi(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived;}
+function aiOutputRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(recordIsStaged);}
+function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyInInbox(record));}
 window.genreactrixInboxAiOutputRecords=()=>aiOutputRecords().map(record=>structuredClone(record));
 window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
 function recordMatchesFilterCategory(record,key){
@@ -324,55 +307,23 @@ function recordMatchesFilterCategory(record,key){
   if(key==="seen")return Boolean(record.attributes?.seen);
   return false;
 }
-function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage!=="archived";}
-function inboxPackById(id){return landscapeInbox.find(pack=>pack.id===id)||null;}
-function inboxImageIds(){return new Set(landscapeInbox.flatMap(pack=>pack.imageIds||[]));}
+function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage==="inbox-working";}
+function inboxBundleById(id){return window.genreactrixBundleEngine?.byId?.(id)||null;}
+function inboxImageIds(){return new Set((window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>record.workflow?.stage==="inbox-working").map(record=>String(record.id)));}
 function inboxContainsImage(imageId){return inboxImageIds().has(String(imageId));}
 async function finalizeInboxBatchImages(imageIds,{batchId=null,submittedAt=null}={}){
-  const target=new Set((imageIds||[]).map(String));
-  if(!target.size)return{removedImages:0,removedPacks:0,remainingPacks:landscapeInbox.length};
-  const beforePacks=[...landscapeInbox];
-  const removedMemberships=new Map();
-  for(const pack of beforePacks){
-    for(const imageId of pack.imageIds||[]){
-      const id=String(imageId);
-      if(!target.has(id))continue;
-      if(!removedMemberships.has(id))removedMemberships.set(id,[]);
-      removedMemberships.get(id).push(pack.id);
-    }
-  }
-  landscapeInbox=beforePacks.map(pack=>({...pack,imageIds:(pack.imageIds||[]).filter(id=>!target.has(String(id)))})).filter(pack=>pack.imageIds.length>0);
-  const removedPackIds=new Set(beforePacks.filter(pack=>!landscapeInbox.some(current=>current.id===pack.id)).map(pack=>pack.id));
-  if(landscapeFilter.packId&&removedPackIds.has(landscapeFilter.packId)){landscapeFilter.packId=null;saveLandscapeFilter();}
-  saveLandscapeInbox();
-  const recordEngine=window.genreactrixImageRecordEngine;
-  const when=submittedAt||new Date().toISOString();
-  for(const imageId of target){
-    const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;
-    const activeIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
-    const priorHistory=Array.isArray(record.metadata?.extended?.inboxHistoryPackIds)?record.metadata.extended.inboxHistoryPackIds:[];
-    const removed=removedMemberships.get(imageId)||activeIds;
-    if(!removed.length)continue;
-    recordEngine.update(imageId,{metadata:{extended:{
-      inboxPackIds:activeIds.filter(id=>!removed.includes(id)),
-      inboxHistoryPackIds:[...new Set([...priorHistory,...removed])],
-      inboxBatchedAt:when,
-      lastInboxBatchId:batchId||record.metadata?.extended?.lastInboxBatchId||null
-    }}},'inbox-batch-finalized');
-  }
-  await rehydrateLandscapeFeed();
-  renderPortraitInboxControls();
-  return{removedImages:removedMemberships.size,removedPacks:removedPackIds.size,remainingPacks:landscapeInbox.length};
+  const result=await window.genreactrixBundleEngine?.finalizeBatchImages?.(imageIds,{batchId,submittedAt})||{removedImages:0,remainingBundles:0};
+  await rehydrateLandscapeFeed();renderPortraitInboxControls();return result;
 }
 window.genreactrixInboxLifecycle={
   contains:inboxContainsImage,
   activeImageIds:()=>[...inboxImageIds()],
   finalizeBatchImages:finalizeInboxBatchImages
 };
-function packOrderMap(){
+function bundleOrderMap(){
   const order=new Map();let n=0;
-  const packs=landscapeFilter.packId?[inboxPackById(landscapeFilter.packId)].filter(Boolean):landscapeInbox;
-  for(const pack of packs){for(const id of pack.imageIds||[]){if(!order.has(id))order.set(id,n++);}}
+  const bundles=landscapeFilter.bundleId?[inboxBundleById(landscapeFilter.bundleId)].filter(Boolean):(window.genreactrixBundleEngine?.activeBundles?.()||[]);
+  for(const bundle of bundles){for(const id of bundle.imageIds||[]){if(!order.has(id))order.set(id,n++);}}
   return order;
 }
 function deterministicRandomRank(id,seed){
@@ -384,23 +335,23 @@ function sortLandscapeRecords(records){
   else if(mode==="oldest")rows.sort((a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")));
   else if(mode==="filename")rows.sort((a,b)=>String(a.source?.originalFilename||a.name||a.id).localeCompare(String(b.source?.originalFilename||b.name||b.id),undefined,{numeric:true,sensitivity:"base"}));
   else if(mode==="random"){const seed=landscapeFilter.randomSeed||1;rows.sort((a,b)=>deterministicRandomRank(a.id,seed)-deterministicRandomRank(b.id,seed));}
-  else{const order=packOrderMap();rows.sort((a,b)=>(order.get(a.id)??Number.MAX_SAFE_INTEGER)-(order.get(b.id)??Number.MAX_SAFE_INTEGER));}
+  else{const order=bundleOrderMap();rows.sort((a,b)=>(order.get(a.id)??Number.MAX_SAFE_INTEGER)-(order.get(b.id)??Number.MAX_SAFE_INTEGER));}
   return rows;
 }
 function filteredLandscapeRecords(){
   const inboxIds=inboxImageIds();
   let records=(window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>inboxIds.has(String(record.id))&&recordEligibleForLandscapeBase(record));
-  if(landscapeFilter.packId){const selected=inboxPackById(landscapeFilter.packId);const ids=new Set(selected?.imageIds||[]);records=records.filter(record=>ids.has(String(record.id)));}
+  if(landscapeFilter.bundleId){const selected=inboxBundleById(landscapeFilter.bundleId);const ids=new Set(selected?.imageIds||[]);records=records.filter(record=>ids.has(String(record.id)));}
   const includeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.include[key]);
   let candidates=[];
   if(landscapeFilter.all)candidates=records;
   else if(landscapeFilter.feed)candidates=records.filter(r=>!r.attributes?.depot&&!r.attributes?.rejectionFlagged&&!r.attributes?.rejected);
   else if(includeKeys.length)candidates=records.filter(r=>includeKeys.some(key=>recordMatchesFilterCategory(r,key)));
-  // No base/include selection deliberately means zero images.
   const excludeKeys=FILTER_CATEGORIES.filter(key=>landscapeFilter.exclude[key]);
   if(excludeKeys.length)candidates=candidates.filter(r=>!excludeKeys.some(key=>recordMatchesFilterCategory(r,key)));
   return sortLandscapeRecords(candidates);
 }
+
 function currentImageRecord(){return state.canonicalFeedActive&&state.files.length?window.genreactrixImagesEngine?.recordById?.(currentKey())||null:null;}
 
 
@@ -763,8 +714,8 @@ function renderImage(){
     $("mainImage").removeAttribute("src");
     $("mainImage").hidden=true;
     $("imageEmpty").hidden=false;
-    $("imageEmpty").textContent=landscapeInbox.length?"No images match the current filter.":"Inbox is empty. Push AI Output from Portrait.";
-    if($("profileName"))$("profileName").textContent=landscapeInbox.length?"Filtered feed":"Inbox";
+    $("imageEmpty").textContent=activeInboxBundles().length?"No images match the current filter.":"Inbox is empty. AI-finished images remain Staged in Queue until Bundled.";
+    if($("profileName"))$("profileName").textContent=activeInboxBundles().length?"Filtered feed":"Inbox";
     if($("profilePosition"))$("profilePosition").textContent="0 / 0";
     if($("progressText"))$("progressText").textContent="0 images";
     return;
@@ -815,7 +766,7 @@ function renderFlag(){
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
   // Filter highlight reflects actual record filtering only. Base population and sort order are not "on" states.
-  const customFilter=Boolean(landscapeFilter.packId)||FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]);
+  const customFilter=Boolean(landscapeFilter.bundleId)||FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]);
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
   ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletDepotBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
   $("landscapeFeedEmpty")?.toggleAttribute("hidden",hasImage);
@@ -1871,92 +1822,45 @@ function scheduleLandscapeRehydrate(){
   landscapeRehydrateTimer=setTimeout(()=>rehydrateLandscapeFeed().catch(error=>console.warn("Landscape feed could not be rehydrated",error)),80);
 }
 window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
-function nextInboxPackNumber(){
-  return Math.max(landscapeInbox.length,...landscapeInbox.map(pack=>Number(pack.number)||0))+1;
-}
-function makeInboxPackFromAiOutput(records,{sourceLabel="AI automatic handoff"}={}){
-  const createdAt=new Date().toISOString(),number=nextInboxPackNumber();
-  return {
-    id:`pack-${globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}`,
-    number,
-    label:`Pack ${number}`,
-    sourceLabel,
-    imageIds:records.map(record=>String(record.id)),
-    createdAt,
-    analyzedAt:records.map(record=>record.analysis?.ai?.recordedAt||record.analysis?.ai?.analyzedAt||"").filter(Boolean).sort().at(-1)||createdAt,
-    pushedAt:createdAt
-  };
-}
-async function pushPackToInbox(pack){
-  if(!pack?.id||!(pack.imageIds||[]).length)return false;
-  const normalized=normalizeInboxPack({...pack,pushedAt:pack.pushedAt||new Date().toISOString()});
-  if(landscapeInbox.some(item=>item.id===normalized.id))return false;
-  landscapeInbox.push(normalized);
-  saveLandscapeInbox();
-  const recordEngine=window.genreactrixImageRecordEngine;
-  for(const imageId of normalized.imageIds){
-    const record=recordEngine?.get?.(imageId,{touch:false});if(!record)continue;
-    const existingIds=Array.isArray(record.metadata?.extended?.inboxPackIds)?record.metadata.extended.inboxPackIds:[];
-    recordEngine.update(imageId,{
-      workflow:{stage:"inbox-working"},
-      metadata:{extended:{inboxPackIds:[...existingIds,normalized.id],inboxPushedAt:normalized.pushedAt,lastInboxPackId:normalized.id}}
-    },"inbox-pack-pushed");
-  }
-  await rehydrateLandscapeFeed();renderPortraitInboxControls();return true;
-}
-async function pushAiRecordsToInbox(records,{sourceLabel="AI automatic handoff",announce=false}={}){
-  const unique=[];
-  const seen=new Set();
-  for(const candidate of records||[]){
-    const record=typeof candidate==="string"?window.genreactrixImageRecordEngine?.get?.(candidate,{touch:false}):candidate;
-    if(!record||seen.has(String(record.id))||!recordIsAiOutput(record))continue;
-    seen.add(String(record.id));unique.push(record);
-  }
-  if(!unique.length)return null;
-  const pack=makeInboxPackFromAiOutput(unique,{sourceLabel});
-  await pushPackToInbox(pack);
-  if(announce)setPortraitStationStatus(`${pack.label} created in Inbox · ${unique.length} image${unique.length===1?"":"s"}.`);
-  return pack;
-}
-async function pushAiOutputToInbox(){
-  const records=aiOutputRecords();
-  if(!records.length)return null;
-  const pack=await pushAiRecordsToInbox(records,{sourceLabel:"AI automatic handoff",announce:true});
-  window.genreactrixAiAnalysisEngine?.maintainBuffer?.().catch?.(()=>{});
-  return pack;
-}
-window.genreactrixAutoPushAiOutputToInbox=async function(imageIds=null,{sourceLabel="AI automatic handoff",announce=false}={}){
-  const records=Array.isArray(imageIds)?imageIds.map(id=>window.genreactrixImageRecordEngine?.get?.(String(id),{touch:false})).filter(Boolean):aiOutputRecords();
-  return pushAiRecordsToInbox(records,{sourceLabel,announce});
-};
+function activeInboxBundles(){return window.genreactrixBundleEngine?.activeBundles?.()||[];}
 function renderPortraitInboxControls(){
-  const count=$("portraitInboxPackCount");if(count)count.textContent=String(landscapeInbox.length);
-  const latest=landscapeInbox.at(-1),outputCount=aiOutputRecords().length,failedCount=currentAiFailureRecords().length;
-  const status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:"Inbox empty";
+  const bundles=activeInboxBundles(),staged=window.genreactrixBundleEngine?.stagedRecords?.()||[],failedCount=currentAiFailureRecords().length;
+  const count=$("portraitInboxPackCount");if(count)count.textContent=String(bundles.length);
+  const stagedCount=$("portraitStagedCount");if(stagedCount)stagedCount.textContent=String(staged.length);
+  const latest=bundles.at(-1),status=$("portraitInboxStatus");if(status)status.textContent=latest?`Latest: ${latest.label}`:(staged.length?`${staged.length} Staged in Queue`:"Inbox empty");
   const exportButton=$("portraitExportFails");if(exportButton){exportButton.disabled=failedCount===0;exportButton.title=failedCount?`${failedCount} failed image${failedCount===1?"":"s"} available to export`:"No current AI failures";}
 }
-async function openPackPicker(){
+async function openBundlePicker(){
   const dialog=$("packPickerDialog"),title=$("packPickerTitle"),list=$("packPickerList");if(!dialog||!list)return;
-  const packs=[...landscapeInbox].reverse();
-  if(title)title.textContent="Select Pack";
-  const rows=[`<button type="button" class="pack-picker-row ${!landscapeFilter.packId?"is-selected":""}" data-pack-picker-id=""><strong>All Packs</strong><small>No Pack filter</small></button>`];
-  rows.push(...packs.map(pack=>{const when=pack.pushedAt||pack.createdAt;const date=when?new Date(when).toLocaleString():"Undated";return `<button type="button" class="pack-picker-row ${landscapeFilter.packId===pack.id?"is-selected":""}" data-pack-picker-id="${pack.id.replaceAll('"','&quot;')}"><strong>${pack.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${date} · ${pack.imageIds.length} image${pack.imageIds.length===1?"":"s"}</small></button>`;}));
-  list.innerHTML=rows.join("")||'<p class="pack-picker-empty">Inbox has no Packs yet.</p>';dialog.showModal();
+  const bundles=[...activeInboxBundles()].reverse();
+  if(title)title.textContent="Select Bundle";
+  const rows=[`<button type="button" class="pack-picker-row ${!landscapeFilter.bundleId?"is-selected":""}" data-pack-picker-id=""><strong>All Bundles</strong><small>No Bundle filter</small></button>`];
+  rows.push(...bundles.map(bundle=>{const when=bundle.bundledAt||bundle.createdAt;const date=when?new Date(when).toLocaleString():"Undated";return `<button type="button" class="pack-picker-row ${landscapeFilter.bundleId===bundle.id?"is-selected":""}" data-pack-picker-id="${bundle.id.replaceAll('"','&quot;')}"><strong>${bundle.label.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</strong><small>${date} · ${bundle.imageIds.length} image${bundle.imageIds.length===1?"":"s"}</small></button>`;}));
+  list.innerHTML=rows.join("")||'<p class="pack-picker-empty">Inbox has no Bundles yet.</p>';dialog.showModal();
 }
+// Legacy entry point retained so older callers do not auto-push AI Output into Inbox.
+window.genreactrixAutoPushAiOutputToInbox=async function(){
+  await window.genreactrixBundleEngine?.maybeAutoBundle?.();
+  renderPortraitInboxControls();
+  return null;
+};
 $("portraitExportFails")?.addEventListener("click",async()=>{try{const result=await window.genreactrixAiAnalysisEngine?.exportFails?.();if(result?.moved)setPortraitStationStatus(`${result.moved} exported failure${result.moved===1?"":"s"} moved to Recycle.`);else if(result?.exported)setPortraitStationStatus(`Failure ZIP exported. Originals remain in Failed.`);}catch(error){setPortraitStationStatus(`Export Fails failed: ${error.message||error}`);}});
+$("portraitBundleStaged")?.addEventListener("click",async()=>{try{const bundle=await window.genreactrixBundleEngine?.bundleStaged?.({automatic:false});setPortraitStationStatus(bundle?`${bundle.label} sent to Inbox · ${bundle.imageIds.length} image${bundle.imageIds.length===1?"":"s"}.`:"No Staged images to Bundle.");renderPortraitInboxControls();}catch(error){setPortraitStationStatus(`Bundle failed: ${error.message||error}`);}});
 $("packPickerClose")?.addEventListener("click",()=>$("packPickerDialog")?.close());
 $("packPickerList")?.addEventListener("click",async event=>{
   const button=event.target.closest("[data-pack-picker-id]");if(!button)return;const id=button.dataset.packPickerId||null;
-  landscapeFilter.packId=id;saveLandscapeFilter();$("packPickerDialog")?.close();await applyLandscapeFilter();
+  landscapeFilter.bundleId=id;saveLandscapeFilter();$("packPickerDialog")?.close();await applyLandscapeFilter();
 });
 renderPortraitInboxControls();
+window.addEventListener("genreactrix:bundle",()=>{renderPortraitInboxControls();scheduleLandscapeRehydrate();});
+window.addEventListener("genreactrix:lifecycle",()=>renderPortraitInboxControls());
 async function loadImageFolder(fileList,limit=null){
   const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit}):null;
   window.pendingImportEngineMode=false;
   const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit});
   await rehydrateLandscapeFeed({preserveId:records[0]?.id||null});
-  window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
-  setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} copied into Temporary Import.`);
+  window.genreactrixAiAnalysisEngine?.maintainActiveMode?.();
+  setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} imported into Queue.`);
 }
 let pendingPortraitImportLimit=null;
 const IMAGE_FOLDER_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
@@ -2364,12 +2268,13 @@ function renderLandscapeFilterDialog(){
     if(inc)inc.checked=Boolean(landscapeFilter.include[key]);
     if(exc)exc.checked=Boolean(landscapeFilter.exclude[key]);
   });
-  let selectedPack=inboxPackById(landscapeFilter.packId);
-  if(landscapeFilter.packId&&!selectedPack){landscapeFilter.packId=null;saveLandscapeFilter();selectedPack=null;}
-  const packButton=$("landscapeFilterPackSelect"),packRow=packButton?.closest?.(".landscape-filter-pack");if(packButton){packButton.textContent=selectedPack?selectedPack.label:"Select Pack";packButton.classList.toggle("is-unselected",!selectedPack);packRow?.classList.toggle("is-unselected",!selectedPack);}
+  let selectedBundle=inboxBundleById(landscapeFilter.bundleId);
+  if(landscapeFilter.bundleId&&!selectedBundle){landscapeFilter.bundleId=null;saveLandscapeFilter();selectedBundle=null;}
+  const packButton=$("landscapeFilterPackSelect"),packRow=packButton?.closest?.(".landscape-filter-pack");if(packButton){packButton.textContent=selectedBundle?selectedBundle.label:"Select Bundle";packButton.classList.toggle("is-unselected",!selectedBundle);packRow?.classList.toggle("is-unselected",!selectedBundle);}
   const sort=$("landscapeFilterSort");if(sort)sort.value=landscapeFilter.sort;
   const count=filteredLandscapeRecords().length;
-  if($("landscapeFilterCount"))$("landscapeFilterCount").textContent=`${count} image${count===1?"":"s"} match · ${landscapeInbox.length} pack${landscapeInbox.length===1?"":"s"} in Inbox`;
+  const bundleCount=activeInboxBundles().length;
+  if($("landscapeFilterCount"))$("landscapeFilterCount").textContent=`${count} image${count===1?"":"s"} match · ${bundleCount} Bundle${bundleCount===1?"":"s"} in Inbox`;
 }
 async function applyLandscapeFilter(){saveLandscapeFilter();renderLandscapeFilterDialog();await rehydrateLandscapeFeed();}
 function setLandscapeFilterBase(key,checked){
@@ -2384,8 +2289,8 @@ FILTER_CATEGORIES.forEach(key=>{
   $("landscapeFilterInclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.include[key]=e.target.checked;if(e.target.checked){landscapeFilter.all=false;landscapeFilter.feed=false;}await applyLandscapeFilter();});
   $("landscapeFilterExclude_"+key)?.addEventListener("change",async e=>{landscapeFilter.exclude[key]=e.target.checked;await applyLandscapeFilter();});
 });
-$("landscapeFilterPackSelect")?.addEventListener("click",()=>openPackPicker());
-$("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"pack";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
+$("landscapeFilterPackSelect")?.addEventListener("click",()=>openBundlePicker());
+$("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"bundle";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
 
 $("tabletDepotBtn")?.addEventListener("click",async()=>{
   if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
@@ -2768,7 +2673,7 @@ landscapeImageCanvas?.addEventListener("pointercancel",endLandscapeImagePointer)
 // The Image Record Engine owns identity, Origin Metadata, workflow state, extensible metadata,
 // analysis containers, locking, queries, integrity checks, and recycle-bin state.
 // The Images Engine owns acquisition and blobs, and updates records only through this engine.
-const IMAGE_RECORD_SCHEMA_VERSION=2;
+const IMAGE_RECORD_SCHEMA_VERSION=3;
 const IMAGE_RECORDS_KEY="genreactrix-image-records-v1";
 const LEGACY_IMAGE_ENGINE_MANIFEST_KEY="genreactrix-image-engine-manifest-v1";
 const RECYCLE_RETENTION_KEY="genreactrix-recycle-retention-days";
@@ -3029,8 +2934,16 @@ function createImageRecordEngine(){
     const legacyYellow=Boolean(record.attributes?.[legacySideKey]);
     const yellow=Boolean(record.attributes?.flagged||record.flaggedAt||legacyYellow)&&!depot&&!red&&!hot;
     const priorFlagged=record.storage?.recycle?.priorFlagged ?? record.storage?.recycle?.[legacyPriorSideKey] ?? null;
+    const ext=record.metadata?.extended||{};
+    const currentBundles=[...(Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:[]),...(Array.isArray(ext.inboxPackIds)?ext.inboxPackIds:[])];
+    const historyBundles=[...(Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:[]),...(Array.isArray(ext.inboxHistoryPackIds)?ext.inboxHistoryPackIds:[])];
+    const primaryCurrent=["aiReactions","aiThemes","aiDescription"].every(key=>record.components?.[key]==="current");
     const rawStage=record.workflow?.stage||({available:"available",queued:"queued",processed:"director-complete"}[record.lifecycleState]||record.lifecycleState||"imported");
-    const stage=["ready-for-director","ready-director","ai-complete"].includes(rawStage)?"inbox-working":rawStage;
+    let stage=rawStage;
+    if(["available","imported"].includes(rawStage))stage=primaryCurrent?"staged":"queued";
+    else if(["ready-for-director","ready-director","ai-complete"].includes(rawStage))stage=currentBundles.length?"inbox-working":(primaryCurrent?"staged":"queued");
+    else if(rawStage==="queued"&&primaryCurrent&&!currentBundles.length)stage="staged";
+    if(currentBundles.length&&!['post-processing','purgatory','batched','red-excluded','hot-magenta-excluded','archived'].includes(stage))stage="inbox-working";
     const sourceBatch=record.source?.firstBatchId||record.batchId||null;
     const batchIds=Array.isArray(record.batchIds)?record.batchIds.filter(Boolean):(record.batchId?[record.batchId]:[]);
     const sourceType=record.source?.type||record.sourceType||"unknown";
@@ -3097,7 +3010,7 @@ function createImageRecordEngine(){
       },
       components:{...defaultComponents(),...(record.components||{})},
       analysis:{ai:record.analysis?.ai||null,director:record.analysis?.director||null},
-      metadata:{core:record.metadata?.core||{},extended:record.metadata?.extended||{}},
+      metadata:{core:record.metadata?.core||{},extended:{...ext,inboxBundleIds:Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:[...new Set(currentBundles.map(String))],inboxHistoryBundleIds:Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:[...new Set(historyBundles.map(String))],lastInboxBundleId:ext.lastInboxBundleId||ext.lastInboxPackId||null}},
       batchIds,
       timestamps:{
         savedAt:record.timestamps?.savedAt||record.savedAt||null,
@@ -3122,7 +3035,7 @@ function createImageRecordEngine(){
   function create(input={}){const record=normalize(input);if(mutable(record.id))throw new Error("Duplicate Image ID");records.push(record);persist();emit("created",record);appendHistory({imageId:record.id,eventType:"record-created",actor:"system",sourceEngine:"image-record",batchId:record.batchIds?.[0]||null,summary:"Image record created",payload:{current:clone(record)}});return clone(record);}
   function get(id,{touch=true}={}){const record=mutable(id);if(!record)return null;if(touch){record.accessedAt=now();record.updatedAt=now();persist();emit("accessed",record);}return clone(record);}
   function update(id,patch={},reason="updated"){
-    const record=mutable(id);if(!record)return null;if(record.attributes.locked&&reason!=="unlock"&&reason!=="integrity")throw new Error("Image record is locked");
+    const record=mutable(id);if(!record)return null;if(record.attributes.locked&&reason!=="unlock"&&reason!=="integrity"&&!reason.includes("migration"))throw new Error("Image record is locked");
     const merged=normalize({...record,...patch,source:{...record.source,...(patch.source||{})},storage:{...record.storage,...(patch.storage||{}),recycle:{...record.storage.recycle,...(patch.storage?.recycle||{})}},workflow:{...record.workflow,...(patch.workflow||{})},attributes:{...record.attributes,...(patch.attributes||{})},components:{...record.components,...(patch.components||{})},analysis:{...record.analysis,...(patch.analysis||{})},metadata:{core:{...record.metadata.core,...(patch.metadata?.core||{})},extended:{...record.metadata.extended,...(patch.metadata?.extended||{})}},timestamps:{...record.timestamps,...(patch.timestamps||{})}});
     const before=clone(record);Object.assign(record,merged,{updatedAt:now()});persist();emit(reason,record);
     if(reason!=="accessed")appendHistory({imageId:record.id,eventType:reason,actor:reason.startsWith("ai-")?"ai":reason.startsWith("director-")?"director":"system",sourceEngine:"image-record",batchId:record.batchIds?.at(-1)||null,summary:reason.replaceAll("-"," "),payload:{before,current:clone(record),patch:clone(patch)}});
@@ -3170,8 +3083,9 @@ function createImagesEngine(){
     const all=records.all(),count=p=>all.filter(p).length;
     return {
       total:all.length,
-      available:count(r=>r.workflow.stage==="available"),
-      queued:count(r=>r.workflow.stage==="queued"),
+      available:count(r=>r.workflow.stage==="queued"),
+      queued:count(r=>["queued","ai-processing","ai-partial"].includes(r.workflow.stage)),
+      staged:count(r=>r.workflow.stage==="staged"),
       processed:count(r=>["director-complete","batched","red-excluded","hot-magenta-excluded"].includes(r.workflow.stage)),
       temporary:count(r=>r.storage.mode==="temporary"),linked:count(r=>r.storage.mode==="linked"),kept:count(r=>r.attributes.saved),
       yellow:count(r=>r.attributes.flagged),depot:count(r=>r.attributes.depot),red:count(r=>r.attributes.rejectionFlagged),hotMagenta:count(r=>r.attributes.rejected),
@@ -3198,7 +3112,7 @@ function createImagesEngine(){
       let record;
       try{
         const thumbnail=await storeImportedImage({id,blob:file,keepFull:true});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"available"},batchIds:[]});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"queued"},batchIds:[]});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
       }catch(error){
         await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
@@ -3226,7 +3140,7 @@ function createImagesEngine(){
       try{
         const blob=await fetchImageBlob(source.url);
         const thumbnail=await storeImportedImage({id,blob,keepFull});
-        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",firstBatchId:null},storage:{mode:keepFull?"temporary":"linked",temporaryKey:keepFull?id:null,hyperlink:source.url,...thumbnail,mimeType:blob.type,size:blob.size},workflow:{stage:"available"},attributes:{hyperlinkOnly:!keepFull},batchIds:[]});
+        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",firstBatchId:null},storage:{mode:keepFull?"temporary":"linked",temporaryKey:keepFull?id:null,hyperlink:source.url,...thumbnail,mimeType:blob.type,size:blob.size},workflow:{stage:"queued"},attributes:{hyperlinkOnly:!keepFull},batchIds:[]});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
       }catch(error){
         await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
@@ -3257,7 +3171,7 @@ function createImagesEngine(){
     return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
   }
   async function workingFiles(ids=null){
-    const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"available"}).map(r=>r.id));
+    const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"queued"}).map(r=>r.id));
     const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;
   }
   function setLifecycle(id,lifecycleState){const stage={processed:"director-complete"}[lifecycleState]||lifecycleState;return records.update(id,{workflow:{stage},timestamps:stage==="director-complete"?{processedAt:now()}:{}},"stage-changed");}
@@ -3652,7 +3566,7 @@ function bindLongPress(element,onLongPress){
 syncPortraitDefaultAmount();
 syncPortraitAiOutputs();
 window.addEventListener("genreactrix:settings-ready",()=>{ syncPortraitDefaultAmount(); syncPortraitAiOutputs(); renderQuickButtons(); },{once:true});
-window.genreactrixAiAnalysisEngine?.maintainBuffer?.();
+window.genreactrixAiAnalysisEngine?.maintainActiveMode?.();
 renderQuickButtons();
 
 document.querySelectorAll("[data-quick-slot]").forEach(button=>{
@@ -3732,6 +3646,7 @@ $("imageUrlAddBtn")?.addEventListener("click",async()=>{
     const failures=records.filter(record=>record.error).length;
     $("imageIntakeDialog")?.close();
     setPortraitStationStatus(`${records.length} URL image${records.length===1?"":"s"} added as a Pack${failures?` · ${failures} download fallback${failures===1?"":"s"}`:""}.`);
+    window.genreactrixAiAnalysisEngine?.maintainActiveMode?.().catch?.(()=>{});
   }catch(error){ $("imageIntakePreview").textContent=`Add failed: ${error.message||error}`; }
   finally{ button.disabled=false; renderPortraitControlStation(); }
 });

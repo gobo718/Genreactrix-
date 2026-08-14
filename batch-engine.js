@@ -15,7 +15,7 @@ async function setActive(id){await put(META,{key:'active',value:id||null});engin
 function recordEngine(){return window.genreactrixImageRecordEngine}
 function imagesEngine(){return window.genreactrixImagesEngine}
 function history(){return window.genreactrixHistoryEngine}
-function inboxRecord(record){const lifecycle=window.genreactrixInboxLifecycle;if(lifecycle?.contains)return lifecycle.contains(record?.id);return Array.isArray(record?.metadata?.extended?.inboxPackIds)&&record.metadata.extended.inboxPackIds.length>0}
+function inboxRecord(record){const lifecycle=window.genreactrixInboxLifecycle;if(lifecycle?.contains)return lifecycle.contains(record?.id);const ext=record?.metadata?.extended||{};return (Array.isArray(ext.inboxBundleIds)&&ext.inboxBundleIds.length>0)||(Array.isArray(ext.inboxPackIds)&&ext.inboxPackIds.length>0)}
 function alreadyBatched(record){return ['batched','red-excluded','hot-magenta-excluded'].includes(record?.workflow?.stage)||Boolean(record?.timestamps?.batchedAt)}
 function sourceAccessible(record){return Boolean(record&&!record.attributes?.failed&&(record.storage?.temporaryKey||record.storage?.referenceKey||record.storage?.hyperlink||record.source?.originalLocation||record.source?.originalUrl))}
 function terminal(record){if(record?.attributes?.rejected)return'hot';if(record?.attributes?.rejectionFlagged)return'red';if(record?.attributes?.depot)return'depot';if(record?.attributes?.flagged)return'review';return'working'}

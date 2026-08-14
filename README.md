@@ -1,3 +1,60 @@
+## v0.9.40.24 — State spine + Bundle migration
+
+Current implementation authority: 2026-08-14 system/data/module map. This is the first bounded source migration toward the canonical Origin → Queue → AI process → Staged → Bundle → Inbox → Batch → Post-processing model. It deliberately changes lifecycle/data ownership before any new Landscape redesign.
+
+### Queue / AI / Inbox ownership
+- Successful Import now enters **Queue** directly. The old post-Import `available` stage normalizes to Queue waiting.
+- **AI is a process, not image storage.** Images remain Queue-owned while AI is working.
+- Valid incomplete AI work normalizes to **Partially AI Processed** in Queue.
+- Images with all three core AI components complete become **Staged** in Queue.
+- AI completion no longer automatically manufactures an Inbox item.
+- Partially AI Processed items are prioritized ahead of untouched Queue work; the most-complete partials resume first.
+
+### Pack → Bundle correction
+- **Pack** remains the Origin/import-preparation grouping term.
+- **Bundle** is now the Queue → Inbox grouping term.
+- Existing legacy Inbox Pack membership is copied into Bundle metadata without deleting the legacy fields.
+- The old `genreactrix-landscape-inbox-v1` local data is copied into the new Bundle store when needed; the legacy store is retained as a rollback safety source.
+- Bundle membership remains available as Inbox filter/search metadata.
+
+### Automatic flow-through vs Buffer
+- Normal default operation is **Automatic flow-through**: AI works toward the next configured Bundle.
+- Default Bundle size is currently **50** and remains editable.
+- When at least the configured number are Staged, exactly that many are Bundled into Inbox; excess remains Staged.
+- **Complete whatever is available** remains an explicit option for an undersized final remainder.
+- **Buffer** is now treated as a separate optional operating mode rather than being layered onto normal automatic flow-through.
+- Existing Buffer target, refill threshold, and priority controls are retained for live testing; no functionality was removed merely because its final usefulness is still being evaluated.
+
+### Lifecycle spine and recovery groundwork
+- Added `lifecycle-engine.js` as the canonical image-state spine.
+- Added `bundle-engine.js` for Queue → Inbox grouping/transfer.
+- Added canonical stages for Queue waiting, AI processing, AI partial, Staged, Inbox working, Post-processing, Purgatory, Quarantine, and existing final states.
+- Added preliminary Problem Image / Quarantine detection for three isolated AI failures with successfully processed neighboring images.
+- AI stop/recovery paths now reconcile images back to Queue-owned lifecycle states rather than treating AI as a storage location.
+
+### Migration safety
+- Image Record schema advances to v3.
+- Legacy `inboxPackIds`, history, and old Inbox Pack storage are retained while Bundle equivalents are added.
+- Existing full-resolution IndexedDB image blobs are not rewritten by the lifecycle/Bundle migration.
+- Existing Inbox records with legacy Pack membership remain Inbox records.
+- Existing AI-complete records without Inbox membership migrate to Staged rather than being pushed into Inbox.
+- Thumbnail-at-Import, the existing 60/40 Reaction calculation, Inbox terminal behavior, Keep, and Recycle behavior are intentionally preserved.
+
+### Temporary controls / terminology
+- Portrait and Queue controls now expose **Staged**, **Bundle Staged**, Bundle size, Automatic flow, and Bundle remainder handling.
+- Landscape user-facing Pack filtering is renamed to **Bundle** while legacy internal IDs remain temporarily for compatibility.
+- Images/Import dashboard wording now uses Queue/Staged instead of Available/AI Output where this migration touches the UI.
+
+### Deliberately not included in this release
+- No Landscape geometry/CSS consolidation beyond tiny temporary control styling.
+- No final Batch-tag selection refactor yet.
+- No atomic Post-processing/Purgatory implementation yet.
+- No Daily Housekeeping migration yet.
+- No full Quarantine investigation UI or Defective finalization yet.
+- No full Dupe/Repeat report implementation yet.
+- No server/account file-storage migration.
+- No Worker change.
+
 ## v0.9.40.19 — Single-file selection/import repair
 - **Choose File now stages one selected image**; the main **Import** button imports that specific file. This matches the rest of the Add panel instead of silently auto-importing on file selection.
 - Fixed stale cache-busting: `import-engine.js` was still requested as `?v=0.9.40.14` while the page was v0.9.40.16, which could leave Chrome/GitHub Pages running older import logic.

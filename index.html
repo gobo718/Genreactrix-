@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.23</title>
-<link href="styles.css?v=0.9.40.22" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.24</title>
+<link href="styles.css?v=0.9.40.24" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.23</span>
+<span>v0.9.40.24</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.23</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.24</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -109,7 +109,7 @@
 <label class="portrait-default-amount">
           Add <input aria-label="Default quick-add image amount" id="portraitDefaultAmount" inputmode="numeric" min="1" step="1" type="number"/> images
         </label>
-<div aria-label="Image storage status" class="portrait-image-engine-status"><button data-portrait-status="images-available" type="button">Available <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-temp" type="button">Temp <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="images-links" type="button">Links <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="images-saved" type="button">Keep <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="images-flagged" type="button">Review <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="images-recycle" type="button">Recycle <strong id="portraitRecycleImageCount">0</strong></button></div>
+<div aria-label="Image storage status" class="portrait-image-engine-status"><button data-portrait-status="images-available" type="button">Queue <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-temp" type="button">Temp <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="images-links" type="button">Links <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="images-saved" type="button">Keep <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="images-flagged" type="button">Review <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="images-recycle" type="button">Recycle <strong id="portraitRecycleImageCount">0</strong></button></div>
 </section><section aria-label="Batch" class="portrait-panel portrait-batch-panel" data-quick-module="batch">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="batch">
@@ -137,13 +137,14 @@
 <label><input data-portrait-ai-output="genreReasons" type="checkbox"/> Themes Info</label>
 </div>
 <div class="portrait-ai-status-line">
-<span>Output <strong id="portraitAiOutputCount">0</strong></span>
+<span>Staged <strong id="portraitAiOutputCount">0</strong></span>
 <span>Buffer <strong id="portraitAiBufferTarget">25</strong></span>
 <span>Queued <strong id="portraitAiPendingCount">0</strong></span>
 <span>Failed <strong id="portraitAiFailedCount">0</strong></span></div>
-<div class="portrait-inbox-push" aria-label="AI Output and failed export actions">
-  <span class="portrait-inbox-label">Inbox <strong id="portraitInboxPackCount">0</strong></span>
-  <span class="portrait-inbox-auto" title="Successful AI Output enters Inbox automatically">AI → Inbox automatic</span>
+<div class="portrait-inbox-push" aria-label="Staged Queue, Bundle, and failed export actions">
+  <span class="portrait-inbox-label">Bundles <strong id="portraitInboxPackCount">0</strong></span>
+  <span class="portrait-inbox-auto">Staged <strong id="portraitStagedCount">0</strong></span>
+  <button id="portraitBundleStaged" type="button">Bundle Staged</button>
   <button id="portraitExportFails" type="button">Export Fails</button>
 </div>
 </section><section aria-label="Queue" class="portrait-panel portrait-queue-panel" data-quick-module="queue">
@@ -230,7 +231,7 @@
 <section data-images-panel="recycle" hidden><div class="images-console-actions"><button id="imagesRestoreSelected" type="button">Restore selected</button><button id="imagesEmptyRecycle" type="button">Empty now</button></div><div id="imagesRecycleList" class="images-record-list"></div></section>
 <section data-images-panel="failures" hidden><div id="imagesFailuresList" class="images-record-list"></div></section>
 <section data-images-panel="history" hidden><div id="imagesHistoryList" class="images-record-list"></div></section>
-<section data-images-panel="dashboard" hidden><div class="images-dashboard-grid"><article><strong id="importActiveCount">0</strong><span>Active</span></article><article><strong id="importFailedCount">0</strong><span>Failed</span></article><article><strong id="importPendingAiCount">0</strong><span>Pending AI</span></article><article><strong id="importAiOutputCount">0</strong><span>AI Output</span></article></div><div id="importRecentJobs" class="images-record-list"></div></section>
+<section data-images-panel="dashboard" hidden><div class="images-dashboard-grid"><article><strong id="importActiveCount">0</strong><span>Active</span></article><article><strong id="importFailedCount">0</strong><span>Failed</span></article><article><strong id="importPendingAiCount">0</strong><span>Pending AI</span></article><article><strong id="importAiOutputCount">0</strong><span>Staged</span></article></div><div id="importRecentJobs" class="images-record-list"></div></section>
 </div>
 <div class="images-console-status" id="imagesConsoleStatus" role="status" aria-live="polite"></div>
 </div>
@@ -241,6 +242,7 @@
 <nav aria-label="Settings sections" class="settings-console-nav">
 <button class="active" data-settings-section="defaults" type="button">Defaults</button>
 <button data-settings-section="ai" type="button">AI</button>
+<button data-settings-section="queue" type="button">Queue</button>
 <button data-settings-section="storage" type="button">Storage</button>
 <button data-settings-section="batch" type="button">Batch</button>
 <button data-settings-section="notifications" type="button">Notices</button>
@@ -264,6 +266,15 @@
 <label>Refill threshold<input id="settingAiRefill" min="0" step="1" type="number"/></label>
 </div>
 <p class="settings-note">Provider URL and access key remain in the AI console and are stored through the Settings Engine in this browser until server project persistence is added.</p>
+</section>
+<section data-settings-panel="queue" hidden="">
+<h3>Queue flow</h3>
+<div class="settings-grid">
+<label class="settings-checkbox"><input id="settingQueueFlow" type="checkbox"/> Automatic flow-through</label>
+<label>Bundle size<input id="settingBundleSize" min="1" step="1" type="number"/></label>
+<label class="settings-checkbox"><input id="settingCompleteAvailable" type="checkbox"/> Complete whatever is available</label>
+</div>
+<p class="settings-note">Automatic flow processes Queue work toward the next Bundle. Buffer remains a separate optional Queue behavior.</p>
 </section>
 <section data-settings-panel="storage" hidden="">
 <h3>Acquisition &amp; storage</h3>
@@ -319,7 +330,7 @@
 <div class="ai-run-actions"><button class="primary-action" id="aiStartJob" type="button">Start analysis</button><button class="ai-cycle-button" id="aiCycleBtn" type="button" title="Repeat Missing analysis for the frozen selection, up to three total passes">Cycle</button><span class="ai-cycle-status" id="aiCycleStatus" aria-live="polite"></span></div>
 </section>
 <section class="ai-console-section">
-<h3>Automatic look-ahead</h3>
+<h3>Buffer look-ahead</h3>
 <div class="ai-console-grid">
 <label class="ai-inline-check"><input id="aiAutoEnabled" type="checkbox"/> Enabled</label>
 <label>Buffer target<input id="aiAutoBuffer" min="0" step="1" type="number"/></label>
@@ -542,12 +553,12 @@
       <input id="landscapeFilterInclude_seen" type="checkbox" aria-label="Include Seen"><label>Seen</label><input id="landscapeFilterExclude_seen" type="checkbox" aria-label="Exclude Seen">
     </div>
     <div class="landscape-filter-pack">
-      <strong>Pack</strong>
-      <button class="is-unselected" id="landscapeFilterPackSelect" type="button">Select Pack</button>
+      <strong>Bundle</strong>
+      <button class="is-unselected" id="landscapeFilterPackSelect" type="button">Select Bundle</button>
     </div>
     <label class="landscape-filter-sort">Sort
       <select id="landscapeFilterSort">
-        <option value="pack">Pack Order</option>
+        <option value="bundle">Bundle Order</option>
         <option value="newest">Newest First</option>
         <option value="oldest">Oldest First</option>
         <option value="filename">Filename A–Z</option>
@@ -559,7 +570,7 @@
 </dialog>
 <dialog class="pack-picker-dialog" id="packPickerDialog">
   <section class="pack-picker-shell">
-    <header><h2 id="packPickerTitle">Select Pack</h2><button id="packPickerClose" type="button" aria-label="Close">×</button></header>
+    <header><h2 id="packPickerTitle">Select Bundle</h2><button id="packPickerClose" type="button" aria-label="Close">×</button></header>
     <div class="pack-picker-list" id="packPickerList"></div>
   </section>
 </dialog>
@@ -572,7 +583,7 @@
 <div class="image-description-row">
 <div class="image-viewport" id="imageViewport">
 <img alt="Current image" id="mainImage"/>
-<div class="image-empty" id="imageEmpty">Inbox is empty. Successful AI Output enters automatically.</div>
+<div class="image-empty" id="imageEmpty">Inbox is empty. AI-finished images remain Staged in Queue until Bundled.</div>
 </div>
 <article class="ai-description">
 <div class="console-label">AI freeform description</div>
@@ -857,10 +868,16 @@
 <div aria-label="Queue summary" class="queue-count-grid">
 <span>Running <strong id="queueRunningCount">0</strong></span>
 <span>Queued <strong id="queueQueuedCount">0</strong></span>
+<span>Partial <strong id="queuePartialCount">0</strong></span>
+<span>Staged <strong id="queueStagedCount">0</strong></span>
 <span>Paused <strong id="queuePausedCount">0</strong></span>
 <span>Failed <strong id="queueFailedCount">0</strong></span>
 </div>
 <div class="queue-toolbar">
+<label class="queue-inline-control"><input id="queueAutoFlow" type="checkbox"/> Automatic flow</label>
+<label class="queue-inline-control">Bundle <input id="queueBundleSize" min="1" step="1" type="number" value="50"/></label>
+<button id="queueBundleStaged" type="button">Bundle Staged</button>
+<button id="queueBundleRemainder" type="button">Bundle Available</button>
 <button id="queueRecover" type="button">Recover interrupted</button>
 <button id="queueClearFinished" type="button">Clear finished</button>
 </div>
@@ -895,9 +912,9 @@
 </dialog>
 <script src="validation-engine.js?v=0.9.24.0"></script>
 <script src="import-job-engine.js?v=0.9.40.21"></script>
-<script src="import-engine.js?v=0.9.40.19"></script>
+<script src="import-engine.js?v=0.9.40.24"></script>
 <script src="maintenance-engine.js?v=0.9.40.14"></script>
-<script src="settings-engine.js?v=0.9.39.93"></script>
+<script src="settings-engine.js?v=0.9.40.24"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
 <form class="custom-library-shell" method="dialog" onsubmit="return false;">
@@ -928,7 +945,9 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="app.js?v=0.9.40.23"></script>
+<script src="lifecycle-engine.js?v=0.9.40.24"></script>
+<script src="bundle-engine.js?v=0.9.40.24"></script>
+<script src="app.js?v=0.9.40.24"></script>
 <script src="images-console.js?v=0.9.40.19"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -943,7 +962,7 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="queue-engine.js?v=0.9.40.21"></script>
+<script src="queue-engine.js?v=0.9.40.24"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.40.14"></script>
 <script src="reports-engine.js?v=0.9.39.85"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
@@ -956,10 +975,10 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="batch-engine.js?v=0.9.40.14"></script>
+<script src="batch-engine.js?v=0.9.40.24"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.23"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.24"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">

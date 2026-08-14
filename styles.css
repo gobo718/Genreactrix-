@@ -6886,7 +6886,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     box-shadow:none!important;
   }
 
-  /* Filter is teal only when a category Include/Exclude or Pack filter is active. */
+  /* Filter is teal only when a category Include/Exclude or Bundle filter is active. */
   #tabletFilterBtn[aria-pressed="true"]{
     background:#164c51!important;
     border-color:#61d5dd!important;
@@ -7601,3 +7601,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     line-height:1!important;
   }
 }
+
+/* v0.9.40.24 — state-spine temporary controls */
+.portrait-inbox-push{grid-template-columns:auto auto 1fr 1fr}
+.queue-inline-control{display:inline-flex;align-items:center;gap:5px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);font-size:.78rem}
+.queue-inline-control input[type="number"]{width:58px;min-width:0}
