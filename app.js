@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.36";
+const GENREACTRIX_BUILD="v0.9.40.37";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -3043,7 +3043,7 @@ function createImagesEngine(){
       available:count(r=>r.workflow.stage==="queued"),
       queued:count(r=>["queued","ai-processing","ai-partial"].includes(r.workflow.stage)),
       staged:count(r=>r.workflow.stage==="staged"),
-      processed:count(r=>["director-complete","batched","red-excluded","hot-magenta-excluded"].includes(r.workflow.stage)),
+      processed:count(r=>r.analysis?.director?.completion==="complete"||["batched","red-excluded","hot-magenta-excluded"].includes(r.workflow.stage)),
       temporary:count(r=>r.storage.mode==="temporary"),linked:count(r=>r.storage.mode==="linked"),kept:count(r=>r.attributes.saved),
       yellow:count(r=>r.attributes.flagged),depot:count(r=>r.attributes.depot),red:count(r=>r.attributes.rejectionFlagged),hotMagenta:count(r=>r.attributes.rejected),
       recycle:count(r=>r.attributes.inRecycleBin)
@@ -3143,7 +3143,7 @@ function createImagesEngine(){
     const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"queued"}).map(r=>r.id));
     const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;
   }
-  function setLifecycle(id,lifecycleState){const stage={processed:"director-complete"}[lifecycleState]||lifecycleState;return records.update(id,{workflow:{stage},timestamps:stage==="director-complete"?{processedAt:now()}:{}},"stage-changed");}
+  function setLifecycle(id,lifecycleState){const record=records.get(id,{touch:false});if(!record)return null;const processed=lifecycleState==="processed",stage=processed?(window.genreactrixLifecycleEngine?.inInbox?.(record)?"inbox-working":record.workflow.stage):lifecycleState;return records.update(id,{workflow:{stage},timestamps:processed?{processedAt:now()}:{}},"stage-changed");}
   function restoreStageFromHot(record){return record.workflow.stage==="rejected-hold"?(record.metadata?.extended?.rejectPriorStage||"inbox-working"):record.workflow.stage;}
   function setDepot(id,value=true){
     const record=records.get(id,{touch:false});if(!record)return null;
@@ -3167,7 +3167,7 @@ function createImagesEngine(){
     const record=records.get(id,{touch:false});if(!record)return null;
     const normalized=["none","review","delete","reject"].includes(severity)?severity:"none";
     const leavingHot=Boolean(record.attributes.rejected)&&normalized!=="reject";
-    const stage=normalized==="reject"?"rejected-hold":(leavingHot?restoreStageFromHot(record):record.workflow.stage);
+    const stage=normalized==="reject"?restoreStageFromHot(record):(leavingHot?restoreStageFromHot(record):record.workflow.stage);
     const enteringHot=normalized==="reject"&&!record.attributes.rejected;
     return records.update(id,{
       workflow:{stage},
@@ -3434,7 +3434,7 @@ const QUICK_ACTIONS={
   "batch.current":{
     module:"batch",name:"Batch eligible Inbox work",defaultLabel:"Batch current",
     fields:[],summarize:()=>["Eligible: Depot, Delete, Reject","Keep: independent full-resolution retention"],
-    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch prepared · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · ${result.outcomes.depot} Depot · ${result.outcomes.red} Delete · ${result.outcomes.hotMagenta} Reject · ${result.outcomes.keep} Keep`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
+    run:async()=>{try{const result=await window.genreactrixBatchEngine?.quickSubmit?.();if(result)setPortraitStationStatus(`Batch candidates loaded · ${result.outcomes.total} image${result.outcomes.total===1?"":"s"} · choose the images to Batch`)}catch(error){setPortraitStationStatus(error.message||String(error))}}
   },
   "ai.analyze-more":{
     module:"ai",name:"Analyze more images",defaultLabel:"Analyze more",

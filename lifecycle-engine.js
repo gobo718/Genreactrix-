@@ -19,6 +19,8 @@
   ARCHIVED:'archived'
  });
  const PRIMARY=['aiReactions','aiThemes','aiDescription'];
+ const CANONICAL_STAGES=new Set(Object.values(STAGES));
+ const COMPAT_FINAL_STAGES=new Set(['ai-failure-exported']);
  const now=()=>new Date().toISOString();
  const clone=v=>v==null?v:structuredClone(v);
  function records(){return window.genreactrixImageRecordEngine?.all?.()||[];}
@@ -88,7 +90,7 @@
  function markPurgatory(id,batchId){return setStage(id,STAGES.PURGATORY,'post-processing-purgatory',{activeBatchId:batchId||null});}
  function migrateRecord(record){
   const ext=record?.metadata?.extended||{},members=membershipIds(record),raw=String(record?.workflow?.stage||'imported');
-  const patch={metadata:{extended:{lifecycleSchemaVersion:1}}};
+  const patch={metadata:{extended:{lifecycleSchemaVersion:2}}};
   let changed=false;
   if(!Array.isArray(ext.inboxBundleIds)&&members.current.length){patch.metadata.extended.inboxBundleIds=members.current;changed=true;}
   if(!Array.isArray(ext.inboxHistoryBundleIds)&&members.history.length){patch.metadata.extended.inboxHistoryBundleIds=members.history;changed=true;}
@@ -96,10 +98,12 @@
   let stage=raw;
   if(['available','imported'].includes(raw))stage=STAGES.QUEUE_WAITING;
   else if(['ready-for-director','ready-director','ai-complete'].includes(raw))stage=members.current.length?STAGES.INBOX_WORKING:stageAfterAi(record);
+  else if(raw==='rejected-hold')stage=String(ext.rejectPriorStage||STAGES.INBOX_WORKING);
+  else if(['director-complete','complete','partial','unclassified','blocked'].includes(raw)&&(members.current.length||record.analysis?.director||record.timestamps?.processedAt))stage=STAGES.INBOX_WORKING;
   else if(raw==='queued'&&primaryState(record).complete&&!members.current.length)stage=STAGES.STAGED;
   if(members.current.length&&![STAGES.POST_PROCESSING,STAGES.PURGATORY,STAGES.QUARANTINE,STAGES.DEFECTIVE,STAGES.BATCHED,STAGES.RED_EXCLUDED,STAGES.HOT_EXCLUDED,STAGES.ARCHIVED].includes(stage))stage=STAGES.INBOX_WORKING;
-  if(stage!==raw){patch.workflow={stage};patch.metadata.extended.preLifecycleV1Stage=ext.preLifecycleV1Stage||raw;changed=true;}
-  if(Number(ext.lifecycleSchemaVersion||0)!==1)changed=true;
+  if(stage!==raw){patch.workflow={stage};patch.metadata.extended.preLifecycleV2Stage=ext.preLifecycleV2Stage||raw;changed=true;}
+  if(Number(ext.lifecycleSchemaVersion||0)!==2)changed=true;
   if(!changed)return null;
   return update(record.id,patch,'lifecycle-v1-migration');
  }
@@ -108,7 +112,19 @@
   const rows=records(),count=stage=>rows.filter(r=>r.workflow?.stage===stage).length;
   return {total:rows.length,queueWaiting:count(STAGES.QUEUE_WAITING),aiProcessing:count(STAGES.AI_PROCESSING),partial:count(STAGES.AI_PARTIAL),staged:count(STAGES.STAGED),inbox:count(STAGES.INBOX_WORKING),quarantine:count(STAGES.QUARANTINE),postProcessing:count(STAGES.POST_PROCESSING),purgatory:count(STAGES.PURGATORY)};
  }
- const api={STAGES,PRIMARY,membershipIds,inInbox,primaryState,stageAfterAi,setStage,markQueueWaiting,markAiProcessing,reconcileAfterAi,evaluateIsolatedFailure,markInbox,markPostProcessing,markPurgatory,migrateAll,snapshot};
+ function verify(){
+  const issues=[];
+  for(const record of records()){
+   const stage=String(record?.workflow?.stage||'');
+   if(!CANONICAL_STAGES.has(stage)&&!COMPAT_FINAL_STAGES.has(stage))issues.push({type:'noncanonical-lifecycle-stage',severity:'attention',imageId:record.id,stage,summary:`Image ${record.id} has noncanonical lifecycle stage ${stage||'(blank)'}.`});
+   const terminals=[record?.attributes?.flagged,record?.attributes?.depot,record?.attributes?.rejectionFlagged,record?.attributes?.rejected].filter(Boolean).length;
+   if(terminals>1)issues.push({type:'multiple-inbox-terminals',severity:'critical',imageId:record.id,summary:`Image ${record.id} has more than one Inbox terminal state.`});
+   const members=membershipIds(record).current;
+   if(members.length&&![STAGES.INBOX_WORKING,STAGES.POST_PROCESSING,STAGES.PURGATORY].includes(stage))issues.push({type:'bundle-membership-owner-mismatch',severity:'attention',imageId:record.id,stage,bundleIds:members,summary:`Image ${record.id} has active Bundle membership outside Inbox/Post-processing.`});
+  }
+  return{checkedAt:now(),recordCount:records().length,issueCount:issues.length,issues};
+ }
+ const api={STAGES,PRIMARY,CANONICAL_STAGES,membershipIds,inInbox,primaryState,stageAfterAi,setStage,markQueueWaiting,markAiProcessing,reconcileAfterAi,evaluateIsolatedFailure,markInbox,markPostProcessing,markPurgatory,migrateAll,snapshot,verify};
  window.genreactrixLifecycleEngine=api;
- window.addEventListener('DOMContentLoaded',()=>{try{migrateAll()}catch(error){console.error('Lifecycle migration failed',error)}});
+ window.addEventListener('DOMContentLoaded',()=>{try{migrateAll();window.genreactrixMaintenanceEngine?.registerChecker?.('lifecycle',verify,{quick:true,label:'Lifecycle Spine'})}catch(error){console.error('Lifecycle migration failed',error)}});
 })();
