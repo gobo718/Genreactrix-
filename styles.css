@@ -452,7 +452,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
 .primfusion-shortcut{white-space:nowrap;border-color:var(--accent);color:var(--accent)}
 
 /* v0.9.2 Portrait workflow completion */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   #lockDividerBtn,#resetViewBtn,.desktop-profile-control,.tablet-layout-control{display:none!important}
   .nav-console{grid-template-columns:1fr auto;align-items:start}
   .brand{grid-column:1}
@@ -505,7 +505,7 @@ select,textarea{font:inherit;color:var(--text);background:var(--panel-2);border:
   font-size:clamp(.78rem,2.9vw,.95rem);
   line-height:1.45;
 }
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   .inspection-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .inspection-comparison{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .director-reaction-grid,.reaction-bar{grid-template-columns:repeat(14,minmax(0,1fr))}
@@ -1464,7 +1464,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 /* v0.9.3.11 — portrait regression cleanup only */
 .primfusion-fit-diagnostics{display:none!important}
 
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   /* Keep the three Theme target buttons on-screen; the page context is already clear. */
   #themeWorkspace .workspace-location{display:none!important}
   #themeWorkspace .theme-header{justify-content:flex-start;gap:8px}
@@ -1511,7 +1511,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
    Portrait no longer inherits the landscape console image containers. */
 .portrait-only-image-viewport{display:none}
 
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   /* Remove the shared landscape image panels from portrait entirely. */
   #aiWorkspace .landscape-shared-image-viewport,
   #directorWorkspace .landscape-shared-image-viewport{
@@ -2289,7 +2289,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .quick-assign-summary dt{color:var(--muted);font-size:.7rem}
 .quick-assign-summary dd{margin:0;font-size:.76rem;overflow-wrap:anywhere}
 
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   body{overflow:auto}
   #app.app-shell{height:100dvh;min-height:100dvh;overflow:auto;padding:8px;background:var(--bg)}
 
@@ -2453,7 +2453,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media(max-width:620px){.maintenance-issue{grid-template-columns:1fr}.maintenance-issue>div:last-child{justify-content:flex-start}.maintenance-report-row{grid-template-columns:1fr auto auto}.maintenance-restore-row{align-items:stretch}.maintenance-restore-row>*{width:100%}}
 
 /* v0.9.14.0 — finalized portrait Control Station home */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   .portrait-image-engine-status,
   .portrait-batch-progress,
   .portrait-queue-status,
@@ -2504,7 +2504,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .images-console-dialog{width:min(94vw,760px);max-height:92vh;padding:0;border:1px solid rgba(190,160,255,.25);border-radius:24px;background:#17131f;color:#f5efff}.images-console-dialog::backdrop{background:rgba(5,3,10,.72)}.images-console{display:flex;flex-direction:column;max-height:92vh}.images-console-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px}.images-console-header h2{margin:0}.images-console-header button{font-size:30px}.images-console-nav{display:flex;gap:6px;overflow-x:auto;padding:0 16px 12px}.images-console-nav button{white-space:nowrap}.images-console-nav button.active{background:#6d45a8;color:white}.images-console-body{overflow:auto;padding:0 18px 18px}.images-console-body section{display:grid;gap:12px}.images-console-body textarea,.images-console-body input,.images-console-body select{width:100%;box-sizing:border-box}.images-console-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.images-console-actions,.images-add-actions{display:flex;gap:10px;flex-wrap:wrap}.images-console-summary,.images-console-status{padding:10px 18px;color:#cbbdde}.images-record-list{display:grid;gap:8px}.images-record-row{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(190,160,255,.18);border-radius:12px;background:rgba(255,255,255,.03)}.images-record-row span{display:grid;min-width:0}.images-record-row small{color:#a99bb8;word-break:break-all}.images-empty{color:#a99bb8}
 
 /* v0.9.16.0 — one-page portrait compression and complete AI console */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   #app.app-shell{padding:5px}
   .portrait-control-station{gap:5px}
   .portrait-station-header{min-height:42px;padding:5px 7px}
@@ -2540,7 +2540,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media(max-width:520px){.ai-analysis-form{padding:11px;gap:9px}.ai-console-section{padding:9px}.ai-component-option{padding:6px}.ai-analysis-dialog{width:97vw}}
 
 /* v0.9.16.1 — portrait viewport-fit correction */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   html,
   body{
     width:100%;
@@ -6803,7 +6803,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .landscape-filter-shell{max-height:calc(100dvh - 20px);overflow-y:auto;overscroll-behavior:contain}
 
 /* v0.9.39.83 — Fold portrait Queue/Reports stat-card compression only. */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   .portrait-queue-status button,
   .portrait-report-status button{
     min-height:20px;
@@ -7195,7 +7195,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   #aiWorkspace .ai-guidance-field input{padding:4px 6px;font-size:.64rem;min-height:26px}
   #aiWorkspace .ai-assist-actions button{padding:4px 7px;font-size:.6rem;min-height:26px}
 }
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   #aiWorkspace .ai-assist-panel{grid-template-columns:minmax(0,1fr);align-items:stretch;margin-top:6px}
   #aiWorkspace .ai-assist-actions{display:grid;grid-template-columns:1fr 1fr;white-space:normal}
   #aiWorkspace .ai-assist-actions button{width:100%;font-size:.68rem}
@@ -7334,7 +7334,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 /* v0.9.40.13 — temporary Portrait housekeeping.
    Each temporary console is scaled as one unit so its proportions and hierarchy stay intact.
    Landscape geometry is intentionally untouched. */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   .images-console-dialog,
   .ai-analysis-dialog,
   .batch-dialog,
@@ -7402,7 +7402,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
    The previous v0.9.40.13 zoom compensation widened inner surfaces to 116–143%,
    which made Android portrait dialogs clip off-screen. Keep the uniform scale,
    but never expand the scaled surface beyond its dialog. Landscape untouched. */
-@media (max-width:599px) and (orientation:portrait){
+@media (max-width:599px) and (orientation:portrait), (orientation:portrait) and (max-aspect-ratio:2/3){
   .images-console-dialog,
   .ai-analysis-dialog,
   .batch-dialog,
@@ -7606,3 +7606,43 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .portrait-inbox-push{grid-template-columns:auto auto 1fr 1fr}
 .queue-inline-control{display:inline-flex;align-items:center;gap:5px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);font-size:.78rem}
 .queue-inline-control input[type="number"]{width:58px;min-width:0}
+
+
+/* v0.9.40.25 — cross-browser tall-phone portrait routing.
+   Some Android browsers report a CSS viewport >=600px after rotation even on the
+   Fold cover display. Width alone must not keep the Landscape workstation mounted.
+   A genuinely tall portrait viewport is phone Portrait regardless of reported CSS width. */
+@media (orientation:portrait) and (max-aspect-ratio:2/3){
+  html,body{
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    background:var(--bg)!important;
+  }
+  #app.app-shell{
+    box-sizing:border-box!important;
+    width:100%!important;
+    height:100dvh!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:5px!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+  #app>.nav-console,
+  #app>.tablet-workbench,
+  #app>.base-layout,
+  #app>.tablet-primfusion-console{display:none!important}
+  #app>.portrait-control-station{
+    display:grid!important;
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    max-width:34rem!important;
+    min-height:0!important;
+    height:auto!important;
+    margin:0 auto!important;
+  }
+  #tabletWorkbench{display:none!important}
+}

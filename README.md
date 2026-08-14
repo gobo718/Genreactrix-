@@ -1,3 +1,10 @@
+## v0.9.40.25 — Cross-browser portrait rotation
+
+- Fixes DuckDuckGo/Android tall-phone portrait routing after rotating out of Landscape.
+- Phone Portrait is now recognized by tall portrait geometry as well as the historical `<600px` CSS-width gate.
+- Preserves true tablet/unfolded portrait behavior; only tall portrait viewports (aspect ratio 2:3 or narrower) receive the phone Portrait station.
+- No lifecycle, Bundle, AI, Landscape geometry, Worker, or image-data changes.
+
 ## v0.9.40.24 — State spine + Bundle migration
 
 Current implementation authority: 2026-08-14 system/data/module map. This is the first bounded source migration toward the canonical Origin → Queue → AI process → Staged → Bundle → Inbox → Batch → Post-processing model. It deliberately changes lifecycle/data ownership before any new Landscape redesign.
