@@ -16,7 +16,7 @@ function decision(input={}){return{imageId:String(input.imageId||''),terminal:St
 async function freezeBatchPlans({batchId,submissionToken,submissionVersion=1,items=[]}={}){
   if(!batchId||!submissionToken)throw new Error('Batch Post-processing identity is incomplete');
   const frozen=[];
-  for(const raw of items){const d=decision(raw);if(!d.imageId)continue;const id=planId(submissionToken,d.imageId),existing=await get(id);if(existing){frozen.push(existing);continue}const row={id,batchId:String(batchId),submissionToken:String(submissionToken),submissionVersion:Number(submissionVersion)||1,imageId:d.imageId,decision:d,status:'planned',createdAt:now(),updatedAt:now(),completedAt:null,purgatoryAt:null,lastAttemptAt:null,lastSuccessAt:null,lastError:null,attempts:[],result:null};await put(row);frozen.push(row)}
+  for(const raw of items){const d=decision(raw);if(!d.imageId)continue;const id=planId(submissionToken,d.imageId),existing=await get(id);if(existing){frozen.push(existing);continue}const ctx=window.genreactrixProjectRuntimeEngine,row={id,schemaVersion:2,projectId:ctx?.projectId?.()||'',runtimeId:ctx?.runtimeId?.()||null,batchId:String(batchId),submissionToken:String(submissionToken),submissionVersion:Number(submissionVersion)||1,imageId:d.imageId,decision:d,status:'planned',createdAt:now(),updatedAt:now(),completedAt:null,purgatoryAt:null,lastAttemptAt:null,lastSuccessAt:null,lastError:null,attempts:[],result:null};await put(row);frozen.push(row)}
   return frozen;
 }
 async function plansForSubmission(submissionToken){return (await all()).filter(p=>p.submissionToken===String(submissionToken)).sort((a,b)=>String(a.imageId).localeCompare(String(b.imageId)))}

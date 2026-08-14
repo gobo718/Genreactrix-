@@ -7,11 +7,12 @@
   if(!row?.id)return null;
   const number=Number(row.number)||null,originalLabel=String(row.label||'');
   const label=legacy||/^Pack\b/i.test(originalLabel)?`Bundle ${number||''}`.trim():String(row.label||`Bundle ${number||''}`).trim();
-  return {id:String(row.id),number,label,legacyLabel:legacy?originalLabel||null:row.legacyLabel||null,legacyPackId:legacy?String(row.id):row.legacyPackId||null,sourceLabel:String(row.sourceLabel||''),imageIds:[...new Set((row.imageIds||[]).map(String))],createdAt:row.createdAt||now(),analyzedAt:row.analyzedAt||row.completedAt||null,bundledAt:row.bundledAt||row.pushedAt||row.createdAt||now(),mode:row.mode|| (legacy?'legacy-migrated':'manual')};
+  return {id:String(row.id),schemaVersion:2,projectId:row.projectId||window.genreactrixProjectRuntimeEngine?.projectId?.()||'',runtimeId:row.runtimeId||null,number,label,legacyLabel:legacy?originalLabel||null:row.legacyLabel||null,legacyPackId:legacy?String(row.id):row.legacyPackId||null,sourceLabel:String(row.sourceLabel||''),imageIds:[...new Set((row.imageIds||[]).map(String))],createdAt:row.createdAt||now(),analyzedAt:row.analyzedAt||row.completedAt||null,bundledAt:row.bundledAt||row.pushedAt||row.createdAt||now(),mode:row.mode|| (legacy?'legacy-migrated':'manual')};
  }
  function read(key){try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[]}catch{return[]}}
  let cache=(()=>{const current=read(KEY).map(x=>normalize(x,false)).filter(Boolean);if(current.length)return current;const legacy=read(LEGACY_KEY).map(x=>normalize(x,true)).filter(Boolean);if(legacy.length)localStorage.setItem(KEY,JSON.stringify(legacy));return legacy;})();
  function persist(){localStorage.setItem(KEY,JSON.stringify(cache));}
+ persist();
  function all(){return cache.map(clone);}
  function byId(id){return clone(cache.find(b=>b.id===String(id))||null);}
  function records(){return window.genreactrixImageRecordEngine?.all?.()||[];}
@@ -26,7 +27,7 @@
  function migrateRecordMemberships(){let changed=0;for(const r of records()){const ext=r.metadata?.extended||{},legacy=Array.isArray(ext.inboxPackIds)?ext.inboxPackIds:[],history=Array.isArray(ext.inboxHistoryPackIds)?ext.inboxHistoryPackIds:[];const current=Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:legacy,hist=Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:history;if(!Array.isArray(ext.inboxBundleIds)&&current.length||!Array.isArray(ext.inboxHistoryBundleIds)&&hist.length||(!ext.lastInboxBundleId&&ext.lastInboxPackId)){window.genreactrixImageRecordEngine.update(r.id,{metadata:{extended:{inboxBundleIds:[...new Set(current.map(String))],inboxHistoryBundleIds:[...new Set(hist.map(String))],lastInboxBundleId:ext.lastInboxBundleId||ext.lastInboxPackId||null}}},'bundle-membership-migrated');changed++;}}return changed;}
  async function create(imageIds,{mode='manual',sourceLabel='Queue Bundle'}={}){
   const unique=[...new Set((imageIds||[]).map(String))],rows=unique.map(record).filter(Boolean).filter(r=>r.workflow?.stage==='staged');if(!rows.length)return null;
-  const number=numberNext(),createdAt=now(),bundle={id:uid(),number,label:`Bundle ${number}`,legacyLabel:null,legacyPackId:null,sourceLabel,imageIds:rows.map(r=>String(r.id)),createdAt,analyzedAt:rows.map(r=>r.analysis?.ai?.recordedAt||'').filter(Boolean).sort().at(-1)||createdAt,bundledAt:createdAt,mode};
+  const ctx=window.genreactrixProjectRuntimeEngine,number=numberNext(),createdAt=now(),bundle={id:uid(),schemaVersion:2,projectId:ctx?.projectId?.()||'',runtimeId:ctx?.runtimeId?.()||null,number,label:`Bundle ${number}`,legacyLabel:null,legacyPackId:null,sourceLabel,imageIds:rows.map(r=>String(r.id)),createdAt,analyzedAt:rows.map(r=>r.analysis?.ai?.recordedAt||'').filter(Boolean).sort().at(-1)||createdAt,bundledAt:createdAt,mode};
   cache.push(bundle);persist();
   for(const r of rows){const current=Array.isArray(r.metadata?.extended?.inboxBundleIds)?r.metadata.extended.inboxBundleIds:[];window.genreactrixImageRecordEngine.update(r.id,{workflow:{stage:'inbox-working'},metadata:{extended:{inboxBundleIds:[...new Set([...current,bundle.id])],inboxBundledAt:createdAt,lastInboxBundleId:bundle.id}}},'bundle-entered-inbox');}
   emit('created',bundle,{imageIds:bundle.imageIds});return clone(bundle);

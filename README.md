@@ -1,3 +1,84 @@
+## v0.9.40.36 — Project / Runtime Data Boundary
+
+This release performs the bounded persistence-architecture pass after the accepted v0.9.40.35 AI Attempt/Artifact history migration. It separates Genreactrix's logical Project identity/data from the browser/device Runtime Instance that physically holds current local working copies. This is a local-model architecture change only: it does **not** add account/server synchronization or make separate browsers share databases yet. No accepted layout is redesigned.
+
+### Project Context
+
+- Adds `project-runtime-engine.js` as the authoritative Project/Runtime context service.
+- Preserves the existing Project ID, Project name, and Director identity rather than creating a new project during migration.
+- Project identity is now distinct from the Runtime Instance ID.
+- Project-scoped settings and historical/operational records carry `projectId` so they can be associated with the logical project independently of the browser that currently stores them.
+- Existing legacy project-scoped records are backfilled once per Project; the migration is idempotent and does not move lifecycle ownership.
+- Custom Reactions, Custom Themes, Evaluation Vocabulary version, and Evaluation Vocabulary-used state now use Project-namespaced local keys and are mirrored into the Project key/value store. Legacy values are migrated without deleting the legacy source during this pass.
+
+### Runtime Instance
+
+- A Runtime Instance represents the current browser/device execution environment, not a second project or preference set.
+- Existing runtime identity from earlier Origin Pack builds is preserved when available.
+- Runtime records retain browser family, platform/user-agent context, origin, and relevant local capabilities for diagnostics.
+- New operational work records the Runtime Instance where the work actually occurred while retaining the logical Project association.
+- Legacy records receive the Project association without fabricating a historical Runtime ID that cannot be known reliably.
+
+### Asset Locations
+
+- Adds explicit runtime-local Asset Location records for local working full-resolution images, thumbnails, and kept full-resolution assets.
+- Asset Locations identify the Project, Runtime Instance, Image ID, physical IndexedDB store/key, state, MIME/size metadata, and retention information where applicable.
+- Recycle, restore, Keep, deletion, and new Import storage transitions update the local Asset Location state.
+- Existing local image assets are indexed once per Runtime in a background migration. The legacy scan is marked complete and does not rescan the full local asset population on every startup.
+- The permanent Image Record remains the logical identity/history object; a physical local blob is not treated as the identity of the project or image.
+
+### Project-wide settings versus runtime facts
+
+- `settings-engine.js` is now explicitly a Project Settings service. Setting rows carry Project scope and Project ID.
+- Machine/browser identity, browser capability, local storage location, and physical working-copy location are runtime/infrastructure metadata rather than duplicate user settings.
+- Settings Project information reports Project ID and Runtime ID separately using the existing information area.
+- Local backup metadata now labels databases/stores as Project, Runtime, or mixed scope. The backup remains a local backup containing both logical data and local physical assets; this release does not claim cross-browser synchronization or server persistence.
+
+### Record provenance
+
+New records created by the affected systems now preserve Project/Runtime provenance where applicable:
+
+- Import Jobs
+- Origin Packs and Origin gate cases
+- Image Records and History events
+- Queue Jobs/Items
+- Bundles
+- AI Attempts/Artifacts
+- Quarantine cases
+- Batches
+- Post-processing plans
+
+The existing lifecycle, ownership, status names, and accepted state transitions are unchanged.
+
+### Migration safety / performance
+
+- The Project ID is recovered from the existing settings database before Project Settings initialization, preventing a second project identity from being created during upgrade.
+- The earlier runtime ID is migrated into the Runtime Context rather than replaced.
+- Project-scoped legacy-record migration is one-time/idempotent per Project.
+- Legacy physical-asset indexing is one-time/idempotent per Runtime.
+- Bulk Asset Location registration reads existing location rows once rather than performing one database read per image.
+- Two pre-release IndexedDB issues found during verification were repaired: the new context engine no longer reuses a closed database connection, and legacy Project-setting reads use a mutable completion counter correctly.
+
+### Preservation
+
+- The Reaction 60/40 calculation block in `ai-analysis-engine.js` is byte-for-byte identical to v0.9.40.35.
+- `styles.css` is byte-for-byte identical to v0.9.40.35.
+- The Portrait non-script structure remains exactly 1,549 elements with 673 unique IDs; only one new nonvisual script element is added.
+- No Origin, Queue/Buffer, Quarantine, Bundle, Inbox, Batch, Post-processing/Purgatory, Keep/Recycle, AI result, Director Evaluation, or accepted Portrait/Landscape geometry is redesigned.
+- No server/account backend or browser-to-browser synchronization is introduced.
+
+### Verification performed
+
+- JavaScript syntax validation passes across all project/Worker JavaScript.
+- Project/Runtime tests preserve an existing Project ID and existing Runtime ID as separate identities, migrate Project-scoped legacy data idempotently, classify Project versus Runtime stores, register/update local Asset Locations, and pass Project/Runtime referential verification.
+- Settings integration tests confirm Project Settings resolve to the authoritative Project Context, setting rows carry Project scope, and backup metadata distinguishes mixed physical/logical stores correctly.
+- AI Attempt/Artifact and full AI-analysis integration regression tests still pass, including Theme/direct-Reaction independence, guided reruns, and reconstructable combined 60/40 artifact versions.
+- Layout, source-diff, and 60/40 identity audits pass.
+
+### Real-device acceptance gate
+
+No new operational workflow is required. Run one normal Import/AI path and confirm it behaves exactly as v0.9.40.35. In Settings → Project, the existing information line should now show a Project ID and a separate Runtime ID. Switching browsers will still show separate local populations until a later shared-persistence layer is deliberately implemented.
+
 ## v0.9.40.35 — Versioned AI Attempts + Artifacts
 
 This release performs the bounded AI-history data-layer migration after the accepted v0.9.40.34 Origin Pack pass. It preserves the existing current AI projection and 60/40 calculation while adding immutable, reconstructable AI execution history underneath it. No accepted layout is redesigned.

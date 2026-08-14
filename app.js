@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.33";
+const GENREACTRIX_BUILD="v0.9.40.36";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -34,8 +34,9 @@ const CUSTOM_REACTION_LIBRARY_KEY="genreactrix-custom-reactions-v1";
 const CUSTOM_THEME_LIBRARY_KEY="genreactrix-custom-themes-v2";
 const CUSTOM_THEME_LEGACY_KEYS=["genreactrix-v0.9.1-writeins","genreactrix-v0.8.0-writeins","genreactrix-v0.7.0-writeins"];
 const slugifyCustom=value=>String(value||"").trim().toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||`item-${Date.now()}`;
-function readJsonArray(key){try{const value=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(value)?value:[]}catch{return []}}
-function writeJsonArray(key,value){localStorage.setItem(key,JSON.stringify(Array.isArray(value)?value:[]));}
+function projectLocalKey(key){return window.genreactrixProjectRuntimeEngine?.projectKey?.(key)||key;}
+function readJsonArray(key){try{const scoped=projectLocalKey(key),raw=localStorage.getItem(scoped)??(scoped!==key?localStorage.getItem(key):null),value=JSON.parse(raw||"[]");if(scoped!==key&&raw&&localStorage.getItem(scoped)==null)localStorage.setItem(scoped,raw);return Array.isArray(value)?value:[]}catch{return []}}
+function writeJsonArray(key,value){const raw=JSON.stringify(Array.isArray(value)?value:[]),scoped=projectLocalKey(key);localStorage.setItem(scoped,raw);window.genreactrixProjectRuntimeEngine?.setProjectValue?.(key,raw).catch?.(()=>{});}
 function dedupeReactionRefs(refs){const seen=new Set();return (Array.isArray(refs)?refs:[]).filter(ref=>{if(!ref?.id)return false;const key=`${ref.type||"canonical"}:${ref.id}`;if(seen.has(key))return false;seen.add(key);return true;}).map(ref=>({type:ref.type==="custom"?"custom":"canonical",id:String(ref.id)}));}
 function normalizedReactionRefs(theme){if(!theme)return[];if(Array.isArray(theme.reactionRefs))return dedupeReactionRefs(theme.reactionRefs);if(Array.isArray(theme.primitiveIds))return dedupeReactionRefs(theme.primitiveIds.map(id=>({type:"canonical",id})));if(theme.primitiveId)return[{type:"canonical",id:theme.primitiveId}];return[];}
 function reactionRefKey(ref){if(!ref?.id)return"";return`${ref.type==="custom"?"custom":"canonical"}:${String(ref.id)}`;}
@@ -558,7 +559,7 @@ function saveCurrent(action="commit"){
   legacy.evaluationVersion=currentEvaluationVersion();
   const saved=writeClassificationForKey(imageId,legacy);
   if(saved){
-    localStorage.setItem(EVALUATION_USED_KEY,"1");
+    localStorage.setItem(projectLocalKey(EVALUATION_USED_KEY),"1");window.genreactrixProjectRuntimeEngine?.setProjectValue?.(EVALUATION_USED_KEY,"1").catch?.(()=>{});
     syncDirectorRecordHistory("director-classified");
     lockBatchEvaluationVersion().catch(console.warn);
   }
@@ -2604,7 +2605,7 @@ landscapeImageCanvas?.addEventListener("pointercancel",endLandscapeImagePointer)
 // The Image Record Engine owns identity, Origin Metadata, workflow state, extensible metadata,
 // analysis containers, locking, queries, integrity checks, and recycle-bin state.
 // The Images Engine owns acquisition and blobs, and updates records only through this engine.
-const IMAGE_RECORD_SCHEMA_VERSION=3;
+const IMAGE_RECORD_SCHEMA_VERSION=4;
 const IMAGE_RECORDS_KEY="genreactrix-image-records-v1";
 const LEGACY_IMAGE_ENGINE_MANIFEST_KEY="genreactrix-image-engine-manifest-v1";
 const RECYCLE_RETENTION_KEY="genreactrix-recycle-retention-days";
@@ -2682,17 +2683,26 @@ function imageStoreGetAll(storeName){
     tx.oncomplete=()=>db.close();
   }));
 }
-async function imageBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_BLOB_STORE,key,blob);}
+function imageStoreGetAllKeys(storeName){
+  return openImageEngineDatabase().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,"readonly");
+    const request=tx.objectStore(storeName).getAllKeys();
+    request.onsuccess=()=>resolve(request.result||[]);
+    request.onerror=()=>reject(request.error);
+    tx.oncomplete=()=>db.close();
+  }));
+}
+async function imageBlobPut(key,blob){await imageStorePut(IMAGE_ENGINE_BLOB_STORE,key,blob);await window.genreactrixProjectRuntimeEngine?.registerAsset?.({imageId:key,kind:'working-fullres',state:'working',database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:key,mimeType:blob?.type||'',size:blob?.size||0});}
 async function imageBlobGet(key){
   const working=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,key);
   return working || imageStoreGet(IMAGE_ENGINE_KEPT_STORE,key);
 }
-async function imageBlobDelete(key){return imageStoreDelete(IMAGE_ENGINE_BLOB_STORE,key);}
-async function thumbnailBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_THUMBNAIL_STORE,key,blob);}
+async function imageBlobDelete(key){await imageStoreDelete(IMAGE_ENGINE_BLOB_STORE,key);await window.genreactrixProjectRuntimeEngine?.markAsset?.(key,'working-fullres','deleted',{database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:key});}
+async function thumbnailBlobPut(key,blob){await imageStorePut(IMAGE_ENGINE_THUMBNAIL_STORE,key,blob);await window.genreactrixProjectRuntimeEngine?.registerAsset?.({imageId:key,kind:'thumbnail',state:'present',database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_THUMBNAIL_STORE,storageKey:key,mimeType:blob?.type||'',size:blob?.size||0});}
 async function thumbnailBlobGet(key){return imageStoreGet(IMAGE_ENGINE_THUMBNAIL_STORE,key);}
-async function keptBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_KEPT_STORE,key,blob);}
+async function keptBlobPut(key,blob){await imageStorePut(IMAGE_ENGINE_KEPT_STORE,key,blob);await window.genreactrixProjectRuntimeEngine?.registerAsset?.({imageId:key,kind:'kept-fullres',state:'kept',database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_KEPT_STORE,storageKey:key,mimeType:blob?.type||'',size:blob?.size||0});}
 async function keptBlobGet(key){return imageStoreGet(IMAGE_ENGINE_KEPT_STORE,key);}
-async function keptBlobDelete(key){return imageStoreDelete(IMAGE_ENGINE_KEPT_STORE,key);}
+async function keptBlobDelete(key){await imageStoreDelete(IMAGE_ENGINE_KEPT_STORE,key);await window.genreactrixProjectRuntimeEngine?.markAsset?.(key,'kept-fullres','deleted',{database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_KEPT_STORE,storageKey:key});}
 async function keptIdPut(key,value){return imageStorePut(IMAGE_ENGINE_KEPT_ID_STORE,key,value);}
 async function keptIdGet(key){return imageStoreGet(IMAGE_ENGINE_KEPT_ID_STORE,key);}
 async function keptIdDelete(key){return imageStoreDelete(IMAGE_ENGINE_KEPT_ID_STORE,key);}
@@ -2774,8 +2784,10 @@ function createHistoryEngine(){
       previousEntryId=existing.filter(entry=>String(entry.eventType).split("-")[0]===category).at(-1)?.entryId||null;
     }
     const entry={
-      schemaVersion:Number(input.schemaVersion)||schemaVersion,
+      schemaVersion:Math.max(2,Number(input.schemaVersion)||schemaVersion),
       entryId:input.entryId||nextId(),
+      projectId:input.projectId||window.genreactrixProjectRuntimeEngine?.projectId?.()||null,
+      runtimeId:input.runtimeId||window.genreactrixProjectRuntimeEngine?.runtimeId?.()||null,
       imageId:input.imageId,
       eventType:input.eventType||"updated",
       timestamp:input.timestamp||now(),
@@ -2865,6 +2877,7 @@ function createImageRecordEngine(){
     directorThemes:"missing",primFusion:"missing"
   });
   function normalize(record={}){
+    const projectRuntime=window.genreactrixProjectRuntimeEngine,projectId=record.projectId||projectRuntime?.projectId?.()||'';
     const red=Boolean(record.attributes?.rejectionFlagged);
     const hot=Boolean(record.attributes?.rejected);
     const depot=Boolean(record.attributes?.depot)&&!red&&!hot;
@@ -2889,6 +2902,8 @@ function createImageRecordEngine(){
     const thumbnailKey=record.storage?.thumbnailKey||null;
     return {
       schemaVersion:Number(record.schemaVersion)>IMAGE_RECORD_SCHEMA_VERSION?Number(record.schemaVersion):IMAGE_RECORD_SCHEMA_VERSION,
+      projectId,
+      runtime:{createdRuntimeId:record.runtime?.createdRuntimeId||null,lastProcessedRuntimeId:record.runtime?.lastProcessedRuntimeId||null},
       id:record.id||createImageId(),
       name:record.name||"Untitled image",
       createdAt:record.createdAt||record.addedAt||now(),
@@ -2976,7 +2991,7 @@ function createImageRecordEngine(){
   function get(id,{touch=true}={}){const record=mutable(id);if(!record)return null;if(touch){record.accessedAt=now();record.updatedAt=now();persist();emit("accessed",record);}return clone(record);}
   function update(id,patch={},reason="updated"){
     const record=mutable(id);if(!record)return null;if(record.attributes.locked&&reason!=="unlock"&&reason!=="integrity"&&!reason.includes("migration"))throw new Error("Image record is locked");
-    const merged=normalize({...record,...patch,source:{...record.source,...(patch.source||{})},storage:{...record.storage,...(patch.storage||{}),recycle:{...record.storage.recycle,...(patch.storage?.recycle||{})}},workflow:{...record.workflow,...(patch.workflow||{})},attributes:{...record.attributes,...(patch.attributes||{})},components:{...record.components,...(patch.components||{})},analysis:{...record.analysis,...(patch.analysis||{})},metadata:{core:{...record.metadata.core,...(patch.metadata?.core||{})},extended:{...record.metadata.extended,...(patch.metadata?.extended||{})}},timestamps:{...record.timestamps,...(patch.timestamps||{})}});
+    const merged=normalize({...record,...patch,projectId:record.projectId||window.genreactrixProjectRuntimeEngine?.projectId?.()||'',runtime:{...record.runtime,...(patch.runtime||{}),lastProcessedRuntimeId:window.genreactrixProjectRuntimeEngine?.runtimeId?.()||record.runtime?.lastProcessedRuntimeId||null},source:{...record.source,...(patch.source||{})},storage:{...record.storage,...(patch.storage||{}),recycle:{...record.storage.recycle,...(patch.storage?.recycle||{})}},workflow:{...record.workflow,...(patch.workflow||{})},attributes:{...record.attributes,...(patch.attributes||{})},components:{...record.components,...(patch.components||{})},analysis:{...record.analysis,...(patch.analysis||{})},metadata:{core:{...record.metadata.core,...(patch.metadata?.core||{})},extended:{...record.metadata.extended,...(patch.metadata?.extended||{})}},timestamps:{...record.timestamps,...(patch.timestamps||{})}});
     const before=clone(record);Object.assign(record,merged,{updatedAt:now()});persist();emit(reason,record);
     if(reason!=="accessed")appendHistory({imageId:record.id,eventType:reason,actor:reason.startsWith("ai-")?"ai":reason.startsWith("director-")?"director":"system",sourceEngine:"image-record",batchId:record.batchIds?.at(-1)||null,summary:reason.replaceAll("-"," "),payload:{before,current:clone(record),patch:clone(patch)}});
     return clone(record);
@@ -3002,13 +3017,15 @@ function createImageRecordEngine(){
       if(!record.source.originalLocation&&!record.source.originalUrl)issues.push({imageId:record.id,type:"missing-origin-metadata"});
       if(record.attributes.inRecycleBin&&!record.storage.recycle.deletedAt)issues.push({imageId:record.id,type:"recycle-without-date"});
       if(record.schemaVersion>IMAGE_RECORD_SCHEMA_VERSION)issues.push({imageId:record.id,type:"future-schema"});
+      if(!record.projectId)issues.push({imageId:record.id,type:"missing-project-id"});
       const terminals=[record.attributes.flagged,record.attributes.depot,record.attributes.rejectionFlagged,record.attributes.rejected].filter(Boolean).length;
       if(terminals>1)issues.push({imageId:record.id,type:"multiple-inbox-terminals"});
     });
     return {checkedAt:now(),recordCount:records.length,issueCount:issues.length,issues};
   }
+  function migrateScope(){const pid=window.genreactrixProjectRuntimeEngine?.projectId?.()||'',rid=window.genreactrixProjectRuntimeEngine?.runtimeId?.()||null;let changed=0;for(const record of records){if(!record.projectId&&pid){record.projectId=pid;changed++}if(record.schemaVersion<IMAGE_RECORD_SCHEMA_VERSION){record.schemaVersion=IMAGE_RECORD_SCHEMA_VERSION;changed++}if(!record.runtime)record.runtime={createdRuntimeId:null,lastProcessedRuntimeId:null};if(!record.runtime.lastProcessedRuntimeId&&rid&&record.createdAt===record.updatedAt){/* creation runtime for legacy records is unknowable; do not fabricate it */}}if(changed)persist();return{projectId:pid,runtimeId:rid,updated:changed};}
   function all(){return records.map(clone);}
-  return {create,get,update,setStage,setAttribute,setComponent,attachAI,attachDirector,setLocked,query,integrity,all,_mutable:mutable};
+  return {create,get,update,setStage,setAttribute,setComponent,attachAI,attachDirector,setLocked,query,integrity,migrateScope,all,_mutable:mutable};
 }
 window.genreactrixImageRecordEngine=createImageRecordEngine();
 
@@ -3043,7 +3060,7 @@ function createImagesEngine(){
   async function admitOriginCandidate({blob,source={},name='',mode='temporary',fingerprint='',thumbnailHash='',thumbnail=null,originGateId=null}={}){
     if(!blob)throw new Error("Origin candidate has no readable full-resolution image");
     const id=createImageId(source.type==='url'?'url':'local'),keepFull=mode!=='link'&&mode!=='linked',stored=await storeImportedImage({id,blob,thumbnail,keepFull});
-    const record=records.create({id,name:name||source.originalFilename||'Imported image',source:{...source,importJobId:source.importJobId||null},storage:{mode:keepFull?'temporary':'linked',temporaryKey:keepFull?id:null,hyperlink:source.originalUrl||'',...stored,mimeType:blob.type||source.mimeType||'',size:blob.size||source.size||0,lastModified:Number(source.lastModified)||0,hash:fingerprint||''},workflow:{stage:'queued'},attributes:{hyperlinkOnly:!keepFull},metadata:{extended:{originGateId:originGateId||null,originPackId:source.packId||null,originPackIds:source.packId?[source.packId]:[],originThumbnailHash:thumbnailHash||''}},batchIds:[]});
+    const record=records.create({id,projectId:window.genreactrixProjectRuntimeEngine?.projectId?.()||'',runtime:{createdRuntimeId:window.genreactrixProjectRuntimeEngine?.runtimeId?.()||null,lastProcessedRuntimeId:window.genreactrixProjectRuntimeEngine?.runtimeId?.()||null},name:name||source.originalFilename||'Imported image',source:{...source,importJobId:source.importJobId||null},storage:{mode:keepFull?'temporary':'linked',temporaryKey:keepFull?id:null,hyperlink:source.originalUrl||'',...stored,mimeType:blob.type||source.mimeType||'',size:blob.size||source.size||0,lastModified:Number(source.lastModified)||0,hash:fingerprint||''},workflow:{stage:'queued'},attributes:{hyperlinkOnly:!keepFull},metadata:{extended:{originGateId:originGateId||null,originPackId:source.packId||null,originPackIds:source.packId?[source.packId]:[],originThumbnailHash:thumbnailHash||''}},batchIds:[]});
     activeSessionIds=[...new Set([...activeSessionIds,record.id])];return record;
   }
   const IMAGE_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
@@ -3266,6 +3283,7 @@ function createImagesEngine(){
       record=records.update(id,{workflow:{stage:finalStage},storage:storagePatch,attributes:attributePatch,timestamps:{batchedAt:committedAt},metadata:{extended:metadataExtended}},"post-processing-committed");
       if(!record)throw new Error("Image record commit did not complete");
       if(keep)await imageBlobDelete(id).catch(error=>console.warn("Post-processing working-copy cleanup deferred",error));
+      else if(recycled)await window.genreactrixProjectRuntimeEngine?.markAsset?.(id,'working-fullres','recycle',{database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:id,retention:{kind:'recycle-bin'}}).catch?.(()=>{});
       return{record,recycled,kept:keep,idempotent:false};
     }catch(error){
       const cleanupErrors=[];
@@ -3280,17 +3298,20 @@ function createImagesEngine(){
   async function moveToRecycle(id){
     const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.inRecycleBin)return null;
     const blob=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,id).catch(()=>null);if(!blob)return record;
-    return records.update(id,{storage:{mode:"recycle",recycle:recycleSnapshot(record)},attributes:{inRecycleBin:true}},"recycled");
+    const updated=records.update(id,{storage:{mode:"recycle",recycle:recycleSnapshot(record)},attributes:{inRecycleBin:true}},"recycled");
+    await window.genreactrixProjectRuntimeEngine?.markAsset?.(id,'working-fullres','recycle',{database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:id,retention:{kind:'recycle-bin'}}).catch?.(()=>{});return updated;
   }
   async function moveAiFailureToRecycle(id){
     const record=records.get(id,{touch:false});if(!record)return null;if(record.attributes.inRecycleBin)return record;
-    return records.update(id,{storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},workflow:{stage:"ai-failure-exported"},attributes:{saved:false,flagged:false,needsReview:false,depot:false,rejectionFlagged:false,rejected:false,inRecycleBin:true},timestamps:{savedAt:null,flaggedAt:null,depotAt:null,rejectionFlaggedAt:null,rejectedAt:null}},"ai-failure-exported");
+    const updated=records.update(id,{storage:{mode:"recycle",referenceKey:null,recycle:recycleSnapshot(record)},workflow:{stage:"ai-failure-exported"},attributes:{saved:false,flagged:false,needsReview:false,depot:false,rejectionFlagged:false,rejected:false,inRecycleBin:true},timestamps:{savedAt:null,flaggedAt:null,depotAt:null,rejectionFlaggedAt:null,rejectedAt:null}},"ai-failure-exported");
+    await window.genreactrixProjectRuntimeEngine?.markAsset?.(id,'working-fullres','recycle',{database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:id,retention:{kind:'recycle-bin'}}).catch?.(()=>{});return updated;
   }
   async function rejectImage(id){return setFlagSeverity(id,"reject");}
   async function cleanupProcessed(){return 0;}
   async function restoreFromRecycle(id){
     const record=records.get(id,{touch:false});if(!record?.attributes.inRecycleBin)return null;const prior=record.storage.recycle||{};
-    return records.update(id,{storage:{mode:prior.priorMode||"temporary",recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorDepot:false,priorRejectionFlagged:null,priorRejected:null}},attributes:{inRecycleBin:false}},"recycle-restored");
+    const updated=records.update(id,{storage:{mode:prior.priorMode||"temporary",recycle:{deletedAt:null,priorMode:null,priorStage:null,priorSaved:null,priorFlagged:null,priorDepot:false,priorRejectionFlagged:null,priorRejected:null}},attributes:{inRecycleBin:false}},"recycle-restored");
+    await window.genreactrixProjectRuntimeEngine?.markAsset?.(id,'working-fullres','working',{database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:id,retention:null}).catch?.(()=>{});return updated;
   }
   async function purgeRecycle({before=null,freeBytes=null,all=false}={}){
     let candidates=records.all().filter(r=>r.attributes.inRecycleBin&&!r.attributes.saved).sort((a,b)=>String(a.storage.recycle.deletedAt).localeCompare(String(b.storage.recycle.deletedAt)));
@@ -3317,6 +3338,7 @@ function createImagesEngine(){
     }
     return{updated,failed};
   }
+  async function backfillRuntimeAssetLocations(){const ctx=window.genreactrixProjectRuntimeEngine;if(!ctx?.registerAssets)return{registered:0};await ctx.ready;const runtimeId=ctx.runtimeId?.()||'runtime-local',marker=`genreactrix-runtime-asset-backfill-v1:${runtimeId}`;try{if(localStorage.getItem(marker)==='1')return{registered:0,skipped:true}}catch{}const [working,thumbs,kept]=await Promise.all([imageStoreGetAllKeys(IMAGE_ENGINE_BLOB_STORE),imageStoreGetAllKeys(IMAGE_ENGINE_THUMBNAIL_STORE),imageStoreGetAllKeys(IMAGE_ENGINE_KEPT_STORE)]),byId=new Map(records.all().map(r=>[String(r.id),r])),rows=[];for(const key of working){const r=byId.get(String(key));rows.push({imageId:key,kind:'working-fullres',state:r?.attributes?.inRecycleBin?'recycle':'working',database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_BLOB_STORE,storageKey:key,mimeType:r?.storage?.mimeType||'',size:r?.storage?.size||0,metadata:{backfilled:true}})}for(const key of thumbs){const r=byId.get(String(key));rows.push({imageId:key,kind:'thumbnail',state:'present',database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_THUMBNAIL_STORE,storageKey:key,mimeType:r?.storage?.thumbnailMimeType||'',size:r?.storage?.thumbnailSize||0,metadata:{backfilled:true}})}for(const key of kept){const r=byId.get(String(key));rows.push({imageId:key,kind:'kept-fullres',state:'kept',database:IMAGE_ENGINE_DB_NAME,store:IMAGE_ENGINE_KEPT_STORE,storageKey:key,mimeType:r?.storage?.mimeType||'',size:r?.storage?.size||0,metadata:{backfilled:true}})}await ctx.registerAssets(rows);try{localStorage.setItem(marker,'1')}catch{}return{registered:rows.length,working:working.length,thumbnails:thumbs.length,kept:kept.length};}
   async function verifyStorage(){
     const issues=[];
     for(const record of records.all()){
@@ -3336,9 +3358,10 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
+window.genreactrixProjectRuntimeEngine?.ready?.then(()=>{window.genreactrixImageRecordEngine?.migrateScope?.();return window.genreactrixImagesEngine?.backfillRuntimeAssetLocations?.()}).catch(error=>console.warn('Project/runtime image migration could not complete',error));
 if(window.genreactrixSettingsEngine?.ready)window.genreactrixOriginPackEngine?.migrateLegacy?.().catch(error=>console.warn('Origin Pack migration could not complete',error));
 else window.addEventListener('genreactrix:settings-ready',()=>window.genreactrixOriginPackEngine?.migrateLegacy?.().catch(error=>console.warn('Origin Pack migration could not complete',error)),{once:true});
 window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
@@ -3713,10 +3736,10 @@ const CUSTOM_PLACEHOLDER_CLEANUP_KEY="genreactrix-custom-placeholder-cleanup-v1"
 const customThemeDraft={reactionRefs:[],editingId:null};
 const customReactionDraft={editingId:null};
 const CUSTOM_REORDER_HOLD_MS=360;
-function currentEvaluationVersion(){return localStorage.getItem(EVALUATION_VERSION_KEY)||"0.0.0";}
-function setEvaluationVersion(v){localStorage.setItem(EVALUATION_VERSION_KEY,v);window.dispatchEvent(new CustomEvent("genreactrix:evaluation-version",{detail:{version:v}}));return v;}
+function currentEvaluationVersion(){return localStorage.getItem(projectLocalKey(EVALUATION_VERSION_KEY))||localStorage.getItem(EVALUATION_VERSION_KEY)||"0.0.0";}
+function setEvaluationVersion(v){localStorage.setItem(projectLocalKey(EVALUATION_VERSION_KEY),v);window.genreactrixProjectRuntimeEngine?.setProjectValue?.(EVALUATION_VERSION_KEY,v).catch?.(()=>{});window.dispatchEvent(new CustomEvent("genreactrix:evaluation-version",{detail:{version:v}}));return v;}
 function bumpEvaluationVersion(kind){const parts=currentEvaluationVersion().split(".").map(n=>Number(n)||0);if(kind==="major")return setEvaluationVersion(`${parts[0]+1}.0.0`);if(kind==="minor")return setEvaluationVersion(`${parts[0]}.${parts[1]+1}.0`);return setEvaluationVersion(`${parts[0]}.${parts[1]}.${parts[2]+1}`);}
-function taxonomyHasBeenUsed(){return localStorage.getItem(EVALUATION_USED_KEY)==="1";}
+function taxonomyHasBeenUsed(){return (localStorage.getItem(projectLocalKey(EVALUATION_USED_KEY))||localStorage.getItem(EVALUATION_USED_KEY))==="1";}
 async function lockBatchEvaluationVersion(){const engine=window.genreactrixBatchEngine;if(!engine?.active||!engine?.update)return;const batch=await engine.active();if(!batch)return;const version=batch.evaluationVersion||currentEvaluationVersion();if(!batch.evaluationVersion)await engine.update(batch.id,{evaluationVersion:version},"evaluation-version-locked");}
 async function flagCurrentBatchForReevaluation(reason,previousVersion,newVersion){const batch=await window.genreactrixBatchEngine?.active?.();const records=window.genreactrixImageRecordEngine;if(!batch||!records?.get||!records?.update)return;for(const id of batch.imageIds||[]){const record=records.get(id,{touch:false});if(!record?.analysis?.director)continue;records.update(id,{attributes:{needsReevaluation:true},analysis:{evaluationVersion:record.analysis?.evaluationVersion||previousVersion,reevaluationReason:reason,reevaluationTargetVersion:newVersion}},"evaluation-recheck-required");}await window.genreactrixBatchEngine.update(batch.id,{reevaluationRequired:true,reevaluationTargetVersion:newVersion},"batch-evaluation-vocabulary-changed");}
 async function registerVocabularyMutation(kind,reason){if(!taxonomyHasBeenUsed())return currentEvaluationVersion();const previous=currentEvaluationVersion(),next=bumpEvaluationVersion(kind);await flagCurrentBatchForReevaluation(reason,previous,next);return next;}
