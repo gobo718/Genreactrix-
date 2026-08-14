@@ -1,3 +1,15 @@
+## v0.9.40.28 — Batch confirmation UI bridge repair
+
+Focused regression repair on top of v0.9.40.27.
+
+- Fixes the final **Batch these images → Batch** button doing nothing on-device.
+- Root cause: the async click handler read `event.currentTarget` after its first `await`; browsers clear `currentTarget` when event dispatch completes, causing an uncaught TypeError before the submission `try/catch`.
+- Selected image IDs are now captured synchronously before any `await`, and active-Batch lookup is covered by the handler error boundary.
+- No transaction-engine, lifecycle, storage, CSS, layout, spacing, sizing, or breakpoint changes.
+- v0.9.40.27 remains the atomic Post-processing + Purgatory implementation beneath this UI bridge fix.
+
+---
+
 ## v0.9.40.27 — Atomic Post-processing + Purgatory
 
 This release crosses the bounded Batch → Post-processing migration boundary established in the 2026-08-14 handoff. It changes lifecycle/data behavior only; the accepted `.25` layouts and CSS are preserved.
