@@ -49,7 +49,7 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.29</title>
+<title>Genreactrix v0.9.40.30</title>
 <link href="styles.css?v=0.9.40.25" rel="stylesheet"/>
 </head>
 <body>
@@ -57,7 +57,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.29</span>
+<span>v0.9.40.30</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.29</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.30</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -109,7 +109,7 @@
 <label class="portrait-default-amount">
           Add <input aria-label="Default quick-add image amount" id="portraitDefaultAmount" inputmode="numeric" min="1" step="1" type="number"/> images
         </label>
-<div aria-label="Active processing status" class="portrait-image-engine-status"><button data-portrait-status="active-total" title="Active = Origin + Queue + Quarantine + Inbox + Post + Purgatory" type="button">Active <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-origin" type="button">Origin <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="queue-total" type="button">Queue <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="queue-quarantine" type="button">Quarantine <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="post-processing" type="button">Post <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="purgatory" type="button">Purgatory <strong id="portraitRecycleImageCount">0</strong></button></div>
+<div aria-label="Main section counts" class="portrait-image-engine-status"><button data-portrait-status="active-total" title="Active = Origin + Queue + Quarantine + Inbox + Post + Purgatory" type="button">Active <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-origin" title="Images" type="button">Images <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="queue-total" title="Queue" type="button">Queue <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="ai-main" title="AI" type="button">AI <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="batch-total" title="Batch" type="button">Batch <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="reports-stored" title="Reports" type="button">Reports <strong id="portraitRecycleImageCount">0</strong></button></div>
 </section><section aria-label="Batch" class="portrait-panel portrait-batch-panel" data-quick-module="batch">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="batch">
@@ -947,7 +947,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.25"></script>
 <script src="bundle-engine.js?v=0.9.40.25"></script>
-<script src="app.js?v=0.9.40.29"></script>
+<script src="app.js?v=0.9.40.30"></script>
 <script src="images-console.js?v=0.9.40.19"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -981,7 +981,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-analysis-engine.js?v=0.9.40.25"></script>
-<script src="home-count-engine.js?v=0.9.40.29"></script>
+<script src="home-count-engine.js?v=0.9.40.30"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">

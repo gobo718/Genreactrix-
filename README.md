@@ -1,3 +1,31 @@
+## v0.9.40.30 — Section-aligned Home main counts
+
+This release corrects the Director-facing naming of the Home main counts without changing the authoritative v0.9.40.29 accounting model or the accepted layout.
+
+### Main count names now match the section buttons
+- The existing six main-count slots now read **Active / Images / Queue / AI / Batch / Reports**.
+- **Images** shows current Origin/pre-admission image work for the + Images section.
+- **Queue** shows the authoritative Queue population: Waiting + In AI + Partial + Staged.
+- **AI** shows images currently In AI; it remains a Queue-owned process population and is not added again to Active.
+- **Batch** shows the current Inbox work population represented by the Batch section.
+- **Reports** shows the current stored report-record count already used by the Reports section.
+- **Active** remains the project-wide active-image accounting total: Origin + Queue + Quarantine + Inbox + Post-processing + Purgatory.
+
+### Navigation semantics
+- Tapping Images, Queue, AI, Batch, or Reports in the main count row opens the correspondingly named section.
+- Tapping Active shows the canonical active-image reconciliation detail.
+- Internal lifecycle terms such as Origin, Quarantine, Post-processing, and Purgatory remain implementation/state vocabulary rather than competing top-level section names.
+
+### Preservation
+- No Home count arithmetic or lifecycle ownership rules changed from v0.9.40.29.
+- `home-count-engine.js` is unchanged.
+- `styles.css` is byte-for-byte identical to v0.9.40.29.
+- Portrait Control Station tag/ID/class structure is unchanged; only main-count text/data semantics and build metadata changed.
+- No Batch, Post-processing, Purgatory, AI calculation, Worker, persistence, image-data, spacing, sizing, breakpoint, Portrait, or Landscape geometry changes.
+
+### Acceptance gate
+On the phone, confirm the main row reads **Active / Images / Queue / AI / Batch / Reports** and that each named count opens the section with the same name. Counts should otherwise behave exactly as in v0.9.40.29.
+
 ## v0.9.40.29 — Authoritative Home active-processing counts
 
 This release follows the validated v0.9.40.28 Batch/Post-processing boundary. It rebuilds Home counting against the canonical lifecycle state spine without changing the accepted screen geometry.

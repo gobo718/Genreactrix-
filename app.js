@@ -1221,14 +1221,15 @@ async function refreshPortraitControlStation(){
     set('portraitBatchRed',inboxWork.delete??inboxWork.red??0);
     set('portraitBatchHotMagenta',inboxWork.reject??inboxWork.hotMagenta??0);
     set('portraitBatchKeep',inboxWork.keep||0);
-    // Home active-processing spine. These six existing slots now show current workflow
-    // populations only; storage/history populations are intentionally excluded.
+    // Main Home counts mirror the Director-facing section names. These are
+    // navigation/module counts, not additive components of Active. The canonical
+    // Active identity remains in HomeCountEngine and is shown by the Active detail.
     set('portraitAvailableCount',authoritative?.activeImageTotal ?? imageEngine.available ?? 0);
-    set('portraitTempImageCount',authoritative?.originActive ?? 0);
-    set('portraitLinkedImageCount',authoritative?.queueTotal ?? imageEngine.queued ?? 0);
-    set('portraitReferenceImageCount',authoritative?.quarantine ?? 0);
-    set('portraitEngineFlaggedCount',authoritative?.postProcessing ?? 0);
-    set('portraitRecycleImageCount',authoritative?.purgatory ?? 0);
+    set('portraitTempImageCount',authoritative?.originActive ?? 0); // Images
+    set('portraitLinkedImageCount',authoritative?.queueTotal ?? imageEngine.queued ?? 0); // Queue
+    set('portraitReferenceImageCount',authoritative?.aiProcessing ?? a.output ?? 0); // AI
+    set('portraitEngineFlaggedCount',inboxWork.total||0); // Batch / current Inbox work
+    set('portraitRecycleImageCount',Array.isArray(reports)?reports.length:0); // Reports
     // AI is a process over Queue-owned images. In AI and Staged are therefore
     // Queue populations, not extra Active images.
     set('portraitAiOutputCount',authoritative?.aiProcessing ?? a.output ?? 0);
@@ -3666,6 +3667,7 @@ document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEv
   else if(target.startsWith("queue-")) window.genreactrixQueueEngine?.openConsole?.();
   else if(target==="post-processing"||target==="purgatory") window.genreactrixMaintenanceEngine?.openConsole?.();
   else if(target==="active-total") window.genreactrixHomeCountEngine?.snapshot?.().then(s=>setPortraitStationStatus(`Active ${s.activeImageTotal} = Origin ${s.originActive} + Queue ${s.queueTotal} + Quarantine ${s.quarantine} + Inbox ${s.inbox.total} + Post ${s.postProcessing} + Purgatory ${s.purgatory}`)).catch(console.warn);
+  else if(target==="ai-main") window.genreactrixAiAnalysisEngine?.openConsole?.();
   else if(target.startsWith("reports-")) window.genreactrixReportsEngine?.openConsole?.();
   else if(target==="images-origin") { window.genreactrixImagesConsole?.open?.(); setTimeout(()=>document.querySelector('[data-images-section="dashboard"]')?.click(),0); }
   else if(target.startsWith("images-")) { window.genreactrixImagesConsole?.open?.(); const section=target.replace("images-",""); setTimeout(()=>document.querySelector(`[data-images-section="${section}"]`)?.click(),0); }
