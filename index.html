@@ -49,7 +49,7 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.30</title>
+<title>Genreactrix v0.9.40.31</title>
 <link href="styles.css?v=0.9.40.25" rel="stylesheet"/>
 </head>
 <body>
@@ -57,7 +57,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.30</span>
+<span>v0.9.40.31</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -77,7 +77,7 @@
 </select>
 <button class="tablet-layout-control" id="saveLayoutBtn" title="Save current workspace layout">Save Layout</button>
 <label class="folder-button" title="Load image folder">
-          ＋ Images
+          ＋ Origin
           <input id="folderInput" multiple="" type="file" webkitdirectory=""/>
 </label>
 </div>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.30</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.31</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -98,18 +98,18 @@
 
 
 
-<section aria-label="Images" class="portrait-panel portrait-acquisition-panel" data-quick-module="images">
+<section aria-label="Origin" class="portrait-panel portrait-acquisition-panel" data-quick-module="images">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="images">
 <button class="portrait-quick-action" data-quick-slot="images:1" id="portraitImagesQuick1" type="button"></button>
 <button class="portrait-quick-action" data-quick-slot="images:2" id="portraitImagesQuick2" type="button"></button>
 </div>
-<button class="portrait-module-button" data-module-button="images" id="portraitImagesMenuBtn" type="button">＋ Images</button>
+<button class="portrait-module-button" data-module-button="images" id="portraitImagesMenuBtn" type="button">＋ Origin</button>
 </div>
 <label class="portrait-default-amount">
           Add <input aria-label="Default quick-add image amount" id="portraitDefaultAmount" inputmode="numeric" min="1" step="1" type="number"/> images
         </label>
-<div aria-label="Main section counts" class="portrait-image-engine-status"><button data-portrait-status="active-total" title="Active = Origin + Queue + Quarantine + Inbox + Post + Purgatory" type="button">Active <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-origin" title="Images" type="button">Images <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="queue-total" title="Queue" type="button">Queue <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="ai-main" title="AI" type="button">AI <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="batch-total" title="Batch" type="button">Batch <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="reports-stored" title="Reports" type="button">Reports <strong id="portraitRecycleImageCount">0</strong></button></div>
+<div aria-label="Main section counts" class="portrait-image-engine-status"><button data-portrait-status="active-total" title="Active = Origin + Queue + Quarantine + Inbox + Post + Purgatory" type="button">Active <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-origin" title="Origin" type="button">Origin <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="queue-total" title="Queue" type="button">Queue <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="ai-main" title="AI" type="button">AI <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="batch-total" title="Batch" type="button">Batch <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="reports-stored" title="Reports" type="button">Reports <strong id="portraitRecycleImageCount">0</strong></button></div>
 </section><section aria-label="Batch" class="portrait-panel portrait-batch-panel" data-quick-module="batch">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="batch">
@@ -175,7 +175,7 @@
 <dialog class="image-intake-dialog" id="imageIntakeDialog">
 <form class="image-intake-form" id="imageIntakeForm" method="dialog">
 <div class="image-intake-header">
-<h2>＋ Images</h2>
+<h2>＋ Origin</h2>
 <button aria-label="Close" id="imageIntakeClose" type="button">×</button>
 </div>
 <div class="image-intake-actions">
@@ -205,10 +205,10 @@
 </dialog>
 <dialog class="images-console-dialog" id="imagesConsoleDialog">
 <div class="images-console">
-<header class="images-console-header"><h2>＋ Images</h2><button aria-label="Close" id="imagesConsoleClose" type="button">×</button></header>
-<nav aria-label="Images sections" class="images-console-nav">
+<header class="images-console-header"><h2>＋ Origin</h2><button aria-label="Close" id="imagesConsoleClose" type="button">×</button></header>
+<nav aria-label="Origin sections" class="images-console-nav">
 <button class="active" data-images-section="add" type="button">Add</button>
-<button data-images-section="review" type="button">Review</button>
+<button data-images-section="review" type="button">Gates</button>
 <button data-images-section="saved" type="button">Saved</button>
 <button data-images-section="flagged" type="button">Flagged</button>
 <button data-images-section="recycle" type="button">Recycle</button>
@@ -891,7 +891,7 @@
 <div class="maintenance-toolbar">
 <button id="maintenanceQuick" type="button">Quick check</button>
 <button id="maintenanceFull" type="button">Full project check</button>
-<select id="maintenanceSelectedEngine" aria-label="Selected subsystem"><option value="images">Images</option><option value="director">Director</option><option value="ai">AI</option><option value="queue">Queue</option><option value="batch">Batch</option><option value="reports">Reports</option><option value="analytics">Analytics</option><option value="sessions">Research Sessions</option><option value="history">History</option><option value="settings">Settings</option><option value="notifications">Notifications</option></select>
+<select id="maintenanceSelectedEngine" aria-label="Selected subsystem"><option value="images">Origin</option><option value="director">Director</option><option value="ai">AI</option><option value="queue">Queue</option><option value="batch">Batch</option><option value="reports">Reports</option><option value="analytics">Analytics</option><option value="sessions">Research Sessions</option><option value="history">History</option><option value="settings">Settings</option><option value="notifications">Notifications</option></select>
 <button id="maintenanceSelected" type="button">Check selected</button>
 <button id="maintenanceRecyclePreview" type="button">Recycle preview</button>
 <button id="maintenanceReports" type="button">Reports</button>
@@ -912,7 +912,8 @@
 </dialog>
 <script src="validation-engine.js?v=0.9.24.0"></script>
 <script src="import-job-engine.js?v=0.9.40.21"></script>
-<script src="import-engine.js?v=0.9.40.25"></script>
+<script src="origin-gate-engine.js?v=0.9.40.31"></script>
+<script src="import-engine.js?v=0.9.40.31"></script>
 <script src="maintenance-engine.js?v=0.9.40.14"></script>
 <script src="settings-engine.js?v=0.9.40.25"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
@@ -947,8 +948,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.25"></script>
 <script src="bundle-engine.js?v=0.9.40.25"></script>
-<script src="app.js?v=0.9.40.30"></script>
-<script src="images-console.js?v=0.9.40.19"></script>
+<script src="app.js?v=0.9.40.31"></script>
+<script src="images-console.js?v=0.9.40.31"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
@@ -976,12 +977,12 @@ window.grxOpenCustomDialog=function(dialogId){
 </dialog>
 
 <script src="post-processing-engine.js?v=0.9.40.27"></script>
-<script src="housekeeping-engine.js?v=0.9.40.27"></script>
+<script src="housekeeping-engine.js?v=0.9.40.31"></script>
 <script src="batch-engine.js?v=0.9.40.28"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-analysis-engine.js?v=0.9.40.25"></script>
-<script src="home-count-engine.js?v=0.9.40.30"></script>
+<script src="home-count-engine.js?v=0.9.40.31"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">

@@ -1,3 +1,58 @@
+## v0.9.40.31 — Origin Gates
+
+This release implements the next bounded lifecycle migration after the accepted v0.9.40.30 Home-count pass. It makes Dupe, Repeat, true Import Failure, and Retry Import Source first-class **Origin** behavior instead of silently skipping duplicate-looking sources or creating pre-admission failures as ordinary Image Records.
+
+### Canonical Origin naming
+- The Director-facing module/count name is now **Origin** rather than **Images**.
+- The existing module identifiers remain `images` internally to avoid an unnecessary codewide identifier migration.
+- The existing Origin console geometry is preserved. Its former **Review** slot is relabeled **Gates** and is reused for Origin-case actions.
+
+### Dupe
+- New candidates are fingerprinted with SHA-256 and a permanent 64×64 candidate thumbnail before admission.
+- Existing thumbnails provide a lightweight shortlist for legacy records that predate full-content fingerprints; available full-resolution blobs are then checked for exact identity.
+- A suspected duplicate is stopped at Origin and receives an Origin Dupe case linking the candidate record/thumbnail, original Image Record, and detection evidence.
+- **Sustain** permanently records that specific fingerprint as a Dupe. Future encounters of that fingerprint auto-block without another review.
+- **Overrule** explicitly admits the stored candidate into normal processing and Queue.
+
+### Repeat / Re-evaluation
+- An exact fingerprint match to an already evaluated/processed Image Record is a **Repeat**, not a Dupe.
+- Repeat is blocked at Origin and does not create another Image Record.
+- **Re-evaluate** is the explicit bypass. It reuses the stable Image ID, preserves prior state in History, installs a fresh working source, clears the current AI/Director evaluation state, and returns the image to Queue for a new evaluation.
+
+### Import Failure
+- A file/URL that cannot be read or admitted now creates an **Origin Import Failure case**, not a new `import-failed` Image Record.
+- The short error/source identity is retained and automatic re-attempts of that failed source are suppressed.
+- **Retry** is manual and may override suppression.
+- Daily Housekeeping does not retry true Import Failure.
+- Legacy `import-failed` Image Records from earlier builds are preserved rather than destructively rewritten in this migration.
+
+### Retry Import Source
+- Added the canonical `origin-source-retry` lifecycle state for an already-known Image Record whose required full-resolution working source is missing.
+- Up to three immediate non-AI source attempts are made where a retrievable URL exists.
+- Unresolved source recovery moves the known image to Origin and creates a Retry Import Source case, preventing double ownership/counting in Queue/Inbox.
+- Daily Housekeeping may perform one non-AI retry of unresolved source-recovery cases. Successful recovery restores the prior lifecycle stage.
+
+### Import/accounting boundary
+- Import no longer silently removes known URLs before Origin evaluation; repeated encounters reach the Origin gate logic.
+- Import Job counters distinguish admitted Image Records, Origin gates, duplicate/repeat gates, and true failures. Image IDs contain only successfully admitted Image Records.
+- Image Records now retain their Import Job ID in normalized source metadata, preserving the v0.9.40.29 Origin-count accounting contract.
+- Home Origin accounting includes unresolved Import work, pending Dupe review, and Image Records currently owned by Retry Import Source without counting any candidate twice.
+
+### Preservation
+- `styles.css` is byte-for-byte identical to v0.9.40.30.
+- No Portrait/Landscape sizing, spacing, breakpoint, image viewport, Director controls, AI calculation, 60/40 Reaction mathematics, Batch, Post-processing, Purgatory, Keep, or Recycle behavior is redesigned here.
+- One new root engine file is added: `origin-gate-engine.js`. Release structure remains shallow and well under the 100-file practical ceiling.
+
+### Verification performed
+- JavaScript syntax validation passes across the project and Worker sources.
+- Engine tests pass: first-time admission; active-image Dupe; Sustain + future auto-block; processed-image Repeat; Import Failure suppression; mixed Import Job admitted/gated accounting; and Origin active-count reconciliation including Retry Import Source.
+
+### Real-device acceptance gate
+1. Import one genuinely new image: it should enter Queue normally.
+2. Import the same still-active image again: it should stop under **Origin → Gates** as Dupe; test Sustain or Overrule.
+3. After an image has been evaluated/processed, importing the exact same file should appear as **Repeat** and offer **Re-evaluate** rather than creating a second Image Record.
+4. Existing accepted Portrait/Landscape geometry must remain unchanged.
+
 ## v0.9.40.30 — Section-aligned Home main counts
 
 This release corrects the Director-facing naming of the Home main counts without changing the authoritative v0.9.40.29 accounting model or the accepted layout.

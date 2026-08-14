@@ -1225,7 +1225,7 @@ async function refreshPortraitControlStation(){
     // navigation/module counts, not additive components of Active. The canonical
     // Active identity remains in HomeCountEngine and is shown by the Active detail.
     set('portraitAvailableCount',authoritative?.activeImageTotal ?? imageEngine.available ?? 0);
-    set('portraitTempImageCount',authoritative?.originActive ?? 0); // Images
+    set('portraitTempImageCount',authoritative?.originActive ?? 0); // Origin
     set('portraitLinkedImageCount',authoritative?.queueTotal ?? imageEngine.queued ?? 0); // Queue
     set('portraitReferenceImageCount',authoritative?.aiProcessing ?? a.output ?? 0); // AI
     set('portraitEngineFlaggedCount',inboxWork.total||0); // Batch / current Inbox work
@@ -1865,10 +1865,11 @@ window.addEventListener("genreactrix:lifecycle",()=>renderPortraitInboxControls(
 async function loadImageFolder(fileList,limit=null){
   const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit}):null;
   window.pendingImportEngineMode=false;
-  const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit});
+  const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit}),gates=importResult?.gates||records.originGates||[];
   await rehydrateLandscapeFeed({preserveId:records[0]?.id||null});
   window.genreactrixAiAnalysisEngine?.maintainActiveMode?.();
-  setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} imported into Queue.`);
+  setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} imported into Queue${gates.length?` · ${gates.length} stopped at Origin`:''}.`);
+  if(gates.some(g=>g.status==='pending-review'||g.status==='blocked-repeat'||g.type==='import-failure'))window.genreactrixImagesConsole?.openGates?.();
 }
 let pendingPortraitImportLimit=null;
 const IMAGE_FOLDER_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
@@ -2976,6 +2977,7 @@ function createImageRecordEngine(){
         originalUrl:record.source?.originalUrl||record.originalUrl||"",
         originalFilename:record.source?.originalFilename||record.name||"",
         importMethod:record.source?.importMethod||record.acquisitionMode||"unknown",
+        importJobId:record.source?.importJobId||record.metadata?.extended?.importJobId||null,
         firstBatchId:sourceBatch,
         dataset:record.source?.dataset||null,
         license:record.source?.license||null,
@@ -3106,70 +3108,82 @@ function createImagesEngine(){
       recycle:count(r=>r.attributes.inRecycleBin)
     };
   }
-  async function storeImportedImage({id,blob,keepFull=true}){
-    const thumb=await create64Thumbnail(blob);
+  async function storeImportedImage({id,blob,thumbnail=null,keepFull=true}){
+    const thumb=thumbnail||await create64Thumbnail(blob);
     if(keepFull)await imageBlobPut(id,blob);
     await thumbnailBlobPut(id,thumb);
     return {thumbnailKey:id,thumbnailMimeType:thumb.type||"image/webp",thumbnailSize:thumb.size||0};
+  }
+  async function makeOriginThumbnail(blob){return create64Thumbnail(blob);}
+  async function fullBlobForOriginCheck(id){return await imageBlobGet(id).catch(()=>null)||await keptBlobGet(id).catch(()=>null)||null;}
+  async function admitOriginCandidate({blob,source={},name='',mode='temporary',fingerprint='',thumbnailHash='',thumbnail=null,originGateId=null}={}){
+    if(!blob)throw new Error("Origin candidate has no readable full-resolution image");
+    const id=createImageId(source.type==='url'?'url':'local'),keepFull=mode!=='link'&&mode!=='linked',stored=await storeImportedImage({id,blob,thumbnail,keepFull});
+    const record=records.create({id,name:name||source.originalFilename||'Imported image',source:{...source,importJobId:source.importJobId||null},storage:{mode:keepFull?'temporary':'linked',temporaryKey:keepFull?id:null,hyperlink:source.originalUrl||'',...stored,mimeType:blob.type||source.mimeType||'',size:blob.size||source.size||0,lastModified:Number(source.lastModified)||0,hash:fingerprint||''},workflow:{stage:'queued'},attributes:{hyperlinkOnly:!keepFull},metadata:{extended:{originGateId:originGateId||null,originThumbnailHash:thumbnailHash||''}},batchIds:[]});
+    activeSessionIds=[...new Set([...activeSessionIds,record.id])];return record;
   }
   const IMAGE_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
   function isImageFile(file){const type=String(file?.type||"").toLowerCase();return type.startsWith("image/")||IMAGE_FILE_RE.test(String(file?.name||""))}
   function imageMimeForFile(file){const type=String(file?.type||"").toLowerCase();if(type.startsWith("image/"))return type;const name=String(file?.name||"").toLowerCase();if(/\.jpe?g$/.test(name))return "image/jpeg";if(/\.png$/.test(name))return "image/png";if(/\.gif$/.test(name))return "image/gif";if(/\.webp$/.test(name))return "image/webp";if(/\.bmp$/.test(name))return "image/bmp";if(/\.avif$/.test(name))return "image/avif";if(/\.heic$/.test(name))return "image/heic";if(/\.heif$/.test(name))return "image/heif";return type}
   async function importFiles(fileList,{limit=null,importJobId=null}={}){
-    const files=[...fileList].filter(isImageFile);
-    const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files,created=[];
-    const folderImport=selected.some(file=>Boolean(file.webkitRelativePath));
-    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`${folderImport?"Folder":"File"} import · ${selected.length} image${selected.length===1?"":"s"}`,state:"running",total:selected.length,message:"Importing images"});
-    for(const [order,file] of selected.entries()){
-      const id=createImageId("local"),qItemId=qJob?`queue_import_${id}`:null;
-      if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
-      let record;
+    const files=[...fileList].filter(isImageFile),selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files,created=[],gates=[];
+    for(const file of selected){
+      const source={type:'file',originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:'temporary-copy',importJobId:importJobId||null,firstBatchId:null,size:file.size,lastModified:file.lastModified,mimeType:imageMimeForFile(file)};
       try{
-        const thumbnail=await storeImportedImage({id,blob:file,keepFull:true});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",importJobId:importJobId||null,firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"queued"},batchIds:[]});
-        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
+        const gate=window.genreactrixOriginGateEngine?await window.genreactrixOriginGateEngine.inspectCandidate({blob:file,source,name:file.name,mode:'temporary',importJobId}):{disposition:'admit',source,mode:'temporary'};
+        if(gate.disposition==='admit')created.push(await admitOriginCandidate({blob:file,source:gate.source||source,name:file.name,mode:'temporary',fingerprint:gate.fingerprint||'',thumbnailHash:gate.thumbnailHash||'',thumbnail:gate.thumbnail||null}));
+        else if(gate.case)gates.push(gate.case);
       }catch(error){
-        await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",importJobId:importJobId||null,firstBatchId:null},storage:{mode:"none",mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"import-failed"},attributes:{failed:true},batchIds:[],error:String(error?.message||error)});
-        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error});
+        const c=await window.genreactrixOriginGateEngine?.registerImportFailure?.({source,name:file.name,error:String(error?.message||error),importJobId,blob:file});if(c)gates.push(c);
       }
-      created.push(record);
     }
-    if(qJob)await window.genreactrixQueueEngine.setJobState(qJob.id,created.some(r=>r.attributes?.failed)?"completed-with-failures":"completed",created.some(r=>r.attributes?.failed)?"Import completed with failures":"Import complete");
-    activeSessionIds=created.filter(r=>!r.attributes?.failed).map(r=>r.id);return created;
+    activeSessionIds=created.map(r=>r.id);created.originGates=gates;created.attempted=selected.length;return created;
   }
   async function prefetchUrls(text,{limit=null}={}){
-    const raw=[...new Set(String(text||"").split(/\r?\n|,\s*(?=https?:)/).map(safeUrl).filter(Boolean))];
+    const raw=String(text||"").split(/\r?\n|,\s*(?=https?:)/).map(safeUrl).filter(Boolean);
     const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;
     return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));
   }
   async function importUrls(text,{limit=null,mode="link",prefetch=true,importJobId=null}={}){
-    const sources=await prefetchUrls(text,{limit}),created=[];
-    const keepFull=mode==="download";
-    const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`URL ${keepFull?"download":"intake"} · ${sources.length}`,state:"running",total:sources.length,message:keepFull?"Importing copies":"Importing links + thumbnails"});
-    for(const [order,source] of sources.entries()){
-      const id=createImageId("url"),qItemId=qJob?`queue_url_${id}`:null;
-      if(qJob)await window.genreactrixQueueEngine.addItems(qJob.id,[{id:qItemId,imageId:id,order,type:"acquisition",state:"processing"}]);
-      let record;
+    const sources=await prefetchUrls(text,{limit}),created=[],gates=[],keepFull=mode==='download';
+    for(const sourceItem of sources){
+      const source={type:'url',originalLocation:sourceItem.url,originalUrl:sourceItem.url,originalFilename:sourceItem.name,importMethod:keepFull?'temporary-copy':'hyperlink-only',importJobId:importJobId||null,firstBatchId:null};
       try{
-        const blob=await fetchImageBlob(source.url);
-        const thumbnail=await storeImportedImage({id,blob,keepFull});
-        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",importJobId:importJobId||null,firstBatchId:null},storage:{mode:keepFull?"temporary":"linked",temporaryKey:keepFull?id:null,hyperlink:source.url,...thumbnail,mimeType:blob.type,size:blob.size},workflow:{stage:"queued"},attributes:{hyperlinkOnly:!keepFull},batchIds:[]});
-        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
+        const suppressed=await window.genreactrixOriginGateEngine?.inspectCandidate?.({blob:null,source,name:sourceItem.name,mode:keepFull?'temporary':'link',importJobId}).catch(()=>null);
+        if(suppressed?.disposition==='import-failure-suppressed'){gates.push(suppressed.case);continue}
+        const blob=await fetchImageBlob(sourceItem.url);source.size=blob.size;source.mimeType=blob.type||'';
+        const gate=window.genreactrixOriginGateEngine?await window.genreactrixOriginGateEngine.inspectCandidate({blob,source,name:sourceItem.name,mode:keepFull?'temporary':'link',importJobId}):{disposition:'admit',source,mode:keepFull?'temporary':'link'};
+        if(gate.disposition==='admit')created.push(await admitOriginCandidate({blob,source:gate.source||source,name:sourceItem.name,mode:keepFull?'temporary':'link',fingerprint:gate.fingerprint||'',thumbnailHash:gate.thumbnailHash||'',thumbnail:gate.thumbnail||null}));
+        else if(gate.case)gates.push(gate.case);
       }catch(error){
-        await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
-        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",importJobId:importJobId||null,firstBatchId:null},storage:{mode:"linked",temporaryKey:null,hyperlink:source.url},workflow:{stage:"import-failed"},attributes:{hyperlinkOnly:true,failed:true},batchIds:[],error:String(error?.message||error)});
-        if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error||"Import failed"});
+        const c=await window.genreactrixOriginGateEngine?.registerImportFailure?.({source,name:sourceItem.name,error:String(error?.message||error),importJobId});if(c)gates.push(c);
       }
-      created.push(record);
     }
-    if(qJob)await window.genreactrixQueueEngine.setJobState(qJob.id,created.some(r=>r.attributes?.failed)?"completed-with-failures":"completed",created.some(r=>r.attributes?.failed)?"URL intake completed with failures":"URL intake complete");
-    activeSessionIds=created.filter(r=>!r.attributes?.failed).map(r=>r.id);return created;
+    activeSessionIds=created.map(r=>r.id);created.originGates=gates;created.attempted=sources.length;return created;
+  }
+  async function admitOriginGate(caseId){
+    const gate=await window.genreactrixOriginGateEngine?.get?.(caseId);if(!gate)throw new Error('Origin case not found');let blob=await window.genreactrixOriginGateEngine.getAsset(caseId,'full');if(!blob&&gate.source?.originalUrl)blob=await fetchImageBlob(gate.source.originalUrl);if(!blob)throw new Error('Origin candidate full-resolution source is unavailable');const thumb=await window.genreactrixOriginGateEngine.getAsset(caseId,'thumbnail').catch(()=>null);return admitOriginCandidate({blob,source:gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:gate.candidate?.mode||'temporary',fingerprint:gate.candidate?.fingerprint||'',thumbnailHash:gate.candidate?.thumbnailHash||'',thumbnail:thumb,originGateId:gate.id});
+  }
+  async function reevaluateOriginRepeat(caseId){
+    const gate=await window.genreactrixOriginGateEngine?.get?.(caseId);if(!gate?.matchedImageId)throw new Error('Repeat case has no prior Image Record');let record=records.get(gate.matchedImageId,{touch:false});if(!record)throw new Error('Prior Image Record not found');let blob=await window.genreactrixOriginGateEngine.getAsset(caseId,'full');if(!blob&&gate.source?.originalUrl)blob=await fetchImageBlob(gate.source.originalUrl);if(!blob)throw new Error('Re-evaluation source is unavailable');await imageBlobPut(record.id,blob);const priorBatchedAt=record.timestamps?.batchedAt||null,mode=record.storage?.mode==='kept'?'kept':'temporary';record=records.update(record.id,{workflow:{stage:'queued'},storage:{mode,temporaryKey:record.id,missingReference:false,mimeType:blob.type||record.storage?.mimeType,size:blob.size||record.storage?.size,hash:gate.candidate?.fingerprint||record.storage?.hash,recycle:{deletedAt:null}},attributes:{flagged:false,needsReview:false,depot:false,rejectionFlagged:false,rejected:false,inRecycleBin:false,failed:false},components:{aiReactions:'missing',aiThemes:'missing',aiDescription:'missing',aiEmotion:'missing',aiReactionReasons:'missing',aiGenreReasons:'missing',directorReactions:'missing',directorThemes:'missing',primFusion:'missing'},analysis:{ai:null,director:null},metadata:{extended:{inboxBundleIds:[],reevaluationRequestedAt:now(),reevaluationOriginCaseId:gate.id,reevaluationCount:(Number(record.metadata?.extended?.reevaluationCount)||0)+1,priorBatchedAt:priorBatchedAt||record.metadata?.extended?.priorBatchedAt||null}},timestamps:{processedAt:null,batchedAt:null}},'reevaluation-started');activeSessionIds=[...new Set([...activeSessionIds,record.id])];return record;
+  }
+  async function retryOriginGate(caseId,{housekeeping=false}={}){
+    const gate=await window.genreactrixOriginGateEngine?.get?.(caseId);if(!gate)throw new Error('Origin case not found');
+    if(gate.type==='source-retry'){
+      const record=records.get(gate.matchedImageId,{touch:false});if(!record)throw new Error('Known Image Record not found');const url=gate.source?.originalUrl||record.storage?.hyperlink||record.source?.originalUrl;if(!url)throw new Error('No automatically retrievable source is recorded');const tries=housekeeping?1:3;let lastError=null;for(let i=0;i<tries;i++){try{const blob=await fetchImageBlob(url);await imageBlobPut(record.id,blob);records.update(record.id,{workflow:{stage:gate.evidence?.priorStage||record.metadata?.extended?.sourceRetryPriorStage||'queued'},storage:{temporaryKey:record.id,missingReference:false,mimeType:blob.type||record.storage?.mimeType,size:blob.size||record.storage?.size},metadata:{extended:{sourceRetryResolvedAt:now()}}},'source-recovered');await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:'source-recovered'});return records.get(record.id,{touch:false})}catch(error){lastError=error}}await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:false,error:String(lastError?.message||lastError||'Source retry failed')});throw lastError||new Error('Source retry failed');
+    }
+    if(gate.type!=='import-failure')throw new Error('Origin case is not retryable');let blob=await window.genreactrixOriginGateEngine.getAsset(caseId,'full');try{if(!blob&&gate.source?.originalUrl)blob=await fetchImageBlob(gate.source.originalUrl);if(!blob)throw new Error('Original source is not available for manual Retry');const result=await window.genreactrixOriginGateEngine.inspectCandidate({blob,source:gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:gate.source?.type==='url'&&gate.source?.importMethod==='hyperlink-only'?'link':'temporary',importJobId:gate.importJobId,manualRetry:true});if(result.disposition==='admit'){const record=await admitOriginCandidate({blob,source:result.source||gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:result.mode||'temporary',fingerprint:result.fingerprint||'',thumbnailHash:result.thumbnailHash||'',thumbnail:result.thumbnail||null,originGateId:gate.id});await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:'admitted'});return record}await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:result.disposition});return result.case||result}catch(error){await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:false,error:String(error?.message||error)});throw error}
+  }
+  async function recoverKnownSource(record,{attempts=3,context="source-recovery"}={}){
+    if(!record)return null;const url=record.storage?.hyperlink||record.source?.originalUrl||"";let lastError=null;
+    if(url){for(let i=0;i<Math.max(1,Number(attempts)||1);i++){try{const blob=await fetchImageBlob(url);await imageBlobPut(record.id,blob);records.update(record.id,{storage:{temporaryKey:record.id,missingReference:false,mimeType:blob.type||record.storage?.mimeType,size:blob.size||record.storage?.size}},"source-recovered");return blob}catch(error){lastError=error}}}
+    const source={...record.source,size:record.storage?.size,lastModified:record.storage?.lastModified};await window.genreactrixOriginGateEngine?.registerSourceRetry?.({imageId:record.id,source,error:String(lastError?.message||lastError||"Full-resolution source is unavailable"),context});return null;
   }
   async function fileForRecord(record){
     if(!record)return null;
     if(record.storage.mode==="linked"&&!record.attributes.saved)return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record,thumbnailKey:record.storage.thumbnailKey||record.id};
-    const blob=await imageBlobGet(record.id);
+    let blob=await imageBlobGet(record.id).catch(()=>null);if(!blob&&record.storage.mode==="kept")blob=await keptBlobGet(record.id).catch(()=>null);
+    if(!blob&&["temporary","reference"].includes(record.storage.mode))blob=await recoverKnownSource(record,{attempts:3,context:"working-copy-missing"});
     if(!blob){
       const thumbnail=await thumbnailBlobGet(record.storage.thumbnailKey||record.id).catch(()=>null);
       if(thumbnail){
@@ -3235,10 +3249,9 @@ function createImagesEngine(){
     }
     let fetchedForKeep=false;
     if(!await imageBlobGet(id).catch(()=>null)){
-      const url=record.storage.hyperlink||record.source.originalUrl;
-      if(!url)throw new Error("Full-resolution source is unavailable");
-      const blob=await fetchImageBlob(url);await imageBlobPut(id,blob);fetchedForKeep=true;
-      record=records.update(id,{storage:{temporaryKey:id,mimeType:blob.type,size:blob.size},metadata:{extended:{keepFetchedFromOrigin:true}}},"keep-source-fetched");
+      const blob=await recoverKnownSource(record,{attempts:3,context:"keep-source-recovery"});
+      if(!blob)throw new Error("Full-resolution source is unavailable; moved to Retry Import Source");
+      fetchedForKeep=true;record=records.update(id,{storage:{temporaryKey:id,mimeType:blob.type,size:blob.size},metadata:{extended:{keepFetchedFromOrigin:true}}},"keep-source-fetched");
     }
     return records.update(id,{attributes:{saved:true},metadata:{extended:{keepFetchedFromOrigin:fetchedForKeep||Boolean(record.metadata?.extended?.keepFetchedFromOrigin)}},timestamps:{savedAt:now()}},"keep-changed");
   }
@@ -3381,7 +3394,7 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});

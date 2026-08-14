@@ -3,6 +3,7 @@
 (()=>{'use strict';
  const STAGES=Object.freeze({
   IMPORT_FAILED:'import-failed',
+  SOURCE_RETRY:'origin-source-retry',
   QUEUE_WAITING:'queued',
   AI_PROCESSING:'ai-processing',
   AI_PARTIAL:'ai-partial',

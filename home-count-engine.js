@@ -14,6 +14,7 @@
  function owner(record){
    if(!record||isFinal(record))return null;
    const stage=String(record.workflow?.stage||'');
+   if(stage==='origin-source-retry')return'originActive';
    if(stage==='post-processing')return'postProcessing';
    if(stage==='purgatory')return'purgatory';
    if(stage==='quarantine')return'quarantine';
@@ -39,7 +40,7 @@
  }
  function cacheImportJob(job){if(!job?.id)return;const i=importJobsCache.findIndex(x=>String(x.id)===String(job.id));if(i>=0)importJobsCache[i]=clone(job);else importJobsCache.push(clone(job));importJobsLoaded=true;cached=null}
  async function originActiveCount(){
-   try{const jobs=await importJobs();const rows=records();let total=0;for(const job of jobs){if(!['running','paused'].includes(String(job.status||'')))continue;const found=Math.max(0,Number(job.found)||Number(job.requested)||0),linked=rows.filter(r=>String(r.source?.importJobId||'')===String(job.id||'')).length,skipped=Math.max(0,Number(job.skipped)||0),reported=Math.max(0,(Number(job.imported)||0)+skipped+(Number(job.failed)||0)),resolved=Math.max(reported,linked+skipped);total+=Math.max(0,found-resolved)}return total}catch{return 0}
+   try{const jobs=await importJobs(),rows=records(),gateRows=await window.genreactrixOriginGateEngine?.all?.()||[];let total=0;for(const job of jobs){if(!['running','paused'].includes(String(job.status||'')))continue;const found=Math.max(0,Number(job.found)||Number(job.requested)||0),linked=rows.filter(r=>String(r.source?.importJobId||'')===String(job.id||'')).length,jobGates=gateRows.filter(g=>String(g.importJobId||'')===String(job.id||'')).length,skipped=Math.max(0,Number(job.skipped)||0),reported=Math.max(0,(Number(job.imported)||0)+skipped+(Number(job.failed)||0)),resolved=Math.max(reported,linked+jobGates);total+=Math.max(0,found-resolved)}total+=gateRows.filter(g=>g.status==='pending-review').length;return total}catch{return 0}
  }
  function groupSnapshot(){const b=window.genreactrixBundleEngine?.snapshot?.()||{};const batch=window.genreactrixBatchEngine?.snapshotCached||{};return{activeBundles:Number(b.activeBundles)||0,totalBundles:Number(b.totalBundles)||0,bundleSize:Number(b.bundleSize)||0,activeBatch:batch.activeBatchId?1:0,batchHistory:Array.isArray(batch.reports)?batch.reports.length:0}}
  function processSnapshot(){const ai=window.genreactrixAiAnalysisEngine?.snapshotCached?.()||{};return{aiFailures:Array.isArray(window.genreactrixCurrentAiFailureRecords?.())?window.genreactrixCurrentAiFailureRecords().length:0,bufferTarget:Number(ai.bufferTarget)||Number(localStorage.getItem('genreactrix-ai-buffer-target'))||25}}
@@ -48,5 +49,6 @@
  async function verify(){const s=await snapshot(),issues=[];if(!s.identity.balanced)issues.push({type:'home-active-count-identity',severity:'critical',summary:'Active processing count does not reconcile.'});if(s.unaccounted)issues.push({type:'home-unaccounted-images',severity:'attention',summary:`${s.unaccounted} active image${s.unaccounted===1?' is':'s are'} outside the authoritative count spine.`,affectedIds:s.unaccountedIds});return{checkedAt:s.checkedAt,activeImageTotal:s.activeImageTotal,unaccounted:s.unaccounted,issueCount:issues.length,issues}}
  const api={compute,owner,snapshot,snapshotCached,verify};window.genreactrixHomeCountEngine=api;
  window.addEventListener('genreactrix:import-job',event=>cacheImportJob(event.detail?.job));
+ window.addEventListener('genreactrix:origin-gate',()=>{cached=null});
  window.addEventListener('DOMContentLoaded',()=>{window.genreactrixMaintenanceEngine?.registerChecker?.('home-counts',verify,{quick:true,label:'Home Counts'});snapshot().catch(console.warn)});
 })();
