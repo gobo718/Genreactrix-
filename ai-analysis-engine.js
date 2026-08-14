@@ -174,7 +174,7 @@
   let finalMessage=stopped?'Stopped safely':(job.failed?`Completed with ${job.failed} failure(s)`:'Completed');
   if(!stopped){
    try{
-    const bundles=await window.genreactrixBundleEngine?.maybeAutoBundle?.()||[];
+    const bundles=await maybeBundleAfterAi();
     const staged=window.genreactrixLifecycleEngine?.snapshot?.().staged||0;
     if(bundles.length)finalMessage+=` · ${bundles.reduce((n,b)=>n+(b.imageIds?.length||0),0)} Bundled to Inbox`;
     else if(staged)finalMessage+=` · ${staged} Staged in Queue`;
@@ -193,7 +193,22 @@
  async function recoverInterruptedAiJobs(){const jobs=await all(JOBS);let recovered=0;for(const job of jobs.filter(j=>j.state==='running')){const items=await byIndex(ITEMS,'jobId',job.id);for(const item of items.filter(i=>i.state==='processing')){item.state='queued';item.error='Recovered after page reload';for(const c of item.components||[])if(c.state==='processing')c.state='queued';await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'queued',{error:'Recovered after page reload'});window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.id});recovered++}job.state='queued';job.processing=0;job.stopRequested=false;job.message='Recovered after page reload';await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'queued','Recovered after page reload');recovered++}if(recovered)emit();return recovered}
  async function retryFailed(id){const items=await byIndex(ITEMS,'jobId',id);let queued=0;for(const item of items.filter(i=>i.state==='failed')){const record=window.genreactrixImageRecordEngine?.get?.(item.imageId,{touch:false});if(['quarantine','defective'].includes(String(record?.workflow?.stage||'')))continue;item.state='queued';item.error='';item.components.forEach(c=>{if(c.state==='failed')c.state='queued'});await put(ITEMS,item);queued++}const j=(await all(JOBS)).find(x=>x.id===id);if(j&&queued){j.state='queued';j.failed=items.filter(i=>i.state==='failed').length;j.completed=items.filter(i=>i.state==='complete').length;j.message='Retry queued';await put(JOBS,j);run(id)}else if(j){j.message='No retryable failures · Quarantine requires manual investigation';await put(JOBS,j);render()}}
  async function resumeStrandedJobs(){window.GenreactrixCloudApi?.reload?.();if(!window.GenreactrixCloudApi?.isConfigured?.())return 0;const stranded=(await all(JOBS)).filter(j=>j.state==='queued');for(const job of stranded)await run(job.id);return stranded.length}
- async function snapshot(){const jobs=await all(JOBS),items=await all(ITEMS),life=window.genreactrixLifecycleEngine?.snapshot?.()||{};snapshotCache={pending:items.filter(i=>['queued','processing'].includes(i.state)).length,available:eligibleRecords({target:'current',quantityMode:'all',order:'queue',components:{reactions:{enabled:true,behavior:'analyze'}}}).length,output:Number(life.staged)||0,partial:Number(life.partial)||0,bufferTarget:Math.max(0,Number(window.genreactrixSettingsEngine?.get?.('ai.buffer.target',25))||25),quickAddAmount:Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('defaults.ai.quickAdd',100))||100),jobs,items};return clone(snapshotCache)}
+ function automaticOutputs(){const defaults=window.genreactrixSettingsEngine?.get?.('ai.components.default',{})||{};return{reactions:true,themes:true,description:true,reactionReasons:Boolean(defaults.reactionReasons),genreReasons:Boolean(defaults.genreReasons)}}
+ function automaticEligibleCount(){return eligibleRecords({target:'current',quantityMode:'all',order:'queue',components:{reactions:{enabled:true,behavior:'analyze'},themes:{enabled:true,behavior:'analyze'},description:{enabled:true,behavior:'analyze'}}}).filter(r=>['aiReactions','aiThemes','aiDescription'].some(key=>['missing','stale','failed','partial'].includes(r.components?.[key]||'missing'))).length}
+ function bufferPolicy(){
+  const target=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.('ai.buffer.target',25))||0),rawRefill=Math.max(0,Number(window.genreactrixSettingsEngine?.get?.('ai.buffer.refillThreshold',10))||0),refillThreshold=Math.min(target,rawRefill),priority=String(window.genreactrixSettingsEngine?.get?.('ai.lookAhead.priority','low')||'low'),bundleSize=Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('queue.bundle.size',50))||50),reserveFloor=priority==='high'?target:(priority==='normal'?refillThreshold:0);
+  return{target,refillThreshold,rawRefillThreshold:rawRefill,priority:['low','normal','high'].includes(priority)?priority:'low',bundleSize,reserveFloor,bundleThreshold:bundleSize+reserveFloor};
+ }
+ function planBufferStep({staged=0,pending=0,available=0}={}){
+  const p=bufferPolicy(),s=Math.max(0,Number(staged)||0),wait=Math.max(0,Number(pending)||0),a=Math.max(0,Number(available)||0);
+  if(wait)return{action:'wait',count:0,reason:'ai-active',...p};
+  if(s>=p.bundleThreshold)return{action:'bundle',count:p.bundleSize,reason:`${p.priority}-priority-bundle`,...p};
+  const toBundle=Math.max(0,p.bundleThreshold-s);
+  if(a>=toBundle&&toBundle>0)return{action:'queue',count:toBundle,reason:'prepare-priority-bundle',...p};
+  if(s<=p.refillThreshold&&s<p.target&&a>0)return{action:'queue',count:Math.min(p.target-s,a),reason:'refill-buffer',...p};
+  return{action:'hold',count:0,reason:s>=p.target?'buffer-held':'insufficient-for-bundle-above-refill',...p};
+ }
+ async function snapshot(){const jobs=await all(JOBS),items=await all(ITEMS),life=window.genreactrixLifecycleEngine?.snapshot?.()||{},policy=bufferPolicy();snapshotCache={pending:items.filter(i=>['queued','processing'].includes(i.state)).length,available:automaticEligibleCount(),output:Number(life.staged)||0,partial:Number(life.partial)||0,bufferTarget:policy.target,bufferRefillThreshold:policy.refillThreshold,bufferPriority:policy.priority,bufferReserveFloor:policy.reserveFloor,quickAddAmount:Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('defaults.ai.quickAdd',100))||100),jobs,items};return clone(snapshotCache)}
  function snapshotCached(){return clone(snapshotCache)}
  async function queueNext(count,outputs=null,options={}){const map=componentMap(),selected=outputs||window.selectedPortraitAiOutputs?.()||{};for(const [key,on] of Object.entries(selected)){const normalized={'reaction-reasons':'reactionReasons','genre-reasons':'genreReasons'}[key]||key;if(map[normalized])map[normalized]={enabled:Boolean(on),behavior:'analyze'}}const config={target:'current',quantityMode:'next',quantity:count,order:'queue',components:map,skipFailed:Boolean(options.skipFailed)};const job=await createJob(config);if(job.total&&window.GenreactrixCloudApi?.isConfigured())await run(job.id);render();return job.total}
  async function maintainAutomaticFlow(){
@@ -202,15 +217,36 @@
   maintainFlowPromise=(async()=>{
    await window.genreactrixBundleEngine?.maybeAutoBundle?.();
    const snap=await snapshot();if(snap.pending)return 0;
-   const size=Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('queue.bundle.size',50))||50),staged=Number(window.genreactrixLifecycleEngine?.snapshot?.().staged)||0,needed=Math.max(0,size-staged);
-   const available=eligibleRecords({target:'current',quantityMode:'all',order:'queue',components:{reactions:{enabled:true,behavior:'analyze'},themes:{enabled:true,behavior:'analyze'},description:{enabled:true,behavior:'analyze'}}}).filter(r=>['aiReactions','aiThemes','aiDescription'].some(key=>['missing','stale','failed','partial'].includes(r.components?.[key]||'missing'))).length;
+   const size=Math.max(1,Number(window.genreactrixSettingsEngine?.get?.('queue.bundle.size',50))||50),staged=Number(window.genreactrixLifecycleEngine?.snapshot?.().staged)||0,needed=Math.max(0,size-staged),available=automaticEligibleCount();
    if(!available){if(Boolean(window.genreactrixSettingsEngine?.get?.('queue.bundle.completeAvailable',false))&&staged>0)await window.genreactrixBundleEngine?.bundleWhateverAvailable?.();return 0;}
-   const defaults=window.genreactrixSettingsEngine?.get?.('ai.components.default',{})||{},outputs={reactions:true,themes:true,description:true,reactionReasons:Boolean(defaults.reactionReasons),genreReasons:Boolean(defaults.genreReasons)};
-   return queueNext(Math.max(1,Math.min(needed||size,available)),outputs,{skipFailed:false});
+   return queueNext(Math.max(1,Math.min(needed||size,available)),automaticOutputs(),{skipFailed:false});
   })();
   try{return await maintainFlowPromise}finally{maintainFlowPromise=null}
  }
- async function maintainBuffer(){if(Boolean(window.genreactrixSettingsEngine?.get?.('queue.flow.enabled',true)))return 0;if(!Boolean(window.genreactrixSettingsEngine?.get?.('ai.lookAhead.enabled',true)))return 0;if(maintainBufferPromise)return maintainBufferPromise;maintainBufferPromise=(async()=>{const snap=await snapshot();const needed=Math.max(0,snap.bufferTarget-snap.pending-snap.output);if(!needed)return 0;return queueNext(needed,null,{skipFailed:false})})();try{return await maintainBufferPromise}finally{maintainBufferPromise=null}}
+ async function maintainBuffer(){
+  if(Boolean(window.genreactrixSettingsEngine?.get?.('queue.flow.enabled',true)))return 0;
+  if(!Boolean(window.genreactrixSettingsEngine?.get?.('ai.lookAhead.enabled',true)))return 0;
+  if(maintainBufferPromise)return maintainBufferPromise;
+  maintainBufferPromise=(async()=>{
+   for(let guard=0;guard<100;guard++){
+    const snap=await snapshot(),staged=Number(window.genreactrixLifecycleEngine?.snapshot?.().staged)||0,available=automaticEligibleCount(),plan=planBufferStep({staged,pending:snap.pending,available});
+    if(plan.action==='wait'||plan.action==='hold')return 0;
+    if(plan.action==='bundle'){
+     const bundle=await window.genreactrixBundleEngine?.bundleStaged?.({limit:plan.bundleSize,automatic:true,sourceLabel:`Buffer · Queue Priority ${plan.priority}`});
+     if(!bundle)return 0;
+     continue;
+    }
+    if(plan.action==='queue')return queueNext(plan.count,automaticOutputs(),{skipFailed:false});
+   }
+   console.warn('Buffer maintenance guard reached');return 0;
+  })();
+  try{return await maintainBufferPromise}finally{maintainBufferPromise=null}
+ }
+ async function maybeBundleAfterAi(){
+  if(Boolean(window.genreactrixSettingsEngine?.get?.('queue.flow.enabled',true)))return window.genreactrixBundleEngine?.maybeAutoBundle?.()||[];
+  if(!Boolean(window.genreactrixSettingsEngine?.get?.('ai.lookAhead.enabled',true)))return[];
+  const made=[];for(let guard=0;guard<100;guard++){const staged=Number(window.genreactrixLifecycleEngine?.snapshot?.().staged)||0,plan=planBufferStep({staged,pending:0,available:automaticEligibleCount()});if(plan.action!=='bundle')break;const bundle=await window.genreactrixBundleEngine?.bundleStaged?.({limit:plan.bundleSize,automatic:true,sourceLabel:`Buffer · Queue Priority ${plan.priority}`});if(!bundle)break;made.push(bundle)}return made;
+ }
  async function maintainActiveMode(){return Boolean(window.genreactrixSettingsEngine?.get?.('queue.flow.enabled',true))?maintainAutomaticFlow():maintainBuffer();}
  function emit(){window.dispatchEvent(new CustomEvent('genreactrix:ai-jobs'));render()}
  function configFromForm(){const components=componentMap();document.querySelectorAll('[data-ai-component]').forEach(row=>{const key=row.dataset.aiComponent;components[key]={enabled:row.querySelector('input').checked,behavior:row.querySelector('select').value}});const promptRefs={};for(const [key,v] of Object.entries(components))if(v.enabled){const p=window.genreactrixPromptLibraryEngine?.active?.(key);if(p)promptRefs[key]={id:p.id,version:p.version,name:p.name}}return{target:document.getElementById('aiTarget').value,quantity:Number(document.getElementById('aiQuantity').value)||100,quantityMode:document.getElementById('aiQuantityMode').value,order:document.getElementById('aiOrder').value,components,promptRefs}}
@@ -372,5 +408,6 @@
  }
 
  async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});return{jobCount:jobs.length,itemCount:items.length,issueCount:issues.length,issues}}
- const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainAutomaticFlow,maintainBuffer,maintainActiveMode,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());window.addEventListener('genreactrix:bundle',()=>render());
+ const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainAutomaticFlow,maintainBuffer,maintainActiveMode,bufferPolicy,planBufferStep,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());window.addEventListener('genreactrix:bundle',()=>render());
+ window.addEventListener('genreactrix:setting',event=>{if(['queue.flow.enabled','queue.bundle.size','ai.lookAhead.enabled','ai.buffer.target','ai.buffer.refillThreshold','ai.lookAhead.priority'].includes(event.detail?.id))setTimeout(()=>maintainActiveMode().catch(console.warn),0)});
 })();

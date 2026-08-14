@@ -1,3 +1,54 @@
+## v0.9.40.33 — Queue Flow + Buffer Semantics
+
+This release performs the bounded Queue operating-behavior migration after v0.9.40.32. It separates normal Automatic Flow-through from optional Buffer behavior, makes Refill Threshold operational, and gives Queue Priority a concrete ordering meaning without changing image importance or layout geometry.
+
+### Automatic Flow-through
+- Automatic Flow-through remains the default Queue mode.
+- Buffer target, Refill Threshold, and Queue Priority do not alter normal Automatic Flow-through.
+- Automatic Flow-through continues to process Queue work toward the configured Bundle Size, Bundle exactly the configured full size, and leave undersized Staged remainder unless Complete Whatever Is Available is enabled.
+
+### Buffer
+- Buffer is a separate Queue operating mode used when Automatic Flow-through is off and Buffer is enabled.
+- Buffer is now measured strictly from **Staged** images. Pending/running AI work no longer counts toward the Buffer reserve.
+- Buffer target remains the desired reserve of Staged work.
+- Refill Threshold is now functional: when another priority-valid full Bundle cannot be formed, a reserve at or below the threshold is replenished toward Buffer target as available Queue work permits.
+- Refill Threshold is clamped to Buffer target for runtime policy, so an invalid threshold above target cannot create contradictory reserve behavior. The configured value itself is preserved.
+
+### Queue Priority
+Queue Priority is the priority of the Buffer-building function versus Bundling; it is not image importance. Existing Low / Normal / High values now mean:
+- **Low** — favor Bundling. A full Bundle may move without preserving an additional Staged reserve.
+- **Normal** — preserve the configured Refill Threshold before a full Bundle moves.
+- **High** — preserve the full Buffer target before a full Bundle moves.
+
+When enough Queue work exists, Buffer prepares only the amount required for the next priority-valid full Bundle. When there is not enough work to form that Bundle, the Refill Threshold/Buffer-target fallback governs reserve building.
+
+### Controls / terminology
+- Existing control geometry is reused. No new panel, breakpoint, or layout layer is added.
+- `Buffer look-ahead` is relabeled **Buffer**.
+- The existing Buffer toggle now reads **Buffer enabled**.
+- The existing priority control now reads **Queue Priority**.
+- Settings descriptions use Buffer / Refill Threshold / Queue Priority terminology while preserving the existing setting IDs for migration compatibility.
+- Queue's existing technical-hold summary label is **Quarantine**; ordinary Queue job failures remain job-detail data.
+- Release audit found that v0.9.40.32 shipped `quarantine-engine.js` but omitted its `<script>` load from `index.html`. v0.9.40.33 loads that existing engine explicitly before Queue/AI initialization; no Quarantine data had been created on the unexercised path.
+- Switching Automatic Flow-through off now immediately invokes Buffer behavior when Buffer is enabled; previously the mode switch could sit idle until another AI event occurred.
+
+### Preservation
+- `styles.css` is byte-for-byte identical to v0.9.40.32.
+- `index.html` retains the same 1,549 non-script elements, the same 673 IDs, and the same non-script tag/ID/class structural signature as v0.9.40.32. One nonvisual script include is added so the already-shipped Quarantine engine actually initializes.
+- No Origin, Dupe/Repeat, Quarantine/Defective, Batch, Post-processing/Purgatory, Director Evaluation, Keep/Recycle, PrimFusion, Reaction 60/40 mathematics, Worker prompts, or accepted Portrait/Landscape geometry is redesigned.
+- Existing setting IDs (`ai.lookAhead.*`, `ai.buffer.*`) are retained deliberately so existing local project configuration survives the semantic cleanup.
+
+### Verification performed
+- JavaScript syntax validation passes across project and Worker JavaScript.
+- Pure Queue Priority policy tests pass for Low, Normal, High, refill fallback, pending-AI blocking, and threshold > target clamping.
+- Structural preservation test passes against v0.9.40.32: unchanged CSS and unchanged non-script HTML tag/ID/class signatures.
+
+### Real-device acceptance gate
+1. Normal Automatic Flow-through should behave exactly as before; existing Buffer numbers should not affect it.
+2. For a simple Buffer test, turn Automatic Flow-through off with Buffer enabled. With target 25 / refill 10, Staged should be treated as the reserve; running AI should not inflate the Buffer count.
+3. Queue Priority can then be live-tested as Queue volume permits: Low favors a full Bundle first, Normal preserves the refill threshold, High preserves the full target.
+4. Existing Portrait and Landscape layouts must remain unchanged.
+
 ## v0.9.40.32 — Quarantine + Defective
 
 This release completes the next bounded lifecycle migration after the accepted v0.9.40.31 Origin Gates pass. It turns the preliminary Quarantine stage into a real Queue-owned investigation hold with durable case history and the two canonical manual outcomes: Release or Defective.

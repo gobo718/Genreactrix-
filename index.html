@@ -49,7 +49,7 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.32</title>
+<title>Genreactrix v0.9.40.31</title>
 <link href="styles.css?v=0.9.40.25" rel="stylesheet"/>
 </head>
 <body>
@@ -57,7 +57,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.32</span>
+<span>v0.9.40.31</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.32</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.31</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -330,12 +330,12 @@
 <div class="ai-run-actions"><button class="primary-action" id="aiStartJob" type="button">Start analysis</button><button class="ai-cycle-button" id="aiCycleBtn" type="button" title="Repeat Missing analysis for the frozen selection, up to three total passes">Cycle</button><span class="ai-cycle-status" id="aiCycleStatus" aria-live="polite"></span></div>
 </section>
 <section class="ai-console-section">
-<h3>Buffer look-ahead</h3>
+<h3>Buffer</h3>
 <div class="ai-console-grid">
-<label class="ai-inline-check"><input id="aiAutoEnabled" type="checkbox"/> Enabled</label>
+<label class="ai-inline-check"><input id="aiAutoEnabled" type="checkbox"/> Buffer enabled</label>
 <label>Buffer target<input id="aiAutoBuffer" min="0" step="1" type="number"/></label>
 <label>Refill threshold<input id="aiAutoRefill" min="0" step="1" type="number"/></label>
-<label>Priority<select id="aiAutoPriority"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select></label>
+<label>Queue Priority<select id="aiAutoPriority"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select></label>
 </div>
 <div class="ai-provider-row"><button id="aiSaveAutomatic" type="button">Save automatic settings</button><span id="aiAutomaticStatus"></span></div>
 </section>
@@ -915,7 +915,7 @@
 <script src="origin-gate-engine.js?v=0.9.40.31"></script>
 <script src="import-engine.js?v=0.9.40.31"></script>
 <script src="maintenance-engine.js?v=0.9.40.14"></script>
-<script src="settings-engine.js?v=0.9.40.25"></script>
+<script src="settings-engine.js?v=0.9.40.33"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
 <form class="custom-library-shell" method="dialog" onsubmit="return false;">
@@ -946,10 +946,9 @@ window.grxOpenCustomDialog=function(dialogId){
 };
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
-<script src="lifecycle-engine.js?v=0.9.40.32"></script>
+<script src="lifecycle-engine.js?v=0.9.40.25"></script>
 <script src="bundle-engine.js?v=0.9.40.25"></script>
-<script src="app.js?v=0.9.40.32"></script>
-<script src="quarantine-engine.js?v=0.9.40.32"></script>
+<script src="app.js?v=0.9.40.33"></script>
 <script src="images-console.js?v=0.9.40.31"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -964,7 +963,8 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="queue-engine.js?v=0.9.40.32"></script>
+<script src="quarantine-engine.js?v=0.9.40.33"></script>
+<script src="queue-engine.js?v=0.9.40.33"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.40.14"></script>
 <script src="reports-engine.js?v=0.9.39.85"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
@@ -982,8 +982,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="batch-engine.js?v=0.9.40.28"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.32"></script>
-<script src="home-count-engine.js?v=0.9.40.32"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.33"></script>
+<script src="home-count-engine.js?v=0.9.40.31"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
 <section class="research-session-shell">
