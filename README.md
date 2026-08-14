@@ -1,14 +1,42 @@
-## v0.9.40.28 — Batch confirmation UI bridge repair
+## v0.9.40.29 — Authoritative Home active-processing counts
 
-Focused regression repair on top of v0.9.40.27.
+This release follows the validated v0.9.40.28 Batch/Post-processing boundary. It rebuilds Home counting against the canonical lifecycle state spine without changing the accepted screen geometry.
 
-- Fixes the final **Batch these images → Batch** button doing nothing on-device.
-- Root cause: the async click handler read `event.currentTarget` after its first `await`; browsers clear `currentTarget` when event dispatch completes, causing an uncaught TypeError before the submission `try/catch`.
-- Selected image IDs are now captured synchronously before any `await`, and active-Batch lookup is covered by the handler error boundary.
-- No transaction-engine, lifecycle, storage, CSS, layout, spacing, sizing, or breakpoint changes.
-- v0.9.40.27 remains the atomic Post-processing + Purgatory implementation beneath this UI bridge fix.
+### Authoritative count spine
+- **Active = Origin + Queue + Quarantine + Inbox + Post-processing + Purgatory.**
+- **Queue = Waiting + In AI + Partially AI Processed + Staged.** AI remains a process over Queue-owned images and is not added again.
+- **Inbox = Working + Review + Depot + Delete + Reject.**
+- **Keep is an overlapping Inbox attribute** and never adds a second image to Inbox Total or Active.
+- Final Keep, Recycle Bin, permanent Records, Pack/Bundle/Batch group counts, and AI call/job telemetry are not added to the Active image total.
+- Added a maintenance checker that flags any non-final Image Record that does not resolve to one authoritative active owner/location.
 
----
+### Existing Home layout, corrected meanings
+- The existing six status slots under + Images are reused, in the same order and geometry, for **Active / Origin / Queue / Quarantine / Post / Purgatory**.
+- Batch continues to show Inbox Total plus **Working / Review / Depot / Delete / Reject**, with Keep shown separately as the independent overlapping attribute.
+- Queue Home status now shows **Waiting / Partial / Staged** image populations instead of queue-job telemetry.
+- AI Home status shows **In AI / Buffer / Staged / Failed**. In AI and Staged are Queue-owned populations; Buffer is configuration; Failed is AI diagnostic information and is not added to Active.
+- Bundle count remains explicitly labeled as a different group unit.
+
+### Origin accounting
+- New Imports stamp their Import Job ID into Image Record source metadata. This lets Home subtract admitted records from the still-active Origin population immediately during a multi-image import rather than briefly counting the same image in both Origin and Queue.
+- Import-job create/update events now refresh Home counts while intake is running.
+
+### Preservation
+- **`styles.css` is byte-for-byte identical to v0.9.40.28.**
+- Portrait Control Station tag/ID/class structure is identical to v0.9.40.28; only status labels/meaning and build metadata change.
+- No Batch/Post-processing/Purgatory transaction behavior changes.
+- No AI calculation, Worker, Reaction/Theme, image blob, retention, or layout breakpoint changes.
+
+### Real-device acceptance gate
+Use one new image and watch its lifecycle: after Import it should increase Queue/Active; while AI runs it should move within Queue accounting rather than increase Active; after Staging and Bundle it should move from Queue to Inbox with the same Active total; after successful Batch it should leave Active. Existing accepted Portrait/Landscape geometry must remain unchanged.
+
+## v0.9.40.28 — Batch confirmation button repair
+
+- Fixes the real-device v0.9.40.27 regression where the final **Batch these images → Batch** button could be tapped repeatedly without submitting.
+- The async click handler now captures the selected Image IDs before crossing its first `await`, rather than reading `event.currentTarget` after the browser has cleared the event dispatch target.
+- The v0.9.40.27 Post-processing/Purgatory transaction engine is unchanged.
+- Real-device acceptance passed: Batch reported success, the selected image left Inbox, and Batch history updated.
+- No layout/CSS changes.
 
 ## v0.9.40.27 — Atomic Post-processing + Purgatory
 

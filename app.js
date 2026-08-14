@@ -1200,38 +1200,45 @@ async function refreshPortraitControlStation(){
   try{
     const records=portraitRecordValues();
     const imageEngine=window.genreactrixImagesEngine?.snapshot?.() || {available:0,temporary:0,linked:0,saved:0,flagged:0,recycle:0};
-    const [batchSnapshot,aiSnapshot,reports] = await Promise.all([
+    const [batchSnapshot,aiSnapshot,reports,homeCounts] = await Promise.all([
       window.genreactrixBatchEngine?.snapshot?.().catch(()=>null) || null,
       window.genreactrixAiAnalysisEngine?.snapshot?.().catch(()=>null) || null,
-      window.genreactrixReportsEngine?.all?.().catch(()=>[]) || []
+      window.genreactrixReportsEngine?.all?.().catch(()=>[]) || [],
+      window.genreactrixHomeCountEngine?.snapshot?.().catch(()=>null) || null
     ]);
     const queueSnapshot=window.genreactrixQueueEngine?.snapshot?.() || {summary:{}};
     const q=queueSnapshot.summary||{};
     const b=batchSnapshot || window.genreactrixBatchEngine?.snapshotCached || {inbox:{total:0,working:0,review:0,depot:0,red:0,hotMagenta:0,keep:0}};
     const a=aiSnapshot || window.genreactrixAiAnalysisEngine?.snapshotCached?.() || {output:0,pending:0,bufferTarget:25,items:[]};
     const set=(id,value)=>{const el=$(id);if(el)el.textContent=String(value ?? 0)};
-    const inboxWork=b.inbox||{total:0,working:0,review:0,depot:0,red:0,hotMagenta:0,keep:0};
+    const authoritative=homeCounts||null;
+    const inboxWork=authoritative?.inbox||b.inbox||{total:0,working:0,review:0,depot:0,delete:0,reject:0,red:0,hotMagenta:0,keep:0};
     set('portraitBatchName',inboxWork.total?'Inbox work':'No Inbox work');
     set('portraitBatchTotal',inboxWork.total||0);
     set('portraitBatchWorking',inboxWork.working||0);
     set('portraitBatchYellow',inboxWork.review||0);
     set('portraitBatchDepot',inboxWork.depot||0);
-    set('portraitBatchRed',inboxWork.red||0);
-    set('portraitBatchHotMagenta',inboxWork.hotMagenta||0);
+    set('portraitBatchRed',inboxWork.delete??inboxWork.red??0);
+    set('portraitBatchHotMagenta',inboxWork.reject??inboxWork.hotMagenta??0);
     set('portraitBatchKeep',inboxWork.keep||0);
-    set('portraitAvailableCount',imageEngine.available||0);
-    set('portraitTempImageCount',imageEngine.temporary||0);
-    set('portraitLinkedImageCount',imageEngine.linked||0);
-    set('portraitReferenceImageCount',imageEngine.kept||0);
-    set('portraitEngineFlaggedCount',imageEngine.yellow||0);
-    set('portraitRecycleImageCount',imageEngine.recycle||0);
-    set('portraitAiOutputCount',a.output||0);
-    set('portraitAiPendingCount',a.pending||0);
-    set('portraitAiBufferTarget',a.bufferTarget||0);
-    set('portraitAiFailedCount',currentAiFailureRecords().length);
-    set('portraitQueueRunningCount',q.running||0);
-    set('portraitQueuedCount',q.queued||0);
-    set('portraitQueueFailedCount',q.failed||0);
+    // Home active-processing spine. These six existing slots now show current workflow
+    // populations only; storage/history populations are intentionally excluded.
+    set('portraitAvailableCount',authoritative?.activeImageTotal ?? imageEngine.available ?? 0);
+    set('portraitTempImageCount',authoritative?.originActive ?? 0);
+    set('portraitLinkedImageCount',authoritative?.queueTotal ?? imageEngine.queued ?? 0);
+    set('portraitReferenceImageCount',authoritative?.quarantine ?? 0);
+    set('portraitEngineFlaggedCount',authoritative?.postProcessing ?? 0);
+    set('portraitRecycleImageCount',authoritative?.purgatory ?? 0);
+    // AI is a process over Queue-owned images. In AI and Staged are therefore
+    // Queue populations, not extra Active images.
+    set('portraitAiOutputCount',authoritative?.aiProcessing ?? a.output ?? 0);
+    set('portraitAiPendingCount',authoritative?.staged ?? a.pending ?? 0);
+    set('portraitAiBufferTarget',authoritative?.process?.bufferTarget ?? a.bufferTarget ?? 0);
+    set('portraitAiFailedCount',authoritative?.process?.aiFailures ?? currentAiFailureRecords().length);
+    // Queue breakdown uses image populations, not queue-job telemetry.
+    set('portraitQueueRunningCount',authoritative?.queueWaiting ?? q.running ?? 0);
+    set('portraitQueuedCount',authoritative?.partial ?? q.queued ?? 0);
+    set('portraitQueueFailedCount',authoritative?.staged ?? q.failed ?? 0);
     const sorted=[...(reports||[])].sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
     const lastAuto=sorted.find(r=>r.automatic);
     const lastCustom=sorted.find(r=>!r.automatic);
@@ -3107,7 +3114,7 @@ function createImagesEngine(){
   const IMAGE_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
   function isImageFile(file){const type=String(file?.type||"").toLowerCase();return type.startsWith("image/")||IMAGE_FILE_RE.test(String(file?.name||""))}
   function imageMimeForFile(file){const type=String(file?.type||"").toLowerCase();if(type.startsWith("image/"))return type;const name=String(file?.name||"").toLowerCase();if(/\.jpe?g$/.test(name))return "image/jpeg";if(/\.png$/.test(name))return "image/png";if(/\.gif$/.test(name))return "image/gif";if(/\.webp$/.test(name))return "image/webp";if(/\.bmp$/.test(name))return "image/bmp";if(/\.avif$/.test(name))return "image/avif";if(/\.heic$/.test(name))return "image/heic";if(/\.heif$/.test(name))return "image/heif";return type}
-  async function importFiles(fileList,{limit=null}={}){
+  async function importFiles(fileList,{limit=null,importJobId=null}={}){
     const files=[...fileList].filter(isImageFile);
     const selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files,created=[];
     const folderImport=selected.some(file=>Boolean(file.webkitRelativePath));
@@ -3118,11 +3125,11 @@ function createImagesEngine(){
       let record;
       try{
         const thumbnail=await storeImportedImage({id,blob:file,keepFull:true});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"queued"},batchIds:[]});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",importJobId:importJobId||null,firstBatchId:null},storage:{mode:"temporary",temporaryKey:id,...thumbnail,mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"queued"},batchIds:[]});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
       }catch(error){
         await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
-        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",firstBatchId:null},storage:{mode:"none",mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"import-failed"},attributes:{failed:true},batchIds:[],error:String(error?.message||error)});
+        record=records.create({id,name:file.name,source:{type:"file",originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:"temporary-copy",importJobId:importJobId||null,firstBatchId:null},storage:{mode:"none",mimeType:imageMimeForFile(file),size:file.size,lastModified:file.lastModified},workflow:{stage:"import-failed"},attributes:{failed:true},batchIds:[],error:String(error?.message||error)});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error});
       }
       created.push(record);
@@ -3135,7 +3142,7 @@ function createImagesEngine(){
     const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;
     return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));
   }
-  async function importUrls(text,{limit=null,mode="link",prefetch=true}={}){
+  async function importUrls(text,{limit=null,mode="link",prefetch=true,importJobId=null}={}){
     const sources=await prefetchUrls(text,{limit}),created=[];
     const keepFull=mode==="download";
     const qJob=await window.genreactrixQueueEngine?.createJob?.({type:"acquisition",ownerEngine:"images",label:`URL ${keepFull?"download":"intake"} · ${sources.length}`,state:"running",total:sources.length,message:keepFull?"Importing copies":"Importing links + thumbnails"});
@@ -3146,11 +3153,11 @@ function createImagesEngine(){
       try{
         const blob=await fetchImageBlob(source.url);
         const thumbnail=await storeImportedImage({id,blob,keepFull});
-        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",firstBatchId:null},storage:{mode:keepFull?"temporary":"linked",temporaryKey:keepFull?id:null,hyperlink:source.url,...thumbnail,mimeType:blob.type,size:blob.size},workflow:{stage:"queued"},attributes:{hyperlinkOnly:!keepFull},batchIds:[]});
+        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",importJobId:importJobId||null,firstBatchId:null},storage:{mode:keepFull?"temporary":"linked",temporaryKey:keepFull?id:null,hyperlink:source.url,...thumbnail,mimeType:blob.type,size:blob.size},workflow:{stage:"queued"},attributes:{hyperlinkOnly:!keepFull},batchIds:[]});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"complete");
       }catch(error){
         await imageBlobDelete(id).catch(()=>{});await imageStoreDelete(IMAGE_ENGINE_THUMBNAIL_STORE,id).catch(()=>{});
-        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",firstBatchId:null},storage:{mode:"linked",temporaryKey:null,hyperlink:source.url},workflow:{stage:"import-failed"},attributes:{hyperlinkOnly:true,failed:true},batchIds:[],error:String(error?.message||error)});
+        record=records.create({id,name:source.name,source:{type:"url",originalLocation:source.url,originalUrl:source.url,originalFilename:source.name,importMethod:keepFull?"temporary-copy":"hyperlink-only",importJobId:importJobId||null,firstBatchId:null},storage:{mode:"linked",temporaryKey:null,hyperlink:source.url},workflow:{stage:"import-failed"},attributes:{hyperlinkOnly:true,failed:true},batchIds:[],error:String(error?.message||error)});
         if(qItemId)await window.genreactrixQueueEngine.setItemState(qItemId,"failed",{error:record.error||"Import failed"});
       }
       created.push(record);
@@ -3655,9 +3662,12 @@ document.querySelectorAll("[data-module-button]").forEach(button=>{
 document.getElementById("portraitMailboxBtn")?.addEventListener("click",()=>window.genreactrixNotificationsEngine?.openConsole?.());
 document.querySelectorAll("[data-portrait-status]").forEach(button=>button.addEventListener("click",()=>{
   const target=button.dataset.portraitStatus||"";
-  if(target.startsWith("batch-")||target==="saved-total"||target==="flagged-total") window.genreactrixBatchEngine?.openConsole?.();
+  if(target.startsWith("batch-")||target==="inbox-total"||target==="saved-total"||target==="flagged-total") window.genreactrixBatchEngine?.openConsole?.();
   else if(target.startsWith("queue-")) window.genreactrixQueueEngine?.openConsole?.();
+  else if(target==="post-processing"||target==="purgatory") window.genreactrixMaintenanceEngine?.openConsole?.();
+  else if(target==="active-total") window.genreactrixHomeCountEngine?.snapshot?.().then(s=>setPortraitStationStatus(`Active ${s.activeImageTotal} = Origin ${s.originActive} + Queue ${s.queueTotal} + Quarantine ${s.quarantine} + Inbox ${s.inbox.total} + Post ${s.postProcessing} + Purgatory ${s.purgatory}`)).catch(console.warn);
   else if(target.startsWith("reports-")) window.genreactrixReportsEngine?.openConsole?.();
+  else if(target==="images-origin") { window.genreactrixImagesConsole?.open?.(); setTimeout(()=>document.querySelector('[data-images-section="dashboard"]')?.click(),0); }
   else if(target.startsWith("images-")) { window.genreactrixImagesConsole?.open?.(); const section=target.replace("images-",""); setTimeout(()=>document.querySelector(`[data-images-section="${section}"]`)?.click(),0); }
 }));
 
@@ -3675,7 +3685,7 @@ document.querySelector("[data-quick-dialog='save']")?.addEventListener("click",(
 });
 
 
-["genreactrix:image-record","genreactrix:batch","genreactrix:queue","genreactrix:report","genreactrix:notification","genreactrix:settings"].forEach(type=>window.addEventListener(type,()=>refreshPortraitControlStation().catch(console.warn)));
+["genreactrix:image-record","genreactrix:batch","genreactrix:queue","genreactrix:bundle","genreactrix:post-processing","genreactrix:import-job","genreactrix:report","genreactrix:notification","genreactrix:settings"].forEach(type=>window.addEventListener(type,()=>refreshPortraitControlStation().catch(console.warn)));
 window.addEventListener("orientationchange",()=>setTimeout(()=>{refreshPortraitControlStation().catch(console.warn);renderTabletWorkbench();},120));
 
 function parseImageIntakeUrls(){ return document.getElementById("imageUrlList")?.value || ""; }
