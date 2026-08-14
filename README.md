@@ -1,3 +1,61 @@
+## v0.9.40.35 — Versioned AI Attempts + Artifacts
+
+This release performs the bounded AI-history data-layer migration after the accepted v0.9.40.34 Origin Pack pass. It preserves the existing current AI projection and 60/40 calculation while adding immutable, reconstructable AI execution history underneath it. No accepted layout is redesigned.
+
+### AI Attempt records
+
+- Adds `ai-artifact-engine.js` with persistent IndexedDB stores for AI Attempts and AI Artifacts.
+- One AI Attempt is recorded for each actual grouped AI execution (for example Reactions + Reactions Info, Themes + Themes Info, or Description).
+- Attempts retain Image ID, AI Job/Item references, component set, analyze/rerun behavior, input/context references, project/prompt configuration references, start/completion timestamps, status/error, provider/model information, output Artifact IDs, and exact Director guidance text when supplied.
+- Rerun attempts retain references to the prior current artifacts, preserving the pre-intervention AI take without copying it into a mutable latest-only field.
+- Theme failsafe attempts explicitly record `image+ai-description` mode and reference the Description artifact used as context.
+- Failed AI executions remain immutable failed Attempt records and do not manufacture successful Artifacts.
+
+### Versioned AI Artifacts
+
+- Artifacts are immutable per-image versions for Description, Themes, direct Reactions, Reactions Info, Themes Info, and derived combined Reactions.
+- Each artifact kind receives an independent monotonically increasing version per Image ID.
+- The existing `analysis.ai` Image Record payload remains the current/latest projection used by the UI; it now carries compact `artifactHistory` references to the current immutable artifacts and latest attempt.
+- Theme-only reruns create a new Theme version without replacing the current direct-Reaction version.
+- Direct-Reaction-only reruns create a new direct-Reaction version without replacing the current Theme version.
+- Description reruns do not overwrite Theme or Reaction artifacts.
+- Paired Info components share the same Attempt as the classification they explain and retain a dependency reference to that classification artifact.
+
+### Reconstructable 60/40 results
+
+- The Reaction 60/40 mathematics in `ai-analysis-engine.js` is unchanged.
+- Every derived combined-Reaction artifact records the exact Theme artifact ID/version and direct-Reaction artifact ID/version used to produce it, plus the hybrid diagnostic/method metadata.
+- A combined result can therefore be reconstructed as a research object even after either independent source is rerun later.
+- Deterministic tests prove the version chain: Theme v1 + Direct v1 → Combined v1; Theme-only rerun gives Theme v2 + Direct v1 → Combined v2; direct-only rerun gives Theme v2 + Direct v2 → Combined v3.
+
+### Migration of existing AI history
+
+- Existing pre-v0.9.40.35 `ai-analysis` / `ai-failed` History entries are migrated idempotently into Attempt/Artifact records.
+- New v0.9.40.35 History entries already carrying Attempt/Artifact references are skipped by the legacy migrator, preventing duplicate history on later startups.
+- If an older Image Record still has a current AI projection but corresponding generic History is incomplete, missing current artifacts are backfilled as explicitly marked `legacy-current-projection` artifacts. No synthetic AI call/Attempt is invented.
+- Migration runs in the background. A live AI execution waits only for that Image ID's own history linkage to be ready rather than blocking on migration of every Image Record in the project.
+- The new `genreactrix-ai-artifacts` database is included automatically by the existing project backup/restore mechanism because it already handles all `genreactrix-*` IndexedDB databases.
+
+### Diagnostics / preservation
+
+- AI Maintenance verification now includes Attempt/Artifact referential integrity and verifies that combined-Reaction dependencies are reconstructable.
+- Existing generic History entries are retained; new success/failure entries include the Attempt ID, Artifact refs, and exact Director guidance where applicable.
+- `styles.css` is byte-for-byte identical to v0.9.40.34.
+- No Origin, Pack, Queue/Buffer, Quarantine, Bundle, Inbox, Batch, Post-processing/Purgatory, Keep/Recycle, Worker prompt, Director Evaluation, or accepted Portrait/Landscape geometry is redesigned.
+- The current AI analysis UI and rerun controls are unchanged.
+
+### Verification performed
+
+- JavaScript syntax validation passes across project and Worker JavaScript.
+- Artifact-engine tests pass for independent version numbering, failed attempts, exact guidance retention, combined dependency reconstruction, legacy History migration idempotence, and current-projection fallback without fabricated Attempts.
+- Full AI-engine integration tests pass for initial Reactions/Themes/Description analysis, Theme-only failsafe rerun, direct-Reaction-only rerun, and guided Description rerun.
+- Integration tests confirm prior-artifact references are retained on reruns and all successful generic AI History events carry immutable Attempt references.
+- Layout-preservation and source-diff checks are recorded in the release audit.
+
+### Real-device acceptance gate
+
+No new UI is required for this data-layer pass. The safest phone smoke test is one normal AI analysis followed by any ordinary rerun you already intended to perform. The visible AI result should behave exactly as before. Maintenance/backup should continue to work normally; the new history becomes available underneath the current projection for future Reports/research work.
+
 ## v0.9.40.34 — Origin Pack Records + File Picker Cleanup
 
 This release performs the bounded Origin Pack data migration after v0.9.40.33 and includes the previously agreed small file-picker cleanup. It does not redesign any accepted layout.

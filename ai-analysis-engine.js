@@ -111,9 +111,17 @@
   for(const group of groups){
     const requested=group.map(c=>c.component);
     const componentBehaviors=Object.fromEntries(group.map(c=>[c.component,c.behavior]));
+    const artifactEngine=window.genreactrixAiArtifactEngine;
+    let artifactAttempt=null,artifactAttemptCompleted=false;
     try{
-      const existingDescription=String(record.analysis?.ai?.components?.description||record.analysis?.ai?.description||'').trim();
-      const payload=await window.GenreactrixCloudApi.analyzeImage({imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,1200),themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',...input},window.GenreactrixCloudApi.getKey());
+      if(!artifactEngine)throw new Error('AI Attempt/Artifact history engine is unavailable');
+      await artifactEngine.ensureImageReady?.(record.id);
+      record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
+      const previous=record.analysis?.ai||{},guidance=String(job.config.analysisGuidance||'').trim().slice(0,1200);
+      const existingDescription=String(previous.components?.description||previous.description||'').trim();
+      const mode=artifactEngine.attemptMode({requested,componentBehaviors,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),directReactionUseAnalysis:Boolean(job.config.directReactionUseAnalysis),directorGuidance:guidance});
+      artifactAttempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode,directorGuidance:guidance,inputRefs:{imageId:record.id,sourceKind:input.imageUrl?'linked-url':'local-working-copy',descriptionArtifact:previous.artifactHistory?.currentArtifacts?.description||null,priorArtifacts:clone(previous.artifactHistory?.currentArtifacts||{})},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'60/40'}});
+      const payload=await window.GenreactrixCloudApi.analyzeImage({imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',...input},window.GenreactrixCloudApi.getKey());
       const result=payload.result||payload.report||payload;
       if(!result||typeof result!=='object')throw new Error('AI provider returned no structured result');
       for(const c of group)if(!Object.prototype.hasOwnProperty.call(result.components||{},c.component))throw new Error(`AI provider omitted ${c.component}`);
@@ -125,17 +133,19 @@
       if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
 
       record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
-      const previous=record.analysis?.ai||{};
+      const latest=record.analysis?.ai||previous;
       const componentUpdates={};
       for(const c of group){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];componentUpdates[field]='current'}
-      const mergedComponents=applyHybridReactions({...(previous.components||{}),...returned});
-      const analysis={...previous,components:mergedComponents,provider:result.provider||previous.provider||{},model:result.model||result.provider?.model||previous.model||'',promptVersions:{...(previous.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(previous.requested||[]),...requested])],researchConfiguration:{...(previous.researchConfiguration||{}),...(result.researchConfiguration||{})},recordedAt:now(),jobId:job.id};
+      const mergedComponents=applyHybridReactions({...(latest.components||{}),...returned});
+      const stored=await artifactEngine.recordSuccess({record,attemptId:artifactAttempt.id,requested,returned,mergedComponents,result,mode});artifactAttemptCompleted=true;
+      const analysis={...latest,components:mergedComponents,provider:result.provider||latest.provider||{},model:result.model||result.provider?.model||latest.model||'',promptVersions:{...(latest.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(latest.requested||[]),...requested])],researchConfiguration:{...(latest.researchConfiguration||{}),...(result.researchConfiguration||{})},artifactHistory:stored.artifactHistory,recordedAt:now(),jobId:job.id};
       window.genreactrixImageRecordEngine.attachAI(record.id,analysis,componentUpdates);
-      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{analysis:{components:{...returned,...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id},componentUpdates,partial:false}});
+      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{attemptId:artifactAttempt.id,artifactRefs:stored.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:{...returned,...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id,artifactHistory:stored.artifactHistory},componentUpdates,directorGuidance:guidance,partial:false}});
     }catch(error){
       const message=`${requested.join('+')}: ${String(error.message||error)}`;errors.push(message);
+      if(artifactAttempt&&!artifactAttemptCompleted)await artifactEngine?.failAttempt?.(artifactAttempt.id,message).catch(()=>{});
       for(const c of group){c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
-      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:message,payload:{error:message,components:requested}}).catch(()=>{});
+      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:message,payload:{attemptId:artifactAttempt?.id||null,error:message,components:requested,directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,1200)}}).catch(()=>{});
       if(isGlobalProviderFailure(message))break;
     }
   }
@@ -143,7 +153,7 @@
   item.state=errors.length?'failed':'complete';item.error=errors.join(' | ');await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,item.state,{error:item.error});window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId||`${item.id}:attempt:${item.attempts}`,error:item.error,globalFailure:isGlobalProviderFailure(item.error)});await window.genreactrixBundleEngine?.maybeAutoBundle?.();return item.state;
  }
 
- function isGlobalProviderFailure(message){return /unauthorized|analysis access is not configured|ai worker url is not configured|failed to fetch|networkerror|load failed|workers ai binding ai is not configured|rate limit|quota/i.test(String(message||''))}
+ function isGlobalProviderFailure(message){return /unauthorized|analysis access is not configured|ai worker url is not configured|failed to fetch|networkerror|load failed|workers ai binding ai is not configured|rate limit|quota|ai attempt\/artifact history|ai artifact transaction|indexeddb/i.test(String(message||''))}
  async function run(jobId){
   let job=(await all(JOBS)).find(j=>j.id===jobId);
   if(!job||job.state==='running')return;
@@ -161,7 +171,8 @@
    catch(error){
     item.state='failed';item.error=String(error.message||error);await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'failed',{error:item.error});job.processing=0;job.failed++;
     for(const c of item.components){if(c.state==='queued'||c.state==='processing')c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(item.imageId,field,'failed')}
-    await window.genreactrixHistoryEngine.append({imageId:item.imageId,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:item.error,payload:{error:item.error,components:item.components}}).catch(()=>{});
+    let pipelineAttemptId=null;try{const ae=window.genreactrixAiArtifactEngine;if(ae){const requested=(item.components||[]).map(c=>c.component),componentBehaviors=Object.fromEntries((item.components||[]).map(c=>[c.component,c.behavior])),guidance=String(job.config.analysisGuidance||'').trim().slice(0,1200),mode=ae.attemptMode({requested,componentBehaviors,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),directReactionUseAnalysis:Boolean(job.config.directReactionUseAnalysis),directorGuidance:guidance});const attempt=await ae.beginAttempt({imageId:item.imageId,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode:`pipeline:${mode}`,directorGuidance:guidance,inputRefs:{imageId:item.imageId},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'60/40'}});pipelineAttemptId=attempt.id;await ae.failAttempt(attempt.id,item.error)}}catch(historyError){console.warn('AI pipeline failure attempt could not be recorded',historyError)}
+    await window.genreactrixHistoryEngine.append({imageId:item.imageId,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:item.error,payload:{attemptId:pipelineAttemptId,error:item.error,components:item.components,directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,1200)}}).catch(()=>{});
     window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId||`${item.id}:attempt:${item.attempts||1}`,error:item.error,globalFailure:isGlobalProviderFailure(item.error)});
     if(isGlobalProviderFailure(item.error))fatalMessage=item.error;
    }
@@ -407,7 +418,7 @@
   return{exported:records.length,moved:records.length,filename};
  }
 
- async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});return{jobCount:jobs.length,itemCount:items.length,issueCount:issues.length,issues}}
+ async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});const history=await window.genreactrixAiArtifactEngine?.verify?.().catch(error=>({attemptCount:0,artifactCount:0,issues:[{type:'ai-artifact-history-verification-failed',severity:'attention',summary:String(error?.message||error)}]}))||{attemptCount:0,artifactCount:0,issues:[]};issues.push(...(history.issues||[]));return{jobCount:jobs.length,itemCount:items.length,attemptCount:history.attemptCount||0,artifactCount:history.artifactCount||0,issueCount:issues.length,issues}}
  const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainAutomaticFlow,maintainBuffer,maintainActiveMode,bufferPolicy,planBufferStep,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());window.addEventListener('genreactrix:bundle',()=>render());
  window.addEventListener('genreactrix:setting',event=>{if(['queue.flow.enabled','queue.bundle.size','ai.lookAhead.enabled','ai.buffer.target','ai.buffer.refillThreshold','ai.lookAhead.priority'].includes(event.detail?.id))setTimeout(()=>maintainActiveMode().catch(console.warn),0)});
 })();
