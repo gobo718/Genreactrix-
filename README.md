@@ -1,105 +1,131 @@
-# Genreactrix v0.9.40.37 — Lifecycle Closure + Explicit Batch Membership
+# Genreactrix v0.9.40.38 — Portable Persistence + Migration Hardening
 
-14 August 2026
+Accepted source baseline: **v0.9.40.37**.
 
-## Purpose
+This release repairs the browser-local backup/restore boundary before the final integration/layout work. It does not add cloud synchronization and does not redesign any Genreactrix layout.
 
-This pass closes the remaining live lifecycle-ownership mismatch before Reports work and repairs an integration omission discovered while auditing v0.9.40.36.
+## What changed
 
-No layout redesign is included.
+### 1. Portable full-data backup format
 
-## 1. v0.9.40.36 Project / Runtime boundary is now actually loaded
+A new nonvisual `persistence-engine.js` owns complete project backup and restore.
 
-The v0.9.40.36 release contained `project-runtime-engine.js`, and the source files had been updated to use the Project / Runtime boundary, but `index.html` did not load the new engine. Several modified scripts also retained older cache-version query strings.
+The backup format is now schema version 3 (`genreactrix-portable-idb-v1`) and preserves:
 
-v0.9.40.37 fixes that integration defect:
+- every `genreactrix-*` IndexedDB database discovered by the browser;
+- database versions;
+- object-store key paths and auto-increment behavior;
+- primary keys, including out-of-line keys;
+- index names, key paths, uniqueness, and multi-entry rules;
+- normal structured data;
+- Blob/File bytes and MIME types;
+- ArrayBuffer / typed-array bytes;
+- project-scoped local-storage mirrors needed by the current local model;
+- Project/Runtime scope metadata.
 
-- `project-runtime-engine.js` loads before Settings and the operational record engines that use it.
-- Project Context and Runtime Instance initialization therefore occur on startup.
-- The source files changed by the Project / Runtime migration receive a v0.9.40.37 cache key so an older browser cache cannot silently substitute the pre-boundary implementation.
-- Visible build labels now correctly report v0.9.40.37 in both folded and unfolded shells.
+Binary data is explicitly encoded rather than passed through ordinary JSON serialization. This fixes the old failure mode where an IndexedDB `Blob` became `{}` in a JSON backup.
 
-This remains a local architecture boundary. It does not add cross-browser/server synchronization.
+### 2. Backup integrity verification
 
-## 2. Batch membership is explicit
+Each portable backup carries a SHA-256 integrity digest plus manifest counts for:
 
-Canonical rule: eligible Inbox work is a candidate population; a Batch is the explicitly tagged/selected subset that the Director commits together.
+- databases;
+- records;
+- binary objects;
+- binary bytes;
+- project/runtime/mixed database scope counts.
 
-v0.9.40.37 separates those two concepts in the Batch record:
+A full restore refuses a legacy backup whose binary/schema safety cannot be verified and refuses a backup whose integrity digest does not match.
 
-- `candidateImageIds` = currently loaded eligible Inbox candidates.
-- `imageIds` = explicit draft Batch membership selected by the Director.
-- Loading eligible Inbox work no longer silently makes every candidate a Batch member.
-- Candidate refresh preserves explicit selections that remain eligible.
-- Checkbox changes persist draft Batch membership.
-- Select Visible explicitly adds/removes the currently visible candidate set.
-- Batch validation fails clearly when no images are selected.
-- At submission, the selected `imageIds` set is frozen and becomes the committed historical Batch membership.
+### 3. Real full-database restore
 
-### Legacy draft safety
+Maintenance → Restore backup now delegates to the portable persistence engine.
 
-Pre-v0.9.40.37 draft Batches could not distinguish “loaded because eligible” from “explicitly selected.” During migration their old `imageIds` are preserved as `candidateImageIds`, while draft `imageIds` are cleared. The Director must select the intended members rather than allowing the migration to guess.
+Restore preserves the backed-up object-store schema instead of guessing a schema from the first row.
 
-Submitted/submitting historical Batch membership is preserved.
+Two modes remain:
 
-## 3. Director completion no longer becomes a lifecycle place
+- **Merge by immutable IDs** — permitted only when the backup and current Project IDs match. Existing matching records are updated and unrelated existing records remain.
+- **Replace current project** — creates a verified emergency backup first, removes the current Genreactrix local databases, recreates the backed-up databases from their recorded schema, restores all records/binary assets, adopts the backed-up Project, and reloads the app.
 
-Director completion (`unclassified`, `partial`, `complete`, etc.) belongs to the Director Evaluation record, not `workflow.stage`.
+If Merge encounters a backed-up database that does not yet exist locally, the database is created from the recorded backup schema rather than creating an unusable empty database.
 
-v0.9.40.37:
+### 4. Project identity remains distinct from Runtime identity
 
-- keeps an Inbox-owned image at `inbox-working` when Director classification is saved;
-- stores the Director completion value in the Director analysis/metadata;
-- preserves `processedAt` as evaluation-completion metadata;
-- stops writing `director-complete` as a new lifecycle stage.
+A restore may move/copy a Project and its physical working assets to another browser/runtime.
 
-## 4. Reject is an Inbox terminal state, not a separate storage place
+The backed-up `projectId` is restored. The target browser's `runtimeId` is **not replaced by the source Runtime ID**. Source Runtime records remain useful provenance; the target Runtime registers itself separately after restore.
 
-Reject remains mutually exclusive with Review / Depot / Delete and does not move an image into a synthetic `rejected-hold` lifecycle place.
+Restored local blobs are then registered as physical asset locations on the target Runtime.
 
-New Reject actions retain the image's Inbox lifecycle location while the Reject terminal is represented by its authoritative attributes. Existing `rejected-hold` records are migrated back to their prior Inbox stage.
+The one-time asset backfill marker is now keyed by both Project ID and Runtime ID so switching/replacing Projects on one browser cannot suppress the required local asset scan.
 
-## 5. Lifecycle v2 migration and verifier
+### 5. Project data is brought current before backup
 
-The lifecycle migrator now normalizes legacy active-state values including:
+Before a portable backup is captured, the existing Project migration helpers finish copying known legacy custom vocabulary/evaluation keys into Project-owned storage and finish Project-scope record stamping. Backup therefore snapshots the canonical logical Project state rather than racing those background migrations.
 
-- `available` / `imported` → Queue Waiting;
-- AI-complete legacy states → Queue Staged or Inbox where legacy Bundle evidence requires it;
-- `director-complete`, `complete`, `partial`, `unclassified`, `blocked` Director-state leakage → Inbox Working when Director/Inbox evidence exists;
-- `rejected-hold` → prior Inbox lifecycle stage.
+### 6. Settings / Maintenance UI behavior
 
-The lifecycle checker now reports:
+- Settings → Backups → **Create data backup** now creates the portable verified format.
+- Settings file import remains a settings-only operation.
+- A full backup selected there is verified and redirected to Maintenance for full restore rather than silently importing only its settings.
+- Maintenance restore preview displays verified database, record, binary-object, and binary-byte counts.
+- Restore creates a portable emergency backup before making changes.
+- The page reloads after a successful full restore so all in-memory engine caches are rebuilt from restored storage.
 
-- noncanonical active lifecycle stages;
-- multiple simultaneous Inbox terminal states;
-- active Bundle membership whose lifecycle owner is inconsistent with Inbox/Post-processing.
+Full data backups may contain the locally stored AI access key because that key is part of the local settings database. Treat backup files as private project data.
 
-## Preservation gates
+## What did not change
 
-- Existing 60/40 AI analysis implementation is byte-for-byte unchanged from v0.9.40.36.
-- `styles.css` is byte-for-byte unchanged from v0.9.40.36.
-- Folded shell structural count remains 1,549 non-script elements and 674 unique IDs.
-- Unfolded shell structural count remains 13 non-script elements and 5 unique IDs.
-- No Reports redesign is included.
-- No server/account synchronization is introduced.
+- 60/40 Reaction calculation.
+- AI Attempt/Artifact version semantics.
+- Queue / Bundle / Inbox / Batch ownership.
+- Explicit Batch membership introduced in v0.9.40.37.
+- Director Review / Depot / Delete / Reject behavior.
+- Keep / Recycle / Purgatory semantics.
+- Origin Packs / Dupe / Repeat / Quarantine behavior.
+- Layout geometry, CSS, or breakpoints.
+- Reports implementation.
+- Cloud/server synchronization (still deferred).
 
 ## Deterministic verification completed
 
-- Project / Runtime identity test: pass.
-- Project-scoped Settings + mixed-scope backup test: pass.
-- Explicit Batch candidate/membership migration and selection test: pass.
-- Lifecycle v2 migration and canonical-stage verifier test: pass.
-- Director completion ownership test: pass.
-- All JavaScript syntax checks: pass.
-- Script load-order and cache-version audit: pass.
-- CSS identity check: pass.
-- AI analysis / 60-40 implementation identity check: pass.
+- Portable codec round-trip: Blob, typed array, Date, BigInt, Map — PASS.
+- Full IndexedDB portable round-trip: indexed logical record + out-of-line-key Blob — PASS.
+- Blob MIME type and all bytes restored byte-for-byte — PASS.
+- Database version, object-store key path, and index restored — PASS.
+- Tampered backup rejected by SHA-256 verification — PASS.
+- Replace restore adopts Project ID but retains target Runtime ID — PASS.
+- Merge across different Project IDs rejected — PASS.
+- Project/Runtime identity regression — PASS.
+- Project Settings regression — PASS.
+- AI Artifact history regression — PASS.
+- AI rerun/version-chain integration regression — PASS.
+- Explicit Batch membership regression — PASS.
+- Director state regression — PASS.
+- Lifecycle state regression — PASS.
+- All top-level JavaScript files parse — PASS.
 
-## Device acceptance check
+## Layout / behavior preservation audit
 
-1. Open v0.9.40.37 and confirm the visible build label says v0.9.40.37.
-2. Run ordinary Origin → Queue → AI work and confirm behavior is unchanged.
-3. Send at least two images through Bundle into Inbox and give them Batch-eligible outcomes (Depot/Delete/Reject).
-4. Open Batch and choose **Load eligible Inbox**. They should appear as candidates, but should not all be preselected automatically.
-5. Select only one candidate and Batch it. Only that selected image should be committed; the other eligible Inbox image should remain waiting for a later Batch.
-6. Optional: open Settings → Project and confirm Project ID and Runtime ID are separate values.
+Against accepted v0.9.40.37:
+
+- `styles.css` is byte-for-byte identical.
+- `ai-analysis-engine.js` is byte-for-byte identical; the 60/40 implementation was not touched.
+- Non-script HTML structural sequence is identical: 1,549 elements.
+- Existing IDs/classes/order are unchanged; only backup explanatory text, visible build number, and script loading/version references changed.
+- One new release file: `persistence-engine.js`.
+- Release contains 73 files total and remains shallow except for the required Worker folder.
+
+## Real-device acceptance gate
+
+v0.9.40.37 remains the accepted rollback until v0.9.40.38 is tested on-device.
+
+Minimum safe test:
+
+1. Open v0.9.40.38 over existing v0.9.40.37 data and confirm normal Origin → Queue → AI / Inbox behavior still works.
+2. Settings → Backups → Create data backup. Confirm a backup file downloads.
+3. Open Maintenance → Restore backup and select that file. The preview must say **Verified** and show nonzero binary asset/byte counts when the project contains image blobs.
+4. Preferably perform **Replace** in a secondary browser/runtime that does not contain irreplaceable local work. After automatic reload, verify the Project ID, settings/custom vocabulary, images/thumbnails, AI history, and normal workflow are present.
+5. If a secondary runtime is not available, do not risk valuable browser-local data merely for acceptance; creation + verified preview can be accepted provisionally and the cross-runtime restore gate can remain pending.
+
