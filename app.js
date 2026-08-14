@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.38";
+const GENREACTRIX_BUILD="v0.9.40.39";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -3364,7 +3364,9 @@ window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixProjectRuntimeEngine?.ready?.then(()=>{window.genreactrixImageRecordEngine?.migrateScope?.();return window.genreactrixImagesEngine?.backfillRuntimeAssetLocations?.()}).catch(error=>console.warn('Project/runtime image migration could not complete',error));
 if(window.genreactrixSettingsEngine?.ready)window.genreactrixOriginPackEngine?.migrateLegacy?.().catch(error=>console.warn('Origin Pack migration could not complete',error));
 else window.addEventListener('genreactrix:settings-ready',()=>window.genreactrixOriginPackEngine?.migrateLegacy?.().catch(error=>console.warn('Origin Pack migration could not complete',error)),{once:true});
-window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
+window.genreactrixImagesStartupReady=window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false});
+window.genreactrixImagesStartupReady.then(()=>rehydrateLandscapeFeed()).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
+window.addEventListener('genreactrix:housekeeping',()=>{rehydrateLandscapeFeed().catch(console.warn);renderPortraitControlStation();});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
   if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported","defective-finalized"].includes(type))scheduleLandscapeRehydrate();
