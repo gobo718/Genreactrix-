@@ -1,3 +1,45 @@
+## v0.9.40.34 — Origin Pack Records + File Picker Cleanup
+
+This release performs the bounded Origin Pack data migration after v0.9.40.33 and includes the previously agreed small file-picker cleanup. It does not redesign any accepted layout.
+
+### First-class Origin Pack records
+
+- Adds `origin-pack-engine.js` with persistent IndexedDB Pack Records.
+- Every new intake/import operation creates a stable Pack ID before admission begins.
+- A Pack records the originating runtime/machine identity, project ID, intake mode, source type/label/context, Import Job ID, candidate count, admitted Image IDs, Origin Gate IDs, status, and timestamps.
+- New Image Records retain the Pack ID in Origin/source metadata and retain an `originPackIds` history list so later Pack associations can be reconstructed without overwriting the original association.
+- Dupe Overrule, successful manual Import Failure Retry, and deliberate Repeat Re-evaluation update Pack membership when they admit/return an image to processing.
+- Existing v0.9.40.33 Import Jobs are migrated idempotently into historical Pack Records after project settings are ready. Existing Image Records are linked to those Packs without changing their lifecycle states or creating duplicate Image Records.
+- Pack remains strictly the Origin grouping term. Queue → Inbox grouping remains Bundle.
+- The new `genreactrix-origin-packs` database is automatically included by the existing project backup mechanism because backups already include all `genreactrix-*` IndexedDB databases.
+
+### Add Folder removal / Add File behavior
+
+- Removes the live directory-picker implementation completely: no `showDirectoryPicker()`, no `webkitdirectory`, and no Android folder fallback path.
+- The shared intake picker is now an ordinary `multiple` image-file input. On Android this is the working path where the system picker can offer **Select all**.
+- Home Quick 1 is now **Add File** instead of **Folder · Add**. Existing saved presets using the old action/label are migrated in memory to the new file action.
+- The Origin intake dialog now says **Add File**.
+- The Origin Add panel's former folder button is now **Choose Files** (multi-select); the existing **Choose File** single-file staging button remains available.
+- All file-selection entry points now go through the Import Engine, so they all create Pack/Import Job records consistently.
+- Legacy DOM IDs containing the word `folder` are intentionally retained only to preserve the accepted HTML/CSS structure; they no longer request or enumerate directories.
+
+### Preservation / verification
+
+- `styles.css` is byte-for-byte identical to v0.9.40.33.
+- `index.html` retains the same 1,549 non-script element tag/ID/class signature and the same 674 element IDs as v0.9.40.33. Only visible labels/attributes, build metadata, and one nonvisual script include changed.
+- No breakpoint, sizing, spacing, matrix, Director, Portrait, Landscape, or unfolded-layout geometry changed.
+- All JavaScript files pass `node --check`.
+- Mocked Import integration test passes for both file selection and URL intake: Pack is created, Pack ID is handed into the Images/Origin path, Import Job retains it, and final Pack membership is recorded.
+- Mocked Origin Pack engine test passes: Pack creation, runtime/project identity, member linking, completion, legacy Import Job migration, Image Record backfill, and integrity verification all succeed.
+- Live source audit confirms there is no active `showDirectoryPicker`, `webkitdirectory`, folder fallback, or `Choose folder` UI path.
+
+### Real-device acceptance
+
+1. On Home, confirm the old folder quick action now reads **Add File**.
+2. Tap **Add File** and select one or several images using the normal Android file picker. `Select all` may be used there when offered by Android.
+3. Confirm normal Origin gating and Queue admission still behave as in v0.9.40.31+.
+4. For the simplest Pack continuity check, import two new files together, then continue using Genreactrix normally; no new Pack UI is required because this pass is the data-object layer, not a layout pass.
+
 ## v0.9.40.33 — Queue Flow + Buffer Semantics
 
 This release performs the bounded Queue operating-behavior migration after v0.9.40.32. It separates normal Automatic Flow-through from optional Buffer behavior, makes Refill Threshold operational, and gives Queue Priority a concrete ordering meaning without changing image importance or layout geometry.

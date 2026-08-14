@@ -1862,110 +1862,32 @@ $("packPickerList")?.addEventListener("click",async event=>{
 renderPortraitInboxControls();
 window.addEventListener("genreactrix:bundle",()=>{renderPortraitInboxControls();scheduleLandscapeRehydrate();});
 window.addEventListener("genreactrix:lifecycle",()=>renderPortraitInboxControls());
-async function loadImageFolder(fileList,limit=null){
-  const importResult=window.pendingImportEngineMode?await window.genreactrixImportEngine.runFiles(fileList,{limit}):null;
-  window.pendingImportEngineMode=false;
-  const records=importResult?.records||await window.genreactrixImagesEngine.importFiles(fileList,{limit}),gates=importResult?.gates||records.originGates||[];
+async function loadImageFiles(fileList,limit=null){
+  const result=await window.genreactrixImportEngine.runFiles(fileList,{limit}),records=result?.records||[],gates=result?.gates||[];
   await rehydrateLandscapeFeed({preserveId:records[0]?.id||null});
   window.genreactrixAiAnalysisEngine?.maintainActiveMode?.();
   setPortraitStationStatus(`${records.length} image${records.length===1?"":"s"} imported into Queue${gates.length?` · ${gates.length} stopped at Origin`:''}.`);
   if(gates.some(g=>g.status==='pending-review'||g.status==='blocked-repeat'||g.type==='import-failure'))window.genreactrixImagesConsole?.openGates?.();
+  return result;
 }
 let pendingPortraitImportLimit=null;
-const IMAGE_FOLDER_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
-function folderFileLooksLikeImage(file){
-  const type=String(file?.type||"").toLowerCase();
-  return type.startsWith("image/") || IMAGE_FOLDER_FILE_RE.test(String(file?.name||""));
-}
-async function collectDirectoryImageFiles(directoryHandle,limit=null){
-  const files=[];
-  const max=limit==null?Infinity:Math.max(1,Number(limit)||1);
-  async function walk(handle){
-    for await(const entry of handle.values()){
-      if(files.length>=max)break;
-      if(entry.kind==="file"){
-        const file=await entry.getFile();
-        if(folderFileLooksLikeImage(file))files.push(file);
-      }else if(entry.kind==="directory"){
-        await walk(entry);
-      }
-    }
-  }
-  await walk(directoryHandle);
-  return files;
-}
-function isAndroidFolderPickerEnvironment(){
-  const ua=String(navigator.userAgent||"");
-  const platform=String(navigator.userAgentData?.platform||"");
-  return /Android/i.test(ua)||/Android/i.test(platform);
-}
-function openFolderFilesFallback({limit=null,importEngineMode=false}={}){
+function chooseImageFiles({limit=null}={}){
   pendingPortraitImportLimit=limit==null?null:Math.max(1,Number(limit)||1);
-  window.pendingImportEngineMode=Boolean(importEngineMode);
-  setPortraitStationStatus("Select the image files from the folder. Use Select all in the Android file picker when available.");
-  $("folderFilesFallback")?.click();
-  return true;
-}
-async function chooseImageFolder({limit=null,importEngineMode=false}={}){
-  // On this project's Android/Chrome target, both webkitdirectory and
-  // showDirectoryPicker can return an empty selection for a folder that
-  // visibly contains images. Use a plain multi-file picker on Android so the
-  // browser hands Genreactrix the actual File objects; Genreactrix then filters
-  // images and applies the requested import limit.
-  if(isAndroidFolderPickerEnvironment())return openFolderFilesFallback({limit,importEngineMode});
-  if(typeof window.showDirectoryPicker==="function"){
-    try{
-      const handle=await window.showDirectoryPicker({id:"genreactrix-images",mode:"read",startIn:"pictures"});
-      const files=await collectDirectoryImageFiles(handle,limit);
-      if(!files.length){
-        setPortraitStationStatus("Folder picker returned 0 image files. Choose the folder again using the fallback file selector.");
-        return false;
-      }
-      window.pendingImportEngineMode=Boolean(importEngineMode);
-      await loadImageFolder(files,limit);
-      return true;
-    }catch(error){
-      if(error?.name==="AbortError")return false;
-      setPortraitStationStatus(`Folder import failed: ${error.message||error}`);
-      return false;
-    }
-  }
-  pendingPortraitImportLimit=limit==null?null:Math.max(1,Number(limit)||1);
-  window.pendingImportEngineMode=Boolean(importEngineMode);
+  setPortraitStationStatus("Select image files. Use Select all in the Android file picker when available.");
   $("folderInput")?.click();
   return true;
 }
-window.genreactrixChooseImageFolder=chooseImageFolder;
-$("folderInput").addEventListener("change",async e=>{
+window.genreactrixChooseImageFiles=chooseImageFiles;
+$("folderInput")?.addEventListener("change",async e=>{
   try{
-    if(!e.target.files?.length){
-      setPortraitStationStatus("Folder picker returned 0 files. Use Choose folder again and select the image files from that folder.");
-      return;
-    }
-    await loadImageFolder(e.target.files,pendingPortraitImportLimit);
-  }catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
-  finally{
-    pendingPortraitImportLimit=null;
-    e.target.value="";
-  }
+    if(!e.target.files?.length){setPortraitStationStatus("No image files were selected.");return;}
+    await loadImageFiles(e.target.files,pendingPortraitImportLimit);
+  }catch(error){setPortraitStationStatus(`Import failed: ${error.message||error}`);}
+  finally{pendingPortraitImportLimit=null;e.target.value="";}
 });
-$("folderFilesFallback")?.addEventListener("change",async e=>{
-  try{
-    const selected=[...(e.target.files||[])];
-    const imageCount=selected.filter(folderFileLooksLikeImage).length;
-    if(!imageCount){
-      setPortraitStationStatus("No image files were selected.");
-      return;
-    }
-    setPortraitStationStatus(`${imageCount} image file${imageCount===1?"":"s"} selected. Importing…`);
-    await loadImageFolder(selected,pendingPortraitImportLimit);
-  }catch(error){ setPortraitStationStatus(`Import failed: ${error.message||error}`); }
-  finally{
-    pendingPortraitImportLimit=null;
-    e.target.value="";
-  }
+$("tabletFolderInput")?.addEventListener("change",async e=>{
+  try{if(e.target.files?.length)await loadImageFiles(e.target.files,null)}catch(error){setPortraitStationStatus(`Import failed: ${error.message||error}`)}finally{e.target.value=""}
 });
-$("tabletFolderInput")?.addEventListener("change",e=>loadImageFolder(e.target.files));
 
 
 
@@ -2952,6 +2874,7 @@ function createImageRecordEngine(){
     const ext=record.metadata?.extended||{};
     const currentBundles=[...(Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:[]),...(Array.isArray(ext.inboxPackIds)?ext.inboxPackIds:[])];
     const historyBundles=[...(Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:[]),...(Array.isArray(ext.inboxHistoryPackIds)?ext.inboxHistoryPackIds:[])];
+    const originPacks=[...(Array.isArray(ext.originPackIds)?ext.originPackIds:[]),record.source?.packId,ext.originPackId].filter(Boolean).map(String);
     const primaryCurrent=["aiReactions","aiThemes","aiDescription"].every(key=>record.components?.[key]==="current");
     const rawStage=record.workflow?.stage||({available:"available",queued:"queued",processed:"director-complete"}[record.lifecycleState]||record.lifecycleState||"imported");
     let stage=rawStage;
@@ -2978,6 +2901,7 @@ function createImageRecordEngine(){
         originalFilename:record.source?.originalFilename||record.name||"",
         importMethod:record.source?.importMethod||record.acquisitionMode||"unknown",
         importJobId:record.source?.importJobId||record.metadata?.extended?.importJobId||null,
+        packId:record.source?.packId||originPacks[0]||null,
         firstBatchId:sourceBatch,
         dataset:record.source?.dataset||null,
         license:record.source?.license||null,
@@ -3026,7 +2950,7 @@ function createImageRecordEngine(){
       },
       components:{...defaultComponents(),...(record.components||{})},
       analysis:{ai:record.analysis?.ai||null,director:record.analysis?.director||null},
-      metadata:{core:record.metadata?.core||{},extended:{...ext,inboxBundleIds:Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:[...new Set(currentBundles.map(String))],inboxHistoryBundleIds:Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:[...new Set(historyBundles.map(String))],lastInboxBundleId:ext.lastInboxBundleId||ext.lastInboxPackId||null}},
+      metadata:{core:record.metadata?.core||{},extended:{...ext,originPackId:ext.originPackId||record.source?.packId||originPacks[0]||null,originPackIds:[...new Set(originPacks)],inboxBundleIds:Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds:[...new Set(currentBundles.map(String))],inboxHistoryBundleIds:Array.isArray(ext.inboxHistoryBundleIds)?ext.inboxHistoryBundleIds:[...new Set(historyBundles.map(String))],lastInboxBundleId:ext.lastInboxBundleId||ext.lastInboxPackId||null}},
       batchIds,
       timestamps:{
         savedAt:record.timestamps?.savedAt||record.savedAt||null,
@@ -3119,16 +3043,16 @@ function createImagesEngine(){
   async function admitOriginCandidate({blob,source={},name='',mode='temporary',fingerprint='',thumbnailHash='',thumbnail=null,originGateId=null}={}){
     if(!blob)throw new Error("Origin candidate has no readable full-resolution image");
     const id=createImageId(source.type==='url'?'url':'local'),keepFull=mode!=='link'&&mode!=='linked',stored=await storeImportedImage({id,blob,thumbnail,keepFull});
-    const record=records.create({id,name:name||source.originalFilename||'Imported image',source:{...source,importJobId:source.importJobId||null},storage:{mode:keepFull?'temporary':'linked',temporaryKey:keepFull?id:null,hyperlink:source.originalUrl||'',...stored,mimeType:blob.type||source.mimeType||'',size:blob.size||source.size||0,lastModified:Number(source.lastModified)||0,hash:fingerprint||''},workflow:{stage:'queued'},attributes:{hyperlinkOnly:!keepFull},metadata:{extended:{originGateId:originGateId||null,originThumbnailHash:thumbnailHash||''}},batchIds:[]});
+    const record=records.create({id,name:name||source.originalFilename||'Imported image',source:{...source,importJobId:source.importJobId||null},storage:{mode:keepFull?'temporary':'linked',temporaryKey:keepFull?id:null,hyperlink:source.originalUrl||'',...stored,mimeType:blob.type||source.mimeType||'',size:blob.size||source.size||0,lastModified:Number(source.lastModified)||0,hash:fingerprint||''},workflow:{stage:'queued'},attributes:{hyperlinkOnly:!keepFull},metadata:{extended:{originGateId:originGateId||null,originPackId:source.packId||null,originPackIds:source.packId?[source.packId]:[],originThumbnailHash:thumbnailHash||''}},batchIds:[]});
     activeSessionIds=[...new Set([...activeSessionIds,record.id])];return record;
   }
   const IMAGE_FILE_RE=/\.(?:jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i;
   function isImageFile(file){const type=String(file?.type||"").toLowerCase();return type.startsWith("image/")||IMAGE_FILE_RE.test(String(file?.name||""))}
   function imageMimeForFile(file){const type=String(file?.type||"").toLowerCase();if(type.startsWith("image/"))return type;const name=String(file?.name||"").toLowerCase();if(/\.jpe?g$/.test(name))return "image/jpeg";if(/\.png$/.test(name))return "image/png";if(/\.gif$/.test(name))return "image/gif";if(/\.webp$/.test(name))return "image/webp";if(/\.bmp$/.test(name))return "image/bmp";if(/\.avif$/.test(name))return "image/avif";if(/\.heic$/.test(name))return "image/heic";if(/\.heif$/.test(name))return "image/heif";return type}
-  async function importFiles(fileList,{limit=null,importJobId=null}={}){
+  async function importFiles(fileList,{limit=null,importJobId=null,packId=null}={}){
     const files=[...fileList].filter(isImageFile),selected=Number.isFinite(limit)&&limit>0?files.slice(0,limit):files,created=[],gates=[];
     for(const file of selected){
-      const source={type:'file',originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:'temporary-copy',importJobId:importJobId||null,firstBatchId:null,size:file.size,lastModified:file.lastModified,mimeType:imageMimeForFile(file)};
+      const source={type:'file',originalLocation:file.webkitRelativePath||file.name,originalFilename:file.name,importMethod:'temporary-copy',importJobId:importJobId||null,packId:packId||null,firstBatchId:null,size:file.size,lastModified:file.lastModified,mimeType:imageMimeForFile(file)};
       try{
         const gate=window.genreactrixOriginGateEngine?await window.genreactrixOriginGateEngine.inspectCandidate({blob:file,source,name:file.name,mode:'temporary',importJobId}):{disposition:'admit',source,mode:'temporary'};
         if(gate.disposition==='admit')created.push(await admitOriginCandidate({blob:file,source:gate.source||source,name:file.name,mode:'temporary',fingerprint:gate.fingerprint||'',thumbnailHash:gate.thumbnailHash||'',thumbnail:gate.thumbnail||null}));
@@ -3144,10 +3068,10 @@ function createImagesEngine(){
     const urls=Number.isFinite(limit)&&limit>0?raw.slice(0,limit):raw;
     return urls.map((url,index)=>({url,index,host:new URL(url).host,name:decodeURIComponent(new URL(url).pathname.split("/").pop()||`remote-${index+1}`)}));
   }
-  async function importUrls(text,{limit=null,mode="link",prefetch=true,importJobId=null}={}){
+  async function importUrls(text,{limit=null,mode="link",prefetch=true,importJobId=null,packId=null}={}){
     const sources=await prefetchUrls(text,{limit}),created=[],gates=[],keepFull=mode==='download';
     for(const sourceItem of sources){
-      const source={type:'url',originalLocation:sourceItem.url,originalUrl:sourceItem.url,originalFilename:sourceItem.name,importMethod:keepFull?'temporary-copy':'hyperlink-only',importJobId:importJobId||null,firstBatchId:null};
+      const source={type:'url',originalLocation:sourceItem.url,originalUrl:sourceItem.url,originalFilename:sourceItem.name,importMethod:keepFull?'temporary-copy':'hyperlink-only',importJobId:importJobId||null,packId:packId||null,firstBatchId:null};
       try{
         const suppressed=await window.genreactrixOriginGateEngine?.inspectCandidate?.({blob:null,source,name:sourceItem.name,mode:keepFull?'temporary':'link',importJobId}).catch(()=>null);
         if(suppressed?.disposition==='import-failure-suppressed'){gates.push(suppressed.case);continue}
@@ -3172,7 +3096,7 @@ function createImagesEngine(){
     if(gate.type==='source-retry'){
       const record=records.get(gate.matchedImageId,{touch:false});if(!record)throw new Error('Known Image Record not found');const url=gate.source?.originalUrl||record.storage?.hyperlink||record.source?.originalUrl;if(!url)throw new Error('No automatically retrievable source is recorded');const tries=housekeeping?1:3;let lastError=null;for(let i=0;i<tries;i++){try{const blob=await fetchImageBlob(url);await imageBlobPut(record.id,blob);records.update(record.id,{workflow:{stage:gate.evidence?.priorStage||record.metadata?.extended?.sourceRetryPriorStage||'queued'},storage:{temporaryKey:record.id,missingReference:false,mimeType:blob.type||record.storage?.mimeType,size:blob.size||record.storage?.size},metadata:{extended:{sourceRetryResolvedAt:now()}}},'source-recovered');await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:'source-recovered'});return records.get(record.id,{touch:false})}catch(error){lastError=error}}await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:false,error:String(lastError?.message||lastError||'Source retry failed')});throw lastError||new Error('Source retry failed');
     }
-    if(gate.type!=='import-failure')throw new Error('Origin case is not retryable');let blob=await window.genreactrixOriginGateEngine.getAsset(caseId,'full');try{if(!blob&&gate.source?.originalUrl)blob=await fetchImageBlob(gate.source.originalUrl);if(!blob)throw new Error('Original source is not available for manual Retry');const result=await window.genreactrixOriginGateEngine.inspectCandidate({blob,source:gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:gate.source?.type==='url'&&gate.source?.importMethod==='hyperlink-only'?'link':'temporary',importJobId:gate.importJobId,manualRetry:true});if(result.disposition==='admit'){const record=await admitOriginCandidate({blob,source:result.source||gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:result.mode||'temporary',fingerprint:result.fingerprint||'',thumbnailHash:result.thumbnailHash||'',thumbnail:result.thumbnail||null,originGateId:gate.id});await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:'admitted'});return record}await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:result.disposition});return result.case||result}catch(error){await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:false,error:String(error?.message||error)});throw error}
+    if(gate.type!=='import-failure')throw new Error('Origin case is not retryable');let blob=await window.genreactrixOriginGateEngine.getAsset(caseId,'full');try{if(!blob&&gate.source?.originalUrl)blob=await fetchImageBlob(gate.source.originalUrl);if(!blob)throw new Error('Original source is not available for manual Retry');const result=await window.genreactrixOriginGateEngine.inspectCandidate({blob,source:gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:gate.source?.type==='url'&&gate.source?.importMethod==='hyperlink-only'?'link':'temporary',importJobId:gate.importJobId,manualRetry:true});if(result.disposition==='admit'){const record=await admitOriginCandidate({blob,source:result.source||gate.source,name:gate.candidate?.name||gate.source?.originalFilename,mode:result.mode||'temporary',fingerprint:result.fingerprint||'',thumbnailHash:result.thumbnailHash||'',thumbnail:result.thumbnail||null,originGateId:gate.id});await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:'admitted'});await window.genreactrixOriginGateEngine.recordAdmission?.(caseId,record.id);return record}await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:true,resultType:result.disposition});return result.case||result}catch(error){await window.genreactrixOriginGateEngine.recordRetry(caseId,{success:false,error:String(error?.message||error)});throw error}
   }
   async function recoverKnownSource(record,{attempts=3,context="source-recovery"}={}){
     if(!record)return null;const url=record.storage?.hyperlink||record.source?.originalUrl||"";let lastError=null;
@@ -3415,6 +3339,8 @@ function createImagesEngine(){
   return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
+if(window.genreactrixSettingsEngine?.ready)window.genreactrixOriginPackEngine?.migrateLegacy?.().catch(error=>console.warn('Origin Pack migration could not complete',error));
+else window.addEventListener('genreactrix:settings-ready',()=>window.genreactrixOriginPackEngine?.migrateLegacy?.().catch(error=>console.warn('Origin Pack migration could not complete',error)),{once:true});
 window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
@@ -3470,11 +3396,11 @@ function syncPortraitAiOutputs(){
 
 
 const QUICK_ACTIONS={
-  "images.add-folder":{
-    module:"images",name:"Add from folder",defaultLabel:"Folder · Add",
+  "images.add-files":{
+    module:"images",name:"Add image files",defaultLabel:"Add File",
     fields:[{key:"quantity",label:"Images",type:"number",min:1,getDefault:()=>portraitDefaultAmount()}],
-    summarize:p=>[`Source: Folder`,`Quantity: ${p.quantity}`],
-    run:p=>{ const limit=Math.max(1,Number(p.quantity)||portraitDefaultAmount()); chooseImageFolder({limit,importEngineMode:false}); }
+    summarize:p=>[`Source: Files`,`Quantity: ${p.quantity}`],
+    run:p=>{ const limit=Math.max(1,Number(p.quantity)||portraitDefaultAmount()); chooseImageFiles({limit}); }
   },
   "images.add-urls":{
     module:"images",name:"Add from URLs",defaultLabel:"URLs · Add",
@@ -3510,7 +3436,7 @@ const QUICK_ACTIONS={
 
 const DEFAULT_QUICK_PRESETS={
   batch:{1:{visible:true,actionId:"batch.current",label:"Batch current",params:{}},2:{visible:false,actionId:"",label:"",params:{}}},
-  images:{1:{visible:true,actionId:"images.add-folder",label:"Folder · Add",params:{}},2:{visible:true,actionId:"images.add-urls",label:"URLs · Add",params:{}}},
+  images:{1:{visible:true,actionId:"images.add-files",label:"Add File",params:{}},2:{visible:true,actionId:"images.add-urls",label:"URLs · Add",params:{}}},
   ai:{1:{visible:true,actionId:"ai.analyze-more",label:"Analyze more",params:{}},2:{visible:false,actionId:"",label:"",params:{}}},
   queue:{1:{visible:false,actionId:"",label:"",params:{}},2:{visible:false,actionId:"",label:"",params:{}}},
   reports:{1:{visible:false,actionId:"",label:"",params:{}},2:{visible:false,actionId:"",label:"",params:{}}}
@@ -3521,7 +3447,12 @@ function loadQuickPresets(){
   try{ saved=window.genreactrixSettingsEngine?.get?.("quick.presets",{}) || JSON.parse(localStorage.getItem(QUICK_PRESETS_KEY)||"{}"); }catch(error){ saved={}; }
   const merged=structuredClone(DEFAULT_QUICK_PRESETS);
   Object.keys(merged).forEach(module=>[1,2].forEach(slot=>{
-    if(saved?.[module]?.[slot]) merged[module][slot]={...merged[module][slot],...saved[module][slot],params:{...merged[module][slot].params,...(saved[module][slot].params||{})}};
+    if(saved?.[module]?.[slot]){
+      const legacy={...saved[module][slot]};
+      if(legacy.actionId==="images.add-folder")legacy.actionId="images.add-files";
+      if(legacy.label==="Folder · Add")legacy.label="Add File";
+      merged[module][slot]={...merged[module][slot],...legacy,params:{...merged[module][slot].params,...(legacy.params||{})}};
+    }
   }));
   return merged;
 }
@@ -3732,7 +3663,7 @@ $("imageIntakeClose")?.addEventListener("click",()=>$("imageIntakeDialog")?.clos
 $("imageIntakeFolderBtn")?.addEventListener("click",()=>{
   const limit=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());
   $("imageIntakeDialog")?.close();
-  chooseImageFolder({limit,importEngineMode:true});
+  chooseImageFiles({limit});
 });
 $("imageUrlPreviewBtn")?.addEventListener("click",async()=>{
   const quantity=Math.max(1,Number($("imageUrlQuantity")?.value)||portraitDefaultAmount());

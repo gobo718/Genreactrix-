@@ -49,7 +49,7 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.31</title>
+<title>Genreactrix v0.9.40.34</title>
 <link href="styles.css?v=0.9.40.25" rel="stylesheet"/>
 </head>
 <body>
@@ -57,7 +57,7 @@
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.31</span>
+<span>v0.9.40.34</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -76,16 +76,16 @@
 <option value="">Saved Layouts</option>
 </select>
 <button class="tablet-layout-control" id="saveLayoutBtn" title="Save current workspace layout">Save Layout</button>
-<label class="folder-button" title="Load image folder">
+<label class="folder-button" title="Add image files">
           ＋ Origin
-          <input id="folderInput" multiple="" type="file" webkitdirectory=""/>
+          <input id="folderInput" accept="image/*" multiple="" type="file"/>
 </label>
 </div>
 <div class="progress-text" id="progressText">Inbox empty</div>
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.31</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.34</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -179,7 +179,7 @@
 <button aria-label="Close" id="imageIntakeClose" type="button">×</button>
 </div>
 <div class="image-intake-actions">
-<button id="imageIntakeFolderBtn" type="button">Choose folder</button>
+<button id="imageIntakeFolderBtn" type="button">Add File</button>
 </div>
 <label>URLs
           <textarea id="imageUrlList" placeholder="One direct image URL or webpage/source URL per line" rows="8"></textarea>
@@ -218,7 +218,7 @@
 </nav>
 <div class="images-console-body">
 <section data-images-panel="add">
-<div class="images-add-actions"><button id="imagesConsoleFolder" type="button">Choose folder</button><button id="imagesConsoleFileBtn" type="button">Choose File</button><button id="imagesConsoleUrlFileBtn" type="button">Load URL document / spreadsheet</button><input id="imagesConsoleSingleFile" type="file" accept="image/*" hidden><input id="imagesConsoleUrlFile" type="file" accept=".txt,.csv,.tsv,.json,.html,.htm,.md,.docx,.xlsx,.ods" hidden></div>
+<div class="images-add-actions"><button id="imagesConsoleFolder" type="button">Choose Files</button><button id="imagesConsoleFileBtn" type="button">Choose File</button><button id="imagesConsoleUrlFileBtn" type="button">Load URL document / spreadsheet</button><input id="imagesConsoleSingleFile" type="file" accept="image/*" hidden><input id="imagesConsoleUrlFile" type="file" accept=".txt,.csv,.tsv,.json,.html,.htm,.md,.docx,.xlsx,.ods" hidden></div>
 <label>URLs<textarea id="imagesConsoleUrls" rows="7" placeholder="One URL per line"></textarea></label>
 <div class="images-console-grid"><label>Amount<input id="imagesConsoleQuantity" type="number" min="1" step="1" value="100"></label><label>Mode<select id="imagesConsoleMode"><option value="link">Hyperlink only</option><option value="download">Temporary copies</option><option value="prefetch">Prefetch only</option></select></label></div>
 <label class="image-prefetch-option"><input id="imagesConsolePrefetch" type="checkbox" checked> Prefetch, then Import</label>
@@ -425,7 +425,7 @@
 <button aria-pressed="false" id="tabletDepotBtn" type="button">Depot</button>
 <button aria-pressed="false" id="tabletFilterBtn" type="button">Filter</button>
 <button id="tabletWorkspaceFlipBtn" type="button" aria-label="Flip Matrix and Judgment workspace">Flip</button>
-<input id="tabletFolderInput" multiple="" type="file" webkitdirectory="" hidden/>
+<input id="tabletFolderInput" accept="image/*" multiple="" type="file" hidden/>
 </header>
 <section class="landscape-workspace" aria-label="Classification workspace">
 <div class="landscape-workspace-face landscape-matrix-face" id="tabletMatrixFace">
@@ -911,9 +911,10 @@
 </section>
 </dialog>
 <script src="validation-engine.js?v=0.9.24.0"></script>
-<script src="import-job-engine.js?v=0.9.40.21"></script>
-<script src="origin-gate-engine.js?v=0.9.40.31"></script>
-<script src="import-engine.js?v=0.9.40.31"></script>
+<script src="import-job-engine.js?v=0.9.40.34"></script>
+<script src="origin-pack-engine.js?v=0.9.40.34"></script>
+<script src="origin-gate-engine.js?v=0.9.40.34"></script>
+<script src="import-engine.js?v=0.9.40.34"></script>
 <script src="maintenance-engine.js?v=0.9.40.14"></script>
 <script src="settings-engine.js?v=0.9.40.33"></script>
 <script src="director-classification-engine.js?v=0.9.19.0"></script>
@@ -948,8 +949,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.25"></script>
 <script src="bundle-engine.js?v=0.9.40.25"></script>
-<script src="app.js?v=0.9.40.33"></script>
-<script src="images-console.js?v=0.9.40.31"></script>
+<script src="app.js?v=0.9.40.34"></script>
+<script src="images-console.js?v=0.9.40.34"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
 <div class="notifications-shell">
