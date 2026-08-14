@@ -1,4 +1,39 @@
-## v0.9.40.26 — Cross-browser portrait rotation
+## v0.9.40.27 — Atomic Post-processing + Purgatory
+
+This release crosses the bounded Batch → Post-processing migration boundary established in the 2026-08-14 handoff. It changes lifecycle/data behavior only; the accepted `.25` layouts and CSS are preserved.
+
+### Batch commit boundary
+- Batch candidates may still be loaded from eligible Inbox work, but **only the Director-selected images at confirmation become committed Batch members**.
+- The selected set is frozen into the Batch record before Post-processing begins, including each image’s terminal decision, Keep state, route, final stage, evaluation version, and source-storage mode.
+- Interrupted `submitting` Batches retain a submission token and frozen committed items so the same submission can be resumed after reload rather than silently restarted or duplicated.
+
+### Atomic Post-processing
+- Added `post-processing-engine.js` with a persistent per-image transaction plan and attempt journal.
+- Required Keep / exclusion writes are completed before the authoritative Image Record is finalized. If a required pre-commit write fails, newly written fragments are rolled back (or prior values restored) and the item is not treated as finalized.
+- Non-Keep working copies are routed to **Recycle Bin** by authoritative record commit; the existing full-resolution blob is not rewritten merely to move lifecycle ownership.
+- Keep remains independent of Depot / Delete / Reject. A kept Delete/Reject image can retain the full-resolution asset while also receiving its exclusion record.
+- Successful commits stamp the Batch submission, frozen terminal, Post-processing plan ID, and completion time for idempotent retry/recovery.
+
+### Purgatory + recovery
+- Failed Post-processing items receive **three automatic attempts** with a complete ordered attempt/error history.
+- After three failures, the unresolved frozen plan remains in **Purgatory** instead of producing a half-finalized result.
+- Maintenance exposes individual **Retry** and **Retry All**; each invocation performs exactly one new non-AI attempt per targeted unresolved item.
+- Added `housekeeping-engine.js`; once per local day it gives eligible Purgatory items one non-AI retry and runs the existing Recycle retention purge. It never initiates AI work.
+- Reload recovery reconciles interrupted attempts. A legacy partial Batch result is inferred as complete only when the required final record **and** required Keep / Recycle / exclusion artifacts are all present.
+
+### Safety / preservation
+- No local IndexedDB/localStorage reset.
+- No full-resolution blob migration or reserialization.
+- No AI rerun and no 60/40 calculation change.
+- Permanent 64×64 thumbnails are unchanged.
+- Legacy fields remain available; this release does not delete the compatibility data introduced by the State Spine/Bundle migration.
+- **No `styles.css`, layout geometry, spacing, sizing, or breakpoint changes.**
+- DuckDuckGo latency work from experimental `.26` is not carried forward; `.27` is based on the accepted `.25` branch.
+
+### Acceptance gate
+On a real browser/device, submit at least one normal non-Keep Depot image and confirm it leaves Inbox and appears as Batched + Recycle. Then verify ordinary Portrait/Landscape operation remains visually identical to `.25`. A forced storage failure should remain recoverable in Purgatory rather than produce a partial finalization.
+
+## v0.9.40.25 — Cross-browser portrait rotation
 
 - Fixes DuckDuckGo/Android tall-phone portrait routing after rotating out of Landscape.
 - Phone Portrait is now recognized by tall portrait geometry as well as the historical `<600px` CSS-width gate.
@@ -1432,13 +1467,3 @@ OUT OF SCOPE
 - Removes the visible manual Push AI Output to Inbox control and updates stale empty-state/research-dashboard wording.
 - Bumps the ai-analysis-engine cache key so Chrome cannot keep using the older handoff logic.
 - No Landscape CSS or geometry changes in this release. The v0.9.40.22 Landscape override remains a temporary checkpoint pending the separately booked CSS excavation/consolidation.
-
-## v0.9.40.26 — DuckDuckGo Portrait tap-latency repair
-
-Focused performance patch on top of v0.9.40.25. No lifecycle/data migration.
-
-- Director taps no longer deep-clone the complete legacy records + AI-run population into duplicate fallback history when the canonical Director undo/redo engine is available.
-- `saveCurrent()` now commits the current Director state in one canonical transaction instead of `begin()` + `patchDraft()` + `commit()` causing repeated full Director-store writes.
-- Phone Portrait no longer rebuilds hidden Landscape workbench/PrimFusion DOM after each Director tap.
-- v0.9.40.25 tall-phone Portrait routing remains intact.
-- Known separate issue still pending: DuckDuckGo may take multiple seconds to settle after an orientation change. This build targets per-tap Portrait responsiveness, not the orientation-settle timing path.

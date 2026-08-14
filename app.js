@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.26";
+const GENREACTRIX_BUILD="v0.9.40.27";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -489,15 +489,6 @@ function snapshotsEqual(a,b){
   return JSON.stringify(a)===JSON.stringify(b);
 }
 function pushHistory(){
-  // v0.9.40.26 — the Director Classification Engine is the canonical undo/redo
-  // authority. Do not deep-clone every image record + AI run into the legacy
-  // fallback history before each tap when the canonical engine is present.
-  // The fallback remains intact for degraded/legacy operation.
-  const directorEngine=window.genreactrixDirectorClassificationEngine;
-  if(directorEngine?.undo && directorEngine?.redo){
-    updateUndoRedo();
-    return false;
-  }
   const next=snapshot();
   const last=state.history[state.history.length-1];
   if(snapshotsEqual(last,next)){
@@ -559,22 +550,9 @@ function saveCurrent(action="commit"){
   const legacy=classificationState();
   const engine=window.genreactrixDirectorClassificationEngine;
   if(engine){
-    // v0.9.40.26 — commit the current state in one canonical transaction.
-    // begin() + patchDraft() + commit() each persisted the complete Director
-    // store, causing three synchronous full-store writes for a single tap.
-    const aiVisible=Boolean(document.getElementById("directorAiConsole")?.open);
-    const result=engine.commit(imageId,{
-      action,
-      aiVisible,
-      state:{
-        selectedReactions:legacy.selectedReactions,
-        themes:legacy.themes,
-        notes:legacy.writeIn,
-        flagged:legacy.flagged,
-        retention:legacy.retention,
-        aiVisible
-      }
-    });
+    engine.begin(imageId,legacy);
+    engine.patchDraft(imageId,{reactions:legacy.selectedReactions,themes:legacy.themes,notes:legacy.writeIn,flagged:legacy.flagged,retention:legacy.retention,aiVisible:Boolean(document.getElementById("directorAiConsole")?.open)});
+    const result=engine.commit(imageId,{action,aiVisible:Boolean(document.getElementById("directorAiConsole")?.open)});
     if(!result.ok){setDirectorStatus(`Classification not saved: ${result.issues.join(", ")}`);return false;}
   }
   legacy.evaluationVersion=currentEvaluationVersion();
@@ -1088,18 +1066,9 @@ function applyJudgmentReactionGeometry(prims,pctRow){
   if(pctRow) pctRow.style.setProperty('--reaction-half-columns',String(halfColumns));
 }
 
-function isPhonePortraitUi(){
-  try{
-    return matchMedia("(orientation: portrait)").matches &&
-      (matchMedia("(max-width: 599px)").matches || matchMedia("(max-aspect-ratio: 2/3)").matches);
-  }catch{
-    return window.innerHeight>window.innerWidth && (window.innerWidth<=599 || (window.innerWidth/window.innerHeight)<=2/3);
-  }
-}
-
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
-  if(!root || isPhonePortraitUi()) return;
+  if(!root) return;
   const hasImage=!state.feedEmpty;
   if(hasImage){
     $("landscapeFeedEmpty")?.setAttribute("hidden","");
@@ -1301,13 +1270,8 @@ function renderAll(){
   renderComparison();
   updateUndoRedo();
   renderTabletTargetSlots();
-  // v0.9.40.26 — Portrait must not rebuild hidden Landscape matrices/workbench
-  // after each Director tap. DuckDuckGo is particularly sensitive to this
-  // forced DOM/layout work. Landscape is rendered when Landscape is active.
-  if(!isPhonePortraitUi()){
-    renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
-    renderTabletWorkbench();
-  }
+  renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
+  renderTabletWorkbench();
   renderPortraitControlStation();
 }
 
@@ -2797,8 +2761,10 @@ async function thumbnailBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_THUM
 async function thumbnailBlobGet(key){return imageStoreGet(IMAGE_ENGINE_THUMBNAIL_STORE,key);}
 async function keptBlobPut(key,blob){return imageStorePut(IMAGE_ENGINE_KEPT_STORE,key,blob);}
 async function keptBlobGet(key){return imageStoreGet(IMAGE_ENGINE_KEPT_STORE,key);}
+async function keptBlobDelete(key){return imageStoreDelete(IMAGE_ENGINE_KEPT_STORE,key);}
 async function keptIdPut(key,value){return imageStorePut(IMAGE_ENGINE_KEPT_ID_STORE,key,value);}
 async function keptIdGet(key){return imageStoreGet(IMAGE_ENGINE_KEPT_ID_STORE,key);}
+async function keptIdDelete(key){return imageStoreDelete(IMAGE_ENGINE_KEPT_ID_STORE,key);}
 async function exclusionRecordPut(category,key,value){
   const store=category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE;
   return imageStorePut(store,key,value);
@@ -2806,6 +2772,10 @@ async function exclusionRecordPut(category,key,value){
 async function exclusionRecordGet(category,key){
   const store=category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE;
   return imageStoreGet(store,key);
+}
+async function exclusionRecordDelete(category,key){
+  const store=category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE;
+  return imageStoreDelete(store,key);
 }
 function extensionForMime(mime=""){
   const type=String(mime).toLowerCase();
@@ -3286,6 +3256,63 @@ function createImagesEngine(){
     records.update(id,{metadata:{extended:{exclusionRecordCategory:normalized,exclusionRecordStoredAt:payload.recordedAt}}},normalized==="red"?"red-flag-recorded":"hot-magenta-flag-recorded");
     return payload;
   }
+  async function finalizePostProcessingPlan(plan={}){
+    const id=String(plan.imageId||""),batchId=String(plan.batchId||""),planId=String(plan.id||"");
+    if(!id||!batchId||!planId)throw new Error("Post-processing plan is incomplete");
+    let record=records.get(id,{touch:false});if(!record)throw new Error("Image record not found");
+    if(record.attributes?.locked)throw new Error("Image record is locked");
+    const terminal=["depot","red","hot"].includes(plan.terminal)?plan.terminal:null;if(!terminal)throw new Error("Post-processing terminal decision is invalid");
+    const keep=Boolean(plan.keep),finalStage=terminal==="red"?"red-excluded":terminal==="hot"?"hot-magenta-excluded":"batched";
+    if(record.metadata?.extended?.lastPostProcessingPlanId===planId&&record.timestamps?.batchedAt){
+      return{record,recycled:Boolean(record.attributes?.inRecycleBin),kept:record.storage?.mode==="kept",idempotent:true};
+    }
+    const exclusionCategory=terminal==="red"?"red":terminal==="hot"?"hot":null;
+    const beforeKeptBlob=keep?await keptBlobGet(id).catch(()=>null):null;
+    const beforeKeptId=keep?await keptIdGet(id).catch(()=>null):null;
+    const beforeExclusion=exclusionCategory?await exclusionRecordGet(exclusionCategory,id).catch(()=>null):null;
+    let wroteKeptBlob=false,wroteKeptId=false,wroteExclusion=false;
+    try{
+      let keepBlob=null,keepIdRecord=null;
+      if(keep){
+        keepBlob=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,id).catch(()=>null);
+        if(!keepBlob)keepBlob=beforeKeptBlob||null;
+        if(!keepBlob){const url=record.storage?.hyperlink||record.source?.originalUrl;if(url)keepBlob=await fetchImageBlob(url);}
+        if(!keepBlob)throw new Error("Keep is on but the full-resolution image is unavailable");
+        const extension=extensionForMime(keepBlob.type||record.storage?.mimeType),imageFilename=`${record.id}${extension}`,idFilename=`${record.id}.json`;
+        keepIdRecord={imageId:record.id,imageFilename,idFilename,mimeType:keepBlob.type||record.storage?.mimeType||"",size:keepBlob.size||record.storage?.size||0,thumbnailKey:record.storage?.thumbnailKey||record.id,originMetadata:clone(record.source),recordedAt:now(),batchId,postProcessingPlanId:planId};
+        await keptBlobPut(id,keepBlob);wroteKeptBlob=true;
+        await keptIdPut(id,keepIdRecord);wroteKeptId=true;
+      }
+      let exclusionPayload=null;
+      if(exclusionCategory){
+        const normalized=exclusionCategory==="red"?"red":"hot-magenta";
+        exclusionPayload={imageId:record.id,category:normalized,recordedAt:now(),reasonCode:null,thumbnailKey:record.storage?.thumbnailKey||record.id,originMetadata:clone(record.source),workflow:clone(record.workflow),analysis:clone(record.analysis),metadata:clone(record.metadata),batchIds:clone(record.batchIds),timestamps:clone(record.timestamps),batchId,postProcessingPlanId:planId};
+        await exclusionRecordPut(exclusionCategory,id,exclusionPayload);wroteExclusion=true;
+      }
+      const committedAt=now(),storagePatch={},attributePatch={};let recycled=false;
+      if(keep){
+        const imageFilename=keepIdRecord?.imageFilename||record.storage?.keptImageFilename||null,idFilename=keepIdRecord?.idFilename||record.storage?.keptIdFilename||null;
+        Object.assign(storagePatch,{mode:"kept",temporaryKey:null,referenceKey:id,keptImageFilename:imageFilename,keptIdFilename:idFilename,mimeType:keepBlob?.type||record.storage?.mimeType,size:keepBlob?.size||record.storage?.size,missingReference:false});
+        Object.assign(attributePatch,{saved:true,hyperlinkOnly:false,inRecycleBin:false});
+      }else if(record.storage?.mode==="temporary"||record.storage?.temporaryKey){
+        const blob=await imageStoreGet(IMAGE_ENGINE_BLOB_STORE,id).catch(()=>null);if(!blob)throw new Error("Full-resolution working copy is unavailable for Recycle Bin routing");
+        Object.assign(storagePatch,{mode:"recycle",recycle:recycleSnapshot(record)});Object.assign(attributePatch,{inRecycleBin:true});recycled=true;
+      }
+      const metadataExtended={lastBatchSubmissionId:batchId,lastBatchTerminal:terminal,lastPostProcessingPlanId:planId,postProcessingCompletedAt:committedAt};
+      if(exclusionPayload){metadataExtended.exclusionRecordCategory=exclusionPayload.category;metadataExtended.exclusionRecordStoredAt=exclusionPayload.recordedAt;}
+      record=records.update(id,{workflow:{stage:finalStage},storage:storagePatch,attributes:attributePatch,timestamps:{batchedAt:committedAt},metadata:{extended:metadataExtended}},"post-processing-committed");
+      if(!record)throw new Error("Image record commit did not complete");
+      if(keep)await imageBlobDelete(id).catch(error=>console.warn("Post-processing working-copy cleanup deferred",error));
+      return{record,recycled,kept:keep,idempotent:false};
+    }catch(error){
+      const cleanupErrors=[];
+      if(wroteExclusion)try{beforeExclusion?await exclusionRecordPut(exclusionCategory,id,beforeExclusion):await exclusionRecordDelete(exclusionCategory,id)}catch(cleanup){cleanupErrors.push(`exclusion cleanup: ${cleanup?.message||cleanup}`)}
+      if(wroteKeptId)try{beforeKeptId?await keptIdPut(id,beforeKeptId):await keptIdDelete(id)}catch(cleanup){cleanupErrors.push(`kept ID cleanup: ${cleanup?.message||cleanup}`)}
+      if(wroteKeptBlob)try{beforeKeptBlob?await keptBlobPut(id,beforeKeptBlob):await keptBlobDelete(id)}catch(cleanup){cleanupErrors.push(`kept image cleanup: ${cleanup?.message||cleanup}`)}
+      if(cleanupErrors.length)error.postProcessingCleanupErrors=cleanupErrors;
+      throw error;
+    }
+  }
   function recycleSnapshot(record){return{deletedAt:now(),priorMode:record.storage.mode,priorStage:record.workflow.stage,priorSaved:Boolean(record.attributes.saved),priorFlagged:Boolean(record.attributes.flagged),priorDepot:Boolean(record.attributes.depot),priorRejectionFlagged:Boolean(record.attributes.rejectionFlagged),priorRejected:Boolean(record.attributes.rejected)};}
   async function moveToRecycle(id){
     const record=records.get(id,{touch:false});if(!record||record.attributes.saved||record.attributes.inRecycleBin)return null;
@@ -3346,7 +3373,7 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixImagesEngine.backfillMissingThumbnails({limit:50,includeRemote:false}).catch(console.warn).then(()=>window.genreactrixImagesEngine.purgeExpired()).then(result=>{if(result.purged)console.info(`Recycle bin automatically purged ${result.purged} expired image(s).`);return rehydrateLandscapeFeed();}).catch(error=>{console.warn(error);rehydrateLandscapeFeed().catch(console.warn);});
