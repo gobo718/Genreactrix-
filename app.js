@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.25";
+const GENREACTRIX_BUILD="v0.9.40.26";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -489,6 +489,15 @@ function snapshotsEqual(a,b){
   return JSON.stringify(a)===JSON.stringify(b);
 }
 function pushHistory(){
+  // v0.9.40.26 — the Director Classification Engine is the canonical undo/redo
+  // authority. Do not deep-clone every image record + AI run into the legacy
+  // fallback history before each tap when the canonical engine is present.
+  // The fallback remains intact for degraded/legacy operation.
+  const directorEngine=window.genreactrixDirectorClassificationEngine;
+  if(directorEngine?.undo && directorEngine?.redo){
+    updateUndoRedo();
+    return false;
+  }
   const next=snapshot();
   const last=state.history[state.history.length-1];
   if(snapshotsEqual(last,next)){
@@ -550,9 +559,22 @@ function saveCurrent(action="commit"){
   const legacy=classificationState();
   const engine=window.genreactrixDirectorClassificationEngine;
   if(engine){
-    engine.begin(imageId,legacy);
-    engine.patchDraft(imageId,{reactions:legacy.selectedReactions,themes:legacy.themes,notes:legacy.writeIn,flagged:legacy.flagged,retention:legacy.retention,aiVisible:Boolean(document.getElementById("directorAiConsole")?.open)});
-    const result=engine.commit(imageId,{action,aiVisible:Boolean(document.getElementById("directorAiConsole")?.open)});
+    // v0.9.40.26 — commit the current state in one canonical transaction.
+    // begin() + patchDraft() + commit() each persisted the complete Director
+    // store, causing three synchronous full-store writes for a single tap.
+    const aiVisible=Boolean(document.getElementById("directorAiConsole")?.open);
+    const result=engine.commit(imageId,{
+      action,
+      aiVisible,
+      state:{
+        selectedReactions:legacy.selectedReactions,
+        themes:legacy.themes,
+        notes:legacy.writeIn,
+        flagged:legacy.flagged,
+        retention:legacy.retention,
+        aiVisible
+      }
+    });
     if(!result.ok){setDirectorStatus(`Classification not saved: ${result.issues.join(", ")}`);return false;}
   }
   legacy.evaluationVersion=currentEvaluationVersion();
@@ -1066,9 +1088,18 @@ function applyJudgmentReactionGeometry(prims,pctRow){
   if(pctRow) pctRow.style.setProperty('--reaction-half-columns',String(halfColumns));
 }
 
+function isPhonePortraitUi(){
+  try{
+    return matchMedia("(orientation: portrait)").matches &&
+      (matchMedia("(max-width: 599px)").matches || matchMedia("(max-aspect-ratio: 2/3)").matches);
+  }catch{
+    return window.innerHeight>window.innerWidth && (window.innerWidth<=599 || (window.innerWidth/window.innerHeight)<=2/3);
+  }
+}
+
 function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
-  if(!root) return;
+  if(!root || isPhonePortraitUi()) return;
   const hasImage=!state.feedEmpty;
   if(hasImage){
     $("landscapeFeedEmpty")?.setAttribute("hidden","");
@@ -1270,8 +1301,13 @@ function renderAll(){
   renderComparison();
   updateUndoRedo();
   renderTabletTargetSlots();
-  renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
-  renderTabletWorkbench();
+  // v0.9.40.26 — Portrait must not rebuild hidden Landscape matrices/workbench
+  // after each Director tap. DuckDuckGo is particularly sensitive to this
+  // forced DOM/layout work. Landscape is rendered when Landscape is active.
+  if(!isPhonePortraitUi()){
+    renderPrimFusionMatrix($("tabletThemeSearch")?.value || "", "tabletPrimFusionMatrix");
+    renderTabletWorkbench();
+  }
   renderPortraitControlStation();
 }
 

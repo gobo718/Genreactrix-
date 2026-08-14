@@ -1,4 +1,4 @@
-## v0.9.40.25 — Cross-browser portrait rotation
+## v0.9.40.26 — Cross-browser portrait rotation
 
 - Fixes DuckDuckGo/Android tall-phone portrait routing after rotating out of Landscape.
 - Phone Portrait is now recognized by tall portrait geometry as well as the historical `<600px` CSS-width gate.
@@ -1432,3 +1432,13 @@ OUT OF SCOPE
 - Removes the visible manual Push AI Output to Inbox control and updates stale empty-state/research-dashboard wording.
 - Bumps the ai-analysis-engine cache key so Chrome cannot keep using the older handoff logic.
 - No Landscape CSS or geometry changes in this release. The v0.9.40.22 Landscape override remains a temporary checkpoint pending the separately booked CSS excavation/consolidation.
+
+## v0.9.40.26 — DuckDuckGo Portrait tap-latency repair
+
+Focused performance patch on top of v0.9.40.25. No lifecycle/data migration.
+
+- Director taps no longer deep-clone the complete legacy records + AI-run population into duplicate fallback history when the canonical Director undo/redo engine is available.
+- `saveCurrent()` now commits the current Director state in one canonical transaction instead of `begin()` + `patchDraft()` + `commit()` causing repeated full Director-store writes.
+- Phone Portrait no longer rebuilds hidden Landscape workbench/PrimFusion DOM after each Director tap.
+- v0.9.40.25 tall-phone Portrait routing remains intact.
+- Known separate issue still pending: DuckDuckGo may take multiple seconds to settle after an orientation change. This build targets per-tap Portrait responsiveness, not the orientation-settle timing path.
