@@ -7891,7 +7891,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 
 
-/* v0.9.40.51 — AI Theme rerun shell + PrimPicker.
+/* v0.9.40.52 — AI Theme rerun shell + PrimPicker.
    The accepted Landscape frame is untouched. Theme rerun reuses the existing
    Reaction rectangle and the existing 4×2 AI control band. */
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
@@ -7980,7 +7980,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .theme-rerun-prim-dot.state-mandatory{background:#fff!important}
   .theme-rerun-prim-dot.state-preferred{background:#8fd3ff!important}
   .theme-rerun-prim-dot.state-optional{background:#9a92a3!important}
-  .theme-rerun-prim-dot.state-discouraged{background:#ff5d42!important}
+  .theme-rerun-prim-dot.state-discouraged{background:#b23a24!important}
   .theme-rerun-prim-dot.state-forbidden{background:#ff00d4!important}
   .theme-rerun-prim-dot.state-unchosen{visibility:hidden!important}
   .theme-rerun-prim-emoji{
@@ -8062,7 +8062,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .theme-rerun-choice-dot.state-mandatory{background:#fff}
 .theme-rerun-choice-dot.state-preferred{background:#8fd3ff}
 .theme-rerun-choice-dot.state-optional{background:#9a92a3}
-.theme-rerun-choice-dot.state-discouraged{background:#ff5d42}
+.theme-rerun-choice-dot.state-discouraged{background:#b23a24}
 .theme-rerun-choice-dot.state-forbidden{background:#ff00d4}
 .theme-rerun-choice-dot.state-unchosen{background:transparent;border:1px solid var(--muted);box-shadow:none}
 .theme-rerun-confirm-text{font-size:12px;line-height:1.35;white-space:pre-wrap}

@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.51 — Theme Rerun PrimPicker Visual Pass
+# Genreactrix v0.9.40.52 — Theme Rerun PrimPicker Visual Pass
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -73,7 +73,7 @@ Real-device/browser acceptance is still required.
 - No rerun behavior, surrounding geometry, typography, Worker contract, or other UI logic changed.
 
 
-## v0.9.40.51 — Theme Rerun PrimPicker visual pass
+## v0.9.40.52 — Theme Rerun PrimPicker visual pass
 
 - Adds the Landscape Theme Rerun 4×2 control shell.
 - Adds PrimPicker with code-backed P01–P14 rows, fixed ascending order, one-emoji-width spacing, and centered status dots.
@@ -82,3 +82,8 @@ Real-device/browser acceptance is still required.
 - Destructive row loss requires confirmation; Clear resets PrimPicker assignments while retaining Theme selections/rows.
 - Theme rerun submission/history/exclusions/description-context actions remain reserved for a later bounded pass; Worker is unchanged.
 - Renames the AI Description rerun control label Classics → Descriptions.
+
+## v0.9.40.52 — PrimPicker Discouraged Dot Contrast
+- Darkens the Discouraged red-orange status dot to a deeper red-orange so it is visually distinct from Forbidden hot magenta.
+- No PrimPicker behavior or surrounding Landscape geometry changed.
+- Worker unchanged from v0.9.40.51.
