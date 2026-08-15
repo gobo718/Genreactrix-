@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.40";
+const GENREACTRIX_BUILD="v0.9.40.41";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -286,6 +286,7 @@ let landscapeFilter=loadLandscapeFilter();
 let landscapeFeedDirty=false;
 let landscapeRehydrateTimer=0;
 let landscapeRehydrateGeneration=0;
+let landscapeHydrationPending=0;
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
 function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
@@ -1818,23 +1819,81 @@ async function applyEngineWorkingFiles(files,{preserveId=null,preferredIndex=0,c
   loadCurrent();
   renderPortraitControlStation();
 }
+function landscapeLoadingPlaceholder(record){
+  const name=String(record?.source?.originalFilename||record?.name||record?.id||"Image").slice(0,80);
+  const clean=name.replace(/[&<>]/g,"");
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900"><rect width="900" height="900" fill="#100d16"/><rect x="34" y="34" width="832" height="832" rx="28" fill="none" stroke="#6b5c78" stroke-width="4"/><text x="450" y="410" text-anchor="middle" fill="#f4eef8" font-family="system-ui,sans-serif" font-size="42" font-weight="700">Loading image…</text><text x="450" y="470" text-anchor="middle" fill="#b8aabd" font-family="system-ui,sans-serif" font-size="25">${clean}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+function landscapeFeedShell(record){
+  return {
+    id:String(record.id),
+    name:record.name||record.source?.originalFilename||String(record.id),
+    url:landscapeLoadingPlaceholder(record),
+    imageRecord:record,
+    isHydratingAsset:true
+  };
+}
+async function hydrateLandscapeAssets(records,generation){
+  const engine=window.genreactrixImagesEngine;if(!engine||!records.length){landscapeHydrationPending=0;return;}
+  const currentId=state.files[state.index]?.id?String(state.files[state.index].id):"";
+  const prioritized=currentId?[...records].sort((a,b)=>String(a.id)===currentId?-1:String(b.id)===currentId?1:0):[...records];
+  landscapeHydrationPending=prioritized.length;
+  let cursor=0;
+  const worker=async()=>{
+    while(generation===landscapeRehydrateGeneration){
+      const index=cursor++;if(index>=prioritized.length)return;
+      const record=prioritized[index];
+      let hydrated=null;
+      try{hydrated=(await engine.workingFiles([record.id]))?.[0]||null;}
+      catch(error){console.warn("Landscape image asset hydration failed",record.id,error);}
+      if(generation!==landscapeRehydrateGeneration)return;
+      landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);
+      if(!hydrated)continue;
+      const liveIndex=state.files.findIndex(file=>String(file.id)===String(record.id));
+      if(liveIndex<0)continue;
+      state.files[liveIndex]=hydrated;
+      if(liveIndex===state.index){
+        renderImage();
+        renderTabletWorkbench();
+      }
+    }
+  };
+  const concurrency=Math.min(4,prioritized.length);
+  await Promise.all(Array.from({length:concurrency},worker));
+  if(generation===landscapeRehydrateGeneration)landscapeHydrationPending=0;
+}
 async function rehydrateLandscapeFeed({preserveId=null,preferredIndex=null}={}){
   const engine=window.genreactrixImagesEngine;if(!engine)return;
   const generation=++landscapeRehydrateGeneration;
   const oldId=preserveId||(state.files.length?currentKey():null);
   const oldIndex=preferredIndex==null?state.index:preferredIndex;
   const records=filteredLandscapeRecords();
-  const files=await engine.workingFiles(records.map(record=>record.id));
-  if(generation!==landscapeRehydrateGeneration)return{superseded:true,recordCount:records.length,fileCount:files.length};
-  await applyEngineWorkingFiles(files,{preserveId:oldId,preferredIndex:oldIndex,canonical:true});
+  const shells=records.map(landscapeFeedShell);
+  await applyEngineWorkingFiles(shells,{preserveId:oldId,preferredIndex:oldIndex,canonical:true});
   renderLandscapeFilterDialog();
-  return{recordCount:records.length,fileCount:files.length};
+  if(generation!==landscapeRehydrateGeneration)return{superseded:true,recordCount:records.length,fileCount:shells.length};
+  hydrateLandscapeAssets(records,generation).catch(error=>console.warn("Landscape asset hydration could not complete",error));
+  return{recordCount:records.length,fileCount:shells.length,hydrating:records.length};
 }
 function scheduleLandscapeRehydrate(){
   clearTimeout(landscapeRehydrateTimer);
   landscapeRehydrateTimer=setTimeout(()=>rehydrateLandscapeFeed().catch(error=>console.warn("Landscape feed could not be rehydrated",error)),80);
 }
 window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
+function landscapeFeedDiagnostics(){
+  const expected=filteredLandscapeRecords(),visibleIds=new Set(state.files.map(file=>String(file.id)));
+  const missing=expected.filter(record=>!visibleIds.has(String(record.id))).map(record=>String(record.id));
+  return {checkedAt:new Date().toISOString(),expectedCount:expected.length,visibleCount:state.files.length,feedEmpty:Boolean(state.feedEmpty),hydrationPending:landscapeHydrationPending,generation:landscapeRehydrateGeneration,missingIds:missing};
+}
+function verifyLandscapeFeedIntegrity(){
+  const d=landscapeFeedDiagnostics(),issues=[];
+  if(d.expectedCount!==d.visibleCount)issues.push({type:"inbox-feed-population-mismatch",severity:"critical",expected:d.expectedCount,visible:d.visibleCount,missingIds:d.missingIds.slice(0,20)});
+  if(d.expectedCount>0&&d.feedEmpty)issues.push({type:"inbox-feed-false-empty",severity:"critical",expected:d.expectedCount});
+  return {checkedAt:d.checkedAt,issueCount:issues.length,issues,details:d};
+}
+window.genreactrixLandscapeFeedDiagnostics=landscapeFeedDiagnostics;
+window.genreactrixMaintenanceEngine?.registerChecker?.("inbox-feed",verifyLandscapeFeedIntegrity,{quick:true,label:"Inbox feed"});
 function activeInboxBundles(){return window.genreactrixBundleEngine?.activeBundles?.()||[];}
 function renderPortraitInboxControls(){
   const bundles=activeInboxBundles(),staged=window.genreactrixBundleEngine?.stagedRecords?.()||[],failedCount=currentAiFailureRecords().length;

@@ -1,153 +1,107 @@
-# Genreactrix v0.9.40.40 — Inbox Filter Repair + Investigation Interfaces
+# Genreactrix v0.9.40.41 — Inbox Feed Identity / Asset Hydration Separation
 
 Accepted rollback baseline: **v0.9.40.38**.
 
-v0.9.40.39 was partially real-device tested. Its Automatic Flow / AI → Staged → Bundle → Inbox path worked under a large live population, but the build was not accepted because Landscape Inbox could report a nonzero matching population while the Director view displayed zero images. v0.9.40.40 is built from .39 and repairs that blocker while adding the reusable evidence interfaces discovered during the same test session.
+v0.9.40.40 was rejected on real-device acceptance. Billy repeatedly closed/reopened the Landscape Filter with **All** selected; the Filter consistently reported **97 images match · 11 Bundles in Inbox**, while the Director view still displayed **No images match this filter**. That proves the record/filter population existed and the failure was downstream in visible-feed construction.
 
-## 1. Landscape Inbox filter/population repair
+## 1. Root failure fixed in .41
 
-Observed on-device in .39:
+In .40, `rehydrateLandscapeFeed()` did this in one blocking sequence:
 
-- Inbox contained 97 images across 11 Bundles.
-- Filter reported `97 images match`.
-- `All` was selected.
-- Director view simultaneously displayed `No images match this filter.`
+1. calculate the matching Image Records;
+2. ask the Images Engine to materialize every selected image asset;
+3. only after all materialization completed, replace the Director feed.
 
-The filter calculation itself was therefore finding the records; the break was between record selection and the visible working-file population.
+That coupled **population identity** to **full-resolution/thumbnail asset retrieval**. With a large Inbox, slow or unavailable assets could leave the visible feed at its previous empty state even though the Filter already knew that 97 records matched.
 
-v0.9.40.40 hardens that boundary in three ways:
+v0.9.40.41 separates those responsibilities.
 
-1. `workingFiles()` is now item-isolated. One record whose local/full-resolution asset cannot be materialized no longer rejects hydration of the entire Inbox population.
-2. A record with no displayable full-resolution source or thumbnail remains in the visible population as an explicit **Image unavailable** placeholder rather than silently disappearing.
-3. Landscape feed rehydration is generation-guarded. A slower stale refresh cannot overwrite a newer refresh after rapid Bundle/filter events.
-4. Bundle Engine no longer invokes a second immediate rehydration in parallel with the app's existing scheduled Bundle-event refresh.
-5. Opening Filter while the current feed is empty but the selected filter has matching records triggers a reconciliation refresh.
+### Authoritative population first
 
-This does not change Filter meaning, Bundle membership, Director state, or lifecycle ownership.
+- Matching Inbox Image Records immediately become the Director feed population.
+- Each record receives a temporary loading shell carrying the real Image ID and Image Record.
+- `feedEmpty` therefore reflects the record population, not whether 97 blobs have finished loading.
+- The Director can navigate the known Inbox population immediately.
 
-## 2. Two reusable human-investigation interfaces
+### Asset hydration second
 
-Instead of building bespoke evidence screens for every exception workflow, .40 introduces exactly two reusable interfaces.
+- Actual image assets hydrate asynchronously underneath the already-visible record population.
+- The current image is prioritized first.
+- Up to four assets hydrate concurrently instead of one giant sequential all-or-nothing feed build.
+- A successfully hydrated asset replaces only its own loading shell.
+- Missing/unavailable assets retain the existing explicit **Image unavailable** placeholder from .40 rather than removing the record from the feed.
+- A stale hydration generation cannot overwrite a newer Filter/Bundle population.
 
-### Single Image Inspector
+This means a slow, missing, remote, or damaged image can affect **that image's preview**, but cannot make the entire Inbox population disappear.
 
-Used when one image/record must be investigated. It provides:
+## 2. Inbox feed integrity checker
 
-- large image preview;
-- tap image for close-up/pannable full-size view;
-- pixel dimensions when resolvable from the full image/source;
-- file size;
-- filename;
-- format/MIME;
-- Image ID / lifecycle state;
-- source/original location;
-- Origin Pack and Import Job;
-- created / last-modified timestamps;
-- SHA-256 and thumbnail hash when present;
-- dataset / license / attribution / provenance when present;
-- Project / Runtime identity;
-- recent Image Record history;
-- contextual diagnostic history and workflow actions.
+Maintenance Quick Check now includes an **Inbox feed** invariant.
 
-Current integrations include:
+It compares:
 
-- Quarantine — failure evidence, ordered AI attempt/error history, Release, Defective;
-- Import Failure — available candidate evidence and Retry;
-- Retry Import Source — known Image Record/thumbnail/source evidence and Retry;
-- Saved / Flagged / Recycle / Failure / History record lists — Inspect;
-- Recycle — Restore from the Inspector;
-- Purgatory images surfaced by Maintenance — intended Batch decision/routing, ordered post-processing attempts, Retry;
-- Maintenance findings that resolve to an Image Record — Inspect.
+- records expected from the current Landscape Filter;
+- Image IDs actually represented in the Director feed;
+- `feedEmpty` state;
+- outstanding asset hydration count.
 
-Unavailable metadata is not invented.
+A nonzero expected population with a smaller visible population or a false empty state is reported as a critical feed-population issue.
 
-### Two-Image Comparator
+## 3. .40 investigation/UI work retained
 
-Used when a decision requires candidate-vs-known-image evidence.
+The .40 human-investigation work remains intact in .41:
 
-Current integrations:
-
-- Dupe — Candidate vs Original, Sustain / Overrule;
-- Repeat — Candidate vs Original, Re-evaluate.
-
-The interface is a true side-by-side comparison at every viewport size:
-
-- Candidate preview left;
-- Original preview right;
+- Single Image Inspector for Quarantine, Import Failure, Retry Import Source, Recycle, Purgatory/Maintenance and other individual records;
+- Two-Image Comparator for Dupe and Repeat;
+- Candidate | Original side-by-side previews;
+- row-aligned metadata comparison;
 - tap either image for close-up;
-- one metadata table underneath with the **same field on the same row**: `Field | Candidate | Original`;
-- match evidence included with the comparison;
-- workflow-specific decision buttons stay in the comparison view.
+- context-specific actions (Sustain/Overrule, Re-evaluate, Release/Defective, Retry, Restore);
+- multi-file **Choose Files** remains; redundant single-file picker remains removed;
+- targeted short-landscape Filter modal fit remains.
 
-The comparator deliberately does not render all Candidate metadata followed by all Original metadata.
+## 4. What did not change
 
-## 3. Origin Add cleanup
-
-The redundant single-file-only control is removed from `+ Origin → Add`.
-
-Remaining file control:
-
-- **Choose Files** — the existing multi-file picker, which also permits selecting only one file.
-
-The URL document/spreadsheet loader remains unchanged.
-
-## 4. Landscape Filter modal fit
-
-The existing scrollable Filter modal remains structurally the same. On short landscape viewports its internal spacing/padding is reduced so more controls fit onscreen at once. This is a targeted fit adjustment, not a Landscape redesign.
-
-## What did not change
-
-- 60/40 Reaction calculation.
-- AI execution/rerun semantics.
+- 60/40 Reaction calculation or AI rerun semantics.
 - AI Attempt/Artifact history.
-- Origin gate decision semantics, including Overrule being encounter-specific and Sustain retaining the permanent duplicate suppression behavior.
-- Queue ownership and Automatic Flow/Buffer policy.
+- Origin gate semantics.
+- Queue/Buffer/Automatic Flow policy.
 - Bundle formation semantics.
 - explicit Batch membership.
-- Post-processing atomicity/Purgatory rules.
+- Post-processing/Purgatory behavior.
 - Project/Runtime boundary.
 - portable backup/restore format.
 - Reports implementation.
-- established Director/AI/PrimFusion geometry outside the targeted investigation/filter dialogs.
+- established Director/AI/PrimFusion geometry.
 
-## Deterministic verification
+## 5. Deterministic verification
 
-- All 63 top-level JavaScript files parse — PASS.
-- HTML IDs remain unique — PASS (696/696).
-- Working-file population preservation: one asset-materialization failure among two selected records still returns two visible population members, with the bad record represented by a placeholder — PASS.
-- Concurrent Landscape rehydration: a slower stale refresh is superseded and cannot overwrite the newer result — PASS.
-- Dupe Comparator functional harness: Candidate + Original side-by-side metadata, dimensions, Sustain + Overrule controls — PASS.
-- Quarantine Inspector functional harness: image metadata, failure diagnostics, Release + Defective controls — PASS.
-- `ai-analysis-engine.js` is byte-for-byte identical to .39 — PASS.
-- `post-processing-engine.js`, `persistence-engine.js`, and `lifecycle-engine.js` are byte-for-byte identical to .39 — PASS.
+- Actual .41 feed-construction function tested with **97 matching records while every asset-hydration Promise remains permanently unresolved**: Director feed immediately contains all 97 record shells and `feedEmpty=false` — PASS.
+- Generation-isolation test: an older 97-record hydration resolving after a newer 2-record Filter result cannot overwrite the newer population — PASS.
+- Maintenance feed-integrity checker reports 97 expected / 97 visible as healthy — PASS.
+- All JavaScript parses — PASS.
+- `styles.css`, `ai-analysis-engine.js`, `bundle-engine.js`, `images-console.js`, `queue-engine.js`, `maintenance-engine.js`, and `investigation-ui.js` are byte-for-byte identical to .40 — PASS.
 
-## Source-diff containment
+## 6. Source-diff containment
 
-Against v0.9.40.39, the release changes only:
+Against v0.9.40.40, substantive behavior changes are confined to:
 
-- `app.js` — feed hydration hardening + build number;
-- `bundle-engine.js` — remove duplicate direct feed refresh;
-- `images-console.js` — investigation entry points + redundant picker removal;
-- `queue-engine.js` — Quarantine Inspector entry point;
-- `maintenance-engine.js` — image Inspector entry point;
-- `investigation-ui.js` — new shared Inspector/Comparator implementation;
-- `index.html` — investigation dialogs / script wiring / file-picker cleanup;
-- `styles.css` — investigation surfaces + targeted short-landscape Filter fit;
-- `unfolded.html` — build reference;
+- `app.js` — immediate record-shell population, background per-image hydration, current-image priority, Inbox feed integrity checker, build number;
+- `index.html` / `unfolded.html` — build/cache references;
 - `README.md`.
 
-Release remains shallow; only the required Worker directory is nested.
+No layout redesign is included.
 
 ## Real-device acceptance gate
 
-v0.9.40.38 remains the accepted rollback until .40 passes.
+v0.9.40.38 remains the accepted rollback until .41 passes.
 
-Minimum useful test:
+Minimum test:
 
-1. Confirm visible build `v0.9.40.40`.
-2. Open the Landscape Director view with existing Inbox data.
-3. Open Filter and select **All**. A nonzero `images match` count must result in actual images being visible/navigable.
-4. Open an existing Dupe or Repeat in `+ Origin → Gates` and press **Compare**. Confirm true side-by-side images and row-aligned metadata; tap either image for close-up. You do not need to change the existing gate decision just to test the view.
-5. If a Quarantine case is already available, tap the Quarantine row to Inspect it. Do not manufacture an AI failure solely for this test.
-6. Confirm `+ Origin → Add` now has one multi-file **Choose Files** control rather than separate Choose Files / Choose File controls.
-7. Once the Inbox is visible again, resume the Batch test that .39 blocked.
+1. Confirm visible build **v0.9.40.41**.
+2. Open Landscape Director with the existing 97-image Inbox.
+3. Filter → **All**.
+4. The Director population must appear immediately. Some images may briefly show **Loading image…** while their bytes hydrate; that is acceptable. **No images match this filter** is not acceptable when the Filter count is nonzero.
+5. Navigate through several images. A missing asset may show **Image unavailable**, but navigation/population must remain intact.
+6. Run Maintenance → Quick check; it should not report an **Inbox feed** population mismatch.
+7. If the Inbox is visible, continue the Batch test that .39/.40 blocked.
