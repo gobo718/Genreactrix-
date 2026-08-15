@@ -7889,3 +7889,181 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .description-rerun-active .tablet-prims-row{pointer-events:none!important}
 }
+
+
+/* v0.9.40.51 — AI Theme rerun shell + PrimPicker.
+   The accepted Landscape frame is untouched. Theme rerun reuses the existing
+   Reaction rectangle and the existing 4×2 AI control band. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .theme-rerun-workspace{
+    position:absolute!important;
+    inset:0!important;
+    z-index:31!important;
+    margin:0!important;
+    padding:3px 4px!important;
+    min-width:0!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    border:1px solid var(--line)!important;
+    border-radius:.45em!important;
+    background:var(--bg)!important;
+    overflow:hidden!important;
+  }
+  .theme-rerun-workspace[hidden]{display:none!important}
+  .theme-rerun-prim-picker{
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-auto-rows:minmax(0,1fr)!important;
+    gap:2px!important;
+    overflow:hidden!important;
+  }
+  .theme-rerun-prim-row{
+    display:grid!important;
+    grid-template-columns:74px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:5px!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0 2px!important;
+    box-sizing:border-box!important;
+  }
+  .theme-rerun-scope-label{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    color:var(--muted)!important;
+    font-size:9px!important;
+    line-height:1.05!important;
+    font-weight:800!important;
+  }
+  .theme-rerun-prim-strip{
+    display:grid!important;
+    grid-template-columns:repeat(14,calc(100% / 27))!important;
+    column-gap:calc(100% / 27)!important;
+    align-items:center!important;
+    width:100%!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+  .theme-rerun-prim{
+    position:relative!important;
+    display:grid!important;
+    grid-template-rows:10px minmax(0,1fr)!important;
+    place-items:center!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:4px!important;
+    background:transparent!important;
+    color:var(--text)!important;
+    overflow:visible!important;
+    touch-action:manipulation!important;
+  }
+  .theme-rerun-prim:focus-visible{outline:1px solid #8d74a8!important;outline-offset:1px!important}
+  .theme-rerun-prim-dot{
+    grid-row:1!important;
+    align-self:center!important;
+    justify-self:center!important;
+    width:8px!important;
+    height:8px!important;
+    border-radius:50%!important;
+    box-sizing:border-box!important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.62)!important;
+  }
+  .theme-rerun-prim-dot.state-mandatory{background:#fff!important}
+  .theme-rerun-prim-dot.state-preferred{background:#8fd3ff!important}
+  .theme-rerun-prim-dot.state-optional{background:#9a92a3!important}
+  .theme-rerun-prim-dot.state-discouraged{background:#ff5d42!important}
+  .theme-rerun-prim-dot.state-forbidden{background:#ff00d4!important}
+  .theme-rerun-prim-dot.state-unchosen{visibility:hidden!important}
+  .theme-rerun-prim-emoji{
+    grid-row:2!important;
+    display:grid!important;
+    place-items:center!important;
+    width:100%!important;
+    min-width:0!important;
+    font-size:clamp(13px,1.45vw,20px)!important;
+    line-height:1!important;
+    transform:none!important;
+  }
+
+  .landscape-sliding-drawer.theme-rerun-active .landscape-ai-controls{display:none!important}
+  .theme-rerun-controls{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-rows:25px 25px!important;
+    gap:4px!important;
+    width:100%!important;
+    height:54px!important;
+    min-height:54px!important;
+    max-height:54px!important;
+    margin:0!important;
+    padding:0!important;
+    align-items:stretch!important;
+    box-sizing:border-box!important;
+  }
+  .theme-rerun-controls[hidden]{display:none!important}
+  .theme-rerun-controls>button{
+    width:100%!important;
+    min-width:0!important;
+    height:25px!important;
+    min-height:25px!important;
+    max-height:25px!important;
+    margin:0!important;
+    padding:2px 5px!important;
+    border-radius:6px!important;
+    font-size:10px!important;
+    line-height:1.05!important;
+    box-sizing:border-box!important;
+  }
+  .theme-rerun-controls #themeRerunPrimPickerBtn[aria-pressed="true"]{
+    outline:2px solid #8d74a8!important;
+    outline-offset:-2px!important;
+  }
+
+  .theme-rerun-active #tabletAiThemesPanel .tablet-theme-cell{cursor:pointer!important;transition:background .08s linear,border-color .08s linear,box-shadow .08s linear!important}
+  .theme-rerun-active #tabletAiThemesPanel .tablet-theme-cell.theme-rerun-replace{
+    background:#541b22!important;
+    border-color:#ff5d64!important;
+    box-shadow:inset 0 0 0 1px #a62f3a!important;
+  }
+  .theme-rerun-active #tabletAiThemesPanel .tablet-theme-cell.theme-rerun-preserve{
+    background:#123d31!important;
+    border-color:#56d89e!important;
+    box-shadow:inset 0 0 0 1px #26815d!important;
+  }
+}
+
+.theme-rerun-dialog{
+  width:min(520px,90vw);
+  max-height:86dvh;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  color:var(--text);
+}
+.theme-rerun-dialog::backdrop{background:rgba(0,0,0,.72)}
+.theme-rerun-dialog-shell{display:grid;gap:9px;padding:12px;max-height:82dvh;overflow:auto}
+.theme-rerun-dialog-shell>header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.theme-rerun-dialog-shell>header strong{font-size:13px}
+.theme-rerun-dialog-shell button{min-height:30px;padding:5px 9px;font-size:11px}
+.theme-rerun-prim-state-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.theme-rerun-prim-state-choices button{display:flex;align-items:center;justify-content:flex-start;gap:8px;text-align:left}
+.theme-rerun-prim-state-choices button.current{outline:2px solid #8d74a8;outline-offset:-2px}
+.theme-rerun-choice-dot{display:inline-block;width:10px;height:10px;flex:0 0 10px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.62)}
+.theme-rerun-choice-dot.state-mandatory{background:#fff}
+.theme-rerun-choice-dot.state-preferred{background:#8fd3ff}
+.theme-rerun-choice-dot.state-optional{background:#9a92a3}
+.theme-rerun-choice-dot.state-discouraged{background:#ff5d42}
+.theme-rerun-choice-dot.state-forbidden{background:#ff00d4}
+.theme-rerun-choice-dot.state-unchosen{background:transparent;border:1px solid var(--muted);box-shadow:none}
+.theme-rerun-confirm-text{font-size:12px;line-height:1.35;white-space:pre-wrap}
+.theme-rerun-dialog-actions{display:flex;justify-content:flex-end;gap:7px}

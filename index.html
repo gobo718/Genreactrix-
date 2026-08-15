@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.50</title>
-<link href="styles.css?v=0.9.40.50" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.51</title>
+<link href="styles.css?v=0.9.40.51" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.50</span>
+<span>v0.9.40.51</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.50</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.51</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -438,6 +438,9 @@
 <div class="description-rerun-workspace" id="tabletDescriptionRerunWorkspace" hidden aria-label="AI Description rerun guidance">
 <textarea id="tabletDescriptionRerunGuidance" aria-label="AI Description rerun guidance" placeholder="Tap here to write rerun guidance"></textarea>
 </div>
+<div class="theme-rerun-workspace" id="tabletThemeRerunWorkspace" hidden aria-label="AI Theme rerun PrimPicker">
+<div class="theme-rerun-prim-picker" id="themeRerunPrimPicker"></div>
+</div>
 </div>
 <div class="landscape-sliding-drawer" id="tabletSlidingDrawer" aria-label="Judgment sliding drawer">
 <div class="landscape-ai-controls" aria-label="AI reference and rerun controls">
@@ -456,9 +459,19 @@
 <button id="descriptionRerunPreview" type="button">Preview Request</button>
 <button id="descriptionRerunSubmit" type="button">Submit</button>
 <button id="descriptionRerunReviewReactions" type="button">Review Reactions</button>
-<button id="descriptionRerunClassics" type="button">Classics</button>
+<button id="descriptionRerunClassics" type="button">Descriptions</button>
 <button id="descriptionRerunClear" type="button">Clear</button>
 <button id="descriptionRerunReturn" type="button">Return</button>
+</div>
+<div class="theme-rerun-controls" id="tabletThemeRerunControls" hidden aria-label="AI Theme rerun controls">
+<button id="themeRerunPrimPickerBtn" type="button" aria-pressed="false">PrimPicker</button>
+<button id="themeRerunExclusionsBtn" type="button">Theme Exclusions</button>
+<button id="themeRerunPreviewBtn" type="button">Preview Request</button>
+<button id="themeRerunSubmitBtn" type="button">Submit</button>
+<button id="themeRerunHistoryBtn" type="button">Theme History</button>
+<button id="themeRerunDescriptionsBtn" type="button">Descriptions</button>
+<button id="themeRerunClearBtn" type="button">Clear</button>
+<button id="themeRerunReturnBtn" type="button">Return</button>
 </div>
 <div class="landscape-ai-theme-comparison" id="tabletAiThemesPanel" hidden aria-label="AI themes">
 <div class="landscape-ai-theme-grid">
@@ -957,7 +970,7 @@
 <div class="description-rerun-dialog-shell"><header><strong>Select Draft</strong><button type="button" data-description-rerun-close="descriptionRerunDraftDialog">Return</button></header><div id="descriptionRerunDraftList" class="description-rerun-list"></div></div>
 </dialog>
 <dialog class="description-rerun-dialog" id="descriptionRerunClassicsDialog">
-<div class="description-rerun-dialog-shell"><header><strong>Classics</strong><button type="button" data-description-rerun-close="descriptionRerunClassicsDialog">Return</button></header><div id="descriptionRerunClassicsList" class="description-rerun-list"></div></div>
+<div class="description-rerun-dialog-shell"><header><strong>Descriptions</strong><button type="button" data-description-rerun-close="descriptionRerunClassicsDialog">Return</button></header><div id="descriptionRerunClassicsList" class="description-rerun-list"></div></div>
 </dialog>
 <dialog class="description-rerun-dialog description-rerun-preview-dialog" id="descriptionRerunPreviewDialog">
 <div class="description-rerun-dialog-shell"><header><strong>Preview Request</strong><button type="button" data-description-rerun-close="descriptionRerunPreviewDialog">Return</button></header><pre id="descriptionRerunPreviewBody" class="description-rerun-preview"></pre></div>
@@ -967,6 +980,26 @@
 </dialog>
 <dialog class="description-rerun-dialog" id="descriptionRerunClearConfirmDialog">
 <div class="description-rerun-dialog-shell"><header><strong>Confirm Clear</strong></header><div id="descriptionRerunClearConfirmText" class="description-rerun-confirm-text"></div><div class="description-rerun-dialog-actions"><button id="descriptionRerunClearConfirmReturn" type="button">Return</button><button id="descriptionRerunClearConfirmApply" type="button">Confirm</button></div></div>
+</dialog>
+<dialog class="theme-rerun-dialog" id="themeRerunPrimStateDialog">
+<div class="theme-rerun-dialog-shell">
+<header><strong id="themeRerunPrimStateTitle">Prim</strong><button type="button" data-theme-rerun-close="themeRerunPrimStateDialog">Return</button></header>
+<div class="theme-rerun-prim-state-choices" id="themeRerunPrimStateChoices">
+<button type="button" data-theme-rerun-prim-state="mandatory"><span class="theme-rerun-choice-dot state-mandatory"></span>Mandatory</button>
+<button type="button" data-theme-rerun-prim-state="preferred"><span class="theme-rerun-choice-dot state-preferred"></span>Preferred</button>
+<button type="button" data-theme-rerun-prim-state="optional"><span class="theme-rerun-choice-dot state-optional"></span>Optional</button>
+<button type="button" data-theme-rerun-prim-state="discouraged"><span class="theme-rerun-choice-dot state-discouraged"></span>Discouraged</button>
+<button type="button" data-theme-rerun-prim-state="forbidden"><span class="theme-rerun-choice-dot state-forbidden"></span>Forbidden</button>
+<button type="button" data-theme-rerun-prim-state="unchosen"><span class="theme-rerun-choice-dot state-unchosen"></span>Clear</button>
+</div>
+</div>
+</dialog>
+<dialog class="theme-rerun-dialog" id="themeRerunScopeConfirmDialog">
+<div class="theme-rerun-dialog-shell">
+<header><strong>Confirm Theme Change</strong></header>
+<div class="theme-rerun-confirm-text" id="themeRerunScopeConfirmText"></div>
+<div class="theme-rerun-dialog-actions"><button id="themeRerunScopeConfirmCancel" type="button">Cancel</button><button id="themeRerunScopeConfirmApply" type="button">Confirm</button></div>
+</div>
 </dialog>
 <script src="project-runtime-engine.js?v=0.9.40.37"></script>
 <script src="persistence-engine.js?v=0.9.40.39"></script>
@@ -1009,7 +1042,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.50"></script>
+<script src="app.js?v=0.9.40.51"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">

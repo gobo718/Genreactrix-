@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.50";
+const GENREACTRIX_BUILD="v0.9.40.51";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -605,7 +605,7 @@ function emptyClassification(){
   return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
 }
 function applyAiDrawerLoadDefaults(){
-  if(descriptionRerunWorkspace?.active){tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;return;}
+  if(descriptionRerunWorkspace?.active||themeRerunWorkspace?.active){tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;return;}
   const directorThemesComplete=state.themes.length>=3&&state.themes.slice(0,3).every(theme=>Boolean(normalizeTheme(theme)));
   const hasDirectorReaction=state.selectedReactions.length>0;
   const selected=directorThemesComplete&&hasDirectorReaction;
@@ -631,6 +631,7 @@ function loadCurrent(){
   // Manual AI control changes remain untouched until the next image load.
   applyAiDrawerLoadDefaults();
   if(descriptionRerunWorkspace?.active){descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(currentKey());descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];}
+  if(themeRerunWorkspace?.active){themeRerunWorkspace.imageId=currentKey();themeRerunWorkspace.current=loadThemeRerunCurrent(currentKey());themeRerunWorkspace.pickerOpen=false;}
   // Paint the destination image's classification immediately, before any
   // nonclassification console work.
   renderThemes();
@@ -654,6 +655,7 @@ function commitAndAdvance(sourceKey){
   state.visitBaseline=classificationState();
   applyAiDrawerLoadDefaults();
   if(descriptionRerunWorkspace?.active){descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(currentKey());descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];}
+  if(themeRerunWorkspace?.active){themeRerunWorkspace.imageId=currentKey();themeRerunWorkspace.current=loadThemeRerunCurrent(currentKey());themeRerunWorkspace.pickerOpen=false;}
   if($("themeWorkspace")?.open) $("themeWorkspace").close();
   renderAll();
   if(descriptionRerunWorkspace?.active)activateDescriptionRerunImage().catch(error=>console.warn("Description rerun image load failed",error));
@@ -970,6 +972,82 @@ function syncTabletAiRerunControls(){
 
 
 
+// v0.9.40.51 — AI Theme rerun shell + PrimPicker.
+// Prim identities are stored only by stable P-code. Human-readable names and
+// emoji are resolved at render time so future label changes cannot alter identity.
+const THEME_RERUN_CURRENT_KEY='genreactrix-theme-rerun-current-v1';
+const THEME_RERUN_THEME_STATES=Object.freeze(['neutral','replace','preserve']);
+const THEME_RERUN_PRIM_STATES=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden']);
+const THEME_RERUN_PRIM_CYCLE=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden',null]);
+const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`));
+const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null};
+const emptyThemeRerunCurrent=()=>({schemaVersion:1,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},updatedAt:null});
+function themeRerunStorageKey(){return window.genreactrixProjectRuntimeEngine?.projectKey?.(THEME_RERUN_CURRENT_KEY)||THEME_RERUN_CURRENT_KEY}
+function readThemeRerunMap(){try{const raw=localStorage.getItem(themeRerunStorageKey());const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch{return {}}}
+function writeThemeRerunMap(map){try{localStorage.setItem(themeRerunStorageKey(),JSON.stringify(map||{}));return true}catch(error){console.warn('Theme rerun Current state could not be stored',error);return false}}
+function normalizeThemeRerunCurrent(value){
+  const source=value&&typeof value==='object'?value:{},themeStates={},primScopes={};
+  for(let slot=1;slot<=3;slot++){const raw=String(source.themeStates?.[slot]||'neutral');themeStates[slot]=THEME_RERUN_THEME_STATES.includes(raw)?raw:'neutral';}
+  for(const scope of ['theme1','theme2','theme3','general']){
+    const clean={};const raw=source.primScopes?.[scope];
+    if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [code,state] of Object.entries(raw))if(THEME_RERUN_PRIM_ORDER.includes(code)&&THEME_RERUN_PRIM_STATES.includes(state))clean[code]=state;
+    primScopes[scope]=clean;
+  }
+  return{schemaVersion:1,themeStates,primScopes,updatedAt:source.updatedAt||null};
+}
+function loadThemeRerunCurrent(imageId=currentKey()){const map=readThemeRerunMap();return normalizeThemeRerunCurrent(map[String(imageId)]||emptyThemeRerunCurrent())}
+function saveThemeRerunCurrent(){if(!themeRerunWorkspace.imageId||!themeRerunWorkspace.current)return false;themeRerunWorkspace.current.updatedAt=new Date().toISOString();const map=readThemeRerunMap();map[String(themeRerunWorkspace.imageId)]=normalizeThemeRerunCurrent(themeRerunWorkspace.current);return writeThemeRerunMap(map)}
+function themeRerunPrimPresentation(code){const name=AI_CANONICAL_PRIM_NAME_BY_ID[code]||PRIMITIVE_BY_ID[code]?.name||code;const semantic=PRIMITIVES.find(item=>item.name===name);return{code,name,symbol:semantic?.symbol||PRIMITIVE_BY_ID[code]?.symbol||'•'}}
+function themeRerunAiThemeSnapshot(slot){const sorted=currentAiThemes().map(([label,weight])=>({label,weight:Number(weight)||0})).sort((a,b)=>b.weight-a.weight).slice(0,3);return sorted[slot-1]||null}
+function themeRerunScopeLabel(scope){if(scope==='general')return'General';const slot=Number(scope.replace('theme',''))||0,theme=themeRerunAiThemeSnapshot(slot);return`Theme ${slot}${theme?.label?` · ${theme.label}`:''}`}
+function themeRerunScopesForStates(themeStates){const specifics=[];for(let slot=1;slot<=3;slot++)if(themeStates?.[slot]==='replace')specifics.push(`theme${slot}`);if(specifics.length<3)specifics.push('general');return specifics}
+function themeRerunScopes(){return themeRerunScopesForStates(themeRerunWorkspace.current?.themeStates||{})}
+function themeRerunScopePopulated(scope,current=themeRerunWorkspace.current){return Boolean(Object.keys(current?.primScopes?.[scope]||{}).length)}
+function themeRerunStateForPrim(scope,code){return themeRerunWorkspace.current?.primScopes?.[scope]?.[code]||null}
+function themeRerunSetPrimState(scope,code,nextState){if(!themeRerunWorkspace.active||!THEME_RERUN_PRIM_ORDER.includes(code))return;const scopes=themeRerunWorkspace.current.primScopes||(themeRerunWorkspace.current.primScopes={});const row=scopes[scope]||(scopes[scope]={});if(nextState&&THEME_RERUN_PRIM_STATES.includes(nextState))row[code]=nextState;else delete row[code];saveThemeRerunCurrent();renderThemeRerunPrimPicker()}
+function themeRerunCyclePrim(scope,code){const current=themeRerunStateForPrim(scope,code);const index=THEME_RERUN_PRIM_CYCLE.findIndex(value=>value===current);const next=THEME_RERUN_PRIM_CYCLE[(index<0?THEME_RERUN_PRIM_CYCLE.length-1:index)+1>=THEME_RERUN_PRIM_CYCLE.length?0:(index<0?THEME_RERUN_PRIM_CYCLE.length-1:index)+1];themeRerunSetPrimState(scope,code,next)}
+function themeRerunStateClass(state){return state?`state-${state}`:'state-unchosen'}
+function renderThemeRerunPrimPicker(){
+  const root=$('themeRerunPrimPicker');if(!root)return;root.innerHTML='';
+  for(const scope of themeRerunScopes()){
+    const row=document.createElement('section');row.className='theme-rerun-prim-row';row.dataset.scope=scope;
+    const label=document.createElement('div');label.className='theme-rerun-scope-label';label.textContent=themeRerunScopeLabel(scope);row.append(label);
+    const strip=document.createElement('div');strip.className='theme-rerun-prim-strip';
+    for(const code of THEME_RERUN_PRIM_ORDER){
+      const presentation=themeRerunPrimPresentation(code),state=themeRerunStateForPrim(scope,code),button=document.createElement('button');
+      button.type='button';button.className='theme-rerun-prim';button.dataset.primCode=code;button.dataset.scope=scope;button.dataset.primState=state||'unchosen';button.title=`${presentation.name} · ${state?state[0].toUpperCase()+state.slice(1):'Unchosen'}`;button.setAttribute('aria-label',button.title);
+      const dot=document.createElement('span');dot.className=`theme-rerun-prim-dot ${themeRerunStateClass(state)}`;dot.setAttribute('aria-hidden','true');
+      const emoji=document.createElement('span');emoji.className='theme-rerun-prim-emoji';emoji.textContent=presentation.symbol;emoji.setAttribute('aria-hidden','true');
+      button.append(dot,emoji);
+      button.addEventListener('pointerdown',event=>{if(!themeRerunWorkspace.active||!themeRerunWorkspace.pickerOpen)return;themeRerunWorkspace.longPressFired=false;themeRerunWorkspace.longPressTarget={scope,code};clearTimeout(themeRerunWorkspace.longPressTimer);button.setPointerCapture?.(event.pointerId);themeRerunWorkspace.longPressTimer=setTimeout(()=>{themeRerunWorkspace.longPressFired=true;const info=themeRerunPrimPresentation(code);$('themeRerunPrimStateTitle').textContent=info.name;document.querySelectorAll('[data-theme-rerun-prim-state]').forEach(choice=>choice.classList.toggle('current',choice.dataset.themeRerunPrimState===(state||'unchosen')));$('themeRerunPrimStateDialog')?.showModal();},520);});
+      button.addEventListener('pointerup',()=>{clearTimeout(themeRerunWorkspace.longPressTimer);if(!themeRerunWorkspace.longPressFired)themeRerunCyclePrim(scope,code);themeRerunWorkspace.longPressFired=false;});
+      button.addEventListener('pointercancel',()=>{clearTimeout(themeRerunWorkspace.longPressTimer);themeRerunWorkspace.longPressFired=false;});
+      button.addEventListener('contextmenu',event=>event.preventDefault());
+      strip.append(button);
+    }
+    row.append(strip);root.append(row);
+  }
+}
+function themeRerunNextThemeState(slot){const current=themeRerunWorkspace.current?.themeStates?.[slot]||'neutral';return current==='neutral'?'replace':current==='replace'?'preserve':'neutral'}
+function applyThemeRerunThemeState(slot,nextState){themeRerunWorkspace.current.themeStates[slot]=nextState;saveThemeRerunCurrent();renderTabletWorkbench()}
+function requestThemeRerunThemeState(slot){
+  if(!themeRerunWorkspace.active)return;const nextState=themeRerunNextThemeState(slot),before=themeRerunScopes(),candidate=normalizeThemeRerunCurrent(themeRerunWorkspace.current);candidate.themeStates[slot]=nextState;const after=themeRerunScopesForStates(candidate.themeStates),removed=before.filter(scope=>!after.includes(scope)),populated=removed.filter(scope=>themeRerunScopePopulated(scope));
+  if(populated.length){themeRerunWorkspace.pendingScopeChange={slot,nextState,removed:populated};$('themeRerunScopeConfirmText').textContent=`This Theme change will remove PrimPicker data from ${populated.map(themeRerunScopeLabel).join(', ')}.\n\nContinue and clear that data?`;$('themeRerunScopeConfirmDialog')?.showModal();return;}
+  applyThemeRerunThemeState(slot,nextState);
+}
+function applyPendingThemeRerunScopeChange(){const pending=themeRerunWorkspace.pendingScopeChange;if(!pending)return;for(const scope of pending.removed||[])themeRerunWorkspace.current.primScopes[scope]={};themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close();applyThemeRerunThemeState(pending.slot,pending.nextState)}
+function cancelPendingThemeRerunScopeChange(){themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close()}
+function clearThemeRerunPrimData(){if(!themeRerunWorkspace.active)return;for(const scope of ['theme1','theme2','theme3','general'])themeRerunWorkspace.current.primScopes[scope]={};saveThemeRerunCurrent();renderThemeRerunPrimPicker();setDirectorStatus('PrimPicker cleared. Theme selections retained.');}
+function renderThemeRerunChrome(){
+  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));
+  for(let slot=1;slot<=3;slot++){const cell=$(`tabletWorkbenchAiTheme${slot}`)?.closest('.tablet-theme-cell');if(!cell)continue;const state=active?(themeRerunWorkspace.current?.themeStates?.[slot]||'neutral'):'neutral';cell.classList.toggle('theme-rerun-replace',active&&state==='replace');cell.classList.toggle('theme-rerun-preserve',active&&state==='preserve');cell.dataset.themeRerunState=active?state:'';if(active){cell.tabIndex=0;cell.setAttribute('role','button');const theme=themeRerunAiThemeSnapshot(slot);cell.setAttribute('aria-label',`Theme ${slot}${theme?.label?` ${theme.label}`:''}: ${state==='replace'?'replace':state==='preserve'?'preserve':'neutral'}. Tap to cycle.`);}else if(!descriptionRerunWorkspace.active){cell.tabIndex=-1;cell.setAttribute('role','group');cell.removeAttribute('aria-label');}}
+  if(active&&themeRerunWorkspace.pickerOpen)renderThemeRerunPrimPicker();
+}
+function activateThemeRerunImage(){if(!themeRerunWorkspace.active)return;themeRerunWorkspace.imageId=currentKey();themeRerunWorkspace.current=loadThemeRerunCurrent(themeRerunWorkspace.imageId);themeRerunWorkspace.pickerOpen=false;renderTabletWorkbench()}
+function openThemeRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(themeRerunWorkspace.active)return;if(descriptionRerunWorkspace.active)closeDescriptionRerunWorkspace();themeRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};themeRerunWorkspace.active=true;themeRerunWorkspace.pickerOpen=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;activateThemeRerunImage()}
+function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveThemeRerunCurrent();themeRerunWorkspace.active=false;themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.pendingScopeChange=null;clearTimeout(themeRerunWorkspace.longPressTimer);const prior=themeRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);themeRerunWorkspace.preDrawer=null;themeRerunWorkspace.imageId=null;themeRerunWorkspace.current=null;renderTabletWorkbench()}
+window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
+
 // v0.9.40.49 — AI Description rerun workstation.
 // The Reaction rectangle is temporarily repurposed as the guidance surface.
 // Current working state is project-scoped and sticky; Saved Drafts live on the
@@ -1025,7 +1103,7 @@ function captureDescriptionRerunTarget(){if(!descriptionRerunWorkspace.active)re
 function restoreDescriptionRerunSelection(){if(!descriptionRerunWorkspace.active)return;const root=$('tabletWorkbenchAiDescription'),t=descriptionRerunWorkspace.current?.target||{};if(!root||!t.armed||!root.firstChild)return;const text=root.textContent||'',start=Math.max(0,Math.min(text.length,Number(t.start)||0)),end=Math.max(start,Math.min(text.length,Number(t.end)||0)),walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node,pos=0,startNode=null,startOffset=0,endNode=null,endOffset=0;while((node=walker.nextNode())){const len=node.nodeValue.length;if(startNode===null&&start<=pos+len){startNode=node;startOffset=start-pos}if(endNode===null&&end<=pos+len){endNode=node;endOffset=end-pos;break}pos+=len}if(!startNode||!endNode)return;const range=document.createRange();range.setStart(startNode,startOffset);range.setEnd(endNode,endOffset);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range)}
 function renderDescriptionRerunChrome(){const active=descriptionRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletDescriptionRerunWorkspace'),controls=$('tabletDescriptionRerunControls'),guidance=$('tabletDescriptionRerunGuidance'),description=$('tabletWorkbenchAiDescription'),include=$('descriptionRerunPopulatedInclude'),includeCheck=$('descriptionRerunPopulatedIncludeCheck');drawer?.classList.toggle('description-rerun-active',active);root?.classList.toggle('description-rerun-active',active);if(workspace)workspace.hidden=!active||descriptionRerunWorkspace.reviewHeld;if(controls)controls.hidden=!active;if(active&&guidance&&guidance.value!==String(descriptionRerunWorkspace.current?.guidance||''))guidance.value=String(descriptionRerunWorkspace.current?.guidance||'');if(description){description.classList.toggle('rerun-targeting',active&&['add','replace'].includes(descriptionRerunOperation()));if(active){description.setAttribute('contenteditable','true');description.setAttribute('inputmode','none');description.setAttribute('role','textbox');description.setAttribute('aria-readonly','true');description.spellcheck=false;}else{description.removeAttribute('contenteditable');description.removeAttribute('inputmode');description.removeAttribute('role');description.removeAttribute('aria-readonly');description.classList.remove('rerun-targeting')}}const displayed=active?descriptionRerunDisplayedItem():null;if(include){include.hidden=!active||!displayed;if(includeCheck)includeCheck.checked=Boolean(displayed&&descriptionRerunWorkspace.current?.includedDescriptionIds?.includes(String(displayed.id)))}for(let i=1;i<=3;i++){document.querySelector(`[data-tablet-workbench-slot="${i}"]`)?.classList.toggle('rerun-context-selected',active&&descriptionRerunSelectedTheme(`director:${i}`));const aiCell=$(`tabletWorkbenchAiTheme${i}`)?.closest('.tablet-theme-cell');aiCell?.classList.toggle('rerun-context-selected',active&&descriptionRerunSelectedTheme(`ai:${i}`));if(aiCell){aiCell.dataset.rerunAiThemeSlot=String(i);aiCell.tabIndex=active?0:-1;aiCell.setAttribute('role',active?'button':'group')}}if(active){$('descriptionRerunSubmit')?.toggleAttribute('disabled',aiRerunInFlight);$('descriptionRerunSaveDraft')?.toggleAttribute('disabled',aiRerunInFlight)}}
 async function activateDescriptionRerunImage({preferLatest=false}={}){if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(descriptionRerunWorkspace.imageId);descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];await loadDescriptionRerunCatalog({preferLatest});renderTabletWorkbench();updateUndoRedo()}
-async function openDescriptionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};descriptionRerunWorkspace.active=true;descriptionRerunWorkspace.reviewHeld=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateDescriptionRerunImage();}
+async function openDescriptionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(descriptionRerunWorkspace.active)return;if(themeRerunWorkspace.active)closeThemeRerunWorkspace();descriptionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};descriptionRerunWorkspace.active=true;descriptionRerunWorkspace.reviewHeld=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateDescriptionRerunImage();}
 function closeDescriptionRerunWorkspace(){if(!descriptionRerunWorkspace.active)return;saveDescriptionRerunCurrent();descriptionRerunWorkspace.active=false;descriptionRerunWorkspace.reviewHeld=false;const prior=descriptionRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);descriptionRerunWorkspace.preDrawer=null;descriptionRerunWorkspace.imageId=null;descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];renderTabletWorkbench();updateUndoRedo()}
 function renderDescriptionRerunDraftDialog(){const list=$('descriptionRerunDraftList');if(!list)return;const drafts=[...descriptionRerunDraftsFor(descriptionRerunWorkspace.imageId)].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));list.innerHTML='';if(!drafts.length){list.textContent='No saved drafts.';return}for(const draft of drafts){const row=document.createElement('div');row.className='description-rerun-list-row no-checkbox';const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.innerHTML=`<strong>AI Desc Rerun Draft · ${formatDescriptionRerunDate(draft.createdAt)}</strong><small>${String(draft.state?.guidance||'').trim().slice(0,180)||'No text guidance'}</small>`;button.addEventListener('click',()=>{pushDescriptionRerunUndo();descriptionRerunWorkspace.current=normalizeDescriptionRerunCurrent(draft.state);saveDescriptionRerunCurrent();$('descriptionRerunDraftDialog')?.close();renderTabletWorkbench();requestAnimationFrame(restoreDescriptionRerunSelection)});row.append(button);list.append(row)}}
 function renderDescriptionRerunClassicsDialog(){const list=$('descriptionRerunClassicsList');if(!list)return;list.innerHTML='';if(!descriptionRerunWorkspace.catalog.length){list.textContent='No Description history is available.';return}for(const item of descriptionRerunWorkspace.catalog){const row=document.createElement('div');row.className='description-rerun-list-row';const check=document.createElement('input');check.type='checkbox';check.checked=descriptionRerunWorkspace.current.includedDescriptionIds.includes(item.id);check.setAttribute('aria-label',`Include Description from ${formatDescriptionRerunDate(item.createdAt)}`);check.addEventListener('change',()=>toggleDescriptionRerunIncludedDescription(item.id,check.checked));const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.innerHTML=`<strong>${formatDescriptionRerunDate(item.createdAt)}${item.current?' · Current':''}${item.version?` · v${item.version}`:''}</strong><small>${item.text.slice(0,220)}</small>`;button.addEventListener('click',()=>{$('descriptionRerunClassicsDialog')?.close();populateDescriptionRerunDescription(item.id)});row.append(check,button);list.append(row)}}
@@ -1267,8 +1345,9 @@ function renderTabletWorkbench(){
   root.classList.toggle("face-judgment",tabletLandscapeView.face==="judgment");
   $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
   $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
-  $("tabletAiThemesPanel").hidden=descriptionRerunWorkspace.active?false:(!tabletLandscapeView.aiThemes || tabletLandscapeView.customs);
-  $("tabletWorkbenchAiDescription").hidden=descriptionRerunWorkspace.active?false:(!tabletLandscapeView.aiDescription || tabletLandscapeView.customs);
+  const rerunWorkspaceActive=descriptionRerunWorkspace.active||themeRerunWorkspace.active;
+  $("tabletAiThemesPanel").hidden=rerunWorkspaceActive?false:(!tabletLandscapeView.aiThemes || tabletLandscapeView.customs);
+  $("tabletWorkbenchAiDescription").hidden=rerunWorkspaceActive?false:(!tabletLandscapeView.aiDescription || tabletLandscapeView.customs);
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   $("tabletSlidingDrawer")?.classList.toggle("customs-active",tabletLandscapeView.customs);
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
@@ -1284,6 +1363,7 @@ function renderTabletWorkbench(){
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   renderDescriptionRerunChrome();
+  renderThemeRerunChrome();
   syncTabletAiRerunControls();
 
   // AI theme fields use the exact rendered width and height of the existing
@@ -2560,9 +2640,24 @@ async function createComponentAiRerun(component){
 }
 $("tabletAiRerunLockBtn")?.addEventListener("click",()=>{tabletAiRerunLocked=!tabletAiRerunLocked;localStorage.setItem(AI_RERUN_LOCK_KEY,tabletAiRerunLocked?"1":"0");syncTabletAiRerunControls();});
 $("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>createComponentAiRerun("reactions"));
-$("tabletAiRerunThemesBtn")?.addEventListener("click",()=>createComponentAiRerun("themes"));
+$("tabletAiRerunThemesBtn")?.addEventListener("click",()=>openThemeRerunWorkspace());
 $("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>openDescriptionRerunWorkspace().catch(error=>{console.error("Description rerun workspace could not open",error);alert(error.message||String(error));}));
 syncTabletAiRerunControls();
+
+// AI Theme rerun shell + PrimPicker controls.
+for(let slot=1;slot<=3;slot++){
+  const cell=$("tabletWorkbenchAiTheme"+slot)?.closest(".tablet-theme-cell");
+  cell?.addEventListener("click",event=>{if(!themeRerunWorkspace.active)return;event.preventDefault();requestThemeRerunThemeState(slot);});
+  cell?.addEventListener("keydown",event=>{if(!themeRerunWorkspace.active||!["Enter"," "].includes(event.key))return;event.preventDefault();requestThemeRerunThemeState(slot);});
+}
+$("themeRerunPrimPickerBtn")?.addEventListener("click",()=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.pickerOpen=!themeRerunWorkspace.pickerOpen;renderThemeRerunChrome();});
+$("themeRerunClearBtn")?.addEventListener("click",()=>clearThemeRerunPrimData());
+$("themeRerunReturnBtn")?.addEventListener("click",()=>closeThemeRerunWorkspace());
+$("themeRerunScopeConfirmCancel")?.addEventListener("click",()=>cancelPendingThemeRerunScopeChange());
+$("themeRerunScopeConfirmApply")?.addEventListener("click",()=>applyPendingThemeRerunScopeChange());
+document.querySelectorAll("[data-theme-rerun-prim-state]").forEach(button=>button.addEventListener("click",()=>{const target=themeRerunWorkspace.longPressTarget;if(!target)return;const raw=button.dataset.themeRerunPrimState;themeRerunSetPrimState(target.scope,target.code,raw==='unchosen'?null:raw);$("themeRerunPrimStateDialog")?.close();themeRerunWorkspace.longPressTarget=null;}));
+document.querySelectorAll("[data-theme-rerun-close]").forEach(button=>button.addEventListener("click",()=>{$(button.dataset.themeRerunClose)?.close();themeRerunWorkspace.longPressTarget=null;}));
+for(const id of ["themeRerunExclusionsBtn","themeRerunPreviewBtn","themeRerunSubmitBtn","themeRerunHistoryBtn","themeRerunDescriptionsBtn"]){$(id)?.addEventListener("click",()=>setDirectorStatus("Theme Rerun shell: this control is reserved for the next bounded pass."));}
 
 // AI Description rerun workstation controls.
 $("tabletDescriptionRerunGuidance")?.addEventListener("input",event=>{if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.current.guidance=event.target.value;saveDescriptionRerunCurrent();});

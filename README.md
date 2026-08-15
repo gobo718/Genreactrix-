@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.50 — AI Description Include Placement Fix
+# Genreactrix v0.9.40.51 — Theme Rerun PrimPicker Visual Pass
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -10,7 +10,7 @@ Button order, left-to-right then top-to-bottom:
 
 **Save Draft · Select Draft · Preview Request · Submit**
 
-**Review Reactions · Classics · Clear · Return**
+**Review Reactions · Descriptions · Clear · Return**
 
 ### Current state and drafts
 
@@ -25,8 +25,8 @@ Button order, left-to-right then top-to-bottom:
 
 - The image is always included.
 - Each of the 3 Director Themes and 3 AI Themes can be independently selected/deselected as AI context.
-- **Classics** normal tap prefers the most recent prior Description. Long press opens the dated Description-version list.
-- Classics checkboxes independently include any number of Description versions as AI context. Populating a Description does not automatically include it.
+- **Descriptions** normal tap prefers the most recent prior Description. Long press opens the dated Description-version list.
+- Descriptions checkboxes independently include any number of Description versions as AI context. Populating a Description does not automatically include it.
 - The populated Description has a mirrored Include checkbox on the existing AI Description display.
 
 ### Edit mode from the existing AI Description field
@@ -71,3 +71,14 @@ Real-device/browser acceptance is still required.
 - The populated-Description **Include** checkbox now receives the same measured vertical offset as the AI Description panel.
 - This keeps the checkbox with the populated AI Description field instead of falling back onto the Submit-button row.
 - No rerun behavior, surrounding geometry, typography, Worker contract, or other UI logic changed.
+
+
+## v0.9.40.51 — Theme Rerun PrimPicker visual pass
+
+- Adds the Landscape Theme Rerun 4×2 control shell.
+- Adds PrimPicker with code-backed P01–P14 rows, fixed ascending order, one-emoji-width spacing, and centered status dots.
+- AI Theme cells cycle Neutral → Replace (red) → Preserve (green) → Neutral. Replace slots create Theme-specific PrimPicker rows; General fills the remaining row until all three slots are specific.
+- Tap cycles Mandatory → Preferred → Optional → Discouraged → Forbidden → Unchosen. Long-press opens direct status selection or Clear.
+- Destructive row loss requires confirmation; Clear resets PrimPicker assignments while retaining Theme selections/rows.
+- Theme rerun submission/history/exclusions/description-context actions remain reserved for a later bounded pass; Worker is unchanged.
+- Renames the AI Description rerun control label Classics → Descriptions.
