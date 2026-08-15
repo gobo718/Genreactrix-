@@ -4627,13 +4627,15 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   border-radius:7px!important;
   background:#19141f!important;
   color:#cfc6d5!important;
-  font-size:clamp(7px,.72vw,10px)!important;
+  font-size:10px!important;
   line-height:1.22!important;
-  overflow:hidden!important;
-  display:-webkit-box!important;
-  -webkit-box-orient:vertical!important;
-  -webkit-line-clamp:8!important;
-  text-overflow:ellipsis!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  display:block!important;
+  -webkit-box-orient:initial!important;
+  -webkit-line-clamp:unset!important;
+  text-overflow:clip!important;
+  overscroll-behavior:contain!important;
 }
 .landscape-image-view-themes{
   display:grid!important;
@@ -4729,10 +4731,13 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     padding:5px 7px 6px!important;
   }
   .landscape-image-view-description{
-    font-size:clamp(7px,.68vw,9px)!important;
+    font-size:10px!important;
     line-height:1.18!important;
     padding:5px 7px!important;
-    -webkit-line-clamp:7!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    display:block!important;
+    -webkit-line-clamp:unset!important;
   }
   .landscape-image-view-prims{
     grid-template-rows:repeat(3,minmax(36px,1fr))!important;
@@ -4835,11 +4840,13 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     grid-column:1 / -1!important;
     grid-row:2!important;
     min-height:0!important;
-    overflow:hidden!important;
-    font-size:clamp(7px,.66vw,9px)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    font-size:10px!important;
     line-height:1.16!important;
     padding:5px 7px!important;
-    -webkit-line-clamp:7!important;
+    display:block!important;
+    -webkit-line-clamp:unset!important;
   }
   .landscape-image-view-themes{
     grid-column:1!important;
@@ -4946,11 +4953,13 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     grid-column:1/-1!important;
     grid-row:2!important;
     min-height:0!important;
-    overflow:hidden!important;
-    font-size:clamp(8px,.7vw,10px)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    font-size:10px!important;
     line-height:1.18!important;
     padding:6px 8px!important;
-    -webkit-line-clamp:6!important;
+    display:block!important;
+    -webkit-line-clamp:unset!important;
   }
   #landscapeImageView .landscape-image-view-themes{
     grid-column:1!important;
