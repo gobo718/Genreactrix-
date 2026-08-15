@@ -3323,6 +3323,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .landscape-director-themes .tablet-theme-cell strong{
     display:block!important;
     width:100%!important;
+    font-size:10px!important;
     min-width:0!important;
     margin:0!important;
     text-align:center!important;
@@ -3666,7 +3667,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     min-width:0!important;
     margin:0!important;
     text-align:center!important;
-    font-size:clamp(8px,1.02vw,14px)!important;
+    font-size:10px!important;
     line-height:1.05!important;
     overflow:hidden!important;
     text-overflow:ellipsis!important;
@@ -6049,7 +6050,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     margin:0!important;
     padding:0!important;
     color:var(--muted)!important;
-    font-size:clamp(6px,.7vw,10px)!important;
+    font-size:12px!important;
     line-height:12px!important;
     text-align:center!important;
     white-space:nowrap!important;

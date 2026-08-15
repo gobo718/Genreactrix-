@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.44";
+const GENREACTRIX_BUILD="v0.9.40.45";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1052,7 +1052,7 @@ function fitLandscapeAiDescription(){
   const panel=document.getElementById("tabletWorkbenchAiDescription");
   if(!panel || panel.hidden || !panel.isConnected) return;
   const startSize=10;
-  const minimumSize=1;
+  const minimumSize=10;
   panel.classList.remove("ai-description-scroll");
   panel.style.setProperty("--ai-description-font-size",`${startSize}px`);
   let size=startSize;
