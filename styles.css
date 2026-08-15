@@ -7681,3 +7681,41 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .images-record-select{display:flex;align-items:center;gap:9px;min-width:0;flex:1}.images-record-select>span{min-width:0}
 @media(max-width:700px){.single-investigation-body{grid-template-columns:1fr;overflow:auto}.single-investigation-body .investigation-preview img{height:min(44dvh,420px)}.comparator-shell{grid-template-rows:auto minmax(130px,31dvh) minmax(0,1fr) auto}.investigation-compare-head,.investigation-compare-row{grid-template-columns:minmax(62px,26%) minmax(0,37%) minmax(0,37%)}.investigation-compare-row>*{padding:6px 5px;font-size:.68rem}}
 @media(orientation:landscape) and (max-height:650px){.landscape-filter-dialog{max-height:calc(100dvh - 8px)}.landscape-filter-shell{max-height:calc(100dvh - 8px);gap:8px;padding:10px}.landscape-filter-bases label{padding:7px}.landscape-filter-grid{gap:5px 8px}.landscape-filter-pack{padding-top:7px}.comparator-shell{grid-template-rows:auto minmax(120px,39dvh) minmax(0,1fr) auto}.single-investigation-body .investigation-preview img{max-height:62dvh}}
+
+/* v0.9.40.44 — bounded operational UI refinement.
+   In short landscape viewports the Filter becomes a compact two-column control
+   surface so its full decision set remains visible without vertical hunting. */
+@media (orientation:landscape) and (max-height:650px) and (min-width:760px){
+  .landscape-filter-dialog{
+    width:min(720px,calc(100vw - 12px));
+    max-width:calc(100vw - 12px);
+    max-height:calc(100dvh - 8px);
+  }
+  .landscape-filter-shell{
+    width:100%;
+    max-height:calc(100dvh - 8px);
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:minmax(320px,1.18fr) minmax(230px,.82fr);
+    grid-template-areas:
+      "head head"
+      "bases pack"
+      "select sort"
+      "grid count";
+    grid-template-rows:auto auto auto minmax(0,1fr);
+    column-gap:16px;
+    row-gap:7px;
+    padding:9px 11px 10px;
+  }
+  .landscape-filter-shell>header{grid-area:head;padding-bottom:6px}
+  .landscape-filter-bases{grid-area:bases;gap:7px}
+  .landscape-filter-bases label{padding:6px 8px}
+  .landscape-filter-shell>h3{grid-area:select;font-size:.82rem;align-self:end}
+  .landscape-filter-grid{grid-area:grid;gap:4px 8px;align-self:start}
+  .landscape-filter-grid>input,.landscape-filter-bases input{width:18px;height:18px}
+  .landscape-filter-pack{grid-area:pack;border-top:0;padding-top:0;align-self:center}
+  .landscape-filter-pack button{padding:6px 8px}
+  .landscape-filter-sort{grid-area:sort;align-self:end}
+  .landscape-filter-sort select{padding:6px 7px}
+  .landscape-filter-count{grid-area:count;align-self:center;margin:0;padding:8px;border:1px solid #28484b;border-radius:8px;background:#12171b}
+}

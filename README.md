@@ -1,39 +1,26 @@
-# Genreactrix v0.9.40.43 — Director Hydration Window
+# Genreactrix v0.9.40.44 — Operational UI Refinement 1
 
-Source: v0.9.40.42 reliable Inbox asset hydration candidate.
-Protected accepted rollback: v0.9.40.38.
+Source: accepted v0.9.40.43 Director hydration-window baseline.
 
-## Bounded purpose
+## Bounded scope
 
-v0.9.40.43 addresses the real-device symptom where an Inbox image could appear briefly, then be replaced by the black **Loading image…** screen, and where a 97-image Inbox produced widespread asset-hydration failures.
+This release begins the deferred UI operational-refinement phase without redesigning the core Director/AI geometry.
 
-The logical Inbox population remains complete for filtering/navigation, but Director no longer tries to hydrate every image asset at once.
+- Short-landscape Filter is reorganized into a compact two-column control surface so All/Feed, Include/Exclude, Bundle, Sort, and the live match count remain visible together instead of requiring vertical hunting.
+- Existing Single Image Inspector and Two-Image Comparator remain the shared evidence surfaces for manual per-image and two-image decisions.
+- The AI-panel convenience command is now labeled **Bundle Available** and dispatches to the Queue-owned Bundle Engine to move all currently Staged images. This is a command shortcut only; ownership remains Queue.
+- The redundant single-file picker remains removed; the surviving image picker supports one-or-many selection.
 
-## Changes
+## Protected behavior
 
-- Hydration is limited to the current Director image plus one immediate neighbor on each side (maximum three image assets at a time).
-- Navigation immediately prioritizes the destination image.
-- Feed/filter refresh preserves an already-resolved visible image instead of replacing it with a new loading shell.
-- The display resolver reuses an existing runtime object URL for an image instead of repeatedly revoking/recreating it during overlapping display requests.
-- Missing assets may still be retried on a later feed refresh; a confirmed missing state is not permanently converted into a fake success.
-- Full logical Inbox records remain present even when their image bytes have not yet been hydrated.
-- The existing bounded 12-second lookup termination remains: a genuinely unresolved current/window image becomes **Image unavailable** instead of loading forever.
-- Maintenance hydration diagnostics now judge stuck work only inside the active three-image hydration window rather than treating intentionally unhydrated offscreen records as stuck.
+- v0.9.40.43 Inbox hydration-window/race fix preserved.
+- No changes to AI 60/40 calculation.
+- No changes to lifecycle ownership or Batch semantics.
+- No changes to core Landscape Director/AI workspace geometry.
 
-## Explicitly unchanged
+## Real-device acceptance
 
-- No layout redesign.
-- No 60/40 AI changes.
-- No lifecycle, Bundle, Batch, Project/Runtime, persistence, or Reports changes.
-- Dupe/Repeat Comparator and Single Image Inspector from v0.9.40.40+ remain included.
-- Multi-file **Choose Files** remains the Origin picker.
-
-## Device acceptance
-
-1. Confirm the site reports **v0.9.40.43**.
-2. Open the existing 97-image Inbox in Landscape with Filter = All.
-3. Navigate through at least 10 images, including images that flashed/disappeared or became unavailable in v0.9.40.42.
-4. A successfully displayed image must remain displayed; it must not revert to **Loading image…** because other Inbox assets are hydrating.
-5. The current image should load without waiting for the rest of the Inbox. Nearby images may prefetch.
-6. Any truly unresolved image must end as **Image unavailable** rather than remain loading indefinitely.
-7. If image display is reliable, continue into the previously blocked Batch test.
+1. In short landscape, open Filter and confirm the full control set is visible together and usable.
+2. Close Filter and confirm Director geometry is unchanged.
+3. If Staged images exist, use AI panel **Bundle Available** and confirm all current Staged images move through the normal Queue-owned Bundle path into Inbox.
+4. Open one Dupe/Repeat comparison or one Inspector case if convenient; previews/metadata/actions should remain usable.

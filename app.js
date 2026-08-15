@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.43";
+const GENREACTRIX_BUILD="v0.9.40.44";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2015,7 +2015,7 @@ window.genreactrixAutoPushAiOutputToInbox=async function(){
   return null;
 };
 $("portraitExportFails")?.addEventListener("click",async()=>{try{const result=await window.genreactrixAiAnalysisEngine?.exportFails?.();if(result?.moved)setPortraitStationStatus(`${result.moved} exported failure${result.moved===1?"":"s"} moved to Recycle.`);else if(result?.exported)setPortraitStationStatus(`Failure ZIP exported. Originals remain in Failed.`);}catch(error){setPortraitStationStatus(`Export Fails failed: ${error.message||error}`);}});
-$("portraitBundleStaged")?.addEventListener("click",async()=>{try{const bundle=await window.genreactrixBundleEngine?.bundleStaged?.({automatic:false});setPortraitStationStatus(bundle?`${bundle.label} sent to Inbox · ${bundle.imageIds.length} image${bundle.imageIds.length===1?"":"s"}.`:"No Staged images to Bundle.");renderPortraitInboxControls();}catch(error){setPortraitStationStatus(`Bundle failed: ${error.message||error}`);}});
+$("portraitBundleStaged")?.addEventListener("click",async()=>{try{const bundle=await window.genreactrixBundleEngine?.bundleWhateverAvailable?.();setPortraitStationStatus(bundle?`${bundle.label} sent to Inbox · ${bundle.imageIds.length} image${bundle.imageIds.length===1?"":"s"}.`:"No Staged images available.");renderPortraitInboxControls();}catch(error){setPortraitStationStatus(`Bundle failed: ${error.message||error}`);}});
 $("packPickerClose")?.addEventListener("click",()=>$("packPickerDialog")?.close());
 $("packPickerList")?.addEventListener("click",async event=>{
   const button=event.target.closest("[data-pack-picker-id]");if(!button)return;const id=button.dataset.packPickerId||null;

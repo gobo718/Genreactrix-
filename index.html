@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.43</title>
-<link href="styles.css?v=0.9.40.25" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.44</title>
+<link href="styles.css?v=0.9.40.44" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.43</span>
+<span>v0.9.40.44</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.43</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.44</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -144,7 +144,7 @@
 <div class="portrait-inbox-push" aria-label="Staged Queue, Bundle, and failed export actions">
   <span class="portrait-inbox-label">Bundles <strong id="portraitInboxPackCount">0</strong></span>
   <span class="portrait-inbox-auto">Staged <strong id="portraitStagedCount">0</strong></span>
-  <button id="portraitBundleStaged" type="button">Bundle Staged</button>
+  <button id="portraitBundleStaged" type="button" title="Queue-owned shortcut: Bundle all currently Staged images">Bundle Available</button>
   <button id="portraitExportFails" type="button">Export Fails</button>
 </div>
 </section><section aria-label="Queue" class="portrait-panel portrait-queue-panel" data-quick-module="queue">
@@ -980,7 +980,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.43"></script>
+<script src="app.js?v=0.9.40.44"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
