@@ -49,15 +49,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.48</title>
-<link href="styles.css?v=0.9.40.48" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.49</title>
+<link href="styles.css?v=0.9.40.49" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.48</span>
+<span>v0.9.40.49</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -85,7 +85,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.48</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.49</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -435,6 +435,9 @@
 <div class="landscape-judgment-header" aria-label="Fixed reaction header">
 <div aria-label="Primitive reactions" class="tablet-prims-row" id="tabletWorkbenchPrims"></div>
 <div aria-label="AI reaction percentages" class="tablet-prims-percent-row" id="tabletWorkbenchPrimPcts"></div>
+<div class="description-rerun-workspace" id="tabletDescriptionRerunWorkspace" hidden aria-label="AI Description rerun guidance">
+<textarea id="tabletDescriptionRerunGuidance" aria-label="AI Description rerun guidance" placeholder="Tap here to write rerun guidance"></textarea>
+</div>
 </div>
 <div class="landscape-sliding-drawer" id="tabletSlidingDrawer" aria-label="Judgment sliding drawer">
 <div class="landscape-ai-controls" aria-label="AI reference and rerun controls">
@@ -447,6 +450,16 @@
 <button class="ai-rerun-action" id="tabletAiRerunDescriptionBtn" type="button" disabled>AI Rerun Description</button>
 <button aria-pressed="true" class="ai-rerun-lock" id="tabletAiRerunLockBtn" type="button">AI Rerun Lock</button>
 </div>
+<div class="description-rerun-controls" id="tabletDescriptionRerunControls" hidden aria-label="AI Description rerun controls">
+<button id="descriptionRerunSaveDraft" type="button">Save Draft</button>
+<button id="descriptionRerunSelectDraft" type="button">Select Draft</button>
+<button id="descriptionRerunPreview" type="button">Preview Request</button>
+<button id="descriptionRerunSubmit" type="button">Submit</button>
+<button id="descriptionRerunReviewReactions" type="button">Review Reactions</button>
+<button id="descriptionRerunClassics" type="button">Classics</button>
+<button id="descriptionRerunClear" type="button">Clear</button>
+<button id="descriptionRerunReturn" type="button">Return</button>
+</div>
 <div class="landscape-ai-theme-comparison" id="tabletAiThemesPanel" hidden aria-label="AI themes">
 <div class="landscape-ai-theme-grid">
 <div class="tablet-theme-cell tablet-ai-ghost"><span class="tablet-ai-label">AI</span><strong id="tabletWorkbenchAiTheme1">—</strong><span class="tablet-ai-pct" id="tabletWorkbenchAiThemePct1">—</span></div>
@@ -455,6 +468,7 @@
 </div>
 </div>
 <div aria-label="AI description" class="tablet-ai-description-ghost" id="tabletWorkbenchAiDescription" hidden></div>
+<label class="description-rerun-populated-include" id="descriptionRerunPopulatedInclude" hidden><input id="descriptionRerunPopulatedIncludeCheck" type="checkbox"><span>Include</span></label>
 <div class="landscape-customs-drawer customs-workspace-v63" id="tabletCustomsDrawer" hidden>
 <div class="customs-tab-strip" role="tablist" aria-label="Customs workspace">
 <button id="tabletCustomSearchTab" class="customs-tab active" type="button" role="tab" aria-selected="true" aria-controls="tabletCustomSearchPanel">Custom Search</button>
@@ -939,6 +953,21 @@
 <section><header><h2 id="investigationZoomTitle">Close-up</h2><button aria-label="Close close-up" id="investigationZoomClose" type="button">×</button></header><div class="investigation-zoom-stage"><img id="investigationZoomImage" alt="Image close-up"></div></section>
 </dialog>
 
+<dialog class="description-rerun-dialog" id="descriptionRerunDraftDialog">
+<div class="description-rerun-dialog-shell"><header><strong>Select Draft</strong><button type="button" data-description-rerun-close="descriptionRerunDraftDialog">Return</button></header><div id="descriptionRerunDraftList" class="description-rerun-list"></div></div>
+</dialog>
+<dialog class="description-rerun-dialog" id="descriptionRerunClassicsDialog">
+<div class="description-rerun-dialog-shell"><header><strong>Classics</strong><button type="button" data-description-rerun-close="descriptionRerunClassicsDialog">Return</button></header><div id="descriptionRerunClassicsList" class="description-rerun-list"></div></div>
+</dialog>
+<dialog class="description-rerun-dialog description-rerun-preview-dialog" id="descriptionRerunPreviewDialog">
+<div class="description-rerun-dialog-shell"><header><strong>Preview Request</strong><button type="button" data-description-rerun-close="descriptionRerunPreviewDialog">Return</button></header><pre id="descriptionRerunPreviewBody" class="description-rerun-preview"></pre></div>
+</dialog>
+<dialog class="description-rerun-dialog" id="descriptionRerunClearDialog">
+<div class="description-rerun-dialog-shell"><header><strong>Clear</strong><button type="button" data-description-rerun-close="descriptionRerunClearDialog">Return</button></header><label class="description-rerun-clear-choice"><input id="descriptionRerunClearText" type="checkbox"> Clear Text Entry</label><label class="description-rerun-clear-choice"><input id="descriptionRerunClearTarget" type="checkbox"> Clear Highlights/Cursor</label><div class="description-rerun-dialog-actions"><button type="button" data-description-rerun-close="descriptionRerunClearDialog">Return</button><button id="descriptionRerunClearSubmit" type="button">Submit</button></div></div>
+</dialog>
+<dialog class="description-rerun-dialog" id="descriptionRerunClearConfirmDialog">
+<div class="description-rerun-dialog-shell"><header><strong>Confirm Clear</strong></header><div id="descriptionRerunClearConfirmText" class="description-rerun-confirm-text"></div><div class="description-rerun-dialog-actions"><button id="descriptionRerunClearConfirmReturn" type="button">Return</button><button id="descriptionRerunClearConfirmApply" type="button">Confirm</button></div></div>
+</dialog>
 <script src="project-runtime-engine.js?v=0.9.40.37"></script>
 <script src="persistence-engine.js?v=0.9.40.39"></script>
 <script src="validation-engine.js?v=0.9.24.0"></script>
@@ -980,7 +1009,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.48"></script>
+<script src="app.js?v=0.9.40.49"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1012,11 +1041,11 @@ window.grxOpenCustomDialog=function(dialogId){
 
 <script src="post-processing-engine.js?v=0.9.40.37"></script>
 <script src="housekeeping-engine.js?v=0.9.40.39"></script>
-<script src="batch-engine.js?v=0.9.40.37"></script>
+<script src="batch-engine.js?v=0.9.40.49"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
-<script src="ai-artifact-engine.js?v=0.9.40.39"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.35"></script>
+<script src="ai-artifact-engine.js?v=0.9.40.49"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.49"></script>
 <script src="home-count-engine.js?v=0.9.40.31"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">

@@ -1,20 +1,67 @@
-# Genreactrix v0.9.40.48 — AI Drawer Load Defaults
+# Genreactrix v0.9.40.49 — AI Description Rerun Workspace
 
-Built directly from the accepted v0.9.40.47 drawer-button typography baseline.
+Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
-## v0.9.40.48 — Load-time AI control defaults
+## AI Description rerun workspace
 
-When an image loads, including navigation away and back:
+Opening **AI Rerun Description** temporarily repurposes the existing Reaction rectangle as a guidance/current-work text field. The surrounding Landscape regions do not move or resize. AI Themes and AI Description remain visible, and the rerun control band occupies the existing 4×2 AI-button footprint.
 
-- If all three Director Theme slots are populated AND at least one Director Reaction is selected, AI Reactions, AI Themes, and AI Description default ON/selected.
-- If any Director Theme slot is blank OR no Director Reaction is selected, all three default OFF/unselected.
-- The rule runs only on image load. Manual changes to the three AI buttons remain under Director control for the rest of that image visit.
-- Returning to the image causes the load rule to apply again from its current saved Director classification.
+Button order, left-to-right then top-to-bottom:
 
-### Protected scope
+**Save Draft · Select Draft · Preview Request · Submit**
 
-No layout, CSS, font, spacing, geometry, image rendering, AI rerun semantics, classification persistence, or workflow ownership changes are included.
+**Review Reactions · Classics · Clear · Return**
 
-### Inherited from v0.9.40.47
+### Current state and drafts
 
-All accepted v0.9.40.47 behavior and typography remain unchanged.
+- Guidance and rerun choices are Current state and remain sticky through Return and repeated submissions until explicitly cleared or finalized through Batch.
+- Blank/whitespace-only guidance is omitted from the AI request.
+- Save Draft stores the complete current rerun setup as an **AI Desc Rerun Draft**.
+- Select Draft restores the complete saved setup; the main Undo/Redo controls can reverse/reapply that restore.
+- Immediately before Batch commitment, meaningful Current rerun state is automatically saved as an **AI Desc Rerun Draft**, then its live Current state is cleared.
+- Portable Project backup already captures the project-scoped Current localStorage state; saved drafts live on the permanent Image Record.
+
+### Selectable context
+
+- The image is always included.
+- Each of the 3 Director Themes and 3 AI Themes can be independently selected/deselected as AI context.
+- **Classics** normal tap prefers the most recent prior Description. Long press opens the dated Description-version list.
+- Classics checkboxes independently include any number of Description versions as AI context. Populating a Description does not automatically include it.
+- The populated Description has a mirrored Include checkbox on the existing AI Description display.
+
+### Edit mode from the existing AI Description field
+
+No separate mode buttons are added.
+
+- No deliberate cursor/highlight: **ALL / Rewrite All**.
+- Blinking cursor in nonblank Description text: **ADD at cursor**.
+- One contiguous highlighted span: **REPLACE highlighted section**.
+- Add/Replace targeting turns the entire AI Description field **maroon**.
+- Manual typing/pasting into the AI Description target is blocked; it is a targeting surface, not a direct editor.
+- For Add/Replace the Worker returns only the insertion/replacement fragment. Genreactrix splices that fragment into the target locally, preserving all text outside the allowed boundary.
+
+### Preview, review, clear, and return
+
+- Preview Request exposes the complete request before an AI call, including operation, always-included image, guidance/no guidance, selected Themes/no Themes, included Description versions/no Descriptions, and exact cursor/highlight target.
+- Review Reactions is press-and-hold reference viewing only. Releasing restores the rerun workspace unchanged.
+- Clear offers **Clear Text Entry** and **Clear Highlights/Cursor** independently; its Submit path requires confirmation.
+- Return exits without discarding Current rerun state.
+
+### Immutable AI history
+
+Every actual Description submission creates a new AI attempt/artifact version. The exact structured rerun request is retained with attempt/history metadata. Add/Replace also preserves the raw returned edit fragment in immutable history while the live Description projection contains only the complete resulting Description.
+
+## Worker contract
+
+This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The Worker version is **0.9.6.25-description-rerun-workspace**.
+
+The updated Worker must be deployed before testing actual structured Submit calls. UI-only inspection does not require a Worker call.
+
+## Protected scope
+
+- No existing Landscape CSS rule was edited; v0.9.40.48 CSS remains an exact prefix of this build and the new workstation styles are scoped/appended.
+- No existing image, Director Theme, AI Theme, AI Description, drawer, or surrounding panel geometry was moved.
+- Existing v0.9.40.48 AI-drawer load defaults remain intact outside rerun mode.
+- 60/40 Reaction architecture is unchanged.
+
+Real-device/browser acceptance is still required.

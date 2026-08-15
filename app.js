@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.48";
+const GENREACTRIX_BUILD="v0.9.40.49";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -605,6 +605,7 @@ function emptyClassification(){
   return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
 }
 function applyAiDrawerLoadDefaults(){
+  if(descriptionRerunWorkspace?.active){tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;return;}
   const directorThemesComplete=state.themes.length>=3&&state.themes.slice(0,3).every(theme=>Boolean(normalizeTheme(theme)));
   const hasDirectorReaction=state.selectedReactions.length>0;
   const selected=directorThemesComplete&&hasDirectorReaction;
@@ -629,11 +630,13 @@ function loadCurrent(){
   // v0.9.40.48 — AI drawer defaults are recalculated only when an image loads.
   // Manual AI control changes remain untouched until the next image load.
   applyAiDrawerLoadDefaults();
+  if(descriptionRerunWorkspace?.active){descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(currentKey());descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];}
   // Paint the destination image's classification immediately, before any
   // nonclassification console work.
   renderThemes();
   renderReactions();
   renderAll();
+  if(descriptionRerunWorkspace?.active)activateDescriptionRerunImage().catch(error=>console.warn("Description rerun image load failed",error));
 }
 function advanceImageIndex(){
   if(state.files.length) state.index=(state.index+1)%state.files.length;
@@ -650,8 +653,10 @@ function commitAndAdvance(sourceKey){
   applyClassification(readClassificationForKey(destinationKey));
   state.visitBaseline=classificationState();
   applyAiDrawerLoadDefaults();
+  if(descriptionRerunWorkspace?.active){descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(currentKey());descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];}
   if($("themeWorkspace")?.open) $("themeWorkspace").close();
   renderAll();
+  if(descriptionRerunWorkspace?.active)activateDescriptionRerunImage().catch(error=>console.warn("Description rerun image load failed",error));
 }
 async function navigateImage(delta){
   if(state.feedEmpty)return;
@@ -963,6 +968,70 @@ function syncTabletAiRerunControls(){
   ["aiGuidedDescriptionRerunBtn","aiThemeFailsafeBtn"].forEach(id=>{const b=$(id);if(b){b.disabled=aiRerunInFlight;b.setAttribute("aria-busy",String(aiRerunInFlight));}});
 }
 
+
+
+// v0.9.40.49 — AI Description rerun workstation.
+// The Reaction rectangle is temporarily repurposed as the guidance surface.
+// Current working state is project-scoped and sticky; Saved Drafts live on the
+// permanent Image Record; AI Description versions remain immutable artifacts.
+const DESCRIPTION_RERUN_CURRENT_KEY='genreactrix-description-rerun-current-v1';
+const DESCRIPTION_RERUN_DRAFTS_FIELD='aiDescriptionRerunDrafts';
+const descriptionRerunWorkspace={active:false,reviewHeld:false,imageId:null,current:null,catalog:[],preDrawer:null,undo:[],future:[],classicsLongPress:false,classicsTimer:null};
+const cloneDescriptionRerun=value=>value==null?value:structuredClone(value);
+const emptyDescriptionRerunCurrent=()=>({schemaVersion:1,guidance:'',selectedThemes:[],includedDescriptionIds:[],populatedDescriptionId:null,target:{armed:false,start:null,end:null},updatedAt:null});
+function descriptionRerunStorageKey(){return window.genreactrixProjectRuntimeEngine?.projectKey?.(DESCRIPTION_RERUN_CURRENT_KEY)||DESCRIPTION_RERUN_CURRENT_KEY}
+function readDescriptionRerunMap(){try{const raw=localStorage.getItem(descriptionRerunStorageKey());const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch{return {}}}
+function writeDescriptionRerunMap(map){try{localStorage.setItem(descriptionRerunStorageKey(),JSON.stringify(map||{}));return true}catch(error){console.warn('Description rerun Current state could not be stored',error);return false}}
+function normalizeDescriptionRerunCurrent(value){const v=value&&typeof value==='object'?value:{},target=v.target&&typeof v.target==='object'?v.target:{};return{schemaVersion:1,guidance:String(v.guidance||''),selectedThemes:Array.isArray(v.selectedThemes)?v.selectedThemes.filter(x=>x&&x.key&&x.label).map(x=>({key:String(x.key),source:String(x.source||''),slot:Number(x.slot)||0,label:String(x.label||''),weight:Number.isFinite(Number(x.weight))?Number(x.weight):null})):[],includedDescriptionIds:[...new Set((v.includedDescriptionIds||[]).filter(Boolean).map(String))],populatedDescriptionId:v.populatedDescriptionId?String(v.populatedDescriptionId):null,target:{armed:Boolean(target.armed),start:Number.isFinite(Number(target.start))?Math.max(0,Number(target.start)):null,end:Number.isFinite(Number(target.end))?Math.max(0,Number(target.end)):null},updatedAt:v.updatedAt||null}}
+function loadDescriptionRerunCurrent(imageId=currentKey()){const map=readDescriptionRerunMap();return normalizeDescriptionRerunCurrent(map[String(imageId)]||emptyDescriptionRerunCurrent())}
+function saveDescriptionRerunCurrent(){if(!descriptionRerunWorkspace.imageId||!descriptionRerunWorkspace.current)return false;descriptionRerunWorkspace.current.updatedAt=new Date().toISOString();const map=readDescriptionRerunMap();map[String(descriptionRerunWorkspace.imageId)]=normalizeDescriptionRerunCurrent(descriptionRerunWorkspace.current);return writeDescriptionRerunMap(map)}
+function clearDescriptionRerunCurrentForImages(imageIds=[]){const map=readDescriptionRerunMap();let changed=false;for(const id of imageIds){if(Object.prototype.hasOwnProperty.call(map,String(id))){delete map[String(id)];changed=true}}if(changed)writeDescriptionRerunMap(map);return changed}
+function formatDescriptionRerunDate(value){try{return new Date(value).toLocaleString()}catch{return String(value||'Unknown time')}}
+function descriptionRerunCatalogItem(id){return descriptionRerunWorkspace.catalog.find(x=>String(x.id)===String(id))||null}
+function currentDescriptionArtifactId(imageId=currentKey()){const record=window.genreactrixImageRecordEngine?.get?.(String(imageId),{touch:false});return record?.analysis?.ai?.artifactHistory?.currentArtifacts?.description?.artifactId||null}
+async function loadDescriptionRerunCatalog({preferLatest=false}={}){
+  const imageId=descriptionRerunWorkspace.imageId||currentKey(),engine=window.genreactrixAiArtifactEngine;
+  let rows=[];
+  if(engine?.ensureImageReady&&engine?.artifactsForImage){await engine.ensureImageReady(imageId).catch(()=>{});rows=(await engine.artifactsForImage(imageId).catch(()=>[])).filter(row=>row.kind==='description'&&typeof row.payload==='string'&&row.payload.trim());}
+  rows.sort((a,b)=>(Number(b.version)||0)-(Number(a.version)||0)||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  descriptionRerunWorkspace.catalog=rows.map(row=>({id:String(row.id),artifactId:String(row.id),version:Number(row.version)||0,createdAt:row.createdAt||'',text:String(row.payload||''),current:String(row.id)===String(currentDescriptionArtifactId(imageId))}));
+  if(!descriptionRerunWorkspace.catalog.length){const text=String(currentAiRun()?.description||currentDescription()||'').trim();if(text&&!/^No AI description is stored/i.test(text))descriptionRerunWorkspace.catalog=[{id:`projection:${imageId}`,artifactId:null,version:0,createdAt:currentAiRun()?.createdAt||new Date().toISOString(),text,current:true,projection:true}];}
+  const current=descriptionRerunWorkspace.current||emptyDescriptionRerunCurrent(),latest=descriptionRerunWorkspace.catalog[0]||null,existing=descriptionRerunCatalogItem(current.populatedDescriptionId);
+  if(preferLatest||!existing)current.populatedDescriptionId=latest?.id||null;
+  descriptionRerunWorkspace.current=current;
+  return descriptionRerunWorkspace.catalog;
+}
+function descriptionRerunDisplayedItem(){return descriptionRerunCatalogItem(descriptionRerunWorkspace.current?.populatedDescriptionId)||descriptionRerunWorkspace.catalog[0]||null}
+function descriptionRerunDisplayedText(){return descriptionRerunDisplayedItem()?.text||String(currentAiRun()?.description||currentDescription()||'')}
+function descriptionRerunOperation(){const c=descriptionRerunWorkspace.current||emptyDescriptionRerunCurrent(),text=descriptionRerunDisplayedText();if(!text.trim())return'all';const t=c.target||{};if(t.armed&&Number.isFinite(t.start)&&Number.isFinite(t.end)){if(t.end>t.start)return'replace';return'add'}return'all'}
+function descriptionRerunSelectedTheme(key){return Boolean(descriptionRerunWorkspace.current?.selectedThemes?.some(x=>x.key===key))}
+function descriptionRerunThemeSnapshot(source,slot){if(source==='director'){const theme=state.themes[slot-1],label=themeLabel(theme);return label&&label!=='—'?{key:`director:${slot}`,source:'Director',slot,label,weight:null}:null}const sorted=currentAiThemes().map(([label,weight])=>({label,weight:Number(weight)||0})).sort((a,b)=>b.weight-a.weight).slice(0,3),row=sorted[slot-1];return row?.label?{key:`ai:${slot}`,source:'AI',slot,label:row.label,weight:row.weight}:null}
+function toggleDescriptionRerunTheme(source,slot){if(!descriptionRerunWorkspace.active)return false;const candidate=descriptionRerunThemeSnapshot(source,slot);if(!candidate)return false;const rows=[...(descriptionRerunWorkspace.current.selectedThemes||[])],index=rows.findIndex(x=>x.key===candidate.key);if(index>=0)rows.splice(index,1);else rows.push(candidate);descriptionRerunWorkspace.current.selectedThemes=rows;saveDescriptionRerunCurrent();renderTabletWorkbench();return true}
+function toggleDescriptionRerunIncludedDescription(id,checked){if(!id)return;const set=new Set(descriptionRerunWorkspace.current.includedDescriptionIds||[]);if(checked)set.add(String(id));else set.delete(String(id));descriptionRerunWorkspace.current.includedDescriptionIds=[...set];saveDescriptionRerunCurrent();renderDescriptionRerunChrome()}
+function populateDescriptionRerunDescription(id){if(!descriptionRerunCatalogItem(id))return;descriptionRerunWorkspace.current.populatedDescriptionId=String(id);descriptionRerunWorkspace.current.target={armed:false,start:null,end:null};saveDescriptionRerunCurrent();renderTabletWorkbench();requestAnimationFrame(()=>fitLandscapeAiDescription())}
+function descriptionRerunTargetTextWithMarker(){const text=descriptionRerunDisplayedText(),t=descriptionRerunWorkspace.current?.target||{},op=descriptionRerunOperation();if(op==='add'){const at=Math.max(0,Math.min(text.length,Number(t.start)||0));return text.slice(0,at)+'⟦CURSOR⟧'+text.slice(at)}if(op==='replace'){const start=Math.max(0,Math.min(text.length,Number(t.start)||0)),end=Math.max(start,Math.min(text.length,Number(t.end)||0));return text.slice(0,start)+'⟦HIGHLIGHT START⟧'+text.slice(start,end)+'⟦HIGHLIGHT END⟧'+text.slice(end)}return text}
+function buildDescriptionRerunRequest(){const current=descriptionRerunWorkspace.current||emptyDescriptionRerunCurrent(),operation=descriptionRerunOperation(),displayed=descriptionRerunDisplayedItem(),displayText=descriptionRerunDisplayedText(),target=current.target||{},included=(current.includedDescriptionIds||[]).map(id=>descriptionRerunCatalogItem(id)).filter(Boolean).map(row=>({artifactId:row.artifactId||null,id:row.id,version:row.version,createdAt:row.createdAt,label:formatDescriptionRerunDate(row.createdAt),text:row.text})),themes=(current.selectedThemes||[]).map(cloneDescriptionRerun),guidance=String(current.guidance||'').trim();const spec={schemaVersion:1,operation,guidance,themes,includedDescriptions:included,targetDescription:null};if(['add','replace'].includes(operation)){if(!displayed||!displayText.trim())throw new Error(`${operation==='add'?'Add':'Replace'} requires a populated Description.`);const start=Math.max(0,Math.min(displayText.length,Number(target.start)||0)),end=operation==='replace'?Math.max(start,Math.min(displayText.length,Number(target.end)||0)):start;spec.targetDescription={artifactId:displayed.artifactId||null,id:displayed.id,version:displayed.version,createdAt:displayed.createdAt,label:formatDescriptionRerunDate(displayed.createdAt),text:displayText,start,end,selectedText:operation==='replace'?displayText.slice(start,end):''};}return spec}
+function previewDescriptionRerunRequest(spec){const image=currentLandscapeFile()||{},lines=[];lines.push(`Operation: ${spec.operation==='all'?'ALL / Rewrite All':spec.operation==='add'?'ADD at cursor':'REPLACE highlighted section'}`);lines.push(`Image: ALWAYS INCLUDED · ${image.name||currentKey()} · ${currentKey()}`);lines.push('');lines.push('Guidance:');lines.push(spec.guidance||'No guidance included.');lines.push('');lines.push('Themes:');if(spec.themes.length)spec.themes.forEach(row=>lines.push(`- ${row.source} Theme ${row.slot}: ${row.label}${row.weight!=null?` (${row.weight}%)`:''}`));else lines.push('No themes included.');lines.push('');lines.push('Included descriptions:');if(spec.includedDescriptions.length)spec.includedDescriptions.forEach((row,index)=>{lines.push(`\n[${index+1}] ${row.label}${row.version?` · v${row.version}`:''}`);lines.push(row.text)});else lines.push('No descriptions included.');if(spec.targetDescription){lines.push('');lines.push(`Target Description: ${spec.targetDescription.label}${spec.targetDescription.version?` · v${spec.targetDescription.version}`:''}`);lines.push(descriptionRerunTargetTextWithMarker());}lines.push('');lines.push(`Expected edit behavior: ${spec.operation==='all'?'Return a complete new Description.':spec.operation==='add'?'Generate only text to insert at the marked cursor; existing text outside the insertion is preserved locally.':'Generate only replacement text for the highlighted span; everything outside the highlight is preserved locally.'}`);return lines.join('\n')}
+function descriptionRerunDraftsFor(imageId=currentKey()){const record=window.genreactrixImageRecordEngine?.get?.(String(imageId),{touch:false});return Array.isArray(record?.metadata?.extended?.[DESCRIPTION_RERUN_DRAFTS_FIELD])?record.metadata.extended[DESCRIPTION_RERUN_DRAFTS_FIELD]:[]}
+function createDescriptionRerunDraftRecord(imageId,current,{source='manual'}={}){return{id:`ai_desc_rerun_draft_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`,schemaVersion:1,type:'AI Desc Rerun Draft',source,createdAt:new Date().toISOString(),state:normalizeDescriptionRerunCurrent(current)}}
+function appendDescriptionRerunDraft(imageId,current,{source='manual'}={}){const engine=window.genreactrixImageRecordEngine,record=engine?.get?.(String(imageId),{touch:false});if(!record)return null;const drafts=descriptionRerunDraftsFor(imageId),draft=createDescriptionRerunDraftRecord(imageId,current,{source});engine.update(String(imageId),{metadata:{extended:{[DESCRIPTION_RERUN_DRAFTS_FIELD]:[...drafts,draft]}}},'ai-description-rerun-draft-saved');return draft}
+function descriptionRerunCurrentMeaningful(imageId,current){const c=normalizeDescriptionRerunCurrent(current),record=window.genreactrixImageRecordEngine?.get?.(String(imageId),{touch:false}),currentArtifact=record?.analysis?.ai?.artifactHistory?.currentArtifacts?.description?.artifactId||null,nonCurrentPopulated=Boolean(c.populatedDescriptionId&&currentArtifact&&c.populatedDescriptionId!==currentArtifact);return Boolean(String(c.guidance||'').trim()||c.selectedThemes.length||c.includedDescriptionIds.length||c.target.armed||nonCurrentPopulated)}
+async function autoSaveDescriptionRerunForBatch(imageIds=[]){const map=readDescriptionRerunMap();for(const rawId of imageIds||[]){const id=String(rawId),current=map[id];if(current&&descriptionRerunCurrentMeaningful(id,current))appendDescriptionRerunDraft(id,current,{source:'auto-final'});delete map[id]}writeDescriptionRerunMap(map);if(descriptionRerunWorkspace.active&&imageIds.map(String).includes(String(descriptionRerunWorkspace.imageId))){descriptionRerunWorkspace.current=emptyDescriptionRerunCurrent();descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];}return true}
+function pushDescriptionRerunUndo(){descriptionRerunWorkspace.undo.push(cloneDescriptionRerun(descriptionRerunWorkspace.current));if(descriptionRerunWorkspace.undo.length>30)descriptionRerunWorkspace.undo.shift();descriptionRerunWorkspace.future=[];updateUndoRedo()}
+function undoDescriptionRerun(){if(!descriptionRerunWorkspace.active||!descriptionRerunWorkspace.undo.length)return false;descriptionRerunWorkspace.future.push(cloneDescriptionRerun(descriptionRerunWorkspace.current));descriptionRerunWorkspace.current=normalizeDescriptionRerunCurrent(descriptionRerunWorkspace.undo.pop());saveDescriptionRerunCurrent();renderTabletWorkbench();updateUndoRedo();return true}
+function redoDescriptionRerun(){if(!descriptionRerunWorkspace.active||!descriptionRerunWorkspace.future.length)return false;descriptionRerunWorkspace.undo.push(cloneDescriptionRerun(descriptionRerunWorkspace.current));descriptionRerunWorkspace.current=normalizeDescriptionRerunCurrent(descriptionRerunWorkspace.future.pop());saveDescriptionRerunCurrent();renderTabletWorkbench();updateUndoRedo();return true}
+function descriptionRerunSelectionOffsets(root){const sel=window.getSelection?.();if(!root||!sel||!sel.rangeCount)return null;const range=sel.getRangeAt(0);if(!root.contains(range.startContainer)||!root.contains(range.endContainer))return null;const pre=document.createRange();pre.selectNodeContents(root);pre.setEnd(range.startContainer,range.startOffset);const start=pre.toString().length;const selected=range.toString();return{start,end:start+selected.length,armed:true}}
+function captureDescriptionRerunTarget(){if(!descriptionRerunWorkspace.active)return;const root=$('tabletWorkbenchAiDescription'),text=root?.textContent||'';if(!root||!text.trim())return;const offsets=descriptionRerunSelectionOffsets(root);if(!offsets)return;descriptionRerunWorkspace.current.target=offsets;saveDescriptionRerunCurrent();renderDescriptionRerunChrome()}
+function restoreDescriptionRerunSelection(){if(!descriptionRerunWorkspace.active)return;const root=$('tabletWorkbenchAiDescription'),t=descriptionRerunWorkspace.current?.target||{};if(!root||!t.armed||!root.firstChild)return;const text=root.textContent||'',start=Math.max(0,Math.min(text.length,Number(t.start)||0)),end=Math.max(start,Math.min(text.length,Number(t.end)||0)),walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node,pos=0,startNode=null,startOffset=0,endNode=null,endOffset=0;while((node=walker.nextNode())){const len=node.nodeValue.length;if(startNode===null&&start<=pos+len){startNode=node;startOffset=start-pos}if(endNode===null&&end<=pos+len){endNode=node;endOffset=end-pos;break}pos+=len}if(!startNode||!endNode)return;const range=document.createRange();range.setStart(startNode,startOffset);range.setEnd(endNode,endOffset);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range)}
+function renderDescriptionRerunChrome(){const active=descriptionRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletDescriptionRerunWorkspace'),controls=$('tabletDescriptionRerunControls'),guidance=$('tabletDescriptionRerunGuidance'),description=$('tabletWorkbenchAiDescription'),include=$('descriptionRerunPopulatedInclude'),includeCheck=$('descriptionRerunPopulatedIncludeCheck');drawer?.classList.toggle('description-rerun-active',active);root?.classList.toggle('description-rerun-active',active);if(workspace)workspace.hidden=!active||descriptionRerunWorkspace.reviewHeld;if(controls)controls.hidden=!active;if(active&&guidance&&guidance.value!==String(descriptionRerunWorkspace.current?.guidance||''))guidance.value=String(descriptionRerunWorkspace.current?.guidance||'');if(description){description.classList.toggle('rerun-targeting',active&&['add','replace'].includes(descriptionRerunOperation()));if(active){description.setAttribute('contenteditable','true');description.setAttribute('inputmode','none');description.setAttribute('role','textbox');description.setAttribute('aria-readonly','true');description.spellcheck=false;}else{description.removeAttribute('contenteditable');description.removeAttribute('inputmode');description.removeAttribute('role');description.removeAttribute('aria-readonly');description.classList.remove('rerun-targeting')}}const displayed=active?descriptionRerunDisplayedItem():null;if(include){include.hidden=!active||!displayed;if(includeCheck)includeCheck.checked=Boolean(displayed&&descriptionRerunWorkspace.current?.includedDescriptionIds?.includes(String(displayed.id)))}for(let i=1;i<=3;i++){document.querySelector(`[data-tablet-workbench-slot="${i}"]`)?.classList.toggle('rerun-context-selected',active&&descriptionRerunSelectedTheme(`director:${i}`));const aiCell=$(`tabletWorkbenchAiTheme${i}`)?.closest('.tablet-theme-cell');aiCell?.classList.toggle('rerun-context-selected',active&&descriptionRerunSelectedTheme(`ai:${i}`));if(aiCell){aiCell.dataset.rerunAiThemeSlot=String(i);aiCell.tabIndex=active?0:-1;aiCell.setAttribute('role',active?'button':'group')}}if(active){$('descriptionRerunSubmit')?.toggleAttribute('disabled',aiRerunInFlight);$('descriptionRerunSaveDraft')?.toggleAttribute('disabled',aiRerunInFlight)}}
+async function activateDescriptionRerunImage({preferLatest=false}={}){if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(descriptionRerunWorkspace.imageId);descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];await loadDescriptionRerunCatalog({preferLatest});renderTabletWorkbench();updateUndoRedo()}
+async function openDescriptionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};descriptionRerunWorkspace.active=true;descriptionRerunWorkspace.reviewHeld=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateDescriptionRerunImage();}
+function closeDescriptionRerunWorkspace(){if(!descriptionRerunWorkspace.active)return;saveDescriptionRerunCurrent();descriptionRerunWorkspace.active=false;descriptionRerunWorkspace.reviewHeld=false;const prior=descriptionRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);descriptionRerunWorkspace.preDrawer=null;descriptionRerunWorkspace.imageId=null;descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];renderTabletWorkbench();updateUndoRedo()}
+function renderDescriptionRerunDraftDialog(){const list=$('descriptionRerunDraftList');if(!list)return;const drafts=[...descriptionRerunDraftsFor(descriptionRerunWorkspace.imageId)].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));list.innerHTML='';if(!drafts.length){list.textContent='No saved drafts.';return}for(const draft of drafts){const row=document.createElement('div');row.className='description-rerun-list-row no-checkbox';const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.innerHTML=`<strong>AI Desc Rerun Draft · ${formatDescriptionRerunDate(draft.createdAt)}</strong><small>${String(draft.state?.guidance||'').trim().slice(0,180)||'No text guidance'}</small>`;button.addEventListener('click',()=>{pushDescriptionRerunUndo();descriptionRerunWorkspace.current=normalizeDescriptionRerunCurrent(draft.state);saveDescriptionRerunCurrent();$('descriptionRerunDraftDialog')?.close();renderTabletWorkbench();requestAnimationFrame(restoreDescriptionRerunSelection)});row.append(button);list.append(row)}}
+function renderDescriptionRerunClassicsDialog(){const list=$('descriptionRerunClassicsList');if(!list)return;list.innerHTML='';if(!descriptionRerunWorkspace.catalog.length){list.textContent='No Description history is available.';return}for(const item of descriptionRerunWorkspace.catalog){const row=document.createElement('div');row.className='description-rerun-list-row';const check=document.createElement('input');check.type='checkbox';check.checked=descriptionRerunWorkspace.current.includedDescriptionIds.includes(item.id);check.setAttribute('aria-label',`Include Description from ${formatDescriptionRerunDate(item.createdAt)}`);check.addEventListener('change',()=>toggleDescriptionRerunIncludedDescription(item.id,check.checked));const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.innerHTML=`<strong>${formatDescriptionRerunDate(item.createdAt)}${item.current?' · Current':''}${item.version?` · v${item.version}`:''}</strong><small>${item.text.slice(0,220)}</small>`;button.addEventListener('click',()=>{$('descriptionRerunClassicsDialog')?.close();populateDescriptionRerunDescription(item.id)});row.append(check,button);list.append(row)}}
+async function submitDescriptionRerun(){if(aiRerunInFlight)return;let spec;try{spec=buildDescriptionRerunRequest()}catch(error){alert(error.message||String(error));return}setDirectorStatus(`Rerunning AI Description · ${spec.operation.toUpperCase()}…`);try{const oldTarget=spec.targetDescription?{...spec.targetDescription}:null;await runCurrentAiRerun(['description'],{analysisGuidance:spec.guidance,descriptionRerun:spec});await loadDescriptionRerunCatalog({preferLatest:true});const latest=descriptionRerunWorkspace.catalog[0]||null;descriptionRerunWorkspace.current.populatedDescriptionId=latest?.id||null;if(spec.operation==='all')descriptionRerunWorkspace.current.target={armed:false,start:null,end:null};else if(oldTarget&&latest){const diff=latest.text.length-oldTarget.text.length;if(spec.operation==='add'){const end=Math.max(0,Math.min(latest.text.length,oldTarget.start+Math.max(0,diff)));descriptionRerunWorkspace.current.target={armed:true,start:end,end}}else{const replacementLength=Math.max(0,(oldTarget.end-oldTarget.start)+diff),end=Math.max(oldTarget.start,Math.min(latest.text.length,oldTarget.start+replacementLength));descriptionRerunWorkspace.current.target={armed:true,start:oldTarget.start,end}}}saveDescriptionRerunCurrent();renderTabletWorkbench();requestAnimationFrame(restoreDescriptionRerunSelection);setDirectorStatus(`AI Description rerun complete · ${spec.operation.toUpperCase()}.`)}catch(error){const message=String(error?.message||error);console.error('AI Description rerun failed',error);setDirectorStatus(`AI Description rerun failed: ${message}`);alert(`AI Description rerun failed: ${message}`)}}
+window.genreactrixDescriptionRerunWorkspace={autoSaveForBatch:autoSaveDescriptionRerunForBatch,open:openDescriptionRerunWorkspace,close:closeDescriptionRerunWorkspace,isActive:()=>descriptionRerunWorkspace.active};
+
 function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const root=$(targetId);
   if(!root) return;
@@ -1194,12 +1263,12 @@ function renderTabletWorkbench(){
     $("tabletWorkbenchAiTheme"+(i+1)).textContent=value?.label||"—";
     $("tabletWorkbenchAiThemePct"+(i+1)).textContent=value?`${value.weight}%`:"—";
   }
-  $("tabletWorkbenchAiDescription").textContent=hasImage?(currentAiRun().description||currentDescription()):"";
+  $("tabletWorkbenchAiDescription").textContent=hasImage?(descriptionRerunWorkspace.active?descriptionRerunDisplayedText():(currentAiRun().description||currentDescription())):"";
   root.classList.toggle("face-judgment",tabletLandscapeView.face==="judgment");
   $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
   $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
-  $("tabletAiThemesPanel").hidden=!tabletLandscapeView.aiThemes || tabletLandscapeView.customs;
-  $("tabletWorkbenchAiDescription").hidden=!tabletLandscapeView.aiDescription || tabletLandscapeView.customs;
+  $("tabletAiThemesPanel").hidden=descriptionRerunWorkspace.active?false:(!tabletLandscapeView.aiThemes || tabletLandscapeView.customs);
+  $("tabletWorkbenchAiDescription").hidden=descriptionRerunWorkspace.active?false:(!tabletLandscapeView.aiDescription || tabletLandscapeView.customs);
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
   $("tabletSlidingDrawer")?.classList.toggle("customs-active",tabletLandscapeView.customs);
   [["tabletAiReactionsBtn","aiReactions"],["tabletAiThemesBtn","aiThemes"],["tabletAiDescriptionBtn","aiDescription"]].forEach(([id,key])=>$(id)?.setAttribute("aria-pressed",String(tabletLandscapeView[key])));
@@ -1214,6 +1283,7 @@ function renderTabletWorkbench(){
   const keepOn=hasImage&&state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
+  renderDescriptionRerunChrome();
   syncTabletAiRerunControls();
 
   // AI theme fields use the exact rendered width and height of the existing
@@ -1610,6 +1680,7 @@ function createTheme(){
 }
 
 function undo(){
+  if(descriptionRerunWorkspace?.active&&descriptionRerunWorkspace.undo.length)return undoDescriptionRerun();
   const engine=window.genreactrixDirectorClassificationEngine;
   const restored=engine?.undo?.(currentKey());
   if(restored){applyClassification({selectedReactions:restored.reactions,themes:restored.themes,flagged:restored.flagged,writeIn:restored.notes,retention:restored.retention});writeClassificationForKey(currentKey(),classificationState());renderAll();updateUndoRedo();return true;}
@@ -1632,6 +1703,7 @@ function undo(){
   return true;
 }
 function redo(){
+  if(descriptionRerunWorkspace?.active&&descriptionRerunWorkspace.future.length)return redoDescriptionRerun();
   const engine=window.genreactrixDirectorClassificationEngine;
   const restored=engine?.redo?.(currentKey());
   if(restored){applyClassification({selectedReactions:restored.reactions,themes:restored.themes,flagged:restored.flagged,writeIn:restored.notes,retention:restored.retention});writeClassificationForKey(currentKey(),classificationState());renderAll();updateUndoRedo();return true;}
@@ -1657,10 +1729,11 @@ function updateUndoRedo(){
   const directorEngine=window.genreactrixDirectorClassificationEngine;
   const engineUndo=directorEngine?.canUndo?.(currentKey());
   const engineRedo=directorEngine?.canRedo?.(currentKey());
-  $("undoBtn").disabled=!(engineUndo||state.history.length);
-  $("redoBtn").disabled=!(engineRedo||state.future.length);
-  if($("tabletUndoBtn")) $("tabletUndoBtn").disabled=!(engineUndo||state.history.length);
-  if($("tabletRedoBtn")) $("tabletRedoBtn").disabled=!(engineRedo||state.future.length);
+  const rerunUndo=Boolean(descriptionRerunWorkspace?.active&&descriptionRerunWorkspace.undo.length),rerunRedo=Boolean(descriptionRerunWorkspace?.active&&descriptionRerunWorkspace.future.length);
+  $("undoBtn").disabled=!(rerunUndo||engineUndo||state.history.length);
+  $("redoBtn").disabled=!(rerunRedo||engineRedo||state.future.length);
+  if($("tabletUndoBtn")) $("tabletUndoBtn").disabled=!(rerunUndo||engineUndo||state.history.length);
+  if($("tabletRedoBtn")) $("tabletRedoBtn").disabled=!(rerunRedo||engineRedo||state.future.length);
   if($("directorUndoBtn")){ $("directorUndoBtn").disabled=!(engineUndo||state.history.length); const tx=directorEngine?.peekUndo?.(currentKey()); $("directorUndoBtn").title=tx?`Undo ${tx.action||"classification"}`:"Nothing to undo"; }
   if($("directorRedoBtn")){ $("directorRedoBtn").disabled=!(engineRedo||state.future.length); const tx=directorEngine?.peekRedo?.(currentKey()); $("directorRedoBtn").title=tx?`Redo ${tx.action||"classification"}`:"Nothing to redo"; }
 }
@@ -1808,7 +1881,7 @@ $("clearCurrentBtn").addEventListener("click",()=>{
 $("directorUndoBtn").addEventListener("click",undo);
 $("directorRedoBtn").addEventListener("click",redo);
 
-async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false}={}){
+async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false,descriptionRerun=null}={}){
   const requested=[...new Set((components||[]).filter(component=>AI_RERUN_COMPONENTS.includes(component)))];
   if(!requested.length)throw new Error("No AI rerun component was selected.");
   if(aiRerunInFlight)throw new Error("An AI rerun is already in progress.");
@@ -1818,10 +1891,10 @@ async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysi
   if(!engine?.createJob||!engine?.run)throw new Error("AI Analysis Engine is unavailable.");
   if(!window.GenreactrixCloudApi?.isConfigured?.())throw new Error("AI Worker is not configured.");
   const componentConfig=Object.fromEntries(AI_RERUN_COMPONENTS.map(component=>[component,{enabled:requested.includes(component),behavior:"reanalyze"}]));
-  const guidance=String(analysisGuidance||"").trim().slice(0,1200);
+  const guidance=String(analysisGuidance||"").trim().slice(0,6000);
   aiRerunInFlight=true;syncTabletAiRerunControls();
   try{
-    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis)});
+    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null});
     if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
     await engine.run(job.id);
     const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
@@ -2484,8 +2557,44 @@ async function createComponentAiRerun(component){
 $("tabletAiRerunLockBtn")?.addEventListener("click",()=>{tabletAiRerunLocked=!tabletAiRerunLocked;localStorage.setItem(AI_RERUN_LOCK_KEY,tabletAiRerunLocked?"1":"0");syncTabletAiRerunControls();});
 $("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>createComponentAiRerun("reactions"));
 $("tabletAiRerunThemesBtn")?.addEventListener("click",()=>createComponentAiRerun("themes"));
-$("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>createComponentAiRerun("description"));
+$("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>openDescriptionRerunWorkspace().catch(error=>{console.error("Description rerun workspace could not open",error);alert(error.message||String(error));}));
 syncTabletAiRerunControls();
+
+// AI Description rerun workstation controls.
+$("tabletDescriptionRerunGuidance")?.addEventListener("input",event=>{if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.current.guidance=event.target.value;saveDescriptionRerunCurrent();});
+for(let i=1;i<=3;i++){
+  const cell=$("tabletWorkbenchAiTheme"+i)?.closest(".tablet-theme-cell");
+  cell?.addEventListener("click",event=>{if(!descriptionRerunWorkspace.active)return;event.preventDefault();toggleDescriptionRerunTheme("ai",i);});
+  cell?.addEventListener("keydown",event=>{if(!descriptionRerunWorkspace.active||!["Enter"," "].includes(event.key))return;event.preventDefault();toggleDescriptionRerunTheme("ai",i);});
+}
+const rerunDescriptionDisplay=$("tabletWorkbenchAiDescription");
+rerunDescriptionDisplay?.addEventListener("beforeinput",event=>{if(descriptionRerunWorkspace.active)event.preventDefault();});
+rerunDescriptionDisplay?.addEventListener("paste",event=>{if(descriptionRerunWorkspace.active)event.preventDefault();});
+rerunDescriptionDisplay?.addEventListener("pointerup",()=>{if(descriptionRerunWorkspace.active)setTimeout(captureDescriptionRerunTarget,0);});
+rerunDescriptionDisplay?.addEventListener("keyup",()=>{if(descriptionRerunWorkspace.active)captureDescriptionRerunTarget();});
+$("descriptionRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=descriptionRerunDisplayedItem();if(item)toggleDescriptionRerunIncludedDescription(item.id,event.target.checked);});
+$("descriptionRerunSaveDraft")?.addEventListener("click",()=>{if(!descriptionRerunWorkspace.active)return;saveDescriptionRerunCurrent();const draft=appendDescriptionRerunDraft(descriptionRerunWorkspace.imageId,descriptionRerunWorkspace.current,{source:"manual"});setDirectorStatus(draft?`AI Desc Rerun Draft saved · ${formatDescriptionRerunDate(draft.createdAt)}.`:"Draft could not be saved.");});
+$("descriptionRerunSelectDraft")?.addEventListener("click",()=>{if(!descriptionRerunWorkspace.active)return;renderDescriptionRerunDraftDialog();$("descriptionRerunDraftDialog")?.showModal();});
+$("descriptionRerunPreview")?.addEventListener("click",()=>{if(!descriptionRerunWorkspace.active)return;try{const spec=buildDescriptionRerunRequest();$("descriptionRerunPreviewBody").textContent=previewDescriptionRerunRequest(spec);$("descriptionRerunPreviewDialog")?.showModal();}catch(error){alert(error.message||String(error));}});
+$("descriptionRerunSubmit")?.addEventListener("click",()=>submitDescriptionRerun());
+const reactionReviewButton=$("descriptionRerunReviewReactions");
+const endReactionReview=()=>{if(!descriptionRerunWorkspace.active||!descriptionRerunWorkspace.reviewHeld)return;descriptionRerunWorkspace.reviewHeld=false;renderDescriptionRerunChrome();};
+reactionReviewButton?.addEventListener("pointerdown",event=>{if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.reviewHeld=true;reactionReviewButton.setPointerCapture?.(event.pointerId);renderDescriptionRerunChrome();});
+reactionReviewButton?.addEventListener("pointerup",endReactionReview);
+reactionReviewButton?.addEventListener("pointercancel",endReactionReview);
+reactionReviewButton?.addEventListener("lostpointercapture",endReactionReview);
+reactionReviewButton?.addEventListener("contextmenu",event=>event.preventDefault());
+const classicsButton=$("descriptionRerunClassics");
+classicsButton?.addEventListener("pointerdown",event=>{if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.classicsLongPress=false;clearTimeout(descriptionRerunWorkspace.classicsTimer);classicsButton.setPointerCapture?.(event.pointerId);descriptionRerunWorkspace.classicsTimer=setTimeout(()=>{descriptionRerunWorkspace.classicsLongPress=true;renderDescriptionRerunClassicsDialog();$("descriptionRerunClassicsDialog")?.showModal();},520);});
+classicsButton?.addEventListener("pointerup",()=>{if(!descriptionRerunWorkspace.active)return;clearTimeout(descriptionRerunWorkspace.classicsTimer);if(!descriptionRerunWorkspace.classicsLongPress){const classic=descriptionRerunWorkspace.catalog.find(item=>!item.current)||descriptionRerunWorkspace.catalog[0];if(classic)populateDescriptionRerunDescription(classic.id);}descriptionRerunWorkspace.classicsLongPress=false;});
+classicsButton?.addEventListener("pointercancel",()=>{clearTimeout(descriptionRerunWorkspace.classicsTimer);descriptionRerunWorkspace.classicsLongPress=false;});
+classicsButton?.addEventListener("contextmenu",event=>event.preventDefault());
+$("descriptionRerunClear")?.addEventListener("click",()=>{if(!descriptionRerunWorkspace.active)return;$("descriptionRerunClearText").checked=false;$("descriptionRerunClearTarget").checked=false;$("descriptionRerunClearDialog")?.showModal();});
+$("descriptionRerunClearSubmit")?.addEventListener("click",()=>{const clearText=$("descriptionRerunClearText")?.checked,clearTarget=$("descriptionRerunClearTarget")?.checked;if(!clearText&&!clearTarget){alert("Choose what to clear.");return}const choices=[];if(clearText)choices.push("Clear Text Entry");if(clearTarget)choices.push("Clear Highlights/Cursor");$("descriptionRerunClearConfirmText").textContent=`Confirm:\n${choices.map(x=>`• ${x}`).join("\n")}`;$("descriptionRerunClearDialog")?.close();$("descriptionRerunClearConfirmDialog")?.showModal();});
+$("descriptionRerunClearConfirmReturn")?.addEventListener("click",()=>{$("descriptionRerunClearConfirmDialog")?.close();$("descriptionRerunClearDialog")?.showModal();});
+$("descriptionRerunClearConfirmApply")?.addEventListener("click",()=>{const clearText=$("descriptionRerunClearText")?.checked,clearTarget=$("descriptionRerunClearTarget")?.checked;if(clearText)descriptionRerunWorkspace.current.guidance="";if(clearTarget)descriptionRerunWorkspace.current.target={armed:false,start:null,end:null};saveDescriptionRerunCurrent();$("descriptionRerunClearConfirmDialog")?.close();renderTabletWorkbench();});
+$("descriptionRerunReturn")?.addEventListener("click",()=>closeDescriptionRerunWorkspace());
+document.querySelectorAll("[data-description-rerun-close]").forEach(button=>button.addEventListener("click",()=>$(button.dataset.descriptionRerunClose)?.close()));
 
 document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
   if(state.feedEmpty)return;
@@ -2511,6 +2620,7 @@ document.getElementById("tabletSaveBtn")?.addEventListener("click",async()=>{
 });
 document.querySelectorAll("[data-tablet-workbench-slot]").forEach(button=>button.addEventListener("click",()=>{
   const slot=Number(button.dataset.tabletWorkbenchSlot);
+  if(descriptionRerunWorkspace.active){toggleDescriptionRerunTheme("director",slot);return;}
   const alreadyActive=tabletLandscapeView.activeThemeSlot===slot;
   if(alreadyActive){
     tabletLandscapeView.activeThemeSlot=null;
