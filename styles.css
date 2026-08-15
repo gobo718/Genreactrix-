@@ -7330,6 +7330,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     min-height:25px!important;
     max-height:25px!important;
     padding:2px 5px!important;
+    font-size:10px!important;
     line-height:1.05!important;
     box-sizing:border-box!important;
   }
