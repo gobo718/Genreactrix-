@@ -2,7 +2,7 @@
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.24-import-proxy';
+const API_VERSION = '0.9.6.25-description-rerun-workspace';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -530,20 +530,50 @@ function themeSchema(){
   };
 }
 
-function descriptionPrompt(directorGuidance=""){
-  const guidance=String(directorGuidance||'').trim().slice(0,1200);
-  const guidanceBlock=guidance ? `\n\nDIRECTOR RE-ANALYSIS GUIDANCE:\nThe Director is pointing out something the prior analysis may have missed or misread. Use this guidance while examining the image again and incorporate it into the analysis where relevant:\n${guidance}` : '';
+function normalizeDescriptionRerun(input){
+  if(!input||typeof input!=='object')return null;
+  const operation=['all','add','replace'].includes(String(input.operation||''))?String(input.operation):'all';
+  const themes=Array.isArray(input.themes)?input.themes.slice(0,6).map(row=>({source:String(row?.source||''),slot:Number(row?.slot)||0,label:String(row?.label||''),weight:Number.isFinite(Number(row?.weight))?Number(row.weight):null})).filter(row=>row.label):[];
+  const includedDescriptions=Array.isArray(input.includedDescriptions)?input.includedDescriptions.map(row=>({artifactId:row?.artifactId?String(row.artifactId):null,version:Number(row?.version)||0,createdAt:String(row?.createdAt||''),label:String(row?.label||''),text:String(row?.text||'')})).filter(row=>row.text.trim()):[];
+  let targetDescription=null;
+  if(input.targetDescription&&typeof input.targetDescription==='object'){
+    const text=String(input.targetDescription.text||''),start=Math.max(0,Math.min(text.length,Number(input.targetDescription.start)||0)),end=Math.max(start,Math.min(text.length,Number(input.targetDescription.end)||0));
+    targetDescription={artifactId:input.targetDescription.artifactId?String(input.targetDescription.artifactId):null,version:Number(input.targetDescription.version)||0,createdAt:String(input.targetDescription.createdAt||''),label:String(input.targetDescription.label||''),text,start,end,selectedText:String(input.targetDescription.selectedText||text.slice(start,end))};
+  }
+  return{schemaVersion:1,operation,themes,includedDescriptions,targetDescription};
+}
+
+function descriptionPrompt(directorGuidance="",descriptionRerun=null){
+  const guidance=String(directorGuidance||'').trim().slice(0,6000),rerun=normalizeDescriptionRerun(descriptionRerun);
+  const guidanceBlock=guidance ? `\n\nDIRECTOR GUIDANCE:\n${guidance}` : '';
+  let contextBlock='';
+  if(rerun){
+    const themeBlock=rerun.themes.length?rerun.themes.map(row=>`- ${row.source} Theme ${row.slot}: ${row.label}${row.weight!=null?` (${row.weight}%)`:''}`).join('\n'):'No Themes were selected for context.';
+    const descriptionsBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1} — ${row.label||row.createdAt||'undated'}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No historical Descriptions were selected for reference context.';
+    let operationBlock='';
+    if(rerun.operation==='add'){
+      const target=rerun.targetDescription;if(!target||!target.text.trim())throw new Error('Description Add rerun requires a populated target Description');
+      operationBlock=`OPERATION: ADD AT CURSOR.\nThe target Description is shown below with ⟦CURSOR⟧ at the exact insertion point. Return ONLY the new prose fragment that should be inserted there. Do not repeat the existing prefix or suffix, do not rewrite surrounding text, and do not add commentary about the edit.\n\nTARGET DESCRIPTION:\n${target.text.slice(0,target.start)}⟦CURSOR⟧${target.text.slice(target.start)}`;
+    }else if(rerun.operation==='replace'){
+      const target=rerun.targetDescription;if(!target||!target.text.trim()||target.end<=target.start)throw new Error('Description Replace rerun requires a highlighted target span');
+      operationBlock=`OPERATION: REPLACE HIGHLIGHTED SECTION.\nThe target Description is shown below with the exact editable span marked. Return ONLY replacement prose for the highlighted span. Everything outside the markers is immutable and will be preserved locally by Genreactrix. Do not repeat unchanged surrounding text and do not explain the edit.\n\nTARGET DESCRIPTION:\n${target.text.slice(0,target.start)}⟦HIGHLIGHT START⟧${target.text.slice(target.start,target.end)}⟦HIGHLIGHT END⟧${target.text.slice(target.end)}`;
+    }else{
+      operationBlock='OPERATION: REWRITE ALL. Return a complete new AI Description of the image. Historical Descriptions, if selected, are reference context only; use, revise, or discard their observations according to what the image actually supports.';
+    }
+    contextBlock=`\n\nGENREACTRIX RERUN WORKSPACE CONTEXT:\n${operationBlock}\n\nSELECTED THEME CONTEXT:\n${themeBlock}\n\nSELECTED DESCRIPTION CONTEXT:\n${descriptionsBlock}`;
+  }
+  const outputRule=rerun?.operation==='add'?'Return only the insertion fragment as plain prose.':rerun?.operation==='replace'?'Return only the replacement fragment as plain prose.':'Return the complete freeform analysis directly as prose.';
   return `You are performing Genreactrix Freeform AI Description Analysis.
 
-Study the image closely and provide a robust, substantial freeform visual analysis rather than a short caption.
-Be curious and observant. Discuss whatever is materially useful or revealing about the image, without forcing the analysis into a fixed checklist.
+Study the image closely and provide a robust, substantial visual analysis rather than a short caption.
+Be curious and observant. Discuss whatever is materially useful or revealing about the image without forcing the analysis into a fixed checklist.
 You may address subjects, objects, actions, setting, composition, medium or style, visible text, relationships, visual jokes, unusual juxtapositions, mood, tone, possible themes, symbolism, ambiguity, implied action, anomalies, or other grounded observations when relevant.
 
 Do not artificially limit the analysis to predefined categories.
 Do not invent hidden identity, biography, or facts that cannot reasonably be supported by the image.
-When moving beyond direct observation into interpretation, phrase it as interpretation rather than certainty.${guidanceBlock}
+When moving beyond direct observation into interpretation, phrase it as interpretation rather than certainty.${contextBlock}${guidanceBlock}
 
-Return the freeform analysis directly as prose. Do not wrap it in JSON, Markdown code fences, or a field label.`;
+${outputRule} Do not wrap the answer in JSON, Markdown code fences, or a field label.`;
 }
 
 function descriptionSchema(){
@@ -559,7 +589,9 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   let payload;
   const behavior = options.behavior === 'reanalyze' ? 'reanalyze' : 'analyze';
   const freshRerun = behavior === 'reanalyze'
-    ? ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.'
+    ? (options.scopedEdit
+      ? ' This is a rerun. Reassess the visual evidence, but obey the exact scoped edit boundary: return only the requested insertion or replacement fragment and leave all other target text to Genreactrix.'
+      : ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.')
     : '';
   const temperature = Number.isFinite(options.temperature)
     ? options.temperature
@@ -608,9 +640,10 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   }
 
   if (responseMode === 'text') {
-    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'string') return options.preserveWhitespace ? value : value.trim();
     if (value && typeof value === 'object') return JSON.stringify(value);
-    return String(value).trim();
+    const text=String(value);
+    return options.preserveWhitespace ? text : text.trim();
   }
 
   return parseProviderResponse(payload);
@@ -924,11 +957,11 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
   }
 
   if (requested.includes('description')){
-    const behavior = behaviorFor(['description']);
-    const description = await runStructured(env,model,image,descriptionPrompt(body.directorGuidance),descriptionSchema(),3200,'text',{behavior});
+    const behavior = behaviorFor(['description']),descriptionRerun=normalizeDescriptionRerun(body.descriptionRerun),scopedEdit=['add','replace'].includes(descriptionRerun?.operation);
+    const description = await runStructured(env,model,image,descriptionPrompt(body.directorGuidance,descriptionRerun),descriptionSchema(),3200,'text',{behavior,scopedEdit,preserveWhitespace:scopedEdit});
     if (typeof description !== 'string' || !description.trim()) throw new Error('Description provider response did not contain description text');
-    components.description = description.trim();
-    promptVersions.description = String(body.directorGuidance||'').trim() ? 'genreactrix-freeform-v2-director-guidance' : 'genreactrix-freeform-v1';
+    components.description = scopedEdit ? description : description.trim();
+    promptVersions.description = descriptionRerun ? `genreactrix-freeform-v3-rerun-workspace-${descriptionRerun.operation}` : (String(body.directorGuidance||'').trim() ? 'genreactrix-freeform-v2-director-guidance' : 'genreactrix-freeform-v1');
   }
 
   return {
