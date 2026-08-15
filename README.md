@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.49 — AI Description Rerun Workspace
+# Genreactrix v0.9.40.50 — AI Description Include Placement Fix
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -65,3 +65,9 @@ The updated Worker must be deployed before testing actual structured Submit call
 - 60/40 Reaction architecture is unchanged.
 
 Real-device/browser acceptance is still required.
+
+
+## v0.9.40.50 surgical correction
+- The populated-Description **Include** checkbox now receives the same measured vertical offset as the AI Description panel.
+- This keeps the checkbox with the populated AI Description field instead of falling back onto the Submit-button row.
+- No rerun behavior, surrounding geometry, typography, Worker contract, or other UI logic changed.

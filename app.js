@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.49";
+const GENREACTRIX_BUILD="v0.9.40.50";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1307,6 +1307,10 @@ function renderTabletWorkbench(){
         descriptionPanel.style.setProperty("--director-stack-width",`${stackRect.width}px`);
         descriptionPanel.style.setProperty("--director-stack-height",`${stackRect.height}px`);
         descriptionPanel.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
+      }
+      const descriptionInclude=$("descriptionRerunPopulatedInclude");
+      if(descriptionInclude){
+        descriptionInclude.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
       }
     }
   }
