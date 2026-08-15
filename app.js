@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.41";
+const GENREACTRIX_BUILD="v0.9.40.42";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -287,6 +287,8 @@ let landscapeFeedDirty=false;
 let landscapeRehydrateTimer=0;
 let landscapeRehydrateGeneration=0;
 let landscapeHydrationPending=0;
+const landscapeHydrationInFlight=new Map();
+const LANDSCAPE_ASSET_TIMEOUT_MS=12000;
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
 function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
@@ -366,6 +368,23 @@ const currentDemo = () => DEMOS[state.demoIndex % DEMOS.length];
 function currentSource(){
   if(state.feedEmpty)return "";
   return state.files.length ? state.files[state.index].url : currentDemo().src;
+}
+function currentLandscapeFile(){return state.canonicalFeedActive&&state.files.length?state.files[state.index]||null:null;}
+function requestCurrentLandscapeAsset(){
+  const file=currentLandscapeFile();
+  if(!file?.isHydratingAsset||!file.id)return;
+  hydrateLandscapeAssetNow(String(file.id),landscapeRehydrateGeneration,{urgent:true}).catch(error=>console.warn("Current Landscape asset hydration failed",file.id,error));
+}
+function markLandscapeAssetUnavailable(imageId,failedSrc,message="Image source could not be displayed."){
+  const id=String(imageId||"");if(!id)return;
+  const index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
+  const live=state.files[index];
+  if(live?.isMissingAsset||String(live?.url||"")!==String(failedSrc||""))return;
+  const record=live.imageRecord||window.genreactrixImagesEngine?.recordById?.(id)||null;
+  const missing=window.genreactrixImagesEngine?.missingAssetPlaceholder?.(record,message);
+  if(!missing)return;
+  state.files[index]={...missing,id,imageRecord:missing.imageRecord||record,isHydratingAsset:false};
+  if(index===state.index){renderImage();renderTabletWorkbench();}
 }
 function canonicalAiRunFromRecord(record){
   const ai=record?.analysis?.ai;if(!ai)return null;
@@ -713,6 +732,7 @@ function renderImage(){
   const guidanceInput=$("aiReanalysisGuidance");
   if(guidanceInput){const imageId=currentKey();if(guidanceInput.dataset.imageId!==imageId){guidanceInput.value="";guidanceInput.dataset.imageId=imageId;}}
   const src=currentSource();
+  requestCurrentLandscapeAsset();
   if(state.feedEmpty){
     $("mainImage").removeAttribute("src");
     $("mainImage").hidden=true;
@@ -723,8 +743,15 @@ function renderImage(){
     if($("progressText"))$("progressText").textContent="0 images";
     return;
   }
-  $("mainImage").src=src;
-  $("mainImage").hidden=false;
+  const mainImage=$("mainImage");
+  mainImage.onerror=null;
+  mainImage.src=src;
+  mainImage.hidden=false;
+  const landscapeFile=currentLandscapeFile();
+  if(landscapeFile&&!landscapeFile.isHydratingAsset&&!landscapeFile.isMissingAsset){
+    const imageId=String(landscapeFile.id||"");
+    mainImage.onerror=()=>markLandscapeAssetUnavailable(imageId,src,"The resolved image source could not be decoded or displayed.");
+  }
   if(typeof restoreImageTransformForCurrent==="function") restoreImageTransformForCurrent();
   $("imageEmpty").hidden=true;
   $("inspectionImage").src=src;
@@ -1078,7 +1105,12 @@ function renderTabletWorkbench(){
     if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
       const record=currentImageRecord();if(record&&!record.attributes?.seen){window.genreactrixImagesEngine?.setSeen?.(record.id,true);if(landscapeFilter.exclude.seen)landscapeFeedDirty=true;}
     }
-    $("tabletWorkbenchImage").src=currentSource();
+    const tabletImage=$("tabletWorkbenchImage"),tabletSrc=currentSource(),landscapeFile=currentLandscapeFile();
+    tabletImage.onerror=null;tabletImage.src=tabletSrc;
+    if(landscapeFile&&!landscapeFile.isHydratingAsset&&!landscapeFile.isMissingAsset){
+      const imageId=String(landscapeFile.id||"");
+      tabletImage.onerror=()=>markLandscapeAssetUnavailable(imageId,tabletSrc,"The resolved image source could not be decoded or displayed.");
+    }
   }else{
     $("tabletWorkbenchImage")?.removeAttribute("src");
     $("landscapeFeedEmpty")?.removeAttribute("hidden");
@@ -1831,35 +1863,72 @@ function landscapeFeedShell(record){
     name:record.name||record.source?.originalFilename||String(record.id),
     url:landscapeLoadingPlaceholder(record),
     imageRecord:record,
-    isHydratingAsset:true
+    isHydratingAsset:true,
+    hydrationStartedAt:Date.now()
   };
+}
+function landscapeAssetTimeout(record,message="Asset lookup timed out"){
+  const engine=window.genreactrixImagesEngine;
+  return engine?.missingAssetPlaceholder?.(record,message)||{
+    id:String(record?.id||""),name:record?.name||record?.source?.originalFilename||String(record?.id||"Image"),
+    url:landscapeLoadingPlaceholder({...record,name:"Image unavailable"}),imageRecord:record,isMissingAsset:true,error:message
+  };
+}
+function withLandscapeAssetTimeout(promise,record,timeoutMs=LANDSCAPE_ASSET_TIMEOUT_MS){
+  let timer=0;
+  return Promise.race([
+    Promise.resolve(promise).finally(()=>clearTimeout(timer)),
+    new Promise(resolve=>{timer=setTimeout(()=>resolve(landscapeAssetTimeout(record,`Asset lookup exceeded ${Math.round(timeoutMs/1000)} seconds.`)),timeoutMs);})
+  ]);
+}
+async function hydrateLandscapeAssetNow(imageId,generation,{urgent=false}={}){
+  const id=String(imageId||"");if(!id||generation!==landscapeRehydrateGeneration)return null;
+  const liveIndex=state.files.findIndex(file=>String(file.id)===id);if(liveIndex<0)return null;
+  const live=state.files[liveIndex];if(!live?.isHydratingAsset)return live;
+  const key=`${generation}:${id}`;
+  if(landscapeHydrationInFlight.has(key))return landscapeHydrationInFlight.get(key);
+  const record=live.imageRecord||window.genreactrixImagesEngine?.recordById?.(id)||null;
+  const task=(async()=>{
+    const engine=window.genreactrixImagesEngine;
+    let hydrated=null;
+    try{
+      const resolver=engine?.displayFile||((targetId)=>engine?.workingFiles?.([targetId]).then(rows=>rows?.[0]||null));
+      hydrated=await withLandscapeAssetTimeout(resolver?.(id,{allowRecovery:false,forDisplay:true}),record);
+    }catch(error){
+      console.warn("Landscape image asset hydration failed",id,error);
+      hydrated=engine?.missingAssetPlaceholder?.(record,error?.message||error)||landscapeAssetTimeout(record,String(error?.message||error));
+    }
+    if(generation!==landscapeRehydrateGeneration)return null;
+    const index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return null;
+    if(!hydrated)hydrated=engine?.missingAssetPlaceholder?.(record,'No displayable image asset is available.')||landscapeAssetTimeout(record,'No displayable image asset is available.');
+    hydrated={...hydrated,id,imageRecord:hydrated.imageRecord||record,isHydratingAsset:false};
+    state.files[index]=hydrated;
+    if(index===state.index){renderImage();renderTabletWorkbench();}
+    return hydrated;
+  })().finally(()=>{landscapeHydrationInFlight.delete(key);});
+  landscapeHydrationInFlight.set(key,task);
+  return task;
 }
 async function hydrateLandscapeAssets(records,generation){
   const engine=window.genreactrixImagesEngine;if(!engine||!records.length){landscapeHydrationPending=0;return;}
   const currentId=state.files[state.index]?.id?String(state.files[state.index].id):"";
   const prioritized=currentId?[...records].sort((a,b)=>String(a.id)===currentId?-1:String(b.id)===currentId?1:0):[...records];
   landscapeHydrationPending=prioritized.length;
+  // The current image gets an independent urgent request so navigation never waits
+  // behind the background hydration cursor.
+  if(currentId)hydrateLandscapeAssetNow(currentId,generation,{urgent:true}).finally(()=>{if(generation===landscapeRehydrateGeneration)landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);});
   let cursor=0;
   const worker=async()=>{
     while(generation===landscapeRehydrateGeneration){
       const index=cursor++;if(index>=prioritized.length)return;
       const record=prioritized[index];
-      let hydrated=null;
-      try{hydrated=(await engine.workingFiles([record.id]))?.[0]||null;}
-      catch(error){console.warn("Landscape image asset hydration failed",record.id,error);}
+      if(String(record.id)===currentId)continue;
+      await hydrateLandscapeAssetNow(record.id,generation).catch(()=>null);
       if(generation!==landscapeRehydrateGeneration)return;
       landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);
-      if(!hydrated)continue;
-      const liveIndex=state.files.findIndex(file=>String(file.id)===String(record.id));
-      if(liveIndex<0)continue;
-      state.files[liveIndex]=hydrated;
-      if(liveIndex===state.index){
-        renderImage();
-        renderTabletWorkbench();
-      }
     }
   };
-  const concurrency=Math.min(4,prioritized.length);
+  const concurrency=Math.min(3,Math.max(0,prioritized.length-(currentId?1:0)));
   await Promise.all(Array.from({length:concurrency},worker));
   if(generation===landscapeRehydrateGeneration)landscapeHydrationPending=0;
 }
@@ -1884,12 +1953,14 @@ window.rehydrateLandscapeFeed=rehydrateLandscapeFeed;
 function landscapeFeedDiagnostics(){
   const expected=filteredLandscapeRecords(),visibleIds=new Set(state.files.map(file=>String(file.id)));
   const missing=expected.filter(record=>!visibleIds.has(String(record.id))).map(record=>String(record.id));
-  return {checkedAt:new Date().toISOString(),expectedCount:expected.length,visibleCount:state.files.length,feedEmpty:Boolean(state.feedEmpty),hydrationPending:landscapeHydrationPending,generation:landscapeRehydrateGeneration,missingIds:missing};
+  const nowMs=Date.now(),hydrating=state.files.filter(file=>file?.isHydratingAsset),stuck=hydrating.filter(file=>nowMs-Number(file.hydrationStartedAt||nowMs)>LANDSCAPE_ASSET_TIMEOUT_MS+3000);
+  return {checkedAt:new Date().toISOString(),expectedCount:expected.length,visibleCount:state.files.length,feedEmpty:Boolean(state.feedEmpty),hydrationPending:landscapeHydrationPending,hydratingCount:hydrating.length,stuckHydrationIds:stuck.map(file=>String(file.id)),generation:landscapeRehydrateGeneration,missingIds:missing};
 }
 function verifyLandscapeFeedIntegrity(){
   const d=landscapeFeedDiagnostics(),issues=[];
   if(d.expectedCount!==d.visibleCount)issues.push({type:"inbox-feed-population-mismatch",severity:"critical",expected:d.expectedCount,visible:d.visibleCount,missingIds:d.missingIds.slice(0,20)});
   if(d.expectedCount>0&&d.feedEmpty)issues.push({type:"inbox-feed-false-empty",severity:"critical",expected:d.expectedCount});
+  if(d.stuckHydrationIds.length)issues.push({type:"inbox-feed-asset-hydration-stuck",severity:"critical",imageIds:d.stuckHydrationIds.slice(0,20)});
   return {checkedAt:d.checkedAt,issueCount:issues.length,issues,details:d};
 }
 window.genreactrixLandscapeFeedDiagnostics=landscapeFeedDiagnostics;
@@ -3202,6 +3273,43 @@ function createImagesEngine(){
     const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);records.update(record.id,{storage:{missingReference:false}},"accessed");
     return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
   }
+  async function displayFileForRecord(record,{allowRecovery=false}={}){
+    if(!record)return null;
+    if(record.storage?.mode==="linked"&&!record.attributes?.saved){
+      const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
+      return remote?{id:record.id,name:record.name,url:remote,imageRecord:record,isRemoteSource:true}:missingAssetPlaceholder(record,'Linked source URL is unavailable.');
+    }
+    // Director display must never block on network source recovery. Resolve the
+    // runtime-local working/kept asset first, then the permanent thumbnail, then
+    // a direct recorded URL. Source recovery remains an explicit/Housekeeping job.
+    let blob=await imageBlobGet(record.id).catch(()=>null);
+    if(!blob&&record.storage?.mode==="kept")blob=await keptBlobGet(record.id).catch(()=>null);
+    if(blob){
+      const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
+      const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);
+      records.update(record.id,{storage:{missingReference:false}},"display-asset-accessed");
+      return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
+    }
+    const thumbnail=await thumbnailBlobGet(record.storage?.thumbnailKey||record.id).catch(()=>null);
+    if(thumbnail){
+      const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
+      const url=URL.createObjectURL(thumbnail);objectUrls.set(record.id,url);
+      records.update(record.id,{storage:{missingReference:true}},"display-thumbnail-used");
+      return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:true,fullResolutionUnavailable:true};
+    }
+    if(allowRecovery){
+      const recovered=await recoverKnownSource(record,{attempts:1,context:"display-source-recovery"}).catch(()=>null);
+      if(recovered){
+        const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
+        const url=URL.createObjectURL(recovered);objectUrls.set(record.id,url);
+        return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
+      }
+    }
+    const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
+    if(remote)return{id:record.id,name:record.name,url:remote,imageRecord:record,isRemoteSource:true,fullResolutionUnavailable:true};
+    records.update(record.id,{storage:{missingReference:true}},"display-reference-missing");
+    return missingAssetPlaceholder(record,'No runtime-local full-resolution asset, thumbnail, or recorded source URL is available.');
+  }
   function missingAssetPlaceholder(record,error=''){
     const name=String(record?.source?.originalFilename||record?.name||record?.id||'Image').slice(0,80),message=String(error||'Image asset unavailable').slice(0,120);
     const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900"><rect width="900" height="900" fill="#100d16"/><rect x="34" y="34" width="832" height="832" rx="28" fill="none" stroke="#6b5c78" stroke-width="4"/><text x="450" y="410" text-anchor="middle" fill="#f4eef8" font-family="system-ui,sans-serif" font-size="42" font-weight="700">Image unavailable</text><text x="450" y="470" text-anchor="middle" fill="#b8aabd" font-family="system-ui,sans-serif" font-size="25">${name.replace(/[&<>]/g,'')}</text><text x="450" y="520" text-anchor="middle" fill="#8f8396" font-family="system-ui,sans-serif" font-size="20">${message.replace(/[&<>]/g,'')}</text></svg>`;
@@ -3216,6 +3324,11 @@ function createImagesEngine(){
       catch(error){console.warn('Working image could not be materialized; preserving it in the visible population with a placeholder.',id,error);files.push(missingAssetPlaceholder(record,error?.message||error));}
     }
     return files;
+  }
+  async function displayFile(id,options={}){
+    const record=records.get(id,{touch:false});if(!record)return null;
+    try{return await displayFileForRecord(record,options)}
+    catch(error){console.warn('Display image could not be materialized.',id,error);return missingAssetPlaceholder(record,error?.message||error)}
   }
   function setLifecycle(id,lifecycleState){const record=records.get(id,{touch:false});if(!record)return null;const processed=lifecycleState==="processed",stage=processed?(window.genreactrixLifecycleEngine?.inInbox?.(record)?"inbox-working":record.workflow.stage):lifecycleState;return records.update(id,{workflow:{stage},timestamps:processed?{processedAt:now()}:{}},"stage-changed");}
   function restoreStageFromHot(record){return record.workflow.stage==="rejected-hold"?(record.metadata?.extended?.rejectPriorStage||"inbox-working"):record.workflow.stage;}
@@ -3432,7 +3545,7 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,displayFile,missingAssetPlaceholder,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixProjectRuntimeEngine?.ready?.then(()=>{window.genreactrixImageRecordEngine?.migrateScope?.();return window.genreactrixImagesEngine?.backfillRuntimeAssetLocations?.()}).catch(error=>console.warn('Project/runtime image migration could not complete',error));
