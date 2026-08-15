@@ -8094,3 +8094,18 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   background:#43113d!important;border-color:#ff00d4!important;box-shadow:inset 0 0 0 1px rgba(255,0,212,.62)!important;
 }
 @media (max-width:520px){.theme-rerun-exclusion-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* v0.9.40.54 — Theme Rerun Description context.
+   Reuses the accepted Description-history visual language without moving Landscape geometry. */
+.theme-rerun-controls #themeRerunDescriptionsBtn.has-data{
+  border-color:#8d74a8!important;
+  box-shadow:inset 0 0 0 1px rgba(141,116,168,.52)!important;
+}
+.theme-rerun-descriptions-dialog{width:min(700px,94vw)}
+.theme-rerun-description-help{font-size:11px;line-height:1.3;color:var(--muted)}
+
+
+/* v0.9.40.56 — Theme Rerun Preview Request modal only.
+   No Landscape workspace geometry is changed. */
+.theme-rerun-preview-dialog{width:min(760px,94vw)}

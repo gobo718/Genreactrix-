@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.53 — Theme Rerun Theme Exclusions Pass
+# Genreactrix v0.9.40.56 — Theme Rerun Preview Request
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -99,3 +99,38 @@ Real-device/browser acceptance is still required.
 - A preserved/green current Theme cannot simultaneously be excluded; the UI blocks either conflicting action instead of silently resolving it.
 - PrimPicker behavior and accepted Landscape geometry are unchanged from v0.9.40.52.
 - Theme Exclusions are state/UI only in this bounded pass; Preview/Submit wiring remains for subsequent Theme-rerun passes. Worker files are unchanged.
+
+
+## v0.9.40.54 — Theme Rerun Description Context
+
+- The Theme Rerun **Descriptions** control now reuses the established AI Description-rerun history behavior.
+- On the first Theme-rerun Current state for an image, the current AI Description is populated and included by default, preserving the Image + current Description failsafe.
+- Normal tap on **Descriptions** populates the most recent prior Description when one exists. Long press opens the dated/versioned Description history.
+- Every history row has an independent **Include** checkbox; any number of Description artifacts may be included simultaneously.
+- Tapping a history row populates it for inspection but does not change its Include state.
+- The populated Description receives the same mirrored **Include** checkbox beside the existing AI Description field.
+- Theme-rerun Description state stores artifact IDs/references, not human-readable labels; immutable Description history remains the authority.
+- Existing PrimPicker, Theme Exclusions, Theme-state controls, and accepted Landscape geometry are unchanged.
+- This is a UI/state pass only. Preview Request and Submit do not consume the selected Description context yet. Worker files are unchanged from v0.9.40.53.
+
+
+## v0.9.40.55 — Saved Draft deletion
+
+- **Select Draft** entries now support deletion by long-press.
+- A long-press opens a destructive confirmation before removing that saved AI Description rerun draft.
+- A normal tap still restores the draft exactly as before.
+- This pass does not change Theme Rerun state, AI request behavior, Worker code, or accepted Landscape geometry.
+
+
+## v0.9.40.56 — Theme Rerun Preview Request
+
+- **Preview Request** now renders the complete current Theme-rerun request without sending an AI call.
+- The preview always identifies the image as included.
+- All three current Theme slots are shown with their Neutral / Red / Green instruction and whether PrimPicker guidance applies. Green/protected Theme slots are explicitly marked untouched.
+- PrimPicker preview is grouped by its active Theme/General scopes. Primitive identity remains code-backed; the interface resolves the current human-readable Prim names from those P-codes.
+- Prim states are displayed in the locked order: Mandatory, Preferred, Optional, Discouraged, Forbidden, Unchosen. Unchosen is shown with its derived 40/50 effective weight for that scope; it is not treated as a selectable 40/50 state.
+- Theme Exclusions are previewed from their stored PFM codes while displaying the current Theme names.
+- Included Description artifacts are shown with date/time, version, and full text. The preview explicitly says when no descriptions or no exclusions are included.
+- **Submit** and **Theme History** remain intentionally unwired in this bounded pass. Preview performs no Worker call.
+- The v0.9.40.55 long-press Saved Draft deletion fix is carried forward.
+- Preview uses the established scrollable request-preview modal language; no accepted Landscape workspace geometry was changed. Worker files are unchanged.
