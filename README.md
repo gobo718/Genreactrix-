@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.52 — Theme Rerun PrimPicker Visual Pass
+# Genreactrix v0.9.40.53 — Theme Rerun Theme Exclusions Pass
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -87,3 +87,15 @@ Real-device/browser acceptance is still required.
 - Darkens the Discouraged red-orange status dot to a deeper red-orange so it is visually distinct from Forbidden hot magenta.
 - No PrimPicker behavior or surrounding Landscape geometry changed.
 - Worker unchanged from v0.9.40.51.
+
+
+## v0.9.40.53 — Theme Exclusions
+
+- Theme Exclusions is now a working Theme-rerun control.
+- The exclusion catalog is generated from stable PFM codes (PFM0102 through the canonical non-diagonal PrimFusion set); visible Theme words are resolved from those codes at render time.
+- Tap a Theme to prohibit it from being returned by this rerun; tap again to remove the prohibition.
+- Exclusions are stored in Current rerun state by PFM code, persist per image, and survive closing/reopening the Theme rerun workspace.
+- The exclusion dialog is searchable by displayed Theme name (and internally by PFM code), with selected exclusions shown in hot magenta.
+- A preserved/green current Theme cannot simultaneously be excluded; the UI blocks either conflicting action instead of silently resolving it.
+- PrimPicker behavior and accepted Landscape geometry are unchanged from v0.9.40.52.
+- Theme Exclusions are state/UI only in this bounded pass; Preview/Submit wiring remains for subsequent Theme-rerun passes. Worker files are unchanged.

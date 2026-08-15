@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.52";
+const GENREACTRIX_BUILD="v0.9.40.53";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -972,7 +972,7 @@ function syncTabletAiRerunControls(){
 
 
 
-// v0.9.40.52 — AI Theme rerun shell + PrimPicker.
+// v0.9.40.53 — AI Theme rerun shell + PrimPicker + Theme Exclusions.
 // Prim identities are stored only by stable P-code. Human-readable names and
 // emoji are resolved at render time so future label changes cannot alter identity.
 const THEME_RERUN_CURRENT_KEY='genreactrix-theme-rerun-current-v1';
@@ -980,8 +980,11 @@ const THEME_RERUN_THEME_STATES=Object.freeze(['neutral','replace','preserve']);
 const THEME_RERUN_PRIM_STATES=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden']);
 const THEME_RERUN_PRIM_CYCLE=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden',null]);
 const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`));
-const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null};
-const emptyThemeRerunCurrent=()=>({schemaVersion:1,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},updatedAt:null});
+function themeRerunPfmCode(firstCode,secondCode){const nums=[firstCode,secondCode].map(code=>Number(String(code).replace(/\D/g,''))||0).sort((a,b)=>a-b);return`PFM${String(nums[0]).padStart(2,'0')}${String(nums[1]).padStart(2,'0')}`}
+const THEME_RERUN_FUSION_CATALOG=Object.freeze((()=>{const rows=[];for(let first=1;first<=14;first++)for(let second=first+1;second<=14;second++){const firstCode=`P${String(first).padStart(2,'0')}`,secondCode=`P${String(second).padStart(2,'0')}`,code=themeRerunPfmCode(firstCode,secondCode),firstName=AI_CANONICAL_PRIM_NAME_BY_ID[firstCode]||firstCode,secondName=AI_CANONICAL_PRIM_NAME_BY_ID[secondCode]||secondCode;rows.push(Object.freeze({code,primitiveCodes:Object.freeze([firstCode,secondCode]),label:canonicalPrimFusionLabel(firstName,secondName)}));}return rows;})());
+const THEME_RERUN_FUSION_BY_CODE=Object.freeze(Object.fromEntries(THEME_RERUN_FUSION_CATALOG.map(row=>[row.code,row])));
+const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null,exclusionQuery:''};
+const emptyThemeRerunCurrent=()=>({schemaVersion:1,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},excludedThemeCodes:[],updatedAt:null});
 function themeRerunStorageKey(){return window.genreactrixProjectRuntimeEngine?.projectKey?.(THEME_RERUN_CURRENT_KEY)||THEME_RERUN_CURRENT_KEY}
 function readThemeRerunMap(){try{const raw=localStorage.getItem(themeRerunStorageKey());const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch{return {}}}
 function writeThemeRerunMap(map){try{localStorage.setItem(themeRerunStorageKey(),JSON.stringify(map||{}));return true}catch(error){console.warn('Theme rerun Current state could not be stored',error);return false}}
@@ -993,12 +996,21 @@ function normalizeThemeRerunCurrent(value){
     if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [code,state] of Object.entries(raw))if(THEME_RERUN_PRIM_ORDER.includes(code)&&THEME_RERUN_PRIM_STATES.includes(state))clean[code]=state;
     primScopes[scope]=clean;
   }
-  return{schemaVersion:1,themeStates,primScopes,updatedAt:source.updatedAt||null};
+  const excludedThemeCodes=[...new Set((Array.isArray(source.excludedThemeCodes)?source.excludedThemeCodes:[]).map(String).filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code])))];
+  return{schemaVersion:1,themeStates,primScopes,excludedThemeCodes,updatedAt:source.updatedAt||null};
 }
 function loadThemeRerunCurrent(imageId=currentKey()){const map=readThemeRerunMap();return normalizeThemeRerunCurrent(map[String(imageId)]||emptyThemeRerunCurrent())}
 function saveThemeRerunCurrent(){if(!themeRerunWorkspace.imageId||!themeRerunWorkspace.current)return false;themeRerunWorkspace.current.updatedAt=new Date().toISOString();const map=readThemeRerunMap();map[String(themeRerunWorkspace.imageId)]=normalizeThemeRerunCurrent(themeRerunWorkspace.current);return writeThemeRerunMap(map)}
 function themeRerunPrimPresentation(code){const name=AI_CANONICAL_PRIM_NAME_BY_ID[code]||PRIMITIVE_BY_ID[code]?.name||code;const semantic=PRIMITIVES.find(item=>item.name===name);return{code,name,symbol:semantic?.symbol||PRIMITIVE_BY_ID[code]?.symbol||'•'}}
 function themeRerunAiThemeSnapshot(slot){const sorted=currentAiThemes().map(([label,weight])=>({label,weight:Number(weight)||0})).sort((a,b)=>b.weight-a.weight).slice(0,3);return sorted[slot-1]||null}
+function themeRerunFusionFromLabel(label){const wanted=String(label||'').trim().toLowerCase();return THEME_RERUN_FUSION_CATALOG.find(row=>row.label.toLowerCase()===wanted)||null}
+function themeRerunCurrentThemeFusion(slot){return themeRerunFusionFromLabel(themeRerunAiThemeSnapshot(slot)?.label||'')}
+function themeRerunExcludedCodes(){return themeRerunWorkspace.current?.excludedThemeCodes||[]}
+function themeRerunIsExcluded(code){return themeRerunExcludedCodes().includes(code)}
+function themeRerunProtectedSlotsForCode(code){const slots=[];for(let slot=1;slot<=3;slot++)if(themeRerunWorkspace.current?.themeStates?.[slot]==='preserve'&&themeRerunCurrentThemeFusion(slot)?.code===code)slots.push(slot);return slots}
+function themeRerunToggleExclusion(code){if(!themeRerunWorkspace.active||!THEME_RERUN_FUSION_BY_CODE[code])return;const current=themeRerunWorkspace.current,existing=new Set(current.excludedThemeCodes||[]);if(existing.has(code))existing.delete(code);else{const protectedSlots=themeRerunProtectedSlotsForCode(code);if(protectedSlots.length){const label=THEME_RERUN_FUSION_BY_CODE[code].label;alert(`${label} is currently preserved in Theme ${protectedSlots.join(', Theme ')}. Change that Theme from green before excluding it.`);return;}existing.add(code);}current.excludedThemeCodes=[...existing];saveThemeRerunCurrent();renderThemeRerunExclusions();renderThemeRerunChrome()}
+function renderThemeRerunExclusions(){const list=$('themeRerunExclusionsList'),count=$('themeRerunExclusionsCount'),search=$('themeRerunExclusionsSearch');if(!list)return;if(search&&search.value!==themeRerunWorkspace.exclusionQuery)search.value=themeRerunWorkspace.exclusionQuery;const query=String(themeRerunWorkspace.exclusionQuery||'').trim().toLowerCase(),rows=THEME_RERUN_FUSION_CATALOG.filter(row=>!query||row.label.toLowerCase().includes(query)||row.code.toLowerCase().includes(query)).sort((a,b)=>a.label.localeCompare(b.label));list.innerHTML='';for(const row of rows){const button=document.createElement('button');button.type='button';button.className='theme-rerun-exclusion-choice';button.dataset.pfmCode=row.code;const selected=themeRerunIsExcluded(row.code);button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));button.textContent=row.label;button.title=row.label;list.append(button);}if(count){const n=themeRerunExcludedCodes().length;count.textContent=n?`${n} Theme${n===1?'':'s'} excluded`:'No Themes excluded';}}
+function openThemeRerunExclusions(){if(!themeRerunWorkspace.active)return;themeRerunWorkspace.exclusionQuery='';renderThemeRerunExclusions();$('themeRerunExclusionsDialog')?.showModal()}
 function themeRerunScopeLabel(scope){if(scope==='general')return'General';const slot=Number(scope.replace('theme',''))||0,theme=themeRerunAiThemeSnapshot(slot);return`Theme ${slot}${theme?.label?` · ${theme.label}`:''}`}
 function themeRerunScopesForStates(themeStates){const specifics=[];for(let slot=1;slot<=3;slot++)if(themeStates?.[slot]==='replace')specifics.push(`theme${slot}`);if(specifics.length<3)specifics.push('general');return specifics}
 function themeRerunScopes(){return themeRerunScopesForStates(themeRerunWorkspace.current?.themeStates||{})}
@@ -1031,7 +1043,7 @@ function renderThemeRerunPrimPicker(){
 function themeRerunNextThemeState(slot){const current=themeRerunWorkspace.current?.themeStates?.[slot]||'neutral';return current==='neutral'?'replace':current==='replace'?'preserve':'neutral'}
 function applyThemeRerunThemeState(slot,nextState){themeRerunWorkspace.current.themeStates[slot]=nextState;saveThemeRerunCurrent();renderTabletWorkbench()}
 function requestThemeRerunThemeState(slot){
-  if(!themeRerunWorkspace.active)return;const nextState=themeRerunNextThemeState(slot),before=themeRerunScopes(),candidate=normalizeThemeRerunCurrent(themeRerunWorkspace.current);candidate.themeStates[slot]=nextState;const after=themeRerunScopesForStates(candidate.themeStates),removed=before.filter(scope=>!after.includes(scope)),populated=removed.filter(scope=>themeRerunScopePopulated(scope));
+  if(!themeRerunWorkspace.active)return;const nextState=themeRerunNextThemeState(slot);if(nextState==='preserve'){const fusion=themeRerunCurrentThemeFusion(slot);if(fusion&&themeRerunIsExcluded(fusion.code)){alert(`${fusion.label} is excluded from this rerun. Remove the exclusion before preserving this Theme.`);return;}}const before=themeRerunScopes(),candidate=normalizeThemeRerunCurrent(themeRerunWorkspace.current);candidate.themeStates[slot]=nextState;const after=themeRerunScopesForStates(candidate.themeStates),removed=before.filter(scope=>!after.includes(scope)),populated=removed.filter(scope=>themeRerunScopePopulated(scope));
   if(populated.length){themeRerunWorkspace.pendingScopeChange={slot,nextState,removed:populated};$('themeRerunScopeConfirmText').textContent=`This Theme change will remove PrimPicker data from ${populated.map(themeRerunScopeLabel).join(', ')}.\n\nContinue and clear that data?`;$('themeRerunScopeConfirmDialog')?.showModal();return;}
   applyThemeRerunThemeState(slot,nextState);
 }
@@ -1039,7 +1051,7 @@ function applyPendingThemeRerunScopeChange(){const pending=themeRerunWorkspace.p
 function cancelPendingThemeRerunScopeChange(){themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close()}
 function clearThemeRerunPrimData(){if(!themeRerunWorkspace.active)return;for(const scope of ['theme1','theme2','theme3','general'])themeRerunWorkspace.current.primScopes[scope]={};saveThemeRerunCurrent();renderThemeRerunPrimPicker();setDirectorStatus('PrimPicker cleared. Theme selections retained.');}
 function renderThemeRerunChrome(){
-  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));
+  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));const exclusions=$('themeRerunExclusionsBtn'),exclusionCount=active?themeRerunExcludedCodes().length:0;if(exclusions){exclusions.classList.toggle('has-data',Boolean(exclusionCount));exclusions.setAttribute('aria-label',exclusionCount?`Theme Exclusions, ${exclusionCount} selected`:'Theme Exclusions');}
   for(let slot=1;slot<=3;slot++){const cell=$(`tabletWorkbenchAiTheme${slot}`)?.closest('.tablet-theme-cell');if(!cell)continue;const state=active?(themeRerunWorkspace.current?.themeStates?.[slot]||'neutral'):'neutral';cell.classList.toggle('theme-rerun-replace',active&&state==='replace');cell.classList.toggle('theme-rerun-preserve',active&&state==='preserve');cell.dataset.themeRerunState=active?state:'';if(active){cell.tabIndex=0;cell.setAttribute('role','button');const theme=themeRerunAiThemeSnapshot(slot);cell.setAttribute('aria-label',`Theme ${slot}${theme?.label?` ${theme.label}`:''}: ${state==='replace'?'replace':state==='preserve'?'preserve':'neutral'}. Tap to cycle.`);}else if(!descriptionRerunWorkspace.active){cell.tabIndex=-1;cell.setAttribute('role','group');cell.removeAttribute('aria-label');}}
   if(active&&themeRerunWorkspace.pickerOpen)renderThemeRerunPrimPicker();
 }
@@ -2657,7 +2669,10 @@ $("themeRerunScopeConfirmCancel")?.addEventListener("click",()=>cancelPendingThe
 $("themeRerunScopeConfirmApply")?.addEventListener("click",()=>applyPendingThemeRerunScopeChange());
 document.querySelectorAll("[data-theme-rerun-prim-state]").forEach(button=>button.addEventListener("click",()=>{const target=themeRerunWorkspace.longPressTarget;if(!target)return;const raw=button.dataset.themeRerunPrimState;themeRerunSetPrimState(target.scope,target.code,raw==='unchosen'?null:raw);$("themeRerunPrimStateDialog")?.close();themeRerunWorkspace.longPressTarget=null;}));
 document.querySelectorAll("[data-theme-rerun-close]").forEach(button=>button.addEventListener("click",()=>{$(button.dataset.themeRerunClose)?.close();themeRerunWorkspace.longPressTarget=null;}));
-for(const id of ["themeRerunExclusionsBtn","themeRerunPreviewBtn","themeRerunSubmitBtn","themeRerunHistoryBtn","themeRerunDescriptionsBtn"]){$(id)?.addEventListener("click",()=>setDirectorStatus("Theme Rerun shell: this control is reserved for the next bounded pass."));}
+$("themeRerunExclusionsBtn")?.addEventListener("click",openThemeRerunExclusions);
+$("themeRerunExclusionsSearch")?.addEventListener("input",event=>{themeRerunWorkspace.exclusionQuery=event.target.value;renderThemeRerunExclusions();});
+$("themeRerunExclusionsList")?.addEventListener("click",event=>{const button=event.target.closest("[data-pfm-code]");if(button)themeRerunToggleExclusion(button.dataset.pfmCode);});
+for(const id of ["themeRerunPreviewBtn","themeRerunSubmitBtn","themeRerunHistoryBtn","themeRerunDescriptionsBtn"]){$(id)?.addEventListener("click",()=>setDirectorStatus("Theme Rerun shell: this control is reserved for the next bounded pass."));}
 
 // AI Description rerun workstation controls.
 $("tabletDescriptionRerunGuidance")?.addEventListener("input",event=>{if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.current.guidance=event.target.value;saveDescriptionRerunCurrent();});
