@@ -1,76 +1,39 @@
-# Genreactrix v0.9.40.42 — Reliable Inbox Asset Hydration
+# Genreactrix v0.9.40.43 — Director Hydration Window
 
-Accepted rollback baseline: **v0.9.40.38**.
+Source: v0.9.40.42 reliable Inbox asset hydration candidate.
+Protected accepted rollback: v0.9.40.38.
 
-v0.9.40.41 partially repaired the Landscape Inbox blocker: the Director population now surfaces correctly, but real-device testing showed per-image asset hydration remained unreliable. Some Inbox records displayed normally while others remained indefinitely on **Loading image…** even though their Image Record and AI Description were present.
+## Bounded purpose
 
-## 1. Scope
+v0.9.40.43 addresses the real-device symptom where an Inbox image could appear briefly, then be replaced by the black **Loading image…** screen, and where a 97-image Inbox produced widespread asset-hydration failures.
 
-This release changes only the Director/Inbox image-display hydration path. It does not redesign Layouts, change Filter semantics, alter Queue/Bundle/Batch ownership, or modify AI/60-40 behavior.
+The logical Inbox population remains complete for filtering/navigation, but Director no longer tries to hydrate every image asset at once.
 
-## 2. Root causes addressed
+## Changes
 
-### Display no longer performs source-recovery work
+- Hydration is limited to the current Director image plus one immediate neighbor on each side (maximum three image assets at a time).
+- Navigation immediately prioritizes the destination image.
+- Feed/filter refresh preserves an already-resolved visible image instead of replacing it with a new loading shell.
+- The display resolver reuses an existing runtime object URL for an image instead of repeatedly revoking/recreating it during overlapping display requests.
+- Missing assets may still be retried on a later feed refresh; a confirmed missing state is not permanently converted into a fake success.
+- Full logical Inbox records remain present even when their image bytes have not yet been hydrated.
+- The existing bounded 12-second lookup termination remains: a genuinely unresolved current/window image becomes **Image unavailable** instead of loading forever.
+- Maintenance hydration diagnostics now judge stuck work only inside the active three-image hydration window rather than treating intentionally unhydrated offscreen records as stuck.
 
-The prior display path could fall through from local asset lookup into source recovery, including network retrieval attempts. That made a Director paint operation wait on work that belongs to explicit source recovery / Daily Housekeeping.
+## Explicitly unchanged
 
-v0.9.40.42 adds a dedicated display resolver:
+- No layout redesign.
+- No 60/40 AI changes.
+- No lifecycle, Bundle, Batch, Project/Runtime, persistence, or Reports changes.
+- Dupe/Repeat Comparator and Single Image Inspector from v0.9.40.40+ remain included.
+- Multi-file **Choose Files** remains the Origin picker.
 
-1. runtime-local working/kept full-resolution asset;
-2. permanent thumbnail;
-3. recorded direct URL if one exists;
-4. explicit **Image unavailable** placeholder.
+## Device acceptance
 
-Normal Director hydration calls this resolver with source recovery disabled. Existing source-recovery behavior remains available to the actual recovery workflows.
-
-### Current image gets urgent hydration
-
-Background population hydration is no longer the only way an image can receive its bytes. Whenever navigation lands on a still-loading record, that Image ID receives an independent urgent hydration request. Therefore the Director does not have to wait for the destination image's position in a large background queue.
-
-### Loading cannot be permanent
-
-Each display lookup has a bounded 12-second completion gate. If the local resolver never completes, the record remains in the Director population but its preview becomes **Image unavailable** with an explicit timeout message.
-
-If a URL/object URL resolves but the browser cannot decode or display the image, the image element error is also converted into the explicit unavailable state.
-
-### Hydration integrity diagnostics
-
-Maintenance → Quick check now detects a Director record that remains in a loading shell beyond the permitted hydration window and reports `inbox-feed-asset-hydration-stuck`.
-
-## 3. Existing work retained
-
-The .40/.41 work remains present:
-
-- immediate record-first Inbox population;
-- Filter population synchronization protections;
-- Single Image Inspector;
-- Two-Image Comparator for Dupe/Repeat;
-- Candidate | Original aligned metadata comparison and close-up;
-- Quarantine inspection/diagnostics;
-- multi-file **Choose Files** control with redundant single-file picker removed;
-- explicit Batch membership;
-- Project/Runtime and portable persistence work.
-
-## 4. Verification performed
-
-- All 63 top-level JavaScript files parse successfully.
-- Actual hydration helper harness: never-resolving display Promise terminates in explicit missing-asset state — PASS.
-- Actual hydration helper harness: urgent navigation to a second loading Image ID hydrates independently of the first request — PASS.
-- Display resolver defaults to `allowRecovery=false`; network/source recovery is gated behind an explicit opt-in — PASS.
-- Maintenance source contains stuck-hydration detection — PASS.
-- `styles.css` is byte-for-byte identical to v0.9.40.41 — PASS.
-- `ai-analysis-engine.js` is byte-for-byte identical to v0.9.40.41 — PASS.
-- Portrait HTML structure remains 1,589 non-script elements / 695 unique IDs in both v0.9.40.41 and v0.9.40.42 — PASS.
-- Local headless Chromium smoke attempt did not complete within the environment timeout, so no browser/device pass is claimed from that attempt.
-
-## 5. Real-device acceptance gate
-
-v0.9.40.38 remains the accepted rollback until this passes on Billy's device.
-
-1. Confirm **v0.9.40.42**.
-2. Landscape → Filter → **All**.
-3. Navigate through images that previously showed hit-or-miss loading.
-4. Every record must reach one of two terminal display states: the actual image/thumbnail, or explicit **Image unavailable**. It must not remain indefinitely on **Loading image…**.
-5. Navigation to a loading image should begin that image's hydration immediately rather than waiting behind the rest of the Inbox.
-6. Maintenance → Quick check should not report `inbox-feed-asset-hydration-stuck` after hydration has settled.
-7. If the Inbox is usable, continue the previously blocked Batch test.
+1. Confirm the site reports **v0.9.40.43**.
+2. Open the existing 97-image Inbox in Landscape with Filter = All.
+3. Navigate through at least 10 images, including images that flashed/disappeared or became unavailable in v0.9.40.42.
+4. A successfully displayed image must remain displayed; it must not revert to **Loading image…** because other Inbox assets are hydrating.
+5. The current image should load without waiting for the rest of the Inbox. Nearby images may prefetch.
+6. Any truly unresolved image must end as **Image unavailable** rather than remain loading indefinitely.
+7. If image display is reliable, continue into the previously blocked Batch test.

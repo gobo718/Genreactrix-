@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.42";
+const GENREACTRIX_BUILD="v0.9.40.43";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -289,6 +289,8 @@ let landscapeRehydrateGeneration=0;
 let landscapeHydrationPending=0;
 const landscapeHydrationInFlight=new Map();
 const LANDSCAPE_ASSET_TIMEOUT_MS=12000;
+const LANDSCAPE_PREFETCH_RADIUS=1;
+let landscapeHydrationWindowIds=[];
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
 function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
@@ -372,8 +374,14 @@ function currentSource(){
 function currentLandscapeFile(){return state.canonicalFeedActive&&state.files.length?state.files[state.index]||null:null;}
 function requestCurrentLandscapeAsset(){
   const file=currentLandscapeFile();
-  if(!file?.isHydratingAsset||!file.id)return;
-  hydrateLandscapeAssetNow(String(file.id),landscapeRehydrateGeneration,{urgent:true}).catch(error=>console.warn("Current Landscape asset hydration failed",file.id,error));
+  if(!file?.id)return;
+  const generation=landscapeRehydrateGeneration;
+  if(file.isHydratingAsset){
+    hydrateLandscapeAssetNow(String(file.id),generation,{urgent:true}).catch(error=>console.warn("Current Landscape asset hydration failed",file.id,error));
+  }
+  // Hydrate only the active image and its immediate neighbors. The logical
+  // Inbox population remains fully available without materializing every asset.
+  queueMicrotask(()=>hydrateLandscapeWindow(generation,state.index).catch(error=>console.warn("Landscape prefetch window failed",error)));
 }
 function markLandscapeAssetUnavailable(imageId,failedSrc,message="Image source could not be displayed."){
   const id=String(imageId||"");if(!id)return;
@@ -1909,28 +1917,35 @@ async function hydrateLandscapeAssetNow(imageId,generation,{urgent=false}={}){
   landscapeHydrationInFlight.set(key,task);
   return task;
 }
-async function hydrateLandscapeAssets(records,generation){
-  const engine=window.genreactrixImagesEngine;if(!engine||!records.length){landscapeHydrationPending=0;return;}
-  const currentId=state.files[state.index]?.id?String(state.files[state.index].id):"";
-  const prioritized=currentId?[...records].sort((a,b)=>String(a.id)===currentId?-1:String(b.id)===currentId?1:0):[...records];
-  landscapeHydrationPending=prioritized.length;
-  // The current image gets an independent urgent request so navigation never waits
-  // behind the background hydration cursor.
-  if(currentId)hydrateLandscapeAssetNow(currentId,generation,{urgent:true}).finally(()=>{if(generation===landscapeRehydrateGeneration)landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);});
-  let cursor=0;
-  const worker=async()=>{
-    while(generation===landscapeRehydrateGeneration){
-      const index=cursor++;if(index>=prioritized.length)return;
-      const record=prioritized[index];
-      if(String(record.id)===currentId)continue;
-      await hydrateLandscapeAssetNow(record.id,generation).catch(()=>null);
-      if(generation!==landscapeRehydrateGeneration)return;
-      landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);
-    }
-  };
-  const concurrency=Math.min(3,Math.max(0,prioritized.length-(currentId?1:0)));
-  await Promise.all(Array.from({length:concurrency},worker));
-  if(generation===landscapeRehydrateGeneration)landscapeHydrationPending=0;
+function landscapeHydrationWindow(centerIndex=state.index){
+  const count=state.files.length;if(!count)return [];
+  const indexes=[];
+  for(let offset=-LANDSCAPE_PREFETCH_RADIUS;offset<=LANDSCAPE_PREFETCH_RADIUS;offset++){
+    const index=((Number(centerIndex)||0)+offset+count)%count;
+    if(!indexes.includes(index))indexes.push(index);
+  }
+  // Current first, then the immediate forward/back neighbors.
+  indexes.sort((a,b)=>a===(Number(centerIndex)||0)?-1:b===(Number(centerIndex)||0)?1:Math.abs(a-(Number(centerIndex)||0))-Math.abs(b-(Number(centerIndex)||0)));
+  return indexes.map(index=>state.files[index]).filter(Boolean);
+}
+async function hydrateLandscapeWindow(generation,centerIndex=state.index){
+  if(generation!==landscapeRehydrateGeneration||!state.files.length){landscapeHydrationPending=0;landscapeHydrationWindowIds=[];return;}
+  const targets=landscapeHydrationWindow(centerIndex);
+  landscapeHydrationWindowIds=targets.map(file=>String(file.id||"")).filter(Boolean);
+  const pending=targets.filter(file=>file?.isHydratingAsset&&file.id);
+  landscapeHydrationPending=pending.length;
+  if(!pending.length)return;
+  const currentId=String(state.files[state.index]?.id||"");
+  const current=pending.find(file=>String(file.id)===currentId);
+  if(current){
+    await hydrateLandscapeAssetNow(currentId,generation,{urgent:true}).catch(()=>null);
+    if(generation!==landscapeRehydrateGeneration)return;
+    landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);
+  }
+  const neighbors=pending.filter(file=>String(file.id)!==currentId);
+  await Promise.all(neighbors.map(file=>hydrateLandscapeAssetNow(String(file.id),generation,{urgent:false}).catch(()=>null).finally(()=>{
+    if(generation===landscapeRehydrateGeneration)landscapeHydrationPending=Math.max(0,landscapeHydrationPending-1);
+  })));
 }
 async function rehydrateLandscapeFeed({preserveId=null,preferredIndex=null}={}){
   const engine=window.genreactrixImagesEngine;if(!engine)return;
@@ -1938,12 +1953,22 @@ async function rehydrateLandscapeFeed({preserveId=null,preferredIndex=null}={}){
   const oldId=preserveId||(state.files.length?currentKey():null);
   const oldIndex=preferredIndex==null?state.index:preferredIndex;
   const records=filteredLandscapeRecords();
-  const shells=records.map(landscapeFeedShell);
+  const priorById=new Map(state.files.map(file=>[String(file?.id||""),file]));
+  const shells=records.map(record=>{
+    const prior=priorById.get(String(record.id));
+    // A feed/filter refresh must not replace a successfully rendered asset with
+    // a generic loading shell. Preserve valid resolved state and refresh only
+    // the logical Image Record reference. Missing assets may be retried later.
+    if(prior&&!prior.isHydratingAsset&&!prior.isMissingAsset&&prior.url){
+      return {...prior,name:record.name||record.source?.originalFilename||String(record.id),imageRecord:record};
+    }
+    return landscapeFeedShell(record);
+  });
   await applyEngineWorkingFiles(shells,{preserveId:oldId,preferredIndex:oldIndex,canonical:true});
   renderLandscapeFilterDialog();
   if(generation!==landscapeRehydrateGeneration)return{superseded:true,recordCount:records.length,fileCount:shells.length};
-  hydrateLandscapeAssets(records,generation).catch(error=>console.warn("Landscape asset hydration could not complete",error));
-  return{recordCount:records.length,fileCount:shells.length,hydrating:records.length};
+  hydrateLandscapeWindow(generation,state.index).catch(error=>console.warn("Landscape asset hydration window could not complete",error));
+  return{recordCount:records.length,fileCount:shells.length,hydrating:landscapeHydrationWindow(state.index).filter(file=>file?.isHydratingAsset).length};
 }
 function scheduleLandscapeRehydrate(){
   clearTimeout(landscapeRehydrateTimer);
@@ -1954,7 +1979,9 @@ function landscapeFeedDiagnostics(){
   const expected=filteredLandscapeRecords(),visibleIds=new Set(state.files.map(file=>String(file.id)));
   const missing=expected.filter(record=>!visibleIds.has(String(record.id))).map(record=>String(record.id));
   const nowMs=Date.now(),hydrating=state.files.filter(file=>file?.isHydratingAsset),stuck=hydrating.filter(file=>nowMs-Number(file.hydrationStartedAt||nowMs)>LANDSCAPE_ASSET_TIMEOUT_MS+3000);
-  return {checkedAt:new Date().toISOString(),expectedCount:expected.length,visibleCount:state.files.length,feedEmpty:Boolean(state.feedEmpty),hydrationPending:landscapeHydrationPending,hydratingCount:hydrating.length,stuckHydrationIds:stuck.map(file=>String(file.id)),generation:landscapeRehydrateGeneration,missingIds:missing};
+  const activeWindow=new Set(landscapeHydrationWindowIds);
+  const relevantStuck=stuck.filter(file=>activeWindow.has(String(file.id)));
+  return {checkedAt:new Date().toISOString(),expectedCount:expected.length,visibleCount:state.files.length,feedEmpty:Boolean(state.feedEmpty),hydrationPending:landscapeHydrationPending,hydratingCount:hydrating.length,activeHydrationWindowIds:[...activeWindow],stuckHydrationIds:relevantStuck.map(file=>String(file.id)),generation:landscapeRehydrateGeneration,missingIds:missing};
 }
 function verifyLandscapeFeedIntegrity(){
   const d=landscapeFeedDiagnostics(),issues=[];
@@ -3273,18 +3300,25 @@ function createImagesEngine(){
     const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);records.update(record.id,{storage:{missingReference:false}},"accessed");
     return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
   }
-  async function displayFileForRecord(record,{allowRecovery=false}={}){
+  function cachedDisplayForRecord(record,reuseCached=true){
+    const cachedUrl=reuseCached?objectUrls.get(record?.id):null;
+    return cachedUrl?{id:record.id,name:record.name,url:cachedUrl,imageRecord:record,isCachedDisplay:true,isThumbnail:Boolean(record.storage?.missingReference)}:null;
+  }
+  async function displayFileForRecord(record,{allowRecovery=false,reuseCached=true}={}){
     if(!record)return null;
     if(record.storage?.mode==="linked"&&!record.attributes?.saved){
       const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
       return remote?{id:record.id,name:record.name,url:remote,imageRecord:record,isRemoteSource:true}:missingAssetPlaceholder(record,'Linked source URL is unavailable.');
     }
+    const cached=cachedDisplayForRecord(record,reuseCached);
+    if(cached)return cached;
     // Director display must never block on network source recovery. Resolve the
     // runtime-local working/kept asset first, then the permanent thumbnail, then
     // a direct recorded URL. Source recovery remains an explicit/Housekeeping job.
     let blob=await imageBlobGet(record.id).catch(()=>null);
     if(!blob&&record.storage?.mode==="kept")blob=await keptBlobGet(record.id).catch(()=>null);
     if(blob){
+      const raced=cachedDisplayForRecord(record,reuseCached);if(raced)return raced;
       const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
       const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);
       records.update(record.id,{storage:{missingReference:false}},"display-asset-accessed");
@@ -3292,6 +3326,7 @@ function createImagesEngine(){
     }
     const thumbnail=await thumbnailBlobGet(record.storage?.thumbnailKey||record.id).catch(()=>null);
     if(thumbnail){
+      const raced=cachedDisplayForRecord(record,reuseCached);if(raced)return raced;
       const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
       const url=URL.createObjectURL(thumbnail);objectUrls.set(record.id,url);
       records.update(record.id,{storage:{missingReference:true}},"display-thumbnail-used");
@@ -3300,6 +3335,7 @@ function createImagesEngine(){
     if(allowRecovery){
       const recovered=await recoverKnownSource(record,{attempts:1,context:"display-source-recovery"}).catch(()=>null);
       if(recovered){
+        const raced=cachedDisplayForRecord(record,reuseCached);if(raced)return raced;
         const prior=objectUrls.get(record.id);if(prior)URL.revokeObjectURL(prior);
         const url=URL.createObjectURL(recovered);objectUrls.set(record.id,url);
         return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
