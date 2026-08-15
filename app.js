@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.39";
+const GENREACTRIX_BUILD="v0.9.40.40";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -285,6 +285,7 @@ function loadLandscapeFilter(){
 let landscapeFilter=loadLandscapeFilter();
 let landscapeFeedDirty=false;
 let landscapeRehydrateTimer=0;
+let landscapeRehydrateGeneration=0;
 function saveLandscapeFilter(){localStorage.setItem(LANDSCAPE_FILTER_KEY,JSON.stringify(landscapeFilter));}
 function recordHasRequestedAi(record){return ["aiReactions","aiThemes","aiDescription"].every(key=>record?.components?.[key]==="current");}
 function recordHasPrimaryAiFailure(record){return ["aiReactions","aiThemes","aiDescription","aiReactionReasons","aiGenreReasons"].some(key=>record?.components?.[key]==="failed");}
@@ -1819,12 +1820,15 @@ async function applyEngineWorkingFiles(files,{preserveId=null,preferredIndex=0,c
 }
 async function rehydrateLandscapeFeed({preserveId=null,preferredIndex=null}={}){
   const engine=window.genreactrixImagesEngine;if(!engine)return;
+  const generation=++landscapeRehydrateGeneration;
   const oldId=preserveId||(state.files.length?currentKey():null);
   const oldIndex=preferredIndex==null?state.index:preferredIndex;
   const records=filteredLandscapeRecords();
   const files=await engine.workingFiles(records.map(record=>record.id));
+  if(generation!==landscapeRehydrateGeneration)return{superseded:true,recordCount:records.length,fileCount:files.length};
   await applyEngineWorkingFiles(files,{preserveId:oldId,preferredIndex:oldIndex,canonical:true});
   renderLandscapeFilterDialog();
+  return{recordCount:records.length,fileCount:files.length};
 }
 function scheduleLandscapeRehydrate(){
   clearTimeout(landscapeRehydrateTimer);
@@ -2213,7 +2217,7 @@ function setLandscapeFilterBase(key,checked){
   if(key==="all"){landscapeFilter.all=checked;if(checked){landscapeFilter.feed=false;FILTER_CATEGORIES.forEach(k=>landscapeFilter.include[k]=false);}}
   if(key==="feed"){landscapeFilter.feed=checked;if(checked){landscapeFilter.all=false;FILTER_CATEGORIES.forEach(k=>landscapeFilter.include[k]=false);}}
 }
-$("tabletFilterBtn")?.addEventListener("click",()=>{renderLandscapeFilterDialog();$("landscapeFilterDialog")?.showModal();});
+$("tabletFilterBtn")?.addEventListener("click",()=>{renderLandscapeFilterDialog();$("landscapeFilterDialog")?.showModal();if(state.feedEmpty&&filteredLandscapeRecords().length)scheduleLandscapeRehydrate();});
 $("landscapeFilterClose")?.addEventListener("click",()=>$("landscapeFilterDialog")?.close());
 $("landscapeFilterAll")?.addEventListener("change",async e=>{setLandscapeFilterBase("all",e.target.checked);await applyLandscapeFilter();});
 $("landscapeFilterFeed")?.addEventListener("change",async e=>{setLandscapeFilterBase("feed",e.target.checked);await applyLandscapeFilter();});
@@ -3139,9 +3143,20 @@ function createImagesEngine(){
     const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);records.update(record.id,{storage:{missingReference:false}},"accessed");
     return{id:record.id,name:record.name,url,imageRecord:records.get(record.id,{touch:false}),isThumbnail:false};
   }
+  function missingAssetPlaceholder(record,error=''){
+    const name=String(record?.source?.originalFilename||record?.name||record?.id||'Image').slice(0,80),message=String(error||'Image asset unavailable').slice(0,120);
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900"><rect width="900" height="900" fill="#100d16"/><rect x="34" y="34" width="832" height="832" rx="28" fill="none" stroke="#6b5c78" stroke-width="4"/><text x="450" y="410" text-anchor="middle" fill="#f4eef8" font-family="system-ui,sans-serif" font-size="42" font-weight="700">Image unavailable</text><text x="450" y="470" text-anchor="middle" fill="#b8aabd" font-family="system-ui,sans-serif" font-size="25">${name.replace(/[&<>]/g,'')}</text><text x="450" y="520" text-anchor="middle" fill="#8f8396" font-family="system-ui,sans-serif" font-size="20">${message.replace(/[&<>]/g,'')}</text></svg>`;
+    return{id:record?.id||'',name:record?.name||name,url:`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,imageRecord:record,isMissingAsset:true,error:String(error||'')};
+  }
   async function workingFiles(ids=null){
     const selected=Array.isArray(ids)?ids:(activeSessionIds.length?activeSessionIds:records.query({stage:"queued"}).map(r=>r.id));
-    const files=[];for(const id of selected){const file=await fileForRecord(records.get(id,{touch:false}));if(file)files.push(file);}return files;
+    const files=[];
+    for(const id of selected){
+      const record=records.get(id,{touch:false});if(!record)continue;
+      try{const file=await fileForRecord(record);files.push(file||missingAssetPlaceholder(record,'No displayable full-resolution source or thumbnail is available.'))}
+      catch(error){console.warn('Working image could not be materialized; preserving it in the visible population with a placeholder.',id,error);files.push(missingAssetPlaceholder(record,error?.message||error));}
+    }
+    return files;
   }
   function setLifecycle(id,lifecycleState){const record=records.get(id,{touch:false});if(!record)return null;const processed=lifecycleState==="processed",stage=processed?(window.genreactrixLifecycleEngine?.inInbox?.(record)?"inbox-working":record.workflow.stage):lifecycleState;return records.update(id,{workflow:{stage},timestamps:processed?{processedAt:now()}:{}},"stage-changed");}
   function restoreStageFromHot(record){return record.workflow.stage==="rejected-hold"?(record.metadata?.extended?.rejectPriorStage||"inbox-working"):record.workflow.stage;}
