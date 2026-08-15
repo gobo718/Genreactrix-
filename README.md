@@ -1,24 +1,20 @@
-# Genreactrix v0.9.40.47 — Drawer Button Typography
+# Genreactrix v0.9.40.48 — AI Drawer Load Defaults
 
-Built from accepted v0.9.40.44.
+Built directly from the accepted v0.9.40.47 drawer-button typography baseline.
 
-Bounded changes only:
-- Landscape reaction percentages: 12 px.
-- Landscape Director theme names: 10 px.
-- Landscape AI theme names: 10 px (equal to Director themes).
-- Landscape AI Description: 10 px minimum; overflow scrolls vertically instead of shrinking below 10 px.
-- Image View geometry and description fitting are untouched; its existing 10 px theme text remains unchanged.
-- No layout geometry, spacing, positions, sizing, breakpoints, component order, hydration, Batch, or 60/40 behavior changed.
+## v0.9.40.48 — Load-time AI control defaults
 
-## v0.9.40.47 — Equal 10 px drawer controls
-- Landscape Image View AI analysis/freeform description now has a 10 px minimum font size.
-- The existing description box scrolls vertically when content exceeds its fixed area instead of shrinking/truncating below 10 px.
-- No Image View geometry, positioning, spacing, controls, image sizing, themes, reactions, or other layout behavior changed.
+When an image loads, including navigation away and back:
 
+- If all three Director Theme slots are populated AND at least one Director Reaction is selected, AI Reactions, AI Themes, and AI Description default ON/selected.
+- If any Director Theme slot is blank OR no Director Reaction is selected, all three default OFF/unselected.
+- The rule runs only on image load. Manual changes to the three AI buttons remain under Director control for the rest of that image visit.
+- Returning to the image causes the load rule to apply again from its current saved Director classification.
 
+### Protected scope
 
-### v0.9.40.47 scope
-- All eight AI-drawer control buttons use exactly 10 px text.
-- All four Custom-drawer tab buttons use exactly 10 px text.
-- The same existing final-authority selector controls both sets, keeping them equal.
-- No geometry, spacing, sizing, positioning, breakpoint, image, description, reaction, theme, or workflow behavior changed.
+No layout, CSS, font, spacing, geometry, image rendering, AI rerun semantics, classification persistence, or workflow ownership changes are included.
+
+### Inherited from v0.9.40.47
+
+All accepted v0.9.40.47 behavior and typography remain unchanged.

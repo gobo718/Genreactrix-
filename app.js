@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.47";
+const GENREACTRIX_BUILD="v0.9.40.48";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -604,6 +604,14 @@ function syncDirectorRecordHistory(eventType="director-classified"){
 function emptyClassification(){
   return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
 }
+function applyAiDrawerLoadDefaults(){
+  const directorThemesComplete=state.themes.length>=3&&state.themes.slice(0,3).every(theme=>Boolean(normalizeTheme(theme)));
+  const hasDirectorReaction=state.selectedReactions.length>0;
+  const selected=directorThemesComplete&&hasDirectorReaction;
+  tabletLandscapeView.aiReactions=selected;
+  tabletLandscapeView.aiThemes=selected;
+  tabletLandscapeView.aiDescription=selected;
+}
 function loadCurrent(){
   if(state.feedEmpty){applyClassification(emptyClassification());state.visitBaseline=classificationState();renderAll();return;}
   const key=currentKey();
@@ -618,6 +626,9 @@ function loadCurrent(){
   }
   engine?.begin?.(key,canonical||legacy);
   state.visitBaseline=classificationState();
+  // v0.9.40.48 — AI drawer defaults are recalculated only when an image loads.
+  // Manual AI control changes remain untouched until the next image load.
+  applyAiDrawerLoadDefaults();
   // Paint the destination image's classification immediately, before any
   // nonclassification console work.
   renderThemes();
@@ -638,6 +649,7 @@ function commitAndAdvance(sourceKey){
   const destinationKey=currentKey();
   applyClassification(readClassificationForKey(destinationKey));
   state.visitBaseline=classificationState();
+  applyAiDrawerLoadDefaults();
   if($("themeWorkspace")?.open) $("themeWorkspace").close();
   renderAll();
 }
