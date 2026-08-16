@@ -153,3 +153,11 @@ Real-device/browser acceptance is still required.
 - Fixes Theme Rerun's mirrored Include control so it is positioned on the AI Description instead of the Submit button.
 - Reserves the measured Include-control footprint inside AI Description in both rerun modes so Description text cannot render underneath the checkbox.
 - Carries forward Theme Rerun Preview Request and long-press Saved Draft deletion. Worker files remain unchanged.
+
+
+## v0.9.40.59 — Theme Rerun Theme History
+- Theme History is now a read-only modal backed by immutable `themes` artifacts.
+- Entries show date/time, current/version status, the three Theme labels derived from stable fusion codes when available, weights, which slots changed from the prior artifact, and recorded attempt context.
+- Tapping a history entry expands details only; it never changes the current Theme rerun state.
+- Submit remains intentionally unwired for the next bounded pass.
+- No Landscape geometry or Worker files changed in this pass.

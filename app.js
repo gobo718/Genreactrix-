@@ -985,7 +985,7 @@ const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:14},(_,index)=>`P$
 function themeRerunPfmCode(firstCode,secondCode){const nums=[firstCode,secondCode].map(code=>Number(String(code).replace(/\D/g,''))||0).sort((a,b)=>a-b);return`PFM${String(nums[0]).padStart(2,'0')}${String(nums[1]).padStart(2,'0')}`}
 const THEME_RERUN_FUSION_CATALOG=Object.freeze((()=>{const rows=[];for(let first=1;first<=14;first++)for(let second=first+1;second<=14;second++){const firstCode=`P${String(first).padStart(2,'0')}`,secondCode=`P${String(second).padStart(2,'0')}`,code=themeRerunPfmCode(firstCode,secondCode),firstName=AI_CANONICAL_PRIM_NAME_BY_ID[firstCode]||firstCode,secondName=AI_CANONICAL_PRIM_NAME_BY_ID[secondCode]||secondCode;rows.push(Object.freeze({code,primitiveCodes:Object.freeze([firstCode,secondCode]),label:canonicalPrimFusionLabel(firstName,secondName)}));}return rows;})());
 const THEME_RERUN_FUSION_BY_CODE=Object.freeze(Object.fromEntries(THEME_RERUN_FUSION_CATALOG.map(row=>[row.code,row])));
-const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null,exclusionQuery:'',descriptionCatalog:[],descriptionsLongPress:false,descriptionsTimer:null};
+const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null,exclusionQuery:'',descriptionCatalog:[],descriptionsLongPress:false,descriptionsTimer:null,themeHistoryCatalog:[]};
 const emptyThemeRerunCurrent=()=>({schemaVersion:1,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},excludedThemeCodes:[],includedDescriptionIds:[],populatedDescriptionId:null,descriptionContextInitialized:false,updatedAt:null});
 function themeRerunStorageKey(){return window.genreactrixProjectRuntimeEngine?.projectKey?.(THEME_RERUN_CURRENT_KEY)||THEME_RERUN_CURRENT_KEY}
 function readThemeRerunMap(){try{const raw=localStorage.getItem(themeRerunStorageKey());const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch{return {}}}
@@ -1093,6 +1093,72 @@ function previewThemeRerunRequest(spec){
 function toggleThemeRerunIncludedDescription(id,checked){if(!themeRerunWorkspace.active||!id)return;const set=new Set(themeRerunWorkspace.current.includedDescriptionIds||[]);if(checked)set.add(String(id));else set.delete(String(id));themeRerunWorkspace.current.includedDescriptionIds=[...set];saveThemeRerunCurrent();renderThemeRerunChrome()}
 function populateThemeRerunDescription(id){if(!themeRerunWorkspace.active||!themeRerunDescriptionCatalogItem(id))return;themeRerunWorkspace.current.populatedDescriptionId=String(id);saveThemeRerunCurrent();renderTabletWorkbench();requestAnimationFrame(()=>fitLandscapeAiDescription())}
 function renderThemeRerunDescriptionsDialog(){const list=$('themeRerunDescriptionsList');if(!list)return;list.innerHTML='';if(!themeRerunWorkspace.descriptionCatalog.length){list.textContent='No Description history is available.';return}for(const item of themeRerunWorkspace.descriptionCatalog){const row=document.createElement('div');row.className='description-rerun-list-row';const check=document.createElement('input');check.type='checkbox';check.checked=(themeRerunWorkspace.current.includedDescriptionIds||[]).includes(item.id);check.setAttribute('aria-label',`Include Description from ${formatDescriptionRerunDate(item.createdAt)}`);check.addEventListener('change',()=>toggleThemeRerunIncludedDescription(item.id,check.checked));const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.innerHTML=`<strong>${formatDescriptionRerunDate(item.createdAt)}${item.current?' · Current':''}${item.version?` · v${item.version}`:''}</strong><small>${item.text.slice(0,220)}</small>`;button.addEventListener('click',()=>{$('themeRerunDescriptionsDialog')?.close();populateThemeRerunDescription(item.id)});row.append(check,button);list.append(row)}}
+
+
+// v0.9.40.59 — read-only Theme History for Theme Rerun.
+// Theme/Fusion identity is resolved by stable codes whenever available; current
+// display words are derived from those codes so later renames do not rewrite history identity.
+function themeRerunHistoryThemeFromRaw(raw,index=0){
+  const source=raw&&typeof raw==='object'?raw:{},rawLabel=String(typeof raw==='string'?raw:(source.theme??source.name??source.proposedName??source.label??source.code??source.id??'')).trim();
+  let code=String(source.code??source.id??source.value??'').trim().toUpperCase();
+  if(!/^PFM\d{4}$/.test(code))code='';
+  const fusion=code?THEME_RERUN_FUSION_BY_CODE[code]:themeRerunFusionFromLabel(rawLabel);
+  if(fusion)code=fusion.code;
+  const label=fusion?.label||rawLabel||`Theme ${index+1}`;
+  const weightRaw=typeof raw==='string'?null:(source.percentage??source.confidence??source.score??source.weight??source.value??null),weight=weightRaw==null?null:Number(weightRaw);
+  return{slot:index+1,code:code||null,label,weight:Number.isFinite(weight)?Math.max(0,Math.min(100,weight)):null};
+}
+function themeRerunHistoryTriplet(payload){const raw=Array.isArray(payload)?payload:(Array.isArray(payload?.themes)?payload.themes:[]);return raw.slice(0,3).map((row,index)=>themeRerunHistoryThemeFromRaw(row,index));}
+function themeRerunHistoryThemeKey(row){return row?.code?`code:${row.code}`:`label:${String(row?.label||'').trim().toLowerCase()}`}
+function themeRerunHistoryCurrentArtifactId(imageId){const record=window.genreactrixImageRecordEngine?.get?.(String(imageId),{touch:false})||currentImageRecord();return record?.analysis?.ai?.artifactHistory?.currentArtifacts?.themes?.artifactId||null}
+function themeRerunHistoryChanges(previous,current){const out=[];for(let slot=1;slot<=3;slot++){const before=previous?.themes?.[slot-1]||null,after=current?.themes?.[slot-1]||null;if(themeRerunHistoryThemeKey(before)!==themeRerunHistoryThemeKey(after))out.push({slot,before,after});}return out}
+function themeRerunHistoryContextSummary(entry){const attempt=entry.attempt||{},parts=[];const mode=String(attempt.mode||entry.artifact?.mode||'').trim();if(mode)parts.push(mode);if(attempt.directorGuidance)parts.push('Director guidance');const ctx=attempt.inputRefs?.themeRerun||attempt.configRefs?.themeRerun||null;if(ctx)parts.push('Theme rerun context');return parts.join(' · ')||'Recorded Theme artifact'}
+function themeRerunHistoryDetailText(entry){
+  const lines=[];lines.push(`${formatDescriptionRerunDate(entry.createdAt)}${entry.version?` · v${entry.version}`:''}${entry.current?' · Current':''}`);lines.push('');
+  for(let slot=1;slot<=3;slot++){const row=entry.themes[slot-1];lines.push(`Theme ${slot}: ${row?.label||'—'}${row?.weight!=null?` (${row.weight}%)`:''}`);}
+  lines.push('');
+  if(entry.previous){if(entry.changes.length){lines.push('Changed from previous:');for(const change of entry.changes)lines.push(`- Theme ${change.slot}: ${change.before?.label||'—'} → ${change.after?.label||'—'}`);}else lines.push('Changed from previous: none.');}else lines.push('Initial recorded Theme artifact.');
+  lines.push('');lines.push(`Context: ${themeRerunHistoryContextSummary(entry)}`);
+  if(entry.attempt?.directorGuidance){lines.push('');lines.push('Director guidance:');lines.push(String(entry.attempt.directorGuidance));}
+  const ctx=entry.attempt?.inputRefs?.themeRerun||entry.attempt?.configRefs?.themeRerun||null;
+  if(ctx){
+    const slots=Array.isArray(ctx.themeSlots)?ctx.themeSlots:[];
+    if(slots.length){lines.push('');lines.push('Theme instructions:');for(const row of slots){const state=String(row?.state||'neutral');const label=row?.currentThemeCode&&THEME_RERUN_FUSION_BY_CODE[row.currentThemeCode]?.label||row?.currentThemeLabel||`Theme ${row?.slot||''}`;lines.push(`- Theme ${row?.slot||'?'} · ${label}: ${state}`);}}
+    const exclusions=Array.isArray(ctx.excludedThemeCodes)?ctx.excludedThemeCodes:[];if(exclusions.length){lines.push('');lines.push(`Theme Exclusions: ${exclusions.map(code=>THEME_RERUN_FUSION_BY_CODE[code]?.label||code).join(', ')}`);}
+    const descriptions=Array.isArray(ctx.includedDescriptions)?ctx.includedDescriptions:[];if(descriptions.length){lines.push('');lines.push(`Descriptions included: ${descriptions.length}`);}
+  }
+  return lines.join('\n');
+}
+async function loadThemeRerunThemeHistory(){
+  const imageId=String(themeRerunWorkspace.imageId||currentKey()),engine=window.genreactrixAiArtifactEngine;let artifacts=[],attempts=[];
+  if(engine?.ensureImageReady)await engine.ensureImageReady(imageId).catch(()=>{});
+  if(engine?.artifactsForImage)artifacts=(await engine.artifactsForImage(imageId).catch(()=>[])).filter(row=>row.kind==='themes');
+  if(engine?.attemptsForImage)attempts=await engine.attemptsForImage(imageId).catch(()=>[]);
+  const attemptById=new Map(attempts.map(row=>[String(row.id),row])),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(imageId)||'');
+  const ordered=[...artifacts].sort((a,b)=>(Number(a.version)||0)-(Number(b.version)||0)||String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+  const entries=ordered.map(artifact=>({artifact,artifactId:String(artifact.id),version:Number(artifact.version)||0,createdAt:artifact.createdAt||'',themes:themeRerunHistoryTriplet(artifact.payload),attempt:artifact.attemptId?attemptById.get(String(artifact.attemptId))||null:null,current:String(artifact.id)===currentArtifactId,previous:null,changes:[]}));
+  for(let index=0;index<entries.length;index++){entries[index].previous=index?entries[index-1]:null;entries[index].changes=themeRerunHistoryChanges(entries[index].previous,entries[index]);}
+  if(!entries.length){const run=currentAiRun(),themes=(run?.themes||[]).slice(0,3).map((row,index)=>themeRerunHistoryThemeFromRaw(row,index));if(themes.length)entries.push({artifact:null,artifactId:null,version:0,createdAt:run?.createdAt||new Date().toISOString(),themes,attempt:null,current:true,previous:null,changes:[],projection:true});}
+  themeRerunWorkspace.themeHistoryCatalog=entries.reverse();return themeRerunWorkspace.themeHistoryCatalog;
+}
+function renderThemeRerunHistoryDialog(){
+  const list=$('themeRerunHistoryList');if(!list)return;list.innerHTML='';const entries=themeRerunWorkspace.themeHistoryCatalog||[];
+  if(!entries.length){list.textContent='No Theme history is available.';return;}
+  for(const entry of entries){
+    const row=document.createElement('section');row.className='theme-rerun-history-row';
+    const button=document.createElement('button');button.type='button';button.className='theme-rerun-history-main';button.setAttribute('aria-expanded','false');
+    const heading=document.createElement('strong');heading.textContent=`${formatDescriptionRerunDate(entry.createdAt)}${entry.current?' · Current':''}${entry.version?` · v${entry.version}`:''}`;
+    const triplet=document.createElement('span');triplet.className='theme-rerun-history-triplet';triplet.textContent=entry.themes.map((theme,index)=>`${index+1}. ${theme?.label||'—'}${theme?.weight!=null?` ${theme.weight}%`:''}`).join(' · ');
+    const changed=document.createElement('small');changed.textContent=entry.previous?(entry.changes.length?`Changed: ${entry.changes.map(change=>`Theme ${change.slot}`).join(', ')}`:'Changed: none'):'Initial recorded Themes';
+    const context=document.createElement('small');context.textContent=themeRerunHistoryContextSummary(entry);
+    button.append(heading,triplet,changed,context);
+    const detail=document.createElement('pre');detail.className='theme-rerun-history-detail';detail.hidden=true;detail.textContent=themeRerunHistoryDetailText(entry);
+    button.addEventListener('click',()=>{detail.hidden=!detail.hidden;button.setAttribute('aria-expanded',String(!detail.hidden));});
+    row.append(button,detail);list.append(row);
+  }
+}
+async function openThemeRerunHistory(){if(!themeRerunWorkspace.active)return;const list=$('themeRerunHistoryList');if(list)list.textContent='Loading Theme history…';$('themeRerunHistoryDialog')?.showModal();await loadThemeRerunThemeHistory();renderThemeRerunHistoryDialog();}
+
 function themeRerunScopeLabel(scope){if(scope==='general')return'General';const slot=Number(scope.replace('theme',''))||0,theme=themeRerunAiThemeSnapshot(slot);return`Theme ${slot}${theme?.label?` · ${theme.label}`:''}`}
 function themeRerunScopesForStates(themeStates){const specifics=[];for(let slot=1;slot<=3;slot++)if(themeStates?.[slot]==='replace')specifics.push(`theme${slot}`);if(specifics.length<3)specifics.push('general');return specifics}
 function themeRerunScopes(){return themeRerunScopesForStates(themeRerunWorkspace.current?.themeStates||{})}
@@ -1139,7 +1205,7 @@ function renderThemeRerunChrome(){
 }
 async function activateThemeRerunImage(){if(!themeRerunWorkspace.active)return;themeRerunWorkspace.imageId=currentKey();themeRerunWorkspace.current=loadThemeRerunCurrent(themeRerunWorkspace.imageId);themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.descriptionCatalog=[];await loadThemeRerunDescriptionCatalog();renderTabletWorkbench()}
 async function openThemeRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(themeRerunWorkspace.active)return;if(descriptionRerunWorkspace.active)closeDescriptionRerunWorkspace();themeRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};themeRerunWorkspace.active=true;themeRerunWorkspace.pickerOpen=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateThemeRerunImage()}
-function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveThemeRerunCurrent();themeRerunWorkspace.active=false;themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.pendingScopeChange=null;clearTimeout(themeRerunWorkspace.longPressTimer);clearTimeout(themeRerunWorkspace.descriptionsTimer);const prior=themeRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);themeRerunWorkspace.preDrawer=null;themeRerunWorkspace.imageId=null;themeRerunWorkspace.current=null;themeRerunWorkspace.descriptionCatalog=[];themeRerunWorkspace.descriptionsLongPress=false;renderTabletWorkbench()}
+function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveThemeRerunCurrent();themeRerunWorkspace.active=false;themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.pendingScopeChange=null;clearTimeout(themeRerunWorkspace.longPressTimer);clearTimeout(themeRerunWorkspace.descriptionsTimer);const prior=themeRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);themeRerunWorkspace.preDrawer=null;themeRerunWorkspace.imageId=null;themeRerunWorkspace.current=null;themeRerunWorkspace.descriptionCatalog=[];themeRerunWorkspace.themeHistoryCatalog=[];themeRerunWorkspace.descriptionsLongPress=false;renderTabletWorkbench()}
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
 
 // v0.9.40.49 — AI Description rerun workstation.
@@ -2832,7 +2898,8 @@ $("themeRerunExclusionsBtn")?.addEventListener("click",openThemeRerunExclusions)
 $("themeRerunExclusionsSearch")?.addEventListener("input",event=>{themeRerunWorkspace.exclusionQuery=event.target.value;renderThemeRerunExclusions();});
 $("themeRerunExclusionsList")?.addEventListener("click",event=>{const button=event.target.closest("[data-pfm-code]");if(button)themeRerunToggleExclusion(button.dataset.pfmCode);});
 $("themeRerunPreviewBtn")?.addEventListener("click",()=>{if(!themeRerunWorkspace.active)return;try{const spec=buildThemeRerunPreviewSpec();$("themeRerunPreviewBody").textContent=previewThemeRerunRequest(spec);$("themeRerunPreviewDialog")?.showModal();}catch(error){alert(error.message||String(error));}});
-for(const id of ["themeRerunSubmitBtn","themeRerunHistoryBtn"]){$(id)?.addEventListener("click",()=>setDirectorStatus("Theme Rerun shell: this control is reserved for the next bounded pass."));}
+$("themeRerunHistoryBtn")?.addEventListener("click",()=>openThemeRerunHistory().catch(error=>{console.error("Theme History could not open",error);$("themeRerunHistoryDialog")?.close();alert(error.message||String(error));}));
+$("themeRerunSubmitBtn")?.addEventListener("click",()=>setDirectorStatus("Theme Rerun Submit is reserved for the next bounded pass."));
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 const themeDescriptionsButton=$("themeRerunDescriptionsBtn");
 themeDescriptionsButton?.addEventListener("pointerdown",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.descriptionsLongPress=false;clearTimeout(themeRerunWorkspace.descriptionsTimer);themeDescriptionsButton.setPointerCapture?.(event.pointerId);themeRerunWorkspace.descriptionsTimer=setTimeout(()=>{themeRerunWorkspace.descriptionsLongPress=true;renderThemeRerunDescriptionsDialog();$("themeRerunDescriptionsDialog")?.showModal();},520);});
