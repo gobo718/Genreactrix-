@@ -1,18 +1,189 @@
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.61 — Theme Rerun Submit Fix
 
-Current bundled Worker: v0.9.6.27-theme-rerun-submit-fix.
-
-Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
-
-1. Install dependencies: `npm install`
-2. Set the analysis secret: `npx wrangler secret put ANALYSIS_KEY`
-3. Accept the configured Workers AI model license in Cloudflare if prompted.
-4. Deploy: `npm run deploy`
-5. Enter the deployed Worker URL and the same analysis key in Genreactrix → AI.
-
-The browser never receives provider credentials. The Worker accepts authenticated `POST /api/genreactrix/analyze` for AI results and `POST /api/genreactrix/image` as a bounded image-fetch proxy used when browser CORS would otherwise prevent Import from creating its required 64×64 thumbnail.
+Built forward from v0.9.40.60. Existing accepted Landscape packing and alignment remain unchanged.
 
 
-## Theme Rerun Submit
+## v0.9.40.61 — Theme Rerun Submit all-Neutral repair
 
-The analyze endpoint accepts a structured `themeRerun` context for Theme-only reruns. Stable PFM/P codes are authoritative. Preserve, Replace, PrimPicker, Theme Exclusions, and included Description references are enforced in the Worker before/while selecting the three Theme results. Deploy this Worker before testing Genreactrix v0.9.40.61 Theme Rerun Submit.
+- AI rerun failures now surface the actual failed-item Worker/provider error instead of only `Completed with 1 failure(s)`.
+- Theme Rerun JSON guidance no longer duplicates each slot's full eligible-PFM list as a JSON-schema enum. The prompt still supplies slot-specific eligible codes, while the Worker remains authoritative for eligibility, Preserve/Replace rules, Theme Exclusions, uniqueness, confidence, and rationale validation.
+- Bundled Worker: **0.9.6.27-theme-rerun-submit-fix**.
+- No Landscape geometry, Theme Rerun Clear semantics, or Current-retention behavior changed.
+- Packaging correction: all hardcoded on-screen/site title version labels now report **v0.9.40.61**.
+- The obsolete `genreactrix-v3-114-point-prims` AI Prompt-set default/fallback is retired. Existing copies of that stale label are cleared to blank on settings migration; blank now saves and remains blank. The Worker remains authoritative for actual per-component prompt versions returned with each analysis.
+
+## AI Description rerun workspace
+
+Opening **AI Rerun Description** temporarily repurposes the existing Reaction rectangle as a guidance/current-work text field. The surrounding Landscape regions do not move or resize. AI Themes and AI Description remain visible, and the rerun control band occupies the existing 4×2 AI-button footprint.
+
+Button order, left-to-right then top-to-bottom:
+
+**Save Draft · Select Draft · Preview Request · Submit**
+
+**Review Reactions · Descriptions · Clear · Return**
+
+### Current state and drafts
+
+- Guidance and rerun choices are Current state and remain sticky through Return and repeated submissions until explicitly cleared or finalized through Batch.
+- Blank/whitespace-only guidance is omitted from the AI request.
+- Save Draft stores the complete current rerun setup as an **AI Desc Rerun Draft**.
+- Select Draft restores the complete saved setup; the main Undo/Redo controls can reverse/reapply that restore.
+- Immediately before Batch commitment, meaningful Current rerun state is automatically saved as an **AI Desc Rerun Draft**, then its live Current state is cleared.
+- Portable Project backup already captures the project-scoped Current localStorage state; saved drafts live on the permanent Image Record.
+
+### Selectable context
+
+- The image is always included.
+- Each of the 3 Director Themes and 3 AI Themes can be independently selected/deselected as AI context.
+- **Descriptions** normal tap prefers the most recent prior Description. Long press opens the dated Description-version list.
+- Descriptions checkboxes independently include any number of Description versions as AI context. Populating a Description does not automatically include it.
+- The populated Description has a mirrored Include checkbox on the existing AI Description display.
+
+### Edit mode from the existing AI Description field
+
+No separate mode buttons are added.
+
+- No deliberate cursor/highlight: **ALL / Rewrite All**.
+- Blinking cursor in nonblank Description text: **ADD at cursor**.
+- One contiguous highlighted span: **REPLACE highlighted section**.
+- Add/Replace targeting turns the entire AI Description field **maroon**.
+- Manual typing/pasting into the AI Description target is blocked; it is a targeting surface, not a direct editor.
+- For Add/Replace the Worker returns only the insertion/replacement fragment. Genreactrix splices that fragment into the target locally, preserving all text outside the allowed boundary.
+
+### Preview, review, clear, and return
+
+- Preview Request exposes the complete request before an AI call, including operation, always-included image, guidance/no guidance, selected Themes/no Themes, included Description versions/no Descriptions, and exact cursor/highlight target.
+- Review Reactions is press-and-hold reference viewing only. Releasing restores the rerun workspace unchanged.
+- Clear offers **Clear Text Entry** and **Clear Highlights/Cursor** independently; its Submit path requires confirmation.
+- Return exits without discarding Current rerun state.
+
+### Immutable AI history
+
+Every actual Description submission creates a new AI attempt/artifact version. The exact structured rerun request is retained with attempt/history metadata. Add/Replace also preserves the raw returned edit fragment in immutable history while the live Description projection contains only the complete resulting Description.
+
+## Worker contract
+
+This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.27-theme-rerun-submit-fix**.
+
+The updated Worker must be deployed before testing actual structured Submit calls. UI-only inspection does not require a Worker call.
+
+## Protected scope
+
+- No existing Landscape CSS rule was edited; v0.9.40.48 CSS remains an exact prefix of this build and the new workstation styles are scoped/appended.
+- No existing image, Director Theme, AI Theme, AI Description, drawer, or surrounding panel geometry was moved.
+- Existing v0.9.40.48 AI-drawer load defaults remain intact outside rerun mode.
+- 60/40 Reaction architecture is unchanged.
+
+Real-device/browser acceptance is still required.
+
+
+## v0.9.40.50 surgical correction
+- The populated-Description **Include** checkbox now receives the same measured vertical offset as the AI Description panel.
+- This keeps the checkbox with the populated AI Description field instead of falling back onto the Submit-button row.
+- No rerun behavior, surrounding geometry, typography, Worker contract, or other UI logic changed.
+
+
+## v0.9.40.52 — Theme Rerun PrimPicker visual pass
+
+- Adds the Landscape Theme Rerun 4×2 control shell.
+- Adds PrimPicker with code-backed P01–P14 rows, fixed ascending order, one-emoji-width spacing, and centered status dots.
+- AI Theme cells cycle Neutral → Replace (red) → Preserve (green) → Neutral. Replace slots create Theme-specific PrimPicker rows; General fills the remaining row until all three slots are specific.
+- Tap cycles Mandatory → Preferred → Optional → Discouraged → Forbidden → Unchosen. Long-press opens direct status selection or Clear.
+- Destructive row loss requires confirmation; Clear resets PrimPicker assignments while retaining Theme selections/rows.
+- Theme rerun submission/history/exclusions/description-context actions remain reserved for a later bounded pass; Worker is unchanged.
+- Renames the AI Description rerun control label Classics → Descriptions.
+
+## v0.9.40.52 — PrimPicker Discouraged Dot Contrast
+- Darkens the Discouraged red-orange status dot to a deeper red-orange so it is visually distinct from Forbidden hot magenta.
+- No PrimPicker behavior or surrounding Landscape geometry changed.
+- Worker unchanged from v0.9.40.51.
+
+
+## v0.9.40.53 — Theme Exclusions
+
+- Theme Exclusions is now a working Theme-rerun control.
+- The exclusion catalog is generated from stable PFM codes (PFM0102 through the canonical non-diagonal PrimFusion set); visible Theme words are resolved from those codes at render time.
+- Tap a Theme to prohibit it from being returned by this rerun; tap again to remove the prohibition.
+- Exclusions are stored in Current rerun state by PFM code, persist per image, and survive closing/reopening the Theme rerun workspace.
+- The exclusion dialog is searchable by displayed Theme name (and internally by PFM code), with selected exclusions shown in hot magenta.
+- A preserved/green current Theme cannot simultaneously be excluded; the UI blocks either conflicting action instead of silently resolving it.
+- PrimPicker behavior and accepted Landscape geometry are unchanged from v0.9.40.52.
+- Theme Exclusions are state/UI only in this bounded pass; Preview/Submit wiring remains for subsequent Theme-rerun passes. Worker files are unchanged.
+
+
+## v0.9.40.54 — Theme Rerun Description Context
+
+- The Theme Rerun **Descriptions** control now reuses the established AI Description-rerun history behavior.
+- On the first Theme-rerun Current state for an image, the current AI Description is populated and included by default, preserving the Image + current Description failsafe.
+- Normal tap on **Descriptions** populates the most recent prior Description when one exists. Long press opens the dated/versioned Description history.
+- Every history row has an independent **Include** checkbox; any number of Description artifacts may be included simultaneously.
+- Tapping a history row populates it for inspection but does not change its Include state.
+- The populated Description receives the same mirrored **Include** checkbox beside the existing AI Description field.
+- Theme-rerun Description state stores artifact IDs/references, not human-readable labels; immutable Description history remains the authority.
+- Existing PrimPicker, Theme Exclusions, Theme-state controls, and accepted Landscape geometry are unchanged.
+- This is a UI/state pass only. Preview Request and Submit do not consume the selected Description context yet. Worker files are unchanged from v0.9.40.53.
+
+
+## v0.9.40.55 — Saved Draft deletion
+
+- **Select Draft** entries now support deletion by long-press.
+- A long-press opens a destructive confirmation before removing that saved AI Description rerun draft.
+- A normal tap still restores the draft exactly as before.
+- This pass does not change Theme Rerun state, AI request behavior, Worker code, or accepted Landscape geometry.
+
+
+## v0.9.40.56 — Theme Rerun Preview Request
+
+- **Preview Request** now renders the complete current Theme-rerun request without sending an AI call.
+- The preview always identifies the image as included.
+- All three current Theme slots are shown with their Neutral / Red / Green instruction and whether PrimPicker guidance applies. Green/protected Theme slots are explicitly marked untouched.
+- PrimPicker preview is grouped by its active Theme/General scopes. Primitive identity remains code-backed; the interface resolves the current human-readable Prim names from those P-codes.
+- Prim states are displayed in the locked order: Mandatory, Preferred, Optional, Discouraged, Forbidden, Unchosen. Unchosen is shown with its derived 40/50 effective weight for that scope; it is not treated as a selectable 40/50 state.
+- Theme Exclusions are previewed from their stored PFM codes while displaying the current Theme names.
+- Included Description artifacts are shown with date/time, version, and full text. The preview explicitly says when no descriptions or no exclusions are included.
+- **Submit** and **Theme History** remain intentionally unwired in this bounded pass. Preview performs no Worker call.
+- The v0.9.40.55 long-press Saved Draft deletion fix is carried forward.
+- Preview uses the established scrollable request-preview modal language; no accepted Landscape workspace geometry was changed. Worker files are unchanged.
+
+
+
+## v0.9.40.58 — Stable Include Reserve
+
+- Fixes the repeatable Description-width collapse when repeatedly changing Theme rerun states.
+- The mirrored Include control reserve is now recalculated from the baseline Description padding on every render instead of compounding the previous render's reserve.
+- No Landscape geometry, Theme sizing, Reaction geometry, or Worker behavior changed from v0.9.40.57.
+
+## v0.9.40.57 — Landscape Packing + Include Repair
+
+- Removes the large blank band below the 4×2 AI/rerun button band using live rendered measurements rather than a guessed offset.
+- The space below the second button row is made exactly equal to the rendered gap between button row 1 and row 2.
+- Director Themes move upward by that measured amount and grow by the same amount, so their bottom edge stays fixed. AI Themes and AI Description continue to inherit the exact Director geometry.
+- Horizontal Landscape geometry and reaction X coordinates are not changed.
+- The outer image socket remains square; its internal content box reserves the overlapped strip so Director Theme fields do not cover image pixels.
+- Fixes Theme Rerun's mirrored Include control so it is positioned on the AI Description instead of the Submit button.
+- Reserves the measured Include-control footprint inside AI Description in both rerun modes so Description text cannot render underneath the checkbox.
+- Carries forward Theme Rerun Preview Request and long-press Saved Draft deletion. Worker files remain unchanged.
+
+
+## v0.9.40.59 — Theme Rerun Theme History
+- Theme History is now a read-only modal backed by immutable `themes` artifacts.
+- Entries show date/time, current/version status, the three Theme labels derived from stable fusion codes when available, weights, which slots changed from the prior artifact, and recorded attempt context.
+- Tapping a history entry expands details only; it never changes the current Theme rerun state.
+- Submit remains intentionally unwired for the next bounded pass.
+- No Landscape geometry or Worker files changed in this pass.
+
+## v0.9.40.60 — Theme Rerun Submit
+
+- **Submit** now executes the structured Theme rerun shown by Preview Request.
+- Image input is always included. Included Description artifacts are passed as additional Theme context.
+- Green/Preserve slots are immutable and are copied forward by their stable `PFM####` code.
+- Red/Replace slots cannot return their current PFM code. Neutral slots may keep or replace their current PFM.
+- Theme Exclusions are hard prohibitions. Protected Theme codes are also excluded from every open slot so the three final Themes remain unique.
+- PrimPicker uses code-backed `P##` assignments. Mandatory and Forbidden are hard gates; Preferred, Optional, derived Unchosen, and Discouraged are steering weights. The Worker calculates each eligible fusion's preference from the two P-code weights while continuing to judge image fit.
+- Impossible hard-constraint combinations fail before the AI call instead of silently relaxing Director instructions.
+- The Worker schema restricts each slot to its eligible PFM code set and validates uniqueness; invalid duplicate/eligibility responses are retried up to two times.
+- Successful Theme reruns create a new immutable Theme artifact and AI attempt containing the exact Theme-rerun context. The existing direct-Reaction artifact remains untouched; the Theme-derived 60% and combined Reaction artifact are recalculated through the established 60/40 architecture.
+- Theme History can immediately expose the new version and its recorded rerun context.
+- Current Theme-rerun controls remain available after Submit for further fine-tuning. If the new confidences reorder the three displayed AI Theme rows, Theme-state instructions and Theme-specific PrimPicker scopes are remapped to the corresponding rerun result so they do not attach to the wrong displayed Theme.
+- No Landscape CSS or geometry changed from v0.9.40.59.
+- **Worker deploy required:** bundled Worker `0.9.6.26-theme-rerun-submit`.

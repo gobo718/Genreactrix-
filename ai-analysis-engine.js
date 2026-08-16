@@ -340,7 +340,7 @@
   document.getElementById('aiAutoRefill').value=String(Math.max(0,Number(window.genreactrixSettingsEngine?.get?.('ai.buffer.refillThreshold',10))||10));
   document.getElementById('aiAutoPriority').value=window.genreactrixSettingsEngine?.get?.('ai.lookAhead.priority','low')||'low';
   document.getElementById('aiModelName').value=window.genreactrixSettingsEngine?.get?.('ai.provider.model','')||'';
-  document.getElementById('aiPromptVersion').value=window.genreactrixSettingsEngine?.get?.('ai.prompt.version','genreactrix-v3-114-point-prims')||'genreactrix-v3-114-point-prims';
+  document.getElementById('aiPromptVersion').value=window.genreactrixSettingsEngine?.get?.('ai.prompt.version','')||'';
   syncComponentChecksFromDefaults();render();d.showModal();
  }
  function initUi(){
@@ -349,7 +349,7 @@
   document.getElementById('aiAnalysisClose')?.addEventListener('click',()=>document.getElementById('aiAnalysisDialog')?.close());
   document.getElementById('aiSaveProvider')?.addEventListener('click',async()=>{
     window.GenreactrixCloudApi.configure(document.getElementById('aiWorkerUrl').value);window.GenreactrixCloudApi.setKey(document.getElementById('aiAnalysisKey').value);
-    window.genreactrixSettingsEngine?.set?.('ai.provider.model',document.getElementById('aiModelName').value.trim());window.genreactrixSettingsEngine?.set?.('ai.prompt.version',document.getElementById('aiPromptVersion').value.trim()||'genreactrix-v3-114-point-prims');
+    window.genreactrixSettingsEngine?.set?.('ai.provider.model',document.getElementById('aiModelName').value.trim());window.genreactrixSettingsEngine?.set?.('ai.prompt.version',document.getElementById('aiPromptVersion').value.trim());
     window.GenreactrixCloudApi.reload?.();document.getElementById('aiProviderStatus').textContent='Saved';await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn);
   });
   document.getElementById('aiSaveAutomatic')?.addEventListener('click',async()=>{
