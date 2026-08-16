@@ -1,4 +1,12 @@
-# Genreactrix v0.9.40.66 — Image View Depot + Inbox Thumbnail View
+# Genreactrix v0.9.40.67 — Maintenance Console Entry Fix
+
+## v0.9.40.67 — Open Maintenance repaired; Purgatory diagnostic continues
+- Defines the missing Maintenance Engine `openConsole()` API that Settings and operational shortcuts already call.
+- `Open maintenance` now closes Settings, opens the existing Maintenance dialog, and refreshes current maintenance data.
+- No Worker change. No Landscape geometry change.
+- v0.9.40.66 Image View Depot, Inbox Thumbnail View, and `PURGATORY_TEST_` post-processing diagnostic remain intact.
+
+## Historical Genreactrix v0.9.40.66 — Image View Depot + Inbox Thumbnail View
 
 ## v0.9.40.66 — Bundled navigation update; Purgatory diagnostic continues
 
