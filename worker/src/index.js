@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.27-theme-rerun-submit-fix
+/* Genreactrix AI Worker v0.9.6.30-theme-rerun-parser-fallback
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.27-theme-rerun-submit-fix';
+const API_VERSION = '0.9.6.30-theme-rerun-parser-fallback';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -613,30 +613,19 @@ function themeRerunCandidateSets(rerun){
   if(!canAssign(0,new Set()))throw new Error('Theme Rerun constraints cannot produce three different Theme codes. Relax a Mandatory, Forbidden, or Theme Exclusion choice.');
   return sets;
 }
-function themeRerunSchema(rerun,sets){
-  // Keep provider-side JSON guidance deliberately small. Slot eligibility,
-  // preserve/replace constraints, exclusions, and uniqueness are authoritative
-  // Worker validations in parseThemeRerunStructured(). Large enum lists here
-  // duplicate those checks and can make JSON Mode harder for the provider to meet.
-  const properties={};
-  for(const row of rerun.themeSlots){
-    const codeSchema={type:'string'};
-    if(row.state==='preserve')properties[`theme${row.slot}`]={type:'object',properties:{code:codeSchema},required:['code'],additionalProperties:false};
-    else properties[`theme${row.slot}`]={type:'object',properties:{code:codeSchema,confidence:{type:'number',minimum:0,maximum:100},rationale:{type:'string'}},required:['code','confidence','rationale'],additionalProperties:false};
-  }
-  return{type:'object',properties,required:['theme1','theme2','theme3'],additionalProperties:false};
-}
 function themeRerunPrompt(rerun,sets){
   const unionCodes=new Set();for(const slot of [1,2,3])for(const item of sets[slot].candidates)unionCodes.add(item.code);
   const vocabulary=PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>unionCodes.has(row.code)).map(row=>`${row.code} — ${row.name}${row.aiMeaning?` — Meaning: ${row.aiMeaning}`:''}`).join('\n');
   const slotBlocks=[];
   for(const row of rerun.themeSlots){
-    if(row.state==='preserve'){slotBlocks.push(`THEME ${row.slot}: PRESERVE ${row.currentThemeCode}. Copy this code unchanged. Do not reassess or replace this slot.`);continue;}
+    if(row.state==='preserve'){slotBlocks.push(`THEME ${row.slot}: PRESERVE ${row.currentThemeCode}. This slot is immutable. Do not reassess it and do not output a line for it.`);continue;}
     const data=sets[row.slot],weights=data.weights,weightLine=PRIMFUSION_REGISTRY.primitives.map(p=>`${p.id}=${weights.weights[p.id]}`).join(', '),candidateLine=data.candidates.map(item=>`${item.code}(${item.pairWeight})`).join(', ');
     slotBlocks.push(`THEME ${row.slot}: ${row.state==='replace'?`REPLACE the current ${row.currentThemeCode||'Theme'}. The current code is not eligible for this slot.`:`NEUTRAL. You may keep ${row.currentThemeCode||'the current Theme'} if it remains the best eligible fit.`}\nPrimPicker scope: ${data.scope}. Effective P-code weights: ${weightLine}.\nEligible PFM codes for this slot, with pair preference score in parentheses: ${candidateLine}`);
   }
   const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
-  return `You are performing a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nThe image is always authoritative visual evidence. Reassess every slot that is not PRESERVE. A PRESERVE slot is immutable and must be copied exactly.\n\nTheme identity is the PFM code. Human-readable Theme names are semantic labels only. Return exactly one code for each Theme slot. The three final PFM codes MUST be different.\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while image fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nReturn only the requested JSON object. For non-preserved slots, confidence is 0-100 and rationale must briefly cite visible image evidence. Do not explain preserved slots.`;
+  const openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve').map(row=>row.slot);
+  const outputLines=openSlots.map(slot=>`${slot}|matrix|PFM####|0-100|Brief image-grounded reason`).join('\n');
+  return `You are performing a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nThe image is always authoritative visual evidence. Reassess every slot that is not PRESERVE. A PRESERVE slot is immutable and is handled locally by Genreactrix.\n\nTheme identity is the PFM code. Human-readable Theme names are semantic labels only. The three final PFM codes MUST be different.\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while image fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nOUTPUT FORMAT — THIS IS REQUIRED:\nReturn exactly ${openSlots.length} pipe-delimited line${openSlots.length===1?'':'s'}, one for each open Theme slot in ascending slot order.\n${outputLines}\nUse an eligible PFM code for that exact slot. Confidence is 0-100. Rationale must briefly cite visible image evidence.\nDo not return JSON. Do not use Markdown, bullets, headings, commentary, or lines for PRESERVE slots.`;
 }
 function parseThemeRerunStructured(raw,rerun,sets){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
@@ -651,13 +640,154 @@ function parseThemeRerunStructured(raw,rerun,sets){
   }
   return selections;
 }
+function parseThemeRerunText(raw,rerun,sets){
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw))return parseThemeRerunStructured(raw,rerun,sets);
+  const text=String(raw||'').trim();
+  if(!text)throw new Error('Theme Rerun provider returned an empty response.');
+
+  // Text mode is authoritative for Theme reruns, but accept a valid JSON object
+  // if the model voluntarily emits one despite the requested line protocol.
+  try{
+    const structured=parse(text);
+    if(structured&&typeof structured==='object'&&!Array.isArray(structured))return parseThemeRerunStructured(structured,rerun,sets);
+  }catch{}
+
+  const rows=new Map();
+  const openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve').map(row=>row.slot);
+  const preservedCodes=new Set(rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.currentThemeCode).filter(Boolean));
+  const allowedBySlot=new Map(openSlots.map(slot=>[slot,new Set(sets[slot].candidates.map(item=>item.code))]));
+  const rawLines=text.split(/\r?\n/);
+
+  const confidenceFrom = value => {
+    const percent=String(value||'').match(/(?:^|\D)(100|[1-9]?\d(?:\.\d+)?)\s*%/);
+    if(percent)return Math.max(0,Math.min(100,Number(percent[1])));
+    const bare=String(value||'').match(/(?:^|[|,:;\-–—\s])(100|[1-9]?\d(?:\.\d+)?)(?=$|[|,:;\-–—\s])/);
+    return bare?Math.max(0,Math.min(100,Number(bare[1]))):null;
+  };
+  const slotFrom = value => {
+    const v=String(value||'');
+    let m=v.match(/\b(?:THEME|SLOT|RANK)\s*#?\s*([123])\b/i);
+    if(m)return Number(m[1]);
+    m=v.match(/^\s*#?\s*([123])\s*(?:[.)\]:\-–—|]|$)/);
+    if(m)return Number(m[1]);
+    m=v.match(/\bTHEME\s+(ONE|TWO|THREE)\b/i);
+    if(m)return({ONE:1,TWO:2,THREE:3})[m[1].toUpperCase()]||null;
+    return null;
+  };
+  const rationaleFor = (line,code) => {
+    const cleaned=String(line||'').replace(/^\s*[-*•]+\s*/,'').trim();
+    if(cleaned)return cleaned.slice(0,1000);
+    return `Provider response selected ${code}.`;
+  };
+
+  // First pass: exact/near-exact pipe formats. Also accept Markdown table rows
+  // with a leading/trailing pipe, which the v0.9.6.29 parser rejected.
+  for(const line of rawLines){
+    const cleaned=line.replace(/^\s*[-*•]+\s*/,'').trim().replace(/^\|\s*/,'').replace(/\s*\|$/,'');
+    if(!cleaned||!cleaned.includes('|'))continue;
+    const parts=cleaned.split('|').map(part=>part.trim());
+    if(parts.length<2)continue;
+    const slot=slotFrom(parts[0]);
+    if(!openSlots.includes(slot))continue;
+
+    let code=null,confidence=null,rationale='';
+    const matrixIndex=parts.findIndex(part=>String(part).toLowerCase()==='matrix');
+    const codeIndex=parts.findIndex(part=>/\bPFM\d{4}\b/i.test(part));
+    if(codeIndex>=0)code=String(parts[codeIndex].match(/PFM\d{4}/i)[0]).toUpperCase();
+    if(!code)continue;
+    if(matrixIndex>=0&&codeIndex===matrixIndex+1){
+      confidence=confidenceFrom(parts[codeIndex+1]);
+      rationale=parts.slice(codeIndex+2).join('|').trim();
+    }else{
+      confidence=confidenceFrom(parts[codeIndex+1]||cleaned);
+      rationale=parts.slice(codeIndex+2).join('|').trim();
+    }
+    if(confidence==null)confidence=confidenceFrom(cleaned)??70;
+    if(!rationale)rationale=rationaleFor(line,code);
+    if(allowedBySlot.get(slot)?.has(code)&&!preservedCodes.has(code))rows.set(slot,{code,confidence,rationale});
+  }
+
+  // Second pass: tolerate ordinary prose/Markdown such as
+  // "Theme 1: PFM0407 — 88% — reason" or "1. **PFM0407** (88%) reason".
+  // If a line explicitly names a slot, assign only when that code is eligible
+  // for that exact slot.
+  const codeOccurrences=[];
+  for(let lineIndex=0;lineIndex<rawLines.length;lineIndex++){
+    const line=rawLines[lineIndex];
+    const re=/\b(PFM\d{4})\b/ig;let m;
+    while((m=re.exec(line))){
+      const code=m[1].toUpperCase();
+      const explicitSlot=slotFrom(line);
+      const confidence=confidenceFrom(line)??70;
+      const occurrence={code,line,lineIndex,offset:m.index,explicitSlot,confidence,rationale:rationaleFor(line,code)};
+      codeOccurrences.push(occurrence);
+      if(explicitSlot&&openSlots.includes(explicitSlot)&&!rows.has(explicitSlot)&&allowedBySlot.get(explicitSlot)?.has(code)&&!preservedCodes.has(code)){
+        rows.set(explicitSlot,{code,confidence,rationale:occurrence.rationale});
+      }
+    }
+  }
+
+  // Third pass: if the model supplied PFM codes but omitted usable slot labels,
+  // assign the remaining unique codes to remaining open slots in response order.
+  // A tiny backtracking match preserves slot-specific eligibility for future
+  // mixed Green/Red/Neutral reruns instead of blindly treating order as truth.
+  const usedCodes=new Set([...preservedCodes,...[...rows.values()].map(row=>row.code)]);
+  const remainingSlots=openSlots.filter(slot=>!rows.has(slot));
+  const pool=[];
+  for(const occ of codeOccurrences){
+    if(usedCodes.has(occ.code)||pool.some(item=>item.code===occ.code))continue;
+    pool.push(occ);
+  }
+  const assignment=new Map();
+  const assign=(index,used)=>{
+    if(index>=remainingSlots.length)return true;
+    const slot=remainingSlots[index];
+    for(let i=0;i<pool.length;i++){
+      const occ=pool[i];
+      if(used.has(occ.code)||!allowedBySlot.get(slot)?.has(occ.code))continue;
+      // An explicit label for a different open slot is strong evidence and
+      // should not be silently reassigned here.
+      if(occ.explicitSlot&&occ.explicitSlot!==slot)continue;
+      used.add(occ.code);assignment.set(slot,occ);
+      if(assign(index+1,used))return true;
+      assignment.delete(slot);used.delete(occ.code);
+    }
+    return false;
+  };
+  assign(0,new Set(usedCodes));
+  for(const [slot,occ] of assignment)rows.set(slot,{code:occ.code,confidence:occ.confidence,rationale:occ.rationale});
+
+  const structured={};
+  for(const slotRow of rerun.themeSlots){
+    if(slotRow.state==='preserve')structured[`theme${slotRow.slot}`]={code:slotRow.currentThemeCode};
+    else{
+      const row=rows.get(slotRow.slot);
+      if(!row){
+        const preview=text.replace(/\s+/g,' ').slice(0,500);
+        throw new Error(`Theme ${slotRow.slot} was missing from the Theme Rerun response.${preview?` Provider preview: ${preview}`:''}`);
+      }
+      structured[`theme${slotRow.slot}`]=row;
+    }
+  }
+  return parseThemeRerunStructured(structured,rerun,sets);
+}
 async function runThemeRerun(env,model,image,behavior,input){
   const rerun=normalizeThemeRerun(input);if(!rerun)throw new Error('Theme Rerun request was missing.');
-  const sets=themeRerunCandidateSets(rerun),schema=themeRerunSchema(rerun,sets),basePrompt=themeRerunPrompt(rerun,sets);let lastError=null;
+  const sets=themeRerunCandidateSets(rerun),basePrompt=themeRerunPrompt(rerun,sets),openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve');
+  if(!openSlots.length){
+    const local={};for(const row of rerun.themeSlots)local[`theme${row.slot}`]={code:row.currentThemeCode};
+    return{rerun,sets,selections:parseThemeRerunStructured(local,rerun,sets)};
+  }
+  let lastError=null;
   for(let attempt=1;attempt<=3;attempt++){
-    const recovery=attempt===1?'':`\n\nRECOVERY: The prior response violated a slot eligibility or uniqueness rule. Return three different eligible PFM codes and obey every PRESERVE, REPLACE, PrimPicker, and Theme Exclusion constraint exactly.`;
-    const raw=await runStructured(env,model,image,basePrompt+recovery,schema,2600,'json_schema',{behavior,themeRerun:true,temperature:attempt===1?0.25:0.1});
-    try{return{rerun,sets,selections:parseThemeRerunStructured(raw,rerun,sets)};}catch(error){lastError=error;}
+    const recovery=attempt===1?'':`\n\nRECOVERY: The prior response could not be accepted${lastError?.message?`: ${String(lastError.message).slice(0,300)}`:''}. Return only the exact established Theme Analysis pipe-delimited line format requested for each open Theme slot. Use an eligible PFM code for that slot, keep all final codes unique, and obey every REPLACE, PrimPicker, and Theme Exclusion constraint.`;
+    const raw=await runStructured(env,model,image,basePrompt+recovery,null,1600,'text',{behavior,themeRerun:true,temperature:attempt===1?0.18:0.05});
+    try{return{rerun,sets,selections:parseThemeRerunText(raw,rerun,sets)};}catch(error){
+      lastError=diagnosticError(
+        error?.message||'Theme Rerun text response could not be parsed.',
+        {phase:'theme-rerun-text-parse',attempt,responsePreview:String(raw||'').slice(0,1200)}
+      );
+    }
   }
   throw lastError||new Error('Theme Rerun did not produce a valid result.');
 }
@@ -1057,7 +1187,7 @@ async function analyze(env,body){
         includedDescriptionCount:rerunResult.rerun.includedDescriptions.length,
         candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
       };
-      promptVersions.themes='genreactrix-themes-pfm-v7-director-rerun';
+      promptVersions.themes='genreactrix-themes-pfm-v9-director-rerun-format-compat';
     }else{
       const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
       const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
