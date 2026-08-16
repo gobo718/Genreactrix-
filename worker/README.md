@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.24-import-proxy.
+Current bundled Worker: v0.9.6.26-theme-rerun-submit.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -11,3 +11,8 @@ Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 5. Enter the deployed Worker URL and the same analysis key in Genreactrix → AI.
 
 The browser never receives provider credentials. The Worker accepts authenticated `POST /api/genreactrix/analyze` for AI results and `POST /api/genreactrix/image` as a bounded image-fetch proxy used when browser CORS would otherwise prevent Import from creating its required 64×64 thumbnail.
+
+
+## Theme Rerun Submit
+
+The analyze endpoint accepts a structured `themeRerun` context for Theme-only reruns. Stable PFM/P codes are authoritative. Preserve, Replace, PrimPicker, Theme Exclusions, and included Description references are enforced in the Worker before/while selecting the three Theme results. Deploy this Worker before testing Genreactrix v0.9.40.60 Theme Rerun Submit.
