@@ -1,6 +1,14 @@
-# Genreactrix v0.9.40.60 — Theme Rerun Submit
+# Genreactrix v0.9.40.61 — Theme Rerun Submit Fix
 
-Built forward from v0.9.40.59. Existing accepted Landscape packing and alignment remain unchanged.
+Built forward from v0.9.40.60. Existing accepted Landscape packing and alignment remain unchanged.
+
+
+## v0.9.40.61 — Theme Rerun Submit all-Neutral repair
+
+- AI rerun failures now surface the actual failed-item Worker/provider error instead of only `Completed with 1 failure(s)`.
+- Theme Rerun JSON guidance no longer duplicates each slot's full eligible-PFM list as a JSON-schema enum. The prompt still supplies slot-specific eligible codes, while the Worker remains authoritative for eligibility, Preserve/Replace rules, Theme Exclusions, uniqueness, confidence, and rationale validation.
+- Bundled Worker: **0.9.6.27-theme-rerun-submit-fix**.
+- No Landscape geometry, Theme Rerun Clear semantics, or Current-retention behavior changed.
 
 ## AI Description rerun workspace
 
@@ -53,7 +61,7 @@ Every actual Description submission creates a new AI attempt/artifact version. T
 
 ## Worker contract
 
-This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.26-theme-rerun-submit**.
+This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.27-theme-rerun-submit-fix**.
 
 The updated Worker must be deployed before testing actual structured Submit calls. UI-only inspection does not require a Worker call.
 

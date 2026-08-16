@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.60";
+const GENREACTRIX_BUILD="v0.9.40.61";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2265,7 +2265,10 @@ async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysi
     if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
     await engine.run(job.id);
     const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
-    if(finalJob.state!=="completed")throw new Error(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`);
+    if(finalJob.state!=="completed"){
+      const itemErrors=(snapshot?.items||[]).filter(row=>row.jobId===job.id&&row.state==="failed").map(row=>String(row.error||"").trim()).filter(Boolean);
+      throw new Error(itemErrors.length?[...new Set(itemErrors)].join(" | "):(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`));
+    }
     // v0.9.39.95 — a completed Reaction rerun is itself a request to inspect
     // the new scores. Make them visible before repainting Judgment so the
     // completed rerun cannot appear to have produced no percentages.
