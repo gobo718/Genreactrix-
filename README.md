@@ -1,4 +1,14 @@
-# Genreactrix v0.9.40.72 — Clean Daily Housekeeping / Recycle Baseline
+# Genreactrix v0.9.40.73 — Daily Housekeeping / Purgatory Retry Diagnostic
+
+## v0.9.40.73 — controlled Purgatory daily-retry acceptance
+
+- Temporary query-gated diagnostic: `?housekeepingPurgatoryTest=1`.
+- Hard-scoped to the already-purged `PURGATORY_TEST_` throwaway Image ID used for Recycle acceptance.
+- Seeds a temporary real Post-processing plan, proves 3 automatic failures reach Purgatory, then runs Daily Housekeeping twice.
+- Acceptance requires the first Daily Housekeeping run to add exactly one `daily` attempt and the second forced run on the same local calendar day to add none.
+- Fixes a discovered local-day/UTC-date dedupe defect by recording the Housekeeping local day on daily attempts and comparing that explicit day.
+- The temporary Post-processing plan and Purgatory lifecycle state are cleaned up after the diagnostic.
+- No Worker change.
 
 ## v0.9.40.72 — Recycle expiry diagnostic removed after acceptance
 
