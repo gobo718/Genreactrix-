@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.57 — Landscape Packing + Include Repair
+# Genreactrix v0.9.40.58 — Stable Include Reserve
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -135,6 +135,13 @@ Real-device/browser acceptance is still required.
 - The v0.9.40.55 long-press Saved Draft deletion fix is carried forward.
 - Preview uses the established scrollable request-preview modal language; no accepted Landscape workspace geometry was changed. Worker files are unchanged.
 
+
+
+## v0.9.40.58 — Stable Include Reserve
+
+- Fixes the repeatable Description-width collapse when repeatedly changing Theme rerun states.
+- The mirrored Include control reserve is now recalculated from the baseline Description padding on every render instead of compounding the previous render's reserve.
+- No Landscape geometry, Theme sizing, Reaction geometry, or Worker behavior changed from v0.9.40.57.
 
 ## v0.9.40.57 — Landscape Packing + Include Repair
 

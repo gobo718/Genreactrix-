@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.57";
+const GENREACTRIX_BUILD="v0.9.40.58";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1549,18 +1549,19 @@ function renderTabletWorkbench(){
       if(descriptionInclude)descriptionInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
       if(themeInclude)themeInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
 
-      /* Reserve the exact horizontal footprint occupied by whichever mirrored
-         Include control is visible. This prevents Description text from ever
-         rendering beneath the checkbox. */
+      /* v0.9.40.58 — mirrored Include reserve must be recalculated from the
+         real baseline on every render. Clear the prior dynamic reserve first;
+         otherwise each rerender reads its own previous padding and compounds it. */
       if(descriptionPanel){
+        descriptionPanel.style.removeProperty("--description-include-reserve");
+        const basePad=parseFloat(getComputedStyle(descriptionPanel).paddingRight)||0;
         const visibleInclude=[descriptionInclude,themeInclude].find(el=>el&&!el.hidden&&getComputedStyle(el).display!=="none");
         if(visibleInclude){
           const panelRect=descriptionPanel.getBoundingClientRect();
           const includeRect=visibleInclude.getBoundingClientRect();
-          const basePad=parseFloat(getComputedStyle(descriptionPanel).paddingRight)||0;
           const reserve=Math.max(basePad,panelRect.right-includeRect.left+basePad);
           descriptionPanel.style.setProperty("--description-include-reserve",`${Math.round(reserve*1000)/1000}px`);
-        }else descriptionPanel.style.removeProperty("--description-include-reserve");
+        }
       }
     }
   }
