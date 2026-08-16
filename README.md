@@ -1,4 +1,47 @@
-# Genreactrix v0.9.40.64 — Direct Reaction Rerun Job Coordination
+# Genreactrix v0.9.40.65 — Purgatory Fault-Injection Diagnostic
+
+## v0.9.40.65 — Controlled Post-processing failure traveler
+
+- **Temporary diagnostic build.** Worker remains **0.9.6.35-reaction-rerun-combined-multimodal**; no Worker redeploy is required.
+- A newly imported image whose original filename begins exactly with `PURGATORY_TEST_` is deliberately failed during its first **three automatic Post-processing attempts**.
+- The injected failure occurs after the Batch/Post-processing attempt has started and before Images Engine finalization, so the image must remain unresolved in Purgatory rather than partially reaching Keep, Recycle, or a final exclusion stage.
+- The diagnostic injection applies only to `automatic` attempts 1–3. **Manual Retry, Retry All, and Daily Housekeeping are not fault-injected**, allowing the real recovery path to complete.
+- The error is explicitly named `GenreactrixDiagnosticPurgatoryFailure` and is preserved in the ordered Post-processing attempt/error history.
+- Files without the `PURGATORY_TEST_` prefix are unaffected.
+- No accepted Landscape/Portrait geometry, AI behavior, Reaction 60/40 logic, Inbox accounting, Batch membership semantics, or Worker code changed.
+- Remove this diagnostic injector after the Purgatory traveler acceptance tests are complete.
+
+## Prior accepted site baseline: v0.9.40.64
+
+## Worker 0.9.6.35 — Combined Image + Description multimodal Scout
+
+- Site build remains **v0.9.40.64**; accepted Reaction Rerun layout, checkbox behavior, queue coordination, and 60/40 recombination are unchanged.
+- Image-only remains on the already-passing Llama 3.2 Vision path with the legacy `image` field.
+- Description-only remains on the already-passing Llama 4 Scout text-only `guided_json` path and sends no image bytes.
+- **Image + Description** now uses Llama 4 Scout as a true multimodal chat request: the same user message contains the Reaction prompt/Description as a text content part and the image as an `image_url` data-URI content part.
+- Combined mode restores `guided_json` for the 14 Reaction weights/ranking/notes and removes the temporary v0.9.6.34 line protocol from the active path.
+- The rerun instruction explicitly tells combined mode to reassess the image and AI Description together as the two selected evidence sources.
+- Existing numeric-range, all-zero, all-identical, ranking, retry, and Hamilton apportionment gates remain unchanged.
+- Worker advances to **0.9.6.35-reaction-rerun-combined-multimodal**.
+
+## Worker 0.9.6.34 — Combined Image + Description line protocol
+
+- Site build remains **v0.9.40.64**; accepted Reaction Rerun layout, checkbox behavior, queue coordination, and 60/40 recombination are unchanged.
+- Image-only remains on the already-passing Llama 3.2 Vision text/JSON-tolerant path.
+- Description-only remains on the already-passing Llama 4 Scout `guided_json` path and still sends no image bytes.
+- **Image + Description** now requests a compact plain-text protocol: exactly one numeric `P01|weight` through `P14|weight` line plus one complete `RANKING|...` line. Reaction Reasons add four `NOTE|P##|reason` lines only when that component is requested.
+- Combined-mode parsing is strict: every P01-P14 numeric line must be independently present. Missing or malformed values are rejected and retried rather than inferred from neighboring text.
+- All existing numeric-range, all-zero, all-identical, ranking, and Hamilton apportionment gates remain unchanged.
+- Worker advances to **0.9.6.34-reaction-rerun-combined-line-protocol**.
+
+## Worker 0.9.6.32 — Reaction rerun Vision routing
+
+- Site build remains **v0.9.40.64**; accepted Reaction Rerun layout and queue coordination are unchanged.
+- Image-only and Image + Description Reaction reruns now use the configured Genreactrix Vision model (`@cf/meta/llama-3.2-11b-vision-instruct` by default) with actual image bytes.
+- Image-bearing Reaction responses are requested as text, parsed locally, and then passed through the same strict 14-Prim weight/ranking/top-four-note validator before 100-point apportionment.
+- Description-only keeps the already-passing Llama 4 Scout `guided_json` path and sends no image bytes.
+- The all-zero and all-identical Reaction gates remain hard failures; image-bearing reruns retry once after a semantic/format validation failure.
+- Worker advances to **0.9.6.33-reaction-reasons-optional**.
 
 Built forward from v0.9.40.63. Accepted Landscape geometry and the Reaction Rerun checkbox layout are unchanged.
 
@@ -225,3 +268,6 @@ Worker 0.9.6.29 Theme Rerun format compatibility: rerun output now uses the esta
 
 
 Worker 0.9.6.30 Theme Rerun parser fallback: accepts Markdown table rows, prose/Markdown PFM selections, and ordered PFM-code output in addition to the established pipe protocol. Slot-specific eligibility remains authoritative; final parse failures now include a short provider-response preview for diagnosis.
+
+
+Worker 0.9.6.33 validation note: top-four effort notes are optional for reactions-only requests and remain required for reactionReasons requests.
