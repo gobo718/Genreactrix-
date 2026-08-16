@@ -1,8 +1,16 @@
-# Genreactrix v0.9.40.62 — Theme Rerun Clear
+# Genreactrix v0.9.40.63 — Direct Reaction Rerun Sources
 
-Built forward from v0.9.40.61. Existing accepted Landscape packing and alignment remain unchanged.
+Built forward from accepted v0.9.40.62. Existing accepted Landscape packing and alignment remain unchanged.
 
+## v0.9.40.63 — Direct Reaction Rerun
 
+- AI Rerun Reactions now opens a compact evidence-source workspace inside the existing 54px/two-row control band. No accepted Landscape panel, image, Theme, Reaction, or drawer geometry is resized.
+- Two checkboxes define the rerun evidence source: **Image** and **Description**. Both are checked every time the workspace opens, making **Image + Description** the default.
+- Valid modes are Image only, Image + Description, and Description only. Submit is disabled if neither source is selected.
+- Description means the current AI Description artifact/projection. Description-only reruns do not send image bytes to the Worker.
+- Only the direct Reaction 40% is rerun. The existing Theme-derived 60% remains authoritative and untouched; Combined Reactions are then recalculated from the unchanged Theme 60% plus the new direct 40%.
+- Reaction rerun attempts record which evidence sources were used.
+- Worker advances to **0.9.6.31-reaction-rerun-sources** to support Image-only, Image + Description, and Description-only Reaction assessment.
 
 ## v0.9.40.62 — Theme Rerun Clear
 
