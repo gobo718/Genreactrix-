@@ -349,7 +349,9 @@
   document.getElementById('aiAnalysisClose')?.addEventListener('click',()=>document.getElementById('aiAnalysisDialog')?.close());
   document.getElementById('aiSaveProvider')?.addEventListener('click',async()=>{
     window.GenreactrixCloudApi.configure(document.getElementById('aiWorkerUrl').value);window.GenreactrixCloudApi.setKey(document.getElementById('aiAnalysisKey').value);
-    window.genreactrixSettingsEngine?.set?.('ai.provider.model',document.getElementById('aiModelName').value.trim());window.genreactrixSettingsEngine?.set?.('ai.prompt.version',document.getElementById('aiPromptVersion').value.trim());
+    const settings=window.genreactrixSettingsEngine;if(!settings?.set)throw new Error('Settings engine is unavailable');
+    await settings.set('ai.provider.model',document.getElementById('aiModelName').value.trim());
+    await settings.set('ai.prompt.version',document.getElementById('aiPromptVersion').value.trim());
     window.GenreactrixCloudApi.reload?.();document.getElementById('aiProviderStatus').textContent='Saved';await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn);
   });
   document.getElementById('aiSaveAutomatic')?.addEventListener('click',async()=>{

@@ -11,6 +11,7 @@ Built forward from v0.9.40.60. Existing accepted Landscape packing and alignment
 - No Landscape geometry, Theme Rerun Clear semantics, or Current-retention behavior changed.
 - Packaging correction: all hardcoded on-screen/site title version labels now report **v0.9.40.61**.
 - The obsolete `genreactrix-v3-114-point-prims` AI Prompt-set default/fallback is retired. Existing copies of that stale label are cleared to blank on settings migration; blank now saves and remains blank. The Worker remains authoritative for actual per-component prompt versions returned with each analysis.
+- `.61` cache-busts the changed Settings/App/AI-analysis scripts and awaits AI Provider setting writes before reporting Saved, preventing a browser-cached older script from resurrecting the retired Prompt-set label after refresh.
 
 ## AI Description rerun workspace
 
