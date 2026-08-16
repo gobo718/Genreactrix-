@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.23-registry
+/* Genreactrix AI Worker v0.9.6.26-theme-rerun-submit
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.25-description-rerun-workspace';
+const API_VERSION = '0.9.6.26-theme-rerun-submit';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -530,6 +530,134 @@ function themeSchema(){
   };
 }
 
+const THEME_RERUN_STATES = new Set(['neutral','replace','preserve']);
+const THEME_RERUN_PRIM_STATES = new Set(['mandatory','preferred','optional','discouraged','forbidden']);
+const THEME_RERUN_PRIM_WEIGHTS = Object.freeze({mandatory:100,preferred:80,optional:60,discouraged:20,forbidden:0});
+const THEME_RERUN_SCOPES = new Set(['theme1','theme2','theme3','general']);
+
+function normalizeThemeRerun(input){
+  if(!input||typeof input!=='object')return null;
+  const validThemeCodes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code));
+  const validPrimCodes=new Set(PRIMFUSION_REGISTRY.primitives.map(row=>row.id));
+  const rawSlots=Array.isArray(input.themeSlots)?input.themeSlots:[];
+  const themeSlots=[1,2,3].map(slot=>{
+    const raw=rawSlots.find(row=>Number(row?.slot)===slot)||{};
+    const state=THEME_RERUN_STATES.has(String(raw.state||''))?String(raw.state):'neutral';
+    const code=String(raw.currentThemeCode||'').trim().toUpperCase();
+    const weight=Number(raw.currentThemeWeight??raw.weight);
+    return{slot,state,currentThemeCode:validThemeCodes.has(code)?code:null,currentThemeWeight:Number.isFinite(weight)?Math.max(0,Math.min(100,weight)):null};
+  });
+  const primPicker=[];
+  for(const raw of Array.isArray(input.primPicker)?input.primPicker:[]){
+    const scope=String(raw?.scope||'');if(!THEME_RERUN_SCOPES.has(scope)||primPicker.some(row=>row.scope===scope))continue;
+    const byPrim=new Map();
+    for(const item of Array.isArray(raw?.assignments)?raw.assignments:[]){
+      const primCode=String(item?.primCode||'').trim().toUpperCase(),state=String(item?.state||'');
+      if(validPrimCodes.has(primCode)&&THEME_RERUN_PRIM_STATES.has(state))byPrim.set(primCode,{primCode,state,weight:THEME_RERUN_PRIM_WEIGHTS[state]});
+    }
+    const assignments=[...byPrim.values()];
+    const unchosenWeight=assignments.some(item=>item.state==='optional')?40:50;
+    primPicker.push({scope,assignments,unchosenWeight});
+  }
+  const excludedThemeCodes=[...new Set((Array.isArray(input.excludedThemeCodes)?input.excludedThemeCodes:[]).map(code=>String(code).trim().toUpperCase()).filter(code=>validThemeCodes.has(code)))];
+  const includedDescriptions=[];let remaining=16000;
+  for(const raw of Array.isArray(input.includedDescriptions)?input.includedDescriptions:[]){
+    if(remaining<=0)break;const text=String(raw?.text||'').trim();if(!text)continue;const clipped=text.slice(0,remaining);remaining-=clipped.length;
+    includedDescriptions.push({artifactId:raw?.artifactId?String(raw.artifactId):null,version:Number(raw?.version)||0,createdAt:String(raw?.createdAt||''),text:clipped});
+  }
+  return{schemaVersion:1,themeSlots,primPicker,excludedThemeCodes,includedDescriptions};
+}
+
+function themeRerunScopeForSlot(slotRow){return slotRow.state==='preserve'?null:(slotRow.state==='replace'?`theme${slotRow.slot}`:'general')}
+function themeRerunScopeWeights(rerun,scope){
+  const primCodes=PRIMFUSION_REGISTRY.primitives.map(row=>row.id),row=rerun.primPicker.find(item=>item.scope===scope)||null;
+  const unchosenWeight=row?.assignments?.some(item=>item.state==='optional')?40:50,weights=Object.fromEntries(primCodes.map(code=>[code,unchosenWeight]));
+  const states={};for(const item of row?.assignments||[]){weights[item.primCode]=THEME_RERUN_PRIM_WEIGHTS[item.state];states[item.primCode]=item.state;}
+  return{weights,states,unchosenWeight,mandatory:Object.keys(states).filter(code=>states[code]==='mandatory'),forbidden:Object.keys(states).filter(code=>states[code]==='forbidden')};
+}
+function themeRerunCandidateData(rerun,slotRow){
+  if(slotRow.state==='preserve')return{scope:null,candidates:[],weights:null};
+  if(slotRow.state==='replace'&&!slotRow.currentThemeCode)throw new Error(`Theme ${slotRow.slot} cannot be replaced because its current PFM code is unavailable.`);
+  const scope=themeRerunScopeForSlot(slotRow),weightSpec=themeRerunScopeWeights(rerun,scope);
+  if(weightSpec.mandatory.length>2)throw new Error(`Theme ${slotRow.slot} PrimPicker has ${weightSpec.mandatory.length} Mandatory Prims. A PrimFusion can contain only two Prims.`);
+  const excluded=new Set(rerun.excludedThemeCodes);
+  for(const row of rerun.themeSlots)if(row.state==='preserve'&&row.currentThemeCode)excluded.add(row.currentThemeCode);
+  if(slotRow.state==='replace'&&slotRow.currentThemeCode)excluded.add(slotRow.currentThemeCode);
+  const candidates=PRIMFUSION_REGISTRY.aiThemeChoices.filter(theme=>{
+    if(excluded.has(theme.code))return false;
+    const primIds=Array.isArray(theme.primIds)?theme.primIds:[];
+    if(weightSpec.forbidden.some(code=>primIds.includes(code)))return false;
+    if(weightSpec.mandatory.some(code=>!primIds.includes(code)))return false;
+    return primIds.length===2;
+  }).map(theme=>{
+    const [first,second]=theme.primIds,pairWeight=(weightSpec.weights[first]+weightSpec.weights[second])/2;
+    return{code:theme.code,name:theme.name,primIds:[first,second],pairWeight:Math.round(pairWeight*10)/10,aiMeaning:String(theme.aiMeaning||'')};
+  }).sort((a,b)=>b.pairWeight-a.pairWeight||a.code.localeCompare(b.code));
+  if(!candidates.length)throw new Error(`Theme ${slotRow.slot} has no eligible PrimFusion Themes after applying its PrimPicker and Theme Exclusions.`);
+  return{scope,candidates,weights:weightSpec};
+}
+function themeRerunCandidateSets(rerun){
+  const protectedCodes=new Set();
+  for(const row of rerun.themeSlots){
+    if(row.state==='preserve'){
+      if(!row.currentThemeCode)throw new Error(`Theme ${row.slot} cannot be preserved because its PFM code is unavailable.`);
+      if(rerun.excludedThemeCodes.includes(row.currentThemeCode))throw new Error(`Theme ${row.slot} is both preserved and excluded.`);
+      if(protectedCodes.has(row.currentThemeCode))throw new Error('Protected Theme slots must contain different PFM codes.');
+      protectedCodes.add(row.currentThemeCode);
+    }
+  }
+  const sets={};
+  for(const row of rerun.themeSlots)sets[row.slot]=row.state==='preserve'?{scope:null,candidates:[{code:row.currentThemeCode}],weights:null}:themeRerunCandidateData(rerun,row);
+  const slotCodes=[1,2,3].map(slot=>sets[slot].candidates.map(row=>row.code));
+  const canAssign=(index,used)=>{if(index===slotCodes.length)return true;for(const code of slotCodes[index])if(!used.has(code)){used.add(code);if(canAssign(index+1,used))return true;used.delete(code);}return false;};
+  if(!canAssign(0,new Set()))throw new Error('Theme Rerun constraints cannot produce three different Theme codes. Relax a Mandatory, Forbidden, or Theme Exclusion choice.');
+  return sets;
+}
+function themeRerunSchema(rerun,sets){
+  const properties={};
+  for(const row of rerun.themeSlots){
+    const codeSchema={type:'string',enum:sets[row.slot].candidates.map(item=>item.code)};
+    if(row.state==='preserve')properties[`theme${row.slot}`]={type:'object',properties:{code:codeSchema},required:['code'],additionalProperties:false};
+    else properties[`theme${row.slot}`]={type:'object',properties:{code:codeSchema,confidence:{type:'number',minimum:0,maximum:100},rationale:{type:'string'}},required:['code','confidence','rationale'],additionalProperties:false};
+  }
+  return{type:'object',properties,required:['theme1','theme2','theme3'],additionalProperties:false};
+}
+function themeRerunPrompt(rerun,sets){
+  const unionCodes=new Set();for(const slot of [1,2,3])for(const item of sets[slot].candidates)unionCodes.add(item.code);
+  const vocabulary=PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>unionCodes.has(row.code)).map(row=>`${row.code} — ${row.name}${row.aiMeaning?` — Meaning: ${row.aiMeaning}`:''}`).join('\n');
+  const slotBlocks=[];
+  for(const row of rerun.themeSlots){
+    if(row.state==='preserve'){slotBlocks.push(`THEME ${row.slot}: PRESERVE ${row.currentThemeCode}. Copy this code unchanged. Do not reassess or replace this slot.`);continue;}
+    const data=sets[row.slot],weights=data.weights,weightLine=PRIMFUSION_REGISTRY.primitives.map(p=>`${p.id}=${weights.weights[p.id]}`).join(', '),candidateLine=data.candidates.map(item=>`${item.code}(${item.pairWeight})`).join(', ');
+    slotBlocks.push(`THEME ${row.slot}: ${row.state==='replace'?`REPLACE the current ${row.currentThemeCode||'Theme'}. The current code is not eligible for this slot.`:`NEUTRAL. You may keep ${row.currentThemeCode||'the current Theme'} if it remains the best eligible fit.`}\nPrimPicker scope: ${data.scope}. Effective P-code weights: ${weightLine}.\nEligible PFM codes for this slot, with pair preference score in parentheses: ${candidateLine}`);
+  }
+  const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
+  return `You are performing a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nThe image is always authoritative visual evidence. Reassess every slot that is not PRESERVE. A PRESERVE slot is immutable and must be copied exactly.\n\nTheme identity is the PFM code. Human-readable Theme names are semantic labels only. Return exactly one code for each Theme slot. The three final PFM codes MUST be different.\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while image fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nReturn only the requested JSON object. For non-preserved slots, confidence is 0-100 and rationale must briefly cite visible image evidence. Do not explain preserved slots.`;
+}
+function parseThemeRerunStructured(raw,rerun,sets){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
+  const used=new Set(),selections=[];
+  for(const slotRow of rerun.themeSlots){
+    const rawRow=raw[`theme${slotRow.slot}`]||{},allowed=new Set(sets[slotRow.slot].candidates.map(item=>item.code));
+    const code=slotRow.state==='preserve'?slotRow.currentThemeCode:String(rawRow.code||'').trim().toUpperCase();
+    if(!code||!allowed.has(code))throw new Error(`Theme ${slotRow.slot} returned an ineligible PFM code.`);
+    if(used.has(code))throw new Error(`Theme Rerun returned duplicate PFM code ${code}.`);used.add(code);
+    if(slotRow.state==='preserve')selections.push({rank:slotRow.slot,source:'matrix',code,confidence:slotRow.currentThemeWeight??50,rationale:'Preserved by Director instruction.'});
+    else{const confidence=Number(rawRow.confidence),rationale=String(rawRow.rationale||'').trim();if(!Number.isFinite(confidence))throw new Error(`Theme ${slotRow.slot} confidence was invalid.`);if(!rationale)throw new Error(`Theme ${slotRow.slot} rationale was empty.`);selections.push({rank:slotRow.slot,source:'matrix',code,confidence:Math.max(0,Math.min(100,confidence)),rationale});}
+  }
+  return selections;
+}
+async function runThemeRerun(env,model,image,behavior,input){
+  const rerun=normalizeThemeRerun(input);if(!rerun)throw new Error('Theme Rerun request was missing.');
+  const sets=themeRerunCandidateSets(rerun),schema=themeRerunSchema(rerun,sets),basePrompt=themeRerunPrompt(rerun,sets);let lastError=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    const recovery=attempt===1?'':`\n\nRECOVERY: The prior response violated a slot eligibility or uniqueness rule. Return three different eligible PFM codes and obey every PRESERVE, REPLACE, PrimPicker, and Theme Exclusion constraint exactly.`;
+    const raw=await runStructured(env,model,image,basePrompt+recovery,schema,2600,'json_schema',{behavior,themeRerun:true,temperature:attempt===1?0.25:0.1});
+    try{return{rerun,sets,selections:parseThemeRerunStructured(raw,rerun,sets)};}catch(error){lastError=error;}
+  }
+  throw lastError||new Error('Theme Rerun did not produce a valid result.');
+}
+
 function normalizeDescriptionRerun(input){
   if(!input||typeof input!=='object')return null;
   const operation=['all','add','replace'].includes(String(input.operation||''))?String(input.operation):'all';
@@ -591,7 +719,9 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   const freshRerun = behavior === 'reanalyze'
     ? (options.scopedEdit
       ? ' This is a rerun. Reassess the visual evidence, but obey the exact scoped edit boundary: return only the requested insertion or replacement fragment and leave all other target text to Genreactrix.'
-      : ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.')
+      : options.themeRerun
+        ? ' This is a fresh Theme rerun. Reassess only the slots that are open to change, obey Director constraints exactly, and copy every preserved slot unchanged.'
+        : ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.')
     : '';
   const temperature = Number.isFinite(options.temperature)
     ? options.temperature
@@ -909,51 +1039,67 @@ async function analyze(env,body){
   }
 
   if (requested.includes('themes') || requested.includes('genreReasons')){
-    const behavior = behaviorFor(['themes','genreReasons']);
-    const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
-    const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
-    let parsedThemes;
-    let firstError = null;
-    let retryRaw = null;
-    try{
-      parsedThemes = parseThemeText(rawThemes);
-    }catch(error){
-      if (!/unique valid selections instead of 3/i.test(String(error?.message||''))) throw error;
-      firstError = error;
-      const recoveryPrompt = `${themePrompt(themeAnalysisContext)}
+    const behavior = behaviorFor(['themes','genreReasons']),themeRerun=body.themeRerun&&requested.includes('themes')?normalizeThemeRerun(body.themeRerun):null;
+    let resolvedThemes;
+    if(themeRerun){
+      const rerunResult=await runThemeRerun(env,model,image,behavior,themeRerun);
+      resolvedThemes=resolveThemes(rerunResult.selections);
+      components.themeRerunDiagnostics={
+        schemaVersion:1,applied:true,
+        protectedSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.slot),
+        replaceSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='replace').map(row=>row.slot),
+        neutralSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='neutral').map(row=>row.slot),
+        excludedThemeCodes:[...rerunResult.rerun.excludedThemeCodes],
+        includedDescriptionCount:rerunResult.rerun.includedDescriptions.length,
+        candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
+      };
+      promptVersions.themes='genreactrix-themes-pfm-v7-director-rerun';
+    }else{
+      const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
+      const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
+      let parsedThemes;
+      let firstError = null;
+      let retryRaw = null;
+      try{
+        parsedThemes = parseThemeText(rawThemes);
+      }catch(error){
+        if (!/unique valid selections instead of 3/i.test(String(error?.message||''))) throw error;
+        firstError = error;
+        const recoveryPrompt = `${themePrompt(themeAnalysisContext)}
 
 RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid Theme selections. Re-evaluate the image independently and return exactly three DIFFERENT valid ranked matrix Theme selections. Do not repeat a Theme code or Theme name. Custom Theme output is disabled for this research phase. Return only the required three-line format.`;
-      retryRaw = await runStructured(env,model,image,recoveryPrompt,themeSchema(),2200,'text',{behavior});
-      try{
-        parsedThemes = parseThemeText(retryRaw);
-      }catch(retryError){
-        if (!/unique valid selections instead of 3/i.test(String(retryError?.message||''))) throw retryError;
-        const structured = await runStructured(
-          env,model,image,themeStructuredRecoveryPrompt(themeAnalysisContext),themeRecoverySchema(),2200,'json_schema',
-          {behavior,temperature:0}
-        );
-        parsedThemes = parseThemeStructured(structured);
+        retryRaw = await runStructured(env,model,image,recoveryPrompt,themeSchema(),2200,'text',{behavior});
+        try{
+          parsedThemes = parseThemeText(retryRaw);
+        }catch(retryError){
+          if (!/unique valid selections instead of 3/i.test(String(retryError?.message||''))) throw retryError;
+          const structured = await runStructured(
+            env,model,image,themeStructuredRecoveryPrompt(themeAnalysisContext),themeRecoverySchema(),2200,'json_schema',
+            {behavior,temperature:0}
+          );
+          parsedThemes = parseThemeStructured(structured);
+          components.themeRecovery = {
+            recovered:true,mode:'structured-json-fallback',reason:String(firstError?.message||firstError||''),
+            firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
+          };
+        }
+      }
+      if (firstError && !components.themeRecovery) {
         components.themeRecovery = {
-          recovered:true,mode:'structured-json-fallback',reason:String(firstError?.message||firstError||''),
+          recovered:true,mode:'text-retry',reason:String(firstError.message||firstError),
           firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
         };
       }
+      resolvedThemes = resolveThemes(parsedThemes);
+      promptVersions.themes = themeAnalysisContext ? 'genreactrix-themes-pfm-v6-analysis-failsafe' : 'genreactrix-themes-pfm-v5-matrix-only-research';
     }
-    if (firstError && !components.themeRecovery) {
-      components.themeRecovery = {
-        recovered:true,mode:'text-retry',reason:String(firstError.message||firstError),
-        firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
-      };
-    }
-    const resolvedThemes = resolveThemes(parsedThemes);
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
       rank:item.rank,code:item.code||null,name:item.name||item.proposedName||'',confidence:item.confidence,
       rationale:item.rationale,matrixVersion:item.matrixVersion
     }));
     customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
-    promptVersions.themes = themeAnalysisContext ? 'genreactrix-themes-pfm-v6-analysis-failsafe' : 'genreactrix-themes-pfm-v5-matrix-only-research';
-    if (requested.includes('genreReasons')) promptVersions.genreReasons = 'genreactrix-theme-info-v1-shared-assessment';
+    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v1-shared-assessment';
   }
 
   if (requested.includes('description')){
