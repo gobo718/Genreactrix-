@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.65";
+const GENREACTRIX_BUILD="v0.9.40.66";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -824,10 +824,11 @@ function renderFlag(){
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
+  $("landscapeImageViewDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
   // Filter highlight reflects actual record filtering only. Base population and sort order are not "on" states.
   const customFilter=Boolean(landscapeFilter.bundleId)||FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]);
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
-  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletDepotBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
+  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletDepotBtn","landscapeImageViewDepotBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
   $("landscapeFeedEmpty")?.toggleAttribute("hidden",hasImage);
 }
 function renderDirectorFields(){
@@ -2519,6 +2520,97 @@ function verifyLandscapeFeedIntegrity(){
 window.genreactrixLandscapeFeedDiagnostics=landscapeFeedDiagnostics;
 window.genreactrixMaintenanceEngine?.registerChecker?.("inbox-feed",verifyLandscapeFeedIntegrity,{quick:true,label:"Inbox feed"});
 function activeInboxBundles(){return window.genreactrixBundleEngine?.activeBundles?.()||[];}
+const landscapeThumbnailPickerState={objectUrls:[]};
+function clearLandscapeThumbnailPickerUrls(){
+  while(landscapeThumbnailPickerState.objectUrls.length){
+    const url=landscapeThumbnailPickerState.objectUrls.pop();
+    try{URL.revokeObjectURL(url);}catch{}
+  }
+}
+function closeLandscapeThumbnailPicker(){
+  clearLandscapeThumbnailPickerUrls();
+  $("landscapeThumbnailPickerDialog")?.close();
+}
+async function thumbnailUrlForLandscapeRecord(record){
+  const engine=window.genreactrixImagesEngine;
+  const thumbKey=record?.storage?.thumbnailKey||record?.id;
+  if(engine?.thumbnailBlobGet&&thumbKey){
+    const thumb=await engine.thumbnailBlobGet(thumbKey).catch(()=>null);
+    if(thumb){
+      const url=URL.createObjectURL(thumb);
+      landscapeThumbnailPickerState.objectUrls.push(url);
+      return url;
+    }
+  }
+  const active=state.files.find(file=>String(file?.id||'')===String(record?.id||''));
+  if(active?.url&&!active.isHydratingAsset&&!active.isMissingAsset)return active.url;
+  return landscapeLoadingPlaceholder(record);
+}
+async function jumpToLandscapeRecord(imageId){
+  const id=String(imageId||'');
+  if(!id)return false;
+  const liveIndex=state.files.findIndex(file=>String(file?.id||'')===id);
+  if(liveIndex>=0){
+    goToImageIndex(liveIndex);
+    requestCurrentLandscapeAsset();
+    renderAll();
+    return true;
+  }
+  const records=filteredLandscapeRecords();
+  const preferredIndex=records.findIndex(record=>String(record.id)===id);
+  await rehydrateLandscapeFeed({preserveId:id,preferredIndex:preferredIndex>=0?preferredIndex:0});
+  requestCurrentLandscapeAsset();
+  renderAll();
+  return true;
+}
+async function openLandscapeThumbnailPicker(){
+  const dialog=$("landscapeThumbnailPickerDialog"),grid=$("landscapeThumbnailPickerGrid"),status=$("landscapeThumbnailPickerStatus");
+  if(!dialog||!grid)return;
+  clearLandscapeThumbnailPickerUrls();
+  const records=filteredLandscapeRecords();
+  const currentId=String(currentKey?.()||'');
+  if(status)status.textContent=`${records.length} image${records.length===1?'':'s'} in current Inbox view`;
+  grid.innerHTML='';
+  if(!records.length){
+    const empty=document.createElement('p');
+    empty.className='thumbnail-picker-empty';
+    empty.textContent='No images match the current filter.';
+    grid.appendChild(empty);
+    dialog.showModal();
+    return;
+  }
+  const rows=records.map((record,index)=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='thumbnail-picker-item';
+    button.dataset.imageId=String(record.id);
+    if(String(record.id)===currentId)button.classList.add('is-current');
+
+    const thumb=document.createElement('span');
+    thumb.className='thumbnail-picker-thumb';
+    const img=document.createElement('img');
+    img.alt=record.name||record.source?.originalFilename||`Inbox image ${index+1}`;
+    img.loading='lazy';
+    img.src=landscapeLoadingPlaceholder({name:'Loading thumbnail…'});
+    thumb.appendChild(img);
+
+    const meta=document.createElement('span');
+    meta.className='thumbnail-picker-meta';
+    const strong=document.createElement('strong');
+    strong.textContent=`${index+1}`;
+    const small=document.createElement('small');
+    small.textContent=record.source?.originalFilename||record.name||String(record.id);
+    meta.append(strong,small);
+
+    button.append(thumb,meta);
+    grid.appendChild(button);
+    return {record,img};
+  });
+  dialog.showModal();
+  await Promise.all(rows.map(async row=>{
+    row.img.src=await thumbnailUrlForLandscapeRecord(row.record);
+  }));
+}
 function renderPortraitInboxControls(){
   const bundles=activeInboxBundles(),staged=window.genreactrixBundleEngine?.stagedRecords?.()||[],failedCount=currentAiFailureRecords().length;
   const count=$("portraitInboxPackCount");if(count)count.textContent=String(bundles.length);
@@ -2910,16 +3002,36 @@ FILTER_CATEGORIES.forEach(key=>{
 });
 $("landscapeFilterPackSelect")?.addEventListener("click",()=>openBundlePicker());
 $("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"bundle";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
-
-$("tabletDepotBtn")?.addEventListener("click",async()=>{
-  if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
-  const next=!Boolean(record.attributes?.depot);
-  const updated=await window.genreactrixImagesEngine.setDepot(id,next);
-  state.flagged=Boolean(updated?.attributes?.flagged);
-  landscapeFeedDirty=true;
-  renderFlag();renderTabletWorkbench();
-  setDirectorStatus(next?"Image sent to Depot. It will leave Feed when you navigate away.":"Depot turned off.");
+$("landscapeThumbnailViewBtn")?.addEventListener("click",async()=>{
+  $("landscapeFilterDialog")?.close();
+  await openLandscapeThumbnailPicker();
 });
+$("landscapeThumbnailPickerClose")?.addEventListener("click",()=>closeLandscapeThumbnailPicker());
+$("landscapeThumbnailPickerDialog")?.addEventListener("close",()=>clearLandscapeThumbnailPickerUrls());
+$("landscapeThumbnailPickerGrid")?.addEventListener("click",async e=>{
+  const button=e.target?.closest?.('.thumbnail-picker-item');
+  if(!button)return;
+  const imageId=button.dataset.imageId||'';
+  closeLandscapeThumbnailPicker();
+  await jumpToLandscapeRecord(imageId);
+});
+
+let depotToggleInFlight=false;
+async function toggleCurrentDepot(){
+  if(depotToggleInFlight||state.feedEmpty)return null;
+  const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return null;
+  depotToggleInFlight=true;
+  try{
+    const next=!Boolean(record.attributes?.depot);
+    const updated=await window.genreactrixImagesEngine.setDepot(id,next);
+    state.flagged=Boolean(updated?.attributes?.flagged);
+    landscapeFeedDirty=true;
+    renderFlag();renderTabletWorkbench();renderLandscapeImageView();
+    setDirectorStatus(next?"Image sent to Depot. It will leave Feed when you navigate away.":"Depot turned off.");
+    return updated;
+  }finally{depotToggleInFlight=false;}
+}
+$("tabletDepotBtn")?.addEventListener("click",()=>toggleCurrentDepot());
 
 document.getElementById("tabletWorkspaceFlipBtn")?.addEventListener("click",()=>{tabletLandscapeView.face=tabletLandscapeView.face==="matrix"?"judgment":"matrix";if(tabletLandscapeView.face==="matrix")tabletLandscapeView.customs=false;renderTabletWorkbench();});
 document.getElementById("tabletAiReactionsBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiReactions=!tabletLandscapeView.aiReactions;renderTabletWorkbench();});
@@ -3238,7 +3350,10 @@ function renderLandscapeImageView(){
       const row=document.createElement("div");row.className="landscape-image-view-theme";row.innerHTML=`<b>${i+1}</b><strong>${themeLabel(state.themes[i])}</strong>`;themeRoot.appendChild(row);
     }
   }
-  applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),state.feedEmpty?"none":flagSeverityForRecord(currentImageRecord()));
+  const record=currentImageRecord();
+  applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),state.feedEmpty?"none":flagSeverityForRecord(record));
+  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(Boolean(record)&&state.retention==="keep"));
+  $("landscapeImageViewDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
 }
 function openLandscapeImageView(){
   landscapeImageViewState.open=true;
@@ -3320,6 +3435,7 @@ $("hotMagentaRejectAction")?.addEventListener("click",async()=>{
   setDirectorStatus("Reject selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
+$("landscapeImageViewDepotBtn")?.addEventListener("click",e=>{e.stopPropagation();toggleCurrentDepot()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
 landscapeImageCanvas?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();},{capture:true});
 function landscapePointerDistance(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return 0;return Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y)}

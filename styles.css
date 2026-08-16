@@ -6773,6 +6773,24 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .landscape-filter-grid>input{justify-self:center;width:20px;height:20px;accent-color:#23939b}
 .landscape-filter-bases input{width:20px;height:20px;accent-color:#23939b}
 .landscape-filter-count{margin:0;text-align:center;color:#9dd7db;font-size:.82rem;min-height:1.2em}
+.landscape-filter-footer{display:grid;gap:9px;align-items:center}
+.landscape-filter-footer button{justify-self:end;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid #2b7b81;background:#17474b;color:#e7feff;font:inherit;font-weight:700}
+.thumbnail-picker-dialog{border:1px solid #2a777d;border-radius:14px;padding:0;background:#17191e;color:#f3f6f7;box-shadow:0 18px 60px rgba(0,0,0,.55);width:min(860px,calc(100vw - 22px));max-width:calc(100vw - 22px);height:min(86dvh,760px);max-height:min(86dvh,760px)}
+.thumbnail-picker-dialog::backdrop{background:rgba(0,0,0,.58)}
+.thumbnail-picker-shell{display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:10px;padding:14px;height:100%;max-height:min(86dvh,760px);box-sizing:border-box}
+.thumbnail-picker-shell>header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #28484b;padding-bottom:9px}
+.thumbnail-picker-shell h2{margin:0;font-size:1.05rem}
+.thumbnail-picker-status{margin:0;color:#a7d9dd;font-size:.84rem}
+.thumbnail-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;overflow:auto;min-height:0;padding-right:2px}
+.thumbnail-picker-item{display:grid;gap:6px;align-content:start;width:100%;padding:7px;border-radius:10px;border:1px solid #34464a;background:#20272b;color:#f4f7f7;text-align:left}
+.thumbnail-picker-item:hover,.thumbnail-picker-item:focus-visible{border-color:#61d5dd;outline:none}
+.thumbnail-picker-item.is-current{border-color:#67d789;background:#183228;box-shadow:inset 0 0 0 1px rgba(103,215,137,.25)}
+.thumbnail-picker-thumb{display:grid;place-items:center;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:#11161a;border:1px solid #2f3a3f}
+.thumbnail-picker-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.thumbnail-picker-meta{display:grid;gap:2px;min-width:0}
+.thumbnail-picker-meta strong{font-size:.76rem;color:#dffbff}
+.thumbnail-picker-meta small{font-size:.64rem;color:#aab5b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumbnail-picker-empty{margin:8px 0;text-align:center;color:#aab5b8;font-size:.82rem;grid-column:1/-1}
 
 /* v0.9.39.83 — Ready → Push to Inbox creates Pack; Failed export/recycle workflow. */
 .portrait-inbox-push{display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;gap:5px;margin-top:3px}
@@ -7728,7 +7746,9 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .landscape-filter-pack button{padding:6px 8px}
   .landscape-filter-sort{grid-area:sort;align-self:end}
   .landscape-filter-sort select{padding:6px 7px}
-  .landscape-filter-count{grid-area:count;align-self:center;margin:0;padding:8px;border:1px solid #28484b;border-radius:8px;background:#12171b}
+  .landscape-filter-footer{grid-area:count;align-self:center;grid-template-columns:minmax(0,1fr) auto}
+  .landscape-filter-count{align-self:center;margin:0;padding:8px;border:1px solid #28484b;border-radius:8px;background:#12171b}
+  .landscape-filter-footer button{align-self:center}
 }
 
 /* v0.9.40.49 — AI Description rerun workstation.
@@ -8184,4 +8204,24 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     grid-column:span 2;width:100%!important;min-width:0!important;height:25px!important;min-height:25px!important;max-height:25px!important;
     margin:0!important;padding:2px 5px!important;border-radius:6px!important;font-size:10px!important;line-height:1.05!important;box-sizing:border-box!important
   }
+}
+
+
+/* v0.9.40.66 — Image View Depot toggle + Filter Thumbnail View. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #landscapeImageView .landscape-image-view-controls{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  #landscapeImageView .landscape-image-view-controls button{font-size:9px!important;padding:3px 4px!important;min-height:29px!important}
+}
+
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  #landscapeImageViewDepotBtn[aria-pressed="false"]{background:var(--panel)!important;border:1px solid var(--line)!important;color:var(--text)!important;outline:none!important;box-shadow:none!important}
+  #landscapeImageViewDepotBtn[aria-pressed="true"]{background:#493B86!important;border-color:#9B8CFF!important;color:#F1EDFF!important;outline:2px solid #9B8CFF!important;outline-offset:-2px!important;box-shadow:none!important}
+}
+@media (orientation:landscape) and (max-height:650px){
+  .thumbnail-picker-dialog{width:min(920px,calc(100vw - 10px));max-width:calc(100vw - 10px);max-height:calc(100dvh - 8px)}
+  .thumbnail-picker-shell{max-height:calc(100dvh - 8px);padding:10px;gap:8px}
+  .thumbnail-picker-grid{grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px}
+  .thumbnail-picker-item{padding:6px}
+  .thumbnail-picker-meta strong{font-size:.72rem}
+  .thumbnail-picker-meta small{font-size:.6rem}
 }

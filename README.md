@@ -1,14 +1,21 @@
-# Genreactrix v0.9.40.65 — Purgatory Fault-Injection Diagnostic
+# Genreactrix v0.9.40.66 — Image View Depot + Inbox Thumbnail View
+
+## v0.9.40.66 — Bundled navigation update; Purgatory diagnostic continues
+
+- Worker remains **0.9.6.35-reaction-rerun-combined-multimodal**; no Worker redeploy is required.
+- **Image View Depot:** the enlarged Image View now has a five-button row: **Back | Next | Flag | Keep | Depot**. Depot is the same canonical `attributes.depot` state used by the normal Director view, not a parallel flag. Toggling from either view updates both controls.
+- Image View Depot uses the same normal-view visual identity: ordinary toolbar treatment while off; booked indigo/purple Depot treatment while on.
+- **Inbox Thumbnail View:** the existing Filter popup now has a **Thumbnail View** button at bottom-right. It opens a separate modal grid, so the accepted Landscape workspace does not get squeezed or rearranged.
+- The thumbnail grid uses the current Inbox Filter and Sort result, uses stored permanent thumbnails first, identifies the current image, and shows filenames beneath thumbnails. Tapping a thumbnail jumps directly to that exact Inbox image and closes the modal.
+- **Purgatory traveler diagnostic remains intentionally present:** a newly imported image whose original filename begins exactly with `PURGATORY_TEST_` still fails its first three automatic Post-processing attempts, then allows manual Retry / Retry All through normally. Files without that prefix are unaffected.
+- The two unrelated CSS mutations produced during the interrupted `.66` generation were removed before packaging; normal Director and AI control geometry remains byte-for-byte equivalent in those rules to `.65`.
 
 ## v0.9.40.65 — Controlled Post-processing failure traveler
 
-- **Temporary diagnostic build.** Worker remains **0.9.6.35-reaction-rerun-combined-multimodal**; no Worker redeploy is required.
-- A newly imported image whose original filename begins exactly with `PURGATORY_TEST_` is deliberately failed during its first **three automatic Post-processing attempts**.
+- **Temporary diagnostic behavior.** A newly imported image whose original filename begins exactly with `PURGATORY_TEST_` is deliberately failed during its first **three automatic Post-processing attempts**.
 - The injected failure occurs after the Batch/Post-processing attempt has started and before Images Engine finalization, so the image must remain unresolved in Purgatory rather than partially reaching Keep, Recycle, or a final exclusion stage.
 - The diagnostic injection applies only to `automatic` attempts 1–3. **Manual Retry, Retry All, and Daily Housekeeping are not fault-injected**, allowing the real recovery path to complete.
 - The error is explicitly named `GenreactrixDiagnosticPurgatoryFailure` and is preserved in the ordered Post-processing attempt/error history.
-- Files without the `PURGATORY_TEST_` prefix are unaffected.
-- No accepted Landscape/Portrait geometry, AI behavior, Reaction 60/40 logic, Inbox accounting, Batch membership semantics, or Worker code changed.
 - Remove this diagnostic injector after the Purgatory traveler acceptance tests are complete.
 
 ## Prior accepted site baseline: v0.9.40.64
