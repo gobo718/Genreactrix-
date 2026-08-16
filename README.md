@@ -1,7 +1,18 @@
-# Genreactrix v0.9.40.70 — History Image Visibility Repair
+# Genreactrix v0.9.40.71 — History Image Visibility Repair
+
+## v0.9.40.71 — Controlled Daily Housekeeping / Recycle expiry diagnostic
+
+- Temporary, query-gated diagnostic only: `?recycleExpiryTest=1`.
+- Hard-scoped to Image ID `local-4d42e378-25ce-4654-a7e3-12497e01665b` and requires its filename to begin `PURGATORY_TEST_`.
+- No normal-load behavior changes when the query parameter is absent.
+- Before changing anything, the diagnostic aborts if unresolved Purgatory work, Origin source-retry work, or another already/near-expired Recycle item exists.
+- On approval it moves only the designated throwaway image to Recycle if necessary, backdates only that Recycle timestamp beyond the configured retention period, then invokes the normal `runDaily({force:true})` Housekeeping path.
+- Acceptance checks: expired full-resolution asset purged, permanent Image Record remains, 64x64 thumbnail remains; Housekeeping code still contains no AI or Quarantine retry call.
+- Remove this diagnostic after acceptance.
 
 
-## v0.9.40.70 — History Image unavailable-overlay repair
+
+## v0.9.40.71 — History Image unavailable-overlay repair
 
 - Fixes the shared Investigation preview hide-state so `Image data unavailable` is not rendered over a valid full-resolution image or thumbnail.
 - No image lifecycle, Recycle, Maintenance, layout geometry, or Worker behavior changed.
