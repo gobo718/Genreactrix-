@@ -4,7 +4,6 @@
 (()=>{'use strict';
 const DB='genreactrix-post-processing-engine-v1',VERSION=1,PLANS='plans';
 const AUTOMATIC_ATTEMPTS=3;
-const DIAGNOSTIC_PURGATORY_PREFIX='PURGATORY_TEST_';
 const now=()=>new Date().toISOString(),clone=v=>v==null?v:structuredClone(v);
 function openDb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(PLANS)){const s=db.createObjectStore(PLANS,{keyPath:'id'});s.createIndex('batchId','batchId');s.createIndex('imageId','imageId');s.createIndex('status','status');s.createIndex('submissionToken','submissionToken');s.createIndex('updatedAt','updatedAt')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Could not open Post-processing journal'))})}
 async function withStore(mode,work){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(PLANS,mode),store=tx.objectStore(PLANS);let result;try{result=work(store)}catch(error){db.close();reject(error);return}tx.oncomplete=()=>{db.close();resolve(result)};tx.onerror=()=>{db.close();reject(tx.error||new Error('Post-processing journal transaction failed'))};tx.onabort=()=>{db.close();reject(tx.error||new Error('Post-processing journal transaction aborted'))}})}
@@ -24,9 +23,6 @@ async function plansForSubmission(submissionToken){return (await all()).filter(p
 async function plansForBatch(batchId){return (await all()).filter(p=>p.batchId===String(batchId)).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)))}
 async function purgatoryPlans(){return (await all()).filter(p=>p.status==='purgatory').sort((a,b)=>String(a.purgatoryAt||a.updatedAt).localeCompare(String(b.purgatoryAt||b.updatedAt)))}
 function automaticUsed(plan){return(plan.attempts||[]).filter(a=>a.kind==='automatic').length}
-function diagnosticOriginalFilename(plan){const record=window.genreactrixImageRecordEngine?.get?.(plan.imageId,{touch:false});return String(record?.source?.originalFilename||record?.name||'')}
-function shouldInjectDiagnosticPurgatoryFailure(plan,{kind,attemptNumber}={}){return kind==='automatic'&&Number(attemptNumber)<=AUTOMATIC_ATTEMPTS&&diagnosticOriginalFilename(plan).toUpperCase().startsWith(DIAGNOSTIC_PURGATORY_PREFIX)}
-function diagnosticPurgatoryError(plan,attemptNumber){const filename=diagnosticOriginalFilename(plan)||plan.imageId,error=new Error(`DIAGNOSTIC PURGATORY TEST: intentionally failed automatic Post-processing attempt ${attemptNumber}/${AUTOMATIC_ATTEMPTS} for ${filename}. Manual Retry and Retry All are not fault-injected.`);error.name='GenreactrixDiagnosticPurgatoryFailure';return error}
 async function markStage(plan,stage){try{if(stage==='post-processing')return window.genreactrixLifecycleEngine?.markPostProcessing?.(plan.imageId,plan.batchId);if(stage==='purgatory')return window.genreactrixLifecycleEngine?.markPurgatory?.(plan.imageId,plan.batchId)}catch(error){console.warn('Lifecycle stage update failed during Post-processing',error)}return null}
 async function appendHistory(plan,eventType,payload){try{return await window.genreactrixHistoryEngine?.append?.({imageId:plan.imageId,eventType,actor:'system',sourceEngine:'post-processing',batchId:plan.batchId,summary:eventType.replaceAll('-',' '),payload})}catch(error){console.warn('Post-processing history append failed',error);return null}}
 async function runAttempt(id,{kind='manual'}={}){
@@ -36,7 +32,6 @@ async function runAttempt(id,{kind='manual'}={}){
   await markStage(plan,'post-processing');
   await appendHistory(plan,'post-processing-attempt-started',{planId:plan.id,attemptNumber,kind,decision:clone(plan.decision)});
   try{
-    if(shouldInjectDiagnosticPurgatoryFailure(plan,{kind,attemptNumber}))throw diagnosticPurgatoryError(plan,attemptNumber);
     const result=await window.genreactrixImagesEngine?.finalizePostProcessingPlan?.({id:plan.id,batchId:plan.batchId,imageId:plan.imageId,...clone(plan.decision)});if(!result)throw new Error('Images Engine did not return a Post-processing result');
     const completedAt=now(),attempts=[...(plan.attempts||[])];Object.assign(attempts[attempts.length-1],{completedAt,status:'complete'});
     plan=await put({...plan,status:'completed',completedAt,purgatoryAt:null,lastSuccessAt:completedAt,lastError:null,attempts,result:{recycled:Boolean(result.recycled),kept:Boolean(result.kept),idempotent:Boolean(result.idempotent)}});
