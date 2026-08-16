@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.30-theme-rerun-parser-fallback
+/* Genreactrix AI Worker v0.9.6.31-reaction-rerun-sources
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.30-theme-rerun-parser-fallback';
+const API_VERSION = '0.9.6.31-reaction-rerun-sources';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -139,15 +139,25 @@ validateRegistry(PRIMFUSION_REGISTRY);
 
 const matrixVersion = () => PRIMFUSION_REGISTRY.matrixVersion;
 
-function reactionPrompt(){
+function reactionPrompt({useImage=true,descriptionContext='' }={}){
   const lines = PRIMFUSION_REGISTRY.primitives.map(p => {
     const meaning = p.aiMeaning ? ` Meaning: ${p.aiMeaning}` : '';
     return `${p.id} — ${p.name}.${meaning}`;
   }).join('\n');
+  const description=String(descriptionContext||'').trim().slice(0,6000);
+  const useDescription=Boolean(description);
+  const evidenceRule=useImage&&useDescription
+    ? `Analyze the image and the supplied AI Description together as two evidence sources. Use the Description as observational context, not as prior Reaction scoring. When they differ, judge the reaction field from the total available evidence.`
+    : useDescription
+      ? `Analyze ONLY the supplied AI Description. No image is provided for this rerun. Do not invent visual evidence beyond what the Description states.`
+      : `Analyze the image as the sole evidence source.`;
+  const noteRule=useImage?'image-grounded':'description-grounded';
+  const descriptionBlock=useDescription?`\n\nAI DESCRIPTION EVIDENCE:\n${description}`:'';
 
   return `You are performing Genreactrix Reaction Analysis.
 
-Analyze the image as a person choosing among all 14 Genreactrix reaction buttons at the same time.
+${evidenceRule}
+Choose among all 14 Genreactrix reaction buttons at the same time.
 The P-codes are identifiers only. Reaction Analysis is independent from Theme/PrimFusion analysis.
 
 Your job is semantic comparison, NOT arithmetic and NOT 14 independent confidence ratings.
@@ -155,18 +165,18 @@ For every reaction, assign a NONNEGATIVE RELATIVE WEIGHT from 0 to 100. The weig
 
 Rank ALL 14 reactions from strongest to weakest. Rank #1 is the primary reaction. Rank #2 is the required secondary reaction candidate: identify the best-supported alternative even when it is much weaker than the primary. Do not stop after finding one obvious reaction.
 
-Provide concise image-grounded notes for the first FOUR ranked reactions. Those notes are an effort check showing that the primary, secondary, and nearest alternatives were actually considered. A genuinely single-dominant image is allowed; if ranks 2-4 are weak or unsupported, say so rather than inventing support.
+Provide concise ${noteRule} notes for the first FOUR ranked reactions. Those notes are an effort check showing that the primary, secondary, and nearest alternatives were actually considered. A genuinely single-dominant case is allowed; if ranks 2-4 are weak or unsupported, say so rather than inventing support.
 
 Do not make every weight identical. Do not return all zeros. Do not use Theme names or Theme reasoning to choose the reactions.
 
 REACTION PRIMS:
-${lines}
+${lines}${descriptionBlock}
 
 Return one JSON object matching the Worker-provided schema.
 The object must contain:
 - weights: P01 through P14, each as a JSON number from 0 to 100
 - ranking: all 14 P-codes strongest-to-weakest, each exactly once
-- notes: exactly four objects for ranks 1-4, each with id and a brief image-grounded reason
+- notes: exactly four objects for ranks 1-4, each with id and a brief ${noteRule} reason
 Do not put numbers in percent strings. Do not wrap the JSON in Markdown or code fences.`;
 }
 
@@ -417,7 +427,7 @@ function reactionRetryInstruction(error){
   return `\n\nYour previous response was rejected by the Reaction effort/format validator: ${String(error?.message||error||'unknown error').slice(0,500)}\nReassess the whole 14-reaction field from scratch. Return the required JSON object with all 14 numeric relative weights, a complete strongest-to-weakest ranking with no duplicates, and four non-empty notes for ranks 1-4. Do not perform percentage-total arithmetic.`;
 }
 
-async function runReactionAssessment(env,model,image,behavior='analyze'){
+async function runReactionAssessment(env,model,image,behavior='analyze',evidence={}){
   let lastError = null;
   // The legacy Llama 3.2 Vision model used elsewhere in this Worker does not
   // document guided_json. Reactions therefore use Llama 4 Scout by default,
@@ -425,7 +435,7 @@ async function runReactionAssessment(env,model,image,behavior='analyze'){
   const reactionModel = env.WORKERS_AI_REACTION_MODEL || DEFAULT_REACTION_MODEL;
   for (let attempt=1;attempt<=2;attempt++){
     try{
-      const prompt = reactionPrompt() + (attempt===2 ? reactionRetryInstruction(lastError) : '');
+      const prompt = reactionPrompt(evidence) + (attempt===2 ? reactionRetryInstruction(lastError) : '');
       const structured = await runStructured(
         env,reactionModel,image,prompt,reactionSchema(),2100,'guided_json',
         {behavior,temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):0}
@@ -446,8 +456,8 @@ async function runReactionAssessment(env,model,image,behavior='analyze'){
   );
 }
 
-async function runReactionAllocation(env,model,image,behavior='analyze'){
-  const assessment = await runReactionAssessment(env,model,image,behavior);
+async function runReactionAllocation(env,model,image,behavior='analyze',evidence={}){
+  const assessment = await runReactionAssessment(env,model,image,behavior,evidence);
   return allocateReactionPool(assessment);
 }
 
@@ -864,10 +874,10 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   try{
     const request = {
       prompt:prompt + freshRerun,
-      image,
       max_tokens:maxTokens,
       temperature
     };
+    if (image && (image.byteLength || image.length)) request.image = image;
     if (responseMode === 'guided_json') {
       // Cloudflare Workers AI binding parameter: schema-guided JSON generation.
       request.guided_json = schema;
@@ -1142,9 +1152,14 @@ async function analyze(env,body){
   const requested = [...new Set((body.components||[]).filter(x=>COMPONENT_IDS.includes(x)))];
   if (!body.imageId || !requested.length) throw new Error('imageId and components are required');
 
-  const image = body.imageDataUrl
-    ? dataUrlBytes(body.imageDataUrl)
-    : await fetchBytes(body.imageUrl);
+  const reactionOnly = requested.every(name=>name==='reactions'||name==='reactionReasons');
+  const rawReactionSources = body.reactionRerunSources && typeof body.reactionRerunSources==='object' ? body.reactionRerunSources : null;
+  const reactionSources = rawReactionSources ? {image:rawReactionSources.image!==false,description:Boolean(rawReactionSources.description)} : {image:true,description:false};
+  const reactionDescriptionContext = reactionSources.description ? String(body.reactionDescriptionContext||'').trim().slice(0,6000) : '';
+  if (reactionOnly && !reactionSources.image && !reactionSources.description) throw new Error('Reaction rerun requires Image, Description, or both');
+  if (reactionOnly && reactionSources.description && !reactionDescriptionContext) throw new Error('Reaction rerun requested Description evidence but no AI Description context was supplied');
+  const needsImage = !reactionOnly || reactionSources.image;
+  const image = needsImage ? (body.imageDataUrl ? dataUrlBytes(body.imageDataUrl) : await fetchBytes(body.imageUrl)) : null;
 
   const model = env.WORKERS_AI_VISION_MODEL || DEFAULT_MODEL;
   const components = {};
@@ -1158,7 +1173,8 @@ async function analyze(env,body){
   // when both are requested, so research reasoning cannot drift away from the result it explains.
   if (requested.includes('reactions') || requested.includes('reactionReasons')){
     const behavior = behaviorFor(['reactions','reactionReasons']);
-    const reactionResult = await runReactionAllocation(env,model,image,behavior);
+    const reactionEvidence = {useImage:reactionSources.image,descriptionContext:reactionDescriptionContext};
+    const reactionResult = await runReactionAllocation(env,model,image,behavior,reactionEvidence);
     components.reactionDiagnostics = reactionResult.diagnostics;
     if (requested.includes('reactions')) components.reactions = reactionResult.display;
     if (requested.includes('reactionReasons')) components.reactionReasons = {
@@ -1168,7 +1184,7 @@ async function analyze(env,body){
       reactionCombo:reactionResult.diagnostics.reactionCombo,
       singleDominant:reactionResult.diagnostics.singleDominant
     };
-    promptVersions.reactions = 'genreactrix-reactions-registry-v6-tolerant-relative-worker-apportionment';
+    promptVersions.reactions = reactionSources.description ? 'genreactrix-reactions-registry-v7-rerun-evidence-sources' : 'genreactrix-reactions-registry-v6-tolerant-relative-worker-apportionment';
     if (requested.includes('reactionReasons')) promptVersions.reactionReasons = 'genreactrix-reaction-info-v2-shared-assessment';
   }
 
@@ -1252,7 +1268,7 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
     model,
     primFusionMatrixVersion:matrixVersion(),
     promptVersions,
-    researchConfiguration:{customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED},
+    researchConfiguration:{customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,...(requested.includes('reactions')?{reactionEvidenceSources:{image:reactionSources.image,description:reactionSources.description}}:{})},
     reviewDirectives:{
       autoKeep:customThemeTriggered,
       autoFlag:customThemeTriggered,
