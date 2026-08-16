@@ -1,10 +1,10 @@
-/* Genreactrix AI Worker v0.9.6.31-reaction-rerun-sources
+/* Genreactrix AI Worker v0.9.6.35-reaction-rerun-combined-multimodal
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.31-reaction-rerun-sources';
+const API_VERSION = '0.9.6.35-reaction-rerun-combined-multimodal';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
-// Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
+// Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
 const COMPONENT_IDS = ['reactions','themes','description','reactionReasons','genreReasons'];
 const CUSTOM_THEME_GENERATION_ENABLED = false;
@@ -102,6 +102,14 @@ const parseProviderResponse = payload => {
   }
 };
 
+const tagImageMime = (bytes,mimeType) => {
+  const mime=String(mimeType||'').split(';')[0].trim().toLowerCase();
+  if (Array.isArray(bytes) && /^image\/[a-z0-9.+-]+$/i.test(mime)) {
+    try { Object.defineProperty(bytes,'mimeType',{value:mime,enumerable:false,configurable:true}); } catch {}
+  }
+  return bytes;
+};
+
 const fetchBytes = async url => {
   if (!/^https:\/\//i.test(url) || url.length > 2000) throw new Error('imageUrl must be HTTPS');
   const response = await fetch(url,{headers:{accept:'image/*'}});
@@ -109,15 +117,36 @@ const fetchBytes = async url => {
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (!bytes.length) throw new Error('Image was empty');
   if (bytes.length > 6_000_000) throw new Error('Image exceeds 6 MB');
-  return Array.from(bytes);
+  return tagImageMime(Array.from(bytes),response.headers.get('content-type'));
 };
 
 const dataUrlBytes = value => {
-  const match = String(value||'').match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/);
+  const match = String(value||'').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!match) throw new Error('imageDataUrl must be a base64 image');
-  const binary = atob(match[1]);
+  const binary = atob(match[2]);
   if (binary.length > 6_000_000) throw new Error('Image exceeds 6 MB');
-  return Array.from(binary,c=>c.charCodeAt(0));
+  return tagImageMime(Array.from(binary,c=>c.charCodeAt(0)),match[1]);
+};
+
+const imageMimeFromBytes = bytes => {
+  const b=Array.isArray(bytes)?bytes:Array.from(bytes||[]);
+  if (b[0]===0xff&&b[1]===0xd8&&b[2]===0xff) return 'image/jpeg';
+  if (b[0]===0x89&&b[1]===0x50&&b[2]===0x4e&&b[3]===0x47) return 'image/png';
+  if (b[0]===0x47&&b[1]===0x49&&b[2]===0x46&&b[3]===0x38) return 'image/gif';
+  if (b[0]===0x52&&b[1]===0x49&&b[2]===0x46&&b[3]===0x46&&b[8]===0x57&&b[9]===0x45&&b[10]===0x42&&b[11]===0x50) return 'image/webp';
+  if (b[0]===0x42&&b[1]===0x4d) return 'image/bmp';
+  const brand=String.fromCharCode(...b.slice(4,12));
+  if (/^ftypavi[fs]$/.test(brand)) return 'image/avif';
+  if (/^ftyphei[cf]$/.test(brand)||/^ftyphev[csx]$/.test(brand)) return 'image/heic';
+  return 'image/jpeg';
+};
+
+const imageBytesDataUrl = bytes => {
+  const b=Array.isArray(bytes)?bytes:Array.from(bytes||[]);
+  if (!b.length) throw new Error('Image was empty');
+  let binary='';
+  for (let i=0;i<b.length;i+=0x8000) binary+=String.fromCharCode(...b.slice(i,i+0x8000));
+  return `data:${bytes?.mimeType||imageMimeFromBytes(b)};base64,${btoa(binary)}`;
 };
 
 function validateRegistry(registry){
@@ -139,7 +168,7 @@ validateRegistry(PRIMFUSION_REGISTRY);
 
 const matrixVersion = () => PRIMFUSION_REGISTRY.matrixVersion;
 
-function reactionPrompt({useImage=true,descriptionContext='' }={}){
+function reactionPrompt({useImage=true,descriptionContext='',lineProtocol=false,requireNotes=false}={}){
   const lines = PRIMFUSION_REGISTRY.primitives.map(p => {
     const meaning = p.aiMeaning ? ` Meaning: ${p.aiMeaning}` : '';
     return `${p.id} — ${p.name}.${meaning}`;
@@ -153,6 +182,13 @@ function reactionPrompt({useImage=true,descriptionContext='' }={}){
       : `Analyze the image as the sole evidence source.`;
   const noteRule=useImage?'image-grounded':'description-grounded';
   const descriptionBlock=useDescription?`\n\nAI DESCRIPTION EVIDENCE:\n${description}`:'';
+  const ids=PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
+  const noteInstruction=(lineProtocol&&!requireNotes)
+    ? `Reaction Reasons were not requested for this run. Do not add NOTE or rationale lines.`
+    : `Provide concise ${noteRule} notes for the first FOUR ranked reactions. Those notes are an effort check showing that the primary, secondary, and nearest alternatives were actually considered. A genuinely single-dominant case is allowed; if ranks 2-4 are weak or unsupported, say so rather than inventing support.`;
+  const outputRule=lineProtocol
+    ? `Return ONLY this compact plain-text protocol; do not return JSON, Markdown, labels, percentages, or commentary:\n${ids.map(id=>`${id}|<number from 0 to 100>`).join('\n')}\nRANKING|<all 14 P-codes strongest-to-weakest, comma-separated, each exactly once>${requireNotes?`\nNOTE|<rank-1 P-code>|<brief ${noteRule} reason>\nNOTE|<rank-2 P-code>|<brief ${noteRule} reason>\nNOTE|<rank-3 P-code>|<brief ${noteRule} reason>\nNOTE|<rank-4 P-code>|<brief ${noteRule} reason>`:''}\nEvery P01-P14 line is mandatory and its second field must be a bare numeric value.`
+    : `Return one JSON object matching the structure below.\nThe object must contain:\n- weights: P01 through P14, each as a JSON number from 0 to 100\n- ranking: all 14 P-codes strongest-to-weakest, each exactly once\n- notes: exactly four objects for ranks 1-4, each with id and a brief ${noteRule} reason\nDo not put numbers in percent strings. Do not wrap the JSON in Markdown or code fences.`;
 
   return `You are performing Genreactrix Reaction Analysis.
 
@@ -165,19 +201,14 @@ For every reaction, assign a NONNEGATIVE RELATIVE WEIGHT from 0 to 100. The weig
 
 Rank ALL 14 reactions from strongest to weakest. Rank #1 is the primary reaction. Rank #2 is the required secondary reaction candidate: identify the best-supported alternative even when it is much weaker than the primary. Do not stop after finding one obvious reaction.
 
-Provide concise ${noteRule} notes for the first FOUR ranked reactions. Those notes are an effort check showing that the primary, secondary, and nearest alternatives were actually considered. A genuinely single-dominant case is allowed; if ranks 2-4 are weak or unsupported, say so rather than inventing support.
+${noteInstruction}
 
 Do not make every weight identical. Do not return all zeros. Do not use Theme names or Theme reasoning to choose the reactions.
 
 REACTION PRIMS:
 ${lines}${descriptionBlock}
 
-Return one JSON object matching the Worker-provided schema.
-The object must contain:
-- weights: P01 through P14, each as a JSON number from 0 to 100
-- ranking: all 14 P-codes strongest-to-weakest, each exactly once
-- notes: exactly four objects for ranks 1-4, each with id and a brief ${noteRule} reason
-Do not put numbers in percent strings. Do not wrap the JSON in Markdown or code fences.`;
+${outputRule}`;
 }
 
 function reactionSchema(){
@@ -332,7 +363,50 @@ function parseReactionText(text){
   return {weights,ranking:ranking||[],notes,rawPreview:raw.slice(0,3000)};
 }
 
-function validateReactionAssessment(raw){
+
+function parseReactionLineProtocol(text,{requireNotes=false}={}){
+  const ids=PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
+  const weights={};
+  let ranking=[];
+  const notes=[];
+  const raw=String(text||'').replace(/```(?:text)?/gi,'').trim();
+  for(const originalLine of raw.split(/\r?\n/)){
+    const line=originalLine.trim().replace(/^[-*]\s*/,'');
+    if(!line)continue;
+    const weightMatch=line.match(/^(P\d{2})\s*\|\s*(-?\d+(?:\.\d+)?)\s*$/i);
+    if(weightMatch){
+      const id=weightMatch[1].toUpperCase(),value=Number(weightMatch[2]);
+      if(ids.includes(id)&&Number.isFinite(value)&&!(id in weights))weights[id]=value;
+      continue;
+    }
+    const rankingMatch=line.match(/^RANKING\s*\|\s*(.+)$/i);
+    if(rankingMatch){
+      ranking=(rankingMatch[1].match(/P\d{2}/gi)||[]).map(x=>x.toUpperCase());
+      continue;
+    }
+    const noteMatch=line.match(/^NOTE\s*\|\s*(P\d{2})\s*\|\s*(.+)$/i);
+    if(noteMatch){
+      const id=noteMatch[1].toUpperCase(),reason=noteMatch[2].trim();
+      if(ids.includes(id)&&reason&&!notes.some(row=>row.id===id))notes.push({id,reason});
+    }
+  }
+  const missing=ids.filter(id=>!(id in weights));
+  if(missing.length)throw diagnosticError(
+    `Reaction combined-evidence response was missing numeric weights for ${missing.join(', ')}`,
+    {phase:'reaction-combined-line-parse',missingPrimCodes:missing,responsePreview:raw.slice(0,1600)}
+  );
+  if(ranking.length!==ids.length||new Set(ranking).size!==ids.length||ranking.some(id=>!ids.includes(id)))throw diagnosticError(
+    'Reaction combined-evidence response did not provide one complete 14-Prim ranking',
+    {phase:'reaction-combined-line-parse',responsePreview:raw.slice(0,1600)}
+  );
+  if(requireNotes&&notes.length<4)throw diagnosticError(
+    `Reaction combined-evidence response provided ${notes.length} usable notes instead of 4`,
+    {phase:'reaction-combined-line-parse',responsePreview:raw.slice(0,1600)}
+  );
+  return{weights,ranking,notes,rawPreview:raw.slice(0,3000)};
+}
+
+function validateReactionAssessment(raw,{requireNotes=false}={}){
   const ids = PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Reaction assessment was not an object');
   const weights = {};
@@ -366,7 +440,7 @@ function validateReactionAssessment(raw){
   }
   const topFour = ranking.slice(0,4);
   const notes = topFour.filter(id=>noteMap.has(id)).map(id=>({id,reason:noteMap.get(id)}));
-  if (notes.length !== 4) throw new Error(`Reaction assessment provided ${notes.length} usable top-four effort notes instead of 4`);
+  if (requireNotes && notes.length !== 4) throw new Error(`Reaction assessment provided ${notes.length} usable top-four effort notes instead of 4`);
 
   return {weights,ranking,notes,rankingSource};
 }
@@ -423,24 +497,71 @@ function allocateReactionPool(assessment){
   };
 }
 
-function reactionRetryInstruction(error){
-  return `\n\nYour previous response was rejected by the Reaction effort/format validator: ${String(error?.message||error||'unknown error').slice(0,500)}\nReassess the whole 14-reaction field from scratch. Return the required JSON object with all 14 numeric relative weights, a complete strongest-to-weakest ranking with no duplicates, and four non-empty notes for ranks 1-4. Do not perform percentage-total arithmetic.`;
+function reactionRetryInstruction(error,{lineProtocol=false,requireNotes=false}={}){
+  const formatRule=lineProtocol
+    ? `Return the compact line protocol exactly: one mandatory P01-P14 numeric weight line for every Prim, then one RANKING line${requireNotes?', then four NOTE lines for ranks 1-4':''}. Do not return JSON.`
+    : `Return the required JSON object with all 14 numeric relative weights, a complete strongest-to-weakest ranking with no duplicates, and four non-empty notes for ranks 1-4.`;
+  return `\n\nYour previous response was rejected by the Reaction effort/format validator: ${String(error?.message||error||'unknown error').slice(0,500)}\nReassess the whole 14-reaction field from scratch. ${formatRule} Do not perform percentage-total arithmetic.`;
 }
 
 async function runReactionAssessment(env,model,image,behavior='analyze',evidence={}){
   let lastError = null;
-  // The legacy Llama 3.2 Vision model used elsewhere in this Worker does not
-  // document guided_json. Reactions therefore use Llama 4 Scout by default,
-  // which Cloudflare documents as supporting both Vision and guided_json.
-  const reactionModel = env.WORKERS_AI_REACTION_MODEL || DEFAULT_REACTION_MODEL;
+  const useImage = evidence?.useImage !== false;
+  const descriptionContext = String(evidence?.descriptionContext||'').trim();
+  const combinedEvidence = useImage && Boolean(descriptionContext);
+  const evidenceMode = useImage ? (combinedEvidence ? 'image+description' : 'image') : 'description';
+  const requireNotes = evidence?.requireNotes === true;
+
+  // Evidence routing is intentionally mode-specific:
+  // - Image only: Llama 3.2 Vision with the documented legacy image field.
+  // - Description only: Llama 4 Scout with guided_json and no image bytes.
+  // - Image + Description: Llama 4 Scout as a true multimodal chat request, with
+  //   text and a data-URI image content part in the same message plus guided_json.
+  const reactionModel = combinedEvidence
+    ? (env.WORKERS_AI_REACTION_MODEL || DEFAULT_REACTION_MODEL)
+    : useImage
+      ? (env.WORKERS_AI_REACTION_VISION_MODEL || model || DEFAULT_MODEL)
+      : (env.WORKERS_AI_REACTION_MODEL || DEFAULT_REACTION_MODEL);
+
   for (let attempt=1;attempt<=2;attempt++){
     try{
-      const prompt = reactionPrompt(evidence) + (attempt===2 ? reactionRetryInstruction(lastError) : '');
+      const prompt = reactionPrompt(evidence) + (attempt===2 ? reactionRetryInstruction(lastError,{lineProtocol:false,requireNotes}) : '');
+
+      if (combinedEvidence){
+        const structured = await runStructured(
+          env,reactionModel,image,prompt,reactionSchema(),2300,'guided_json',
+          {behavior,reactionEvidenceMode:evidenceMode,multimodalMessages:true,temperature:attempt===1?(behavior==='reanalyze'?0.28:0.08):0}
+        );
+        return validateReactionAssessment(structured,{requireNotes});
+      }
+
+      if (useImage){
+        const raw = await runStructured(
+          env,reactionModel,image,prompt,null,2600,'text',
+          {behavior,reactionEvidenceMode:evidenceMode,temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):0}
+        );
+        const parsed = parseReactionText(raw);
+        try{
+          return validateReactionAssessment(parsed,{requireNotes});
+        }catch(error){
+          throw diagnosticError(
+            error?.message || 'Reaction Vision response could not be validated',
+            {
+              phase:'reaction-vision-text-parse-or-effort-validation',
+              model:reactionModel,
+              evidenceMode,
+              errorMessage:String(error?.message||error||'unknown').slice(0,1200),
+              responsePreview:String(parsed?.rawPreview||raw||'').slice(0,1600)
+            }
+          );
+        }
+      }
+
       const structured = await runStructured(
-        env,reactionModel,image,prompt,reactionSchema(),2100,'guided_json',
+        env,reactionModel,null,prompt,reactionSchema(),2100,'guided_json',
         {behavior,temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):0}
       );
-      return validateReactionAssessment(structured);
+      return validateReactionAssessment(structured,{requireNotes});
     }catch(error){
       lastError = error;
       const message = String(error?.message||error);
@@ -452,7 +573,12 @@ async function runReactionAssessment(env,model,image,behavior='analyze',evidence
   if (existingDiagnostic) throw lastError;
   throw diagnosticError(
     lastError?.message || 'Reaction Analysis failed',
-    {phase:'reaction-parse-or-effort-validation',errorMessage:String(lastError?.message||lastError||'unknown').slice(0,1200)}
+    {
+      phase:'reaction-parse-or-effort-validation',
+      model:reactionModel,
+      evidenceMode,
+      errorMessage:String(lastError?.message||lastError||'unknown').slice(0,1200)
+    }
   );
 }
 
@@ -865,19 +991,35 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
       ? ' This is a rerun. Reassess the visual evidence, but obey the exact scoped edit boundary: return only the requested insertion or replacement fragment and leave all other target text to Genreactrix.'
       : options.themeRerun
         ? ' This is a fresh Theme rerun. Reassess only the slots that are open to change, obey Director constraints exactly, and copy every preserved slot unchanged.'
-        : ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.')
+        : options.reactionEvidenceMode === 'image+description'
+          ? ' This is a fresh Reaction rerun. Reassess the image and supplied AI Description together as the two selected evidence sources. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence from both sources.'
+          : ' This is a fresh rerun. Reassess the image independently from scratch. Do not mechanically reproduce a prior plausible answer; reconsider the relative evidence while remaining faithful to what is visible.')
     : '';
   const temperature = Number.isFinite(options.temperature)
     ? options.temperature
     : (behavior === 'reanalyze' ? 0.35 : 0.1);
 
   try{
-    const request = {
-      prompt:prompt + freshRerun,
-      max_tokens:maxTokens,
-      temperature
-    };
-    if (image && (image.byteLength || image.length)) request.image = image;
+    const fullPrompt=prompt + freshRerun;
+    const multimodalMessages=options.multimodalMessages===true;
+    const request = multimodalMessages
+      ? {
+          messages:[{
+            role:'user',
+            content:[
+              {type:'text',text:fullPrompt},
+              {type:'image_url',image_url:{url:imageBytesDataUrl(image)}}
+            ]
+          }],
+          max_tokens:maxTokens,
+          temperature
+        }
+      : {
+          prompt:fullPrompt,
+          max_tokens:maxTokens,
+          temperature
+        };
+    if (!multimodalMessages && image && (image.byteLength || image.length)) request.image = image;
     if (responseMode === 'guided_json') {
       // Cloudflare Workers AI binding parameter: schema-guided JSON generation.
       request.guided_json = schema;
@@ -1173,7 +1315,7 @@ async function analyze(env,body){
   // when both are requested, so research reasoning cannot drift away from the result it explains.
   if (requested.includes('reactions') || requested.includes('reactionReasons')){
     const behavior = behaviorFor(['reactions','reactionReasons']);
-    const reactionEvidence = {useImage:reactionSources.image,descriptionContext:reactionDescriptionContext};
+    const reactionEvidence = {useImage:reactionSources.image,descriptionContext:reactionDescriptionContext,requireNotes:requested.includes('reactionReasons')};
     const reactionResult = await runReactionAllocation(env,model,image,behavior,reactionEvidence);
     components.reactionDiagnostics = reactionResult.diagnostics;
     if (requested.includes('reactions')) components.reactions = reactionResult.display;
@@ -1184,7 +1326,11 @@ async function analyze(env,body){
       reactionCombo:reactionResult.diagnostics.reactionCombo,
       singleDominant:reactionResult.diagnostics.singleDominant
     };
-    promptVersions.reactions = reactionSources.description ? 'genreactrix-reactions-registry-v7-rerun-evidence-sources' : 'genreactrix-reactions-registry-v6-tolerant-relative-worker-apportionment';
+    promptVersions.reactions = reactionSources.image&&reactionSources.description
+      ? 'genreactrix-reactions-registry-v10-combined-multimodal-guided-json'
+      : reactionSources.image
+        ? 'genreactrix-reactions-registry-v8-vision-text-validated'
+        : 'genreactrix-reactions-registry-v7-rerun-evidence-sources';
     if (requested.includes('reactionReasons')) promptVersions.reactionReasons = 'genreactrix-reaction-info-v2-shared-assessment';
   }
 
