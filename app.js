@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.61";
+const GENREACTRIX_BUILD="v0.9.40.62";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1198,6 +1198,25 @@ function requestThemeRerunThemeState(slot){
 function applyPendingThemeRerunScopeChange(){const pending=themeRerunWorkspace.pendingScopeChange;if(!pending)return;for(const scope of pending.removed||[])themeRerunWorkspace.current.primScopes[scope]={};themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close();applyThemeRerunThemeState(pending.slot,pending.nextState)}
 function cancelPendingThemeRerunScopeChange(){themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close()}
 function clearThemeRerunPrimData(){if(!themeRerunWorkspace.active)return;for(const scope of ['theme1','theme2','theme3','general'])themeRerunWorkspace.current.primScopes[scope]={};saveThemeRerunCurrent();renderThemeRerunPrimPicker();setDirectorStatus('PrimPicker cleared. Theme selections retained.');}
+function clearThemeRerunSelections(){
+  if(!themeRerunWorkspace.active||!themeRerunWorkspace.current)return;
+  const preservedThemeStates={1:themeRerunWorkspace.current.themeStates?.[1]||'neutral',2:themeRerunWorkspace.current.themeStates?.[2]||'neutral',3:themeRerunWorkspace.current.themeStates?.[3]||'neutral'};
+  themeRerunWorkspace.current.themeStates=preservedThemeStates;
+  themeRerunWorkspace.current.primScopes={theme1:{},theme2:{},theme3:{},general:{}};
+  themeRerunWorkspace.current.excludedThemeCodes=[];
+  themeRerunWorkspace.current.includedDescriptionIds=[];
+  // Keep the displayed Description and initialization marker. Clear removes selections/context inclusion;
+  // it does not erase Description history or cause the default Description to be auto-included again.
+  themeRerunWorkspace.current.descriptionContextInitialized=true;
+  themeRerunWorkspace.exclusionQuery='';
+  themeRerunWorkspace.pendingScopeChange=null;
+  saveThemeRerunCurrent();
+  renderThemeRerunPrimPicker();
+  renderThemeRerunExclusions();
+  renderThemeRerunDescriptionsDialog();
+  renderThemeRerunChrome();
+  setDirectorStatus('Theme rerun options cleared. Red / Green / Neutral Theme states retained.');
+}
 function remapThemeRerunCurrentAfterSubmit(){
   if(!themeRerunWorkspace.current)return;
   const output=(currentAiRun()?.themes||[]).slice(0,3).map((row,index)=>({logicalSlot:index+1,weight:Number(row?.weight)||0}));
@@ -2937,7 +2956,7 @@ for(let slot=1;slot<=3;slot++){
   cell?.addEventListener("keydown",event=>{if(!themeRerunWorkspace.active||!["Enter"," "].includes(event.key))return;event.preventDefault();requestThemeRerunThemeState(slot);});
 }
 $("themeRerunPrimPickerBtn")?.addEventListener("click",()=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.pickerOpen=!themeRerunWorkspace.pickerOpen;renderThemeRerunChrome();});
-$("themeRerunClearBtn")?.addEventListener("click",()=>clearThemeRerunPrimData());
+$("themeRerunClearBtn")?.addEventListener("click",()=>clearThemeRerunSelections());
 $("themeRerunReturnBtn")?.addEventListener("click",()=>closeThemeRerunWorkspace());
 $("themeRerunScopeConfirmCancel")?.addEventListener("click",()=>cancelPendingThemeRerunScopeChange());
 $("themeRerunScopeConfirmApply")?.addEventListener("click",()=>applyPendingThemeRerunScopeChange());

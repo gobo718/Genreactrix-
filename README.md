@@ -1,13 +1,26 @@
-# Genreactrix v0.9.40.61 — Theme Rerun Submit Fix
+# Genreactrix v0.9.40.62 — Theme Rerun Clear
 
-Built forward from v0.9.40.60. Existing accepted Landscape packing and alignment remain unchanged.
+Built forward from v0.9.40.61. Existing accepted Landscape packing and alignment remain unchanged.
 
+
+
+## v0.9.40.62 — Theme Rerun Clear
+
+- Theme Rerun **Clear** now preserves the three Theme Red / Green / Neutral states exactly as selected.
+- Clear removes all PrimPicker assignments from Theme 1, Theme 2, Theme 3, and General scopes.
+- Clear removes every Theme Exclusion.
+- Clear unselects every included AI Description reference/context selection.
+- Clear does not erase Theme History or Description History, does not change the current Theme values, and does not submit or rerun AI.
+- Successful Theme reruns continue to create a new immutable Theme artifact which becomes Current; prior Theme artifacts remain in Theme History.
+- Worker remains **0.9.6.30-theme-rerun-parser-fallback**. No Worker change is required for v0.9.40.62.
 
 ## v0.9.40.61 — Theme Rerun Submit all-Neutral repair
 
 - AI rerun failures now surface the actual failed-item Worker/provider error instead of only `Completed with 1 failure(s)`.
-- Theme Rerun JSON guidance no longer duplicates each slot's full eligible-PFM list as a JSON-schema enum. The prompt still supplies slot-specific eligible codes, while the Worker remains authoritative for eligibility, Preserve/Replace rules, Theme Exclusions, uniqueness, confidence, and rationale validation.
-- Bundled Worker: **0.9.6.27-theme-rerun-submit-fix**.
+- Theme Rerun no longer depends on provider JSON Mode. The Worker requests a compact pipe-delimited text protocol for open Theme slots, then performs the authoritative PFM eligibility, Preserve/Replace, Theme Exclusion, uniqueness, confidence, and rationale validation locally.
+- Preserve slots are now resolved locally and are not sent back to the model as output work. If every slot is Preserve, the Theme rerun completes without an AI provider call.
+- The text parser tolerates harmless bullets/spacing and can still accept a valid JSON object if the model emits one voluntarily, but JSON is no longer requested for Theme reruns. Invalid line responses are retried up to two times with the exact parse failure fed into the recovery instruction.
+- Bundled Worker: **0.9.6.30-theme-rerun-parser-fallback**.
 - No Landscape geometry, Theme Rerun Clear semantics, or Current-retention behavior changed.
 - Packaging correction: all hardcoded on-screen/site title version labels now report **v0.9.40.61**.
 - The obsolete `genreactrix-v3-114-point-prims` AI Prompt-set default/fallback is retired. Existing copies of that stale label are cleared to blank on settings migration; blank now saves and remains blank. The Worker remains authoritative for actual per-component prompt versions returned with each analysis.
@@ -64,7 +77,7 @@ Every actual Description submission creates a new AI attempt/artifact version. T
 
 ## Worker contract
 
-This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.27-theme-rerun-submit-fix**.
+This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.30-theme-rerun-parser-fallback**.
 
 The updated Worker must be deployed before testing actual structured Submit calls. UI-only inspection does not require a Worker call.
 
@@ -188,3 +201,9 @@ Real-device/browser acceptance is still required.
 - Current Theme-rerun controls remain available after Submit for further fine-tuning. If the new confidences reorder the three displayed AI Theme rows, Theme-state instructions and Theme-specific PrimPicker scopes are remapped to the corresponding rerun result so they do not attach to the wrong displayed Theme.
 - No Landscape CSS or geometry changed from v0.9.40.59.
 - **Worker deploy required:** bundled Worker `0.9.6.26-theme-rerun-submit`.
+
+
+Worker 0.9.6.29 Theme Rerun format compatibility: rerun output now uses the established Theme Analysis `rank|matrix|PFM|confidence|reason` protocol, while the Worker parser remains backward-compatible with the short-lived v0.9.6.28 `THEME n|PFM|confidence|reason` format.
+
+
+Worker 0.9.6.30 Theme Rerun parser fallback: accepts Markdown table rows, prose/Markdown PFM selections, and ordered PFM-code output in addition to the established pipe protocol. Slot-specific eligibility remains authoritative; final parse failures now include a short provider-response preview for diagnosis.
