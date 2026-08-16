@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.26-theme-rerun-submit
+/* Genreactrix AI Worker v0.9.6.27-theme-rerun-submit-fix
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.26-theme-rerun-submit';
+const API_VERSION = '0.9.6.27-theme-rerun-submit-fix';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Reaction analysis uses a vision model whose Workers AI contract explicitly supports guided_json.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -614,9 +614,13 @@ function themeRerunCandidateSets(rerun){
   return sets;
 }
 function themeRerunSchema(rerun,sets){
+  // Keep provider-side JSON guidance deliberately small. Slot eligibility,
+  // preserve/replace constraints, exclusions, and uniqueness are authoritative
+  // Worker validations in parseThemeRerunStructured(). Large enum lists here
+  // duplicate those checks and can make JSON Mode harder for the provider to meet.
   const properties={};
   for(const row of rerun.themeSlots){
-    const codeSchema={type:'string',enum:sets[row.slot].candidates.map(item=>item.code)};
+    const codeSchema={type:'string'};
     if(row.state==='preserve')properties[`theme${row.slot}`]={type:'object',properties:{code:codeSchema},required:['code'],additionalProperties:false};
     else properties[`theme${row.slot}`]={type:'object',properties:{code:codeSchema,confidence:{type:'number',minimum:0,maximum:100},rationale:{type:'string'}},required:['code','confidence','rationale'],additionalProperties:false};
   }
