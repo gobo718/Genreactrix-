@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.28-theme-rerun-text-protocol.
+Current bundled Worker: v0.9.6.35-reaction-rerun-combined-multimodal.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -13,8 +13,26 @@ Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 The browser never receives provider credentials. The Worker accepts authenticated `POST /api/genreactrix/analyze` for AI results and `POST /api/genreactrix/image` as a bounded image-fetch proxy used when browser CORS would otherwise prevent Import from creating its required 64×64 thumbnail.
 
 
+## Reaction Rerun evidence routing
+
+Worker v0.9.6.35 keeps Image-only on Llama 3.2 Vision and Description-only on Llama 4 Scout structured output. Image + Description uses Llama 4 Scout as a multimodal `messages` request containing both a text part and an `image_url` data-URI part, with `guided_json` for the 14-Prim Reaction assessment. The Worker retains the hard all-zero/all-identical/numeric validation gates and retries one invalid combined assessment before failing.
+
+
 ## Theme Rerun Submit
 
 The analyze endpoint accepts a structured `themeRerun` context for Theme-only reruns. Stable PFM/P codes are authoritative. Preserve, Replace, PrimPicker, Theme Exclusions, and included Description references are enforced in the Worker before/while selecting the three Theme results.
 
 Worker v0.9.6.28 moves Theme Rerun provider output off JSON Mode and onto a compact pipe-delimited text protocol. Preserved slots are resolved locally; only open slots are requested from the vision model. The Worker still validates every returned PFM against the exact slot candidate set and enforces final uniqueness. This specifically addresses the all-Neutral failure where the vision provider returned invalid JSON. Deploy this Worker before retesting Genreactrix v0.9.40.61 Theme Rerun Submit.
+
+
+## Worker 0.9.6.32 — Reaction rerun Vision routing
+
+Image-bearing Direct Reaction reruns use the configured Llama 3.2 Vision model with the image field. Because that model does not expose the Worker guided_json contract used by the Description-only path, the Worker requests text output, parses the returned 14-Prim assessment locally, and applies the same strict validation and Hamilton apportionment afterward. Description-only continues to use Llama 4 Scout guided_json and does not send image bytes.
+
+
+Worker 0.9.6.33 validation note: top-four effort notes are optional for reactions-only requests and remain required for reactionReasons requests.
+
+
+## Worker 0.9.6.34 — Combined Reaction evidence protocol
+
+Image + Description Direct Reaction reruns use the Vision model with a compact strict line protocol (`P01|weight` through `P14|weight`, then `RANKING|...`). Every Prim weight must be independently present and numeric; malformed or missing values trigger a retry. Image-only and Description-only routing are unchanged from their accepted 0.9.6.33 behavior.
