@@ -1,4 +1,13 @@
-# Genreactrix v0.9.40.67 — Maintenance Console Entry Fix
+# Genreactrix v0.9.40.68 — Purgatory Retry / Inspector Repair
+
+## v0.9.40.68 — Purgatory recovery follow-up; diagnostic continues
+
+- Repairs the Maintenance quick-check TDZ bug that could throw `Cannot access 'issue' before initialization` while resolving stale maintenance findings.
+- Singular Purgatory wording now reads `1 Purgatory item is ready to retry`; plural wording retains `can be retried together`.
+- Maintenance Image Inspector now reuses the Images Engine display resolver first, allowing cached full-resolution or permanent-thumbnail preview before falling back to direct asset lookup.
+- The `PURGATORY_TEST_` controlled Post-processing fault injector remains enabled for the current acceptance test.
+- Image View Depot and Inbox Thumbnail View from v0.9.40.66 remain unchanged.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`; no Worker redeploy is required.
 
 ## v0.9.40.67 — Open Maintenance repaired; Purgatory diagnostic continues
 - Defines the missing Maintenance Engine `openConsole()` API that Settings and operational shortcuts already call.
