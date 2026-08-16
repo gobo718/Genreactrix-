@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.26-theme-rerun-submit.
+Current bundled Worker: v0.9.6.27-theme-rerun-submit-fix.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -15,4 +15,4 @@ The browser never receives provider credentials. The Worker accepts authenticate
 
 ## Theme Rerun Submit
 
-The analyze endpoint accepts a structured `themeRerun` context for Theme-only reruns. Stable PFM/P codes are authoritative. Preserve, Replace, PrimPicker, Theme Exclusions, and included Description references are enforced in the Worker before/while selecting the three Theme results. Deploy this Worker before testing Genreactrix v0.9.40.60 Theme Rerun Submit.
+The analyze endpoint accepts a structured `themeRerun` context for Theme-only reruns. Stable PFM/P codes are authoritative. Preserve, Replace, PrimPicker, Theme Exclusions, and included Description references are enforced in the Worker before/while selecting the three Theme results. Deploy this Worker before testing Genreactrix v0.9.40.61 Theme Rerun Submit.
