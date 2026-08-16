@@ -1,6 +1,6 @@
-# Genreactrix v0.9.40.58 — Stable Include Reserve
+# Genreactrix v0.9.40.60 — Theme Rerun Submit
 
-Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
+Built forward from v0.9.40.59. Existing accepted Landscape packing and alignment remain unchanged.
 
 ## AI Description rerun workspace
 
@@ -53,7 +53,7 @@ Every actual Description submission creates a new AI attempt/artifact version. T
 
 ## Worker contract
 
-This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The Worker version is **0.9.6.25-description-rerun-workspace**.
+This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.26-theme-rerun-submit**.
 
 The updated Worker must be deployed before testing actual structured Submit calls. UI-only inspection does not require a Worker call.
 
@@ -161,3 +161,19 @@ Real-device/browser acceptance is still required.
 - Tapping a history entry expands details only; it never changes the current Theme rerun state.
 - Submit remains intentionally unwired for the next bounded pass.
 - No Landscape geometry or Worker files changed in this pass.
+
+## v0.9.40.60 — Theme Rerun Submit
+
+- **Submit** now executes the structured Theme rerun shown by Preview Request.
+- Image input is always included. Included Description artifacts are passed as additional Theme context.
+- Green/Preserve slots are immutable and are copied forward by their stable `PFM####` code.
+- Red/Replace slots cannot return their current PFM code. Neutral slots may keep or replace their current PFM.
+- Theme Exclusions are hard prohibitions. Protected Theme codes are also excluded from every open slot so the three final Themes remain unique.
+- PrimPicker uses code-backed `P##` assignments. Mandatory and Forbidden are hard gates; Preferred, Optional, derived Unchosen, and Discouraged are steering weights. The Worker calculates each eligible fusion's preference from the two P-code weights while continuing to judge image fit.
+- Impossible hard-constraint combinations fail before the AI call instead of silently relaxing Director instructions.
+- The Worker schema restricts each slot to its eligible PFM code set and validates uniqueness; invalid duplicate/eligibility responses are retried up to two times.
+- Successful Theme reruns create a new immutable Theme artifact and AI attempt containing the exact Theme-rerun context. The existing direct-Reaction artifact remains untouched; the Theme-derived 60% and combined Reaction artifact are recalculated through the established 60/40 architecture.
+- Theme History can immediately expose the new version and its recorded rerun context.
+- Current Theme-rerun controls remain available after Submit for further fine-tuning. If the new confidences reorder the three displayed AI Theme rows, Theme-state instructions and Theme-specific PrimPicker scopes are remapped to the corresponding rerun result so they do not attach to the wrong displayed Theme.
+- No Landscape CSS or geometry changed from v0.9.40.59.
+- **Worker deploy required:** bundled Worker `0.9.6.26-theme-rerun-submit`.

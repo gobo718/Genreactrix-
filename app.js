@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.58";
+const GENREACTRIX_BUILD="v0.9.40.60";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1198,6 +1198,52 @@ function requestThemeRerunThemeState(slot){
 function applyPendingThemeRerunScopeChange(){const pending=themeRerunWorkspace.pendingScopeChange;if(!pending)return;for(const scope of pending.removed||[])themeRerunWorkspace.current.primScopes[scope]={};themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close();applyThemeRerunThemeState(pending.slot,pending.nextState)}
 function cancelPendingThemeRerunScopeChange(){themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close()}
 function clearThemeRerunPrimData(){if(!themeRerunWorkspace.active)return;for(const scope of ['theme1','theme2','theme3','general'])themeRerunWorkspace.current.primScopes[scope]={};saveThemeRerunCurrent();renderThemeRerunPrimPicker();setDirectorStatus('PrimPicker cleared. Theme selections retained.');}
+function remapThemeRerunCurrentAfterSubmit(){
+  if(!themeRerunWorkspace.current)return;
+  const output=(currentAiRun()?.themes||[]).slice(0,3).map((row,index)=>({logicalSlot:index+1,weight:Number(row?.weight)||0}));
+  if(output.length!==3)return;
+  const display=[...output].sort((a,b)=>b.weight-a.weight),displaySlotByLogical=new Map(display.map((row,index)=>[row.logicalSlot,index+1]));
+  const prior=normalizeThemeRerunCurrent(themeRerunWorkspace.current),next=normalizeThemeRerunCurrent(prior);
+  next.themeStates={1:'neutral',2:'neutral',3:'neutral'};
+  next.primScopes={theme1:{},theme2:{},theme3:{},general:structuredClone(prior.primScopes?.general||{})};
+  for(let logicalSlot=1;logicalSlot<=3;logicalSlot++){
+    const displaySlot=displaySlotByLogical.get(logicalSlot)||logicalSlot;
+    next.themeStates[displaySlot]=prior.themeStates?.[logicalSlot]||'neutral';
+    next.primScopes[`theme${displaySlot}`]=structuredClone(prior.primScopes?.[`theme${logicalSlot}`]||{});
+  }
+  themeRerunWorkspace.current=next;saveThemeRerunCurrent();
+}
+
+async function submitThemeRerun(){
+  if(!themeRerunWorkspace.active||aiRerunInFlight)return;
+  let spec;
+  try{spec=buildThemeRerunPreviewSpec();}
+  catch(error){alert(error.message||String(error));return;}
+  const dynamicSlots=spec.themeSlots.filter(row=>row.state!=='preserve');
+  if(!dynamicSlots.length){const message='All three Themes are preserved. There is nothing for AI to rerun.';setDirectorStatus(message);alert(message);return;}
+  for(const row of spec.themeSlots){
+    if(['preserve','replace'].includes(row.state)&&!row.currentThemeCode){const message=`Theme ${row.slot} cannot be ${row.state==='preserve'?'preserved':'replaced'} because its PFM code could not be resolved.`;setDirectorStatus(message);alert(message);return;}
+  }
+  const button=$('themeRerunSubmitBtn'),originalLabel=button?.textContent||'Submit';
+  if(button){button.disabled=true;button.textContent='Submitting…';}
+  setDirectorStatus(`Rerunning AI Themes · ${dynamicSlots.length} Theme${dynamicSlots.length===1?'':'s'} open to change…`);
+  try{
+    await runCurrentAiRerun(['themes'],{themeRerun:spec});
+    remapThemeRerunCurrentAfterSubmit();
+    themeRerunWorkspace.themeHistoryCatalog=[];
+    await loadThemeRerunThemeHistory().catch(()=>[]);
+    renderTabletWorkbench();
+    setDirectorStatus('AI Theme rerun complete. Theme 60% and combined Reactions were recalculated from the new Theme artifact.');
+  }catch(error){
+    const message=String(error?.message||error);
+    console.error('AI Theme rerun failed',error);
+    setDirectorStatus(`AI Theme rerun failed: ${message}`);
+    alert(`AI Theme rerun failed: ${message}`);
+  }finally{
+    if(button){button.disabled=false;button.textContent=originalLabel;}
+  }
+}
+
 function renderThemeRerunChrome(){
   const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls'),descriptionInclude=$('themeRerunPopulatedInclude'),descriptionIncludeCheck=$('themeRerunPopulatedIncludeCheck');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));const exclusions=$('themeRerunExclusionsBtn'),exclusionCount=active?themeRerunExcludedCodes().length:0;if(exclusions){exclusions.classList.toggle('has-data',Boolean(exclusionCount));exclusions.setAttribute('aria-label',exclusionCount?`Theme Exclusions, ${exclusionCount} selected`:'Theme Exclusions');}const displayedDescription=active?themeRerunDisplayedDescriptionItem():null,descriptionCount=active?themeRerunIncludedDescriptionCount():0,descriptionsBtn=$('themeRerunDescriptionsBtn');if(descriptionInclude){descriptionInclude.hidden=!active||!displayedDescription;if(descriptionIncludeCheck)descriptionIncludeCheck.checked=Boolean(displayedDescription&&(themeRerunWorkspace.current?.includedDescriptionIds||[]).includes(String(displayedDescription.id)));}if(descriptionsBtn){descriptionsBtn.classList.toggle('has-data',Boolean(descriptionCount));descriptionsBtn.setAttribute('aria-label',descriptionCount?`Descriptions, ${descriptionCount} included`:'Descriptions');}
   for(let slot=1;slot<=3;slot++){const cell=$(`tabletWorkbenchAiTheme${slot}`)?.closest('.tablet-theme-cell');if(!cell)continue;const state=active?(themeRerunWorkspace.current?.themeStates?.[slot]||'neutral'):'neutral';cell.classList.toggle('theme-rerun-replace',active&&state==='replace');cell.classList.toggle('theme-rerun-preserve',active&&state==='preserve');cell.dataset.themeRerunState=active?state:'';if(active){cell.tabIndex=0;cell.setAttribute('role','button');const theme=themeRerunAiThemeSnapshot(slot);cell.setAttribute('aria-label',`Theme ${slot}${theme?.label?` ${theme.label}`:''}: ${state==='replace'?'replace':state==='preserve'?'preserve':'neutral'}. Tap to cycle.`);}else if(!descriptionRerunWorkspace.active){cell.tabIndex=-1;cell.setAttribute('role','group');cell.removeAttribute('aria-label');}}
@@ -2202,7 +2248,7 @@ $("clearCurrentBtn").addEventListener("click",()=>{
 $("directorUndoBtn").addEventListener("click",undo);
 $("directorRedoBtn").addEventListener("click",redo);
 
-async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false,descriptionRerun=null}={}){
+async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false,descriptionRerun=null,themeRerun=null}={}){
   const requested=[...new Set((components||[]).filter(component=>AI_RERUN_COMPONENTS.includes(component)))];
   if(!requested.length)throw new Error("No AI rerun component was selected.");
   if(aiRerunInFlight)throw new Error("An AI rerun is already in progress.");
@@ -2215,7 +2261,7 @@ async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysi
   const guidance=String(analysisGuidance||"").trim().slice(0,6000);
   aiRerunInFlight=true;syncTabletAiRerunControls();
   try{
-    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null});
+    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null,themeRerun:themeRerun?structuredClone(themeRerun):null});
     if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
     await engine.run(job.id);
     const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
@@ -2899,7 +2945,7 @@ $("themeRerunExclusionsSearch")?.addEventListener("input",event=>{themeRerunWork
 $("themeRerunExclusionsList")?.addEventListener("click",event=>{const button=event.target.closest("[data-pfm-code]");if(button)themeRerunToggleExclusion(button.dataset.pfmCode);});
 $("themeRerunPreviewBtn")?.addEventListener("click",()=>{if(!themeRerunWorkspace.active)return;try{const spec=buildThemeRerunPreviewSpec();$("themeRerunPreviewBody").textContent=previewThemeRerunRequest(spec);$("themeRerunPreviewDialog")?.showModal();}catch(error){alert(error.message||String(error));}});
 $("themeRerunHistoryBtn")?.addEventListener("click",()=>openThemeRerunHistory().catch(error=>{console.error("Theme History could not open",error);$("themeRerunHistoryDialog")?.close();alert(error.message||String(error));}));
-$("themeRerunSubmitBtn")?.addEventListener("click",()=>setDirectorStatus("Theme Rerun Submit is reserved for the next bounded pass."));
+$("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 const themeDescriptionsButton=$("themeRerunDescriptionsBtn");
 themeDescriptionsButton?.addEventListener("pointerdown",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.descriptionsLongPress=false;clearTimeout(themeRerunWorkspace.descriptionsTimer);themeDescriptionsButton.setPointerCapture?.(event.pointerId);themeRerunWorkspace.descriptionsTimer=setTimeout(()=>{themeRerunWorkspace.descriptionsLongPress=true;renderThemeRerunDescriptionsDialog();$("themeRerunDescriptionsDialog")?.showModal();},520);});
