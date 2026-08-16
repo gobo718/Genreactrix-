@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.56 — Theme Rerun Preview Request
+# Genreactrix v0.9.40.57 — Landscape Packing + Include Repair
 
 Built directly from v0.9.40.48. The accepted Landscape arrangement remains the visual baseline.
 
@@ -134,3 +134,15 @@ Real-device/browser acceptance is still required.
 - **Submit** and **Theme History** remain intentionally unwired in this bounded pass. Preview performs no Worker call.
 - The v0.9.40.55 long-press Saved Draft deletion fix is carried forward.
 - Preview uses the established scrollable request-preview modal language; no accepted Landscape workspace geometry was changed. Worker files are unchanged.
+
+
+## v0.9.40.57 — Landscape Packing + Include Repair
+
+- Removes the large blank band below the 4×2 AI/rerun button band using live rendered measurements rather than a guessed offset.
+- The space below the second button row is made exactly equal to the rendered gap between button row 1 and row 2.
+- Director Themes move upward by that measured amount and grow by the same amount, so their bottom edge stays fixed. AI Themes and AI Description continue to inherit the exact Director geometry.
+- Horizontal Landscape geometry and reaction X coordinates are not changed.
+- The outer image socket remains square; its internal content box reserves the overlapped strip so Director Theme fields do not cover image pixels.
+- Fixes Theme Rerun's mirrored Include control so it is positioned on the AI Description instead of the Submit button.
+- Reserves the measured Include-control footprint inside AI Description in both rerun modes so Description text cannot render underneath the checkbox.
+- Carries forward Theme Rerun Preview Request and long-press Saved Draft deletion. Worker files remain unchanged.

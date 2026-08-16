@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.56";
+const GENREACTRIX_BUILD="v0.9.40.57";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1332,6 +1332,65 @@ function judgmentReactionGridPosition(index){
     ? {row:1,start:1 + (pair * 2)}
     : {row:2,start:2 + (pair * 2)};
 }
+/* v0.9.40.57 — measured Landscape lower-panel packing.
+   The large blank band between the 4×2 control band and the Director/AI
+   Theme + Description fields is removed from the CURRENT layout without
+   changing any horizontal geometry or reaction X positions. The exact shift
+   is measured from rendered elements on the live viewport; no guessed pixel
+   offset is used. The same measured shift is applied to the Director Theme
+   stack, and its height is expanded by the same amount, so its bottom edge
+   remains unchanged. AI Themes/Description continue to mirror that measured
+   Director geometry exactly. The image socket keeps its established outer
+   square; its content box reserves the overlapped strip so Theme fields never
+   cover image pixels. */
+function applyLandscapeLowerPanelPacking(){
+  const frame=document.querySelector('.landscape-frame');
+  const director=document.querySelector('.landscape-director-themes');
+  const drawer=$('tabletSlidingDrawer');
+  if(!frame||!director||!drawer)return 0;
+
+  const visibleBand=[
+    $('tabletThemeRerunControls'),
+    $('tabletDescriptionRerunControls'),
+    drawer.querySelector('.landscape-ai-controls')
+  ].find(el=>el&&!el.hidden&&getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>0);
+
+  /* Customs has no matching 4×2 band. Keep the most recently measured packing
+     instead of making the left Theme stack jump when Customs is opened. */
+  if(!visibleBand){
+    const prior=Number(frame.dataset.lowerPackShift||0);
+    frame.style.setProperty('--landscape-lower-pack-shift',`${prior}px`,'important');
+    return prior;
+  }
+
+  /* Reset synchronously before measuring so repeated renders never compound. */
+  frame.style.setProperty('--landscape-lower-pack-shift','0px','important');
+
+  const directorRect=director.getBoundingClientRect();
+  const bandRect=visibleBand.getBoundingClientRect();
+  const buttons=[...visibleBand.children].filter(el=>el instanceof HTMLElement&&getComputedStyle(el).display!=='none');
+  let rowGap=0;
+  if(buttons.length>=8){
+    const firstRow=buttons.slice(0,4).map(el=>el.getBoundingClientRect());
+    const secondRow=buttons.slice(4,8).map(el=>el.getBoundingClientRect());
+    const firstBottom=Math.max(...firstRow.map(r=>r.bottom));
+    const secondTop=Math.min(...secondRow.map(r=>r.top));
+    rowGap=Math.max(0,secondTop-firstBottom);
+  }else{
+    const computed=getComputedStyle(visibleBand);
+    rowGap=parseFloat(computed.rowGap||computed.gap)||0;
+  }
+
+  /* Match the space below the second button row to the REAL rendered space
+     between row 1 and row 2. */
+  const desiredTop=bandRect.bottom+rowGap;
+  const shift=Math.max(0,directorRect.top-desiredTop);
+  const exact=Math.round(shift*1000)/1000;
+  frame.dataset.lowerPackShift=String(exact);
+  frame.style.setProperty('--landscape-lower-pack-shift',`${exact}px`,'important');
+  return exact;
+}
+
 function applyJudgmentReactionGeometry(prims,pctRow){
   if(!prims) return;
   const buttons=[...prims.children];
@@ -1460,6 +1519,7 @@ function renderTabletWorkbench(){
   renderDescriptionRerunChrome();
   renderThemeRerunChrome();
   syncTabletAiRerunControls();
+  applyLandscapeLowerPanelPacking();
 
   // AI theme fields use the exact rendered width and height of the existing
   // Director theme fields. The drawer panel is positioned immediately to the
@@ -1483,9 +1543,24 @@ function renderTabletWorkbench(){
         descriptionPanel.style.setProperty("--director-stack-height",`${stackRect.height}px`);
         descriptionPanel.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
       }
+      const panelTop=Math.max(0,stackRect.top-drawerRect.top);
       const descriptionInclude=$("descriptionRerunPopulatedInclude");
-      if(descriptionInclude){
-        descriptionInclude.style.setProperty("--ai-theme-panel-top",`${Math.max(0,stackRect.top-drawerRect.top)}px`);
+      const themeInclude=$("themeRerunPopulatedInclude");
+      if(descriptionInclude)descriptionInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
+      if(themeInclude)themeInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
+
+      /* Reserve the exact horizontal footprint occupied by whichever mirrored
+         Include control is visible. This prevents Description text from ever
+         rendering beneath the checkbox. */
+      if(descriptionPanel){
+        const visibleInclude=[descriptionInclude,themeInclude].find(el=>el&&!el.hidden&&getComputedStyle(el).display!=="none");
+        if(visibleInclude){
+          const panelRect=descriptionPanel.getBoundingClientRect();
+          const includeRect=visibleInclude.getBoundingClientRect();
+          const basePad=parseFloat(getComputedStyle(descriptionPanel).paddingRight)||0;
+          const reserve=Math.max(basePad,panelRect.right-includeRect.left+basePad);
+          descriptionPanel.style.setProperty("--description-include-reserve",`${Math.round(reserve*1000)/1000}px`);
+        }else descriptionPanel.style.removeProperty("--description-include-reserve");
       }
     }
   }

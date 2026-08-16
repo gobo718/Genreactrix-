@@ -8109,3 +8109,34 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 /* v0.9.40.56 — Theme Rerun Preview Request modal only.
    No Landscape workspace geometry is changed. */
 .theme-rerun-preview-dialog{width:min(760px,94vw)}
+
+/* v0.9.40.57 — exact measured Landscape packing + mirrored Include repair.
+   Horizontal Landscape geometry is intentionally unchanged. The runtime sets
+   --landscape-lower-pack-shift from rendered coordinates, matching the space
+   below the second control row to the actual gap between the two control rows. */
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .landscape-frame{--landscape-lower-pack-shift:0px}
+
+  /* The Director stack moves upward by the measured blank-band distance and
+     grows by the same distance, leaving its bottom edge exactly where it was. */
+  .landscape-director-themes{
+    position:relative!important;
+    z-index:3!important;
+    transform:translateY(calc(-1 * var(--landscape-lower-pack-shift,0px)))!important;
+    height:calc(100% + var(--landscape-lower-pack-shift,0px))!important;
+  }
+
+  /* Keep the established OUTER square image socket and reserve only the strip
+     now occupied by the upward-expanded Director stack. */
+  .landscape-image-button{
+    box-sizing:border-box!important;
+    padding:0 0 var(--landscape-lower-pack-shift,0px) 0!important;
+  }
+
+  /* Both rerun modes use the same mirrored Include control on the Description
+     surface. Reserve its measured width so text can never run underneath it. */
+  .description-rerun-active #tabletWorkbenchAiDescription,
+  .theme-rerun-active #tabletWorkbenchAiDescription{
+    padding-right:var(--description-include-reserve,8px)!important;
+  }
+}
