@@ -1,6 +1,16 @@
-# Genreactrix v0.9.40.63 — Direct Reaction Rerun Sources
+# Genreactrix v0.9.40.64 — Direct Reaction Rerun Job Coordination
 
-Built forward from accepted v0.9.40.62. Existing accepted Landscape packing and alignment remain unchanged.
+Built forward from v0.9.40.63. Accepted Landscape geometry and the Reaction Rerun checkbox layout are unchanged.
+
+## v0.9.40.64 — Explicit Reaction rerun queue repair
+
+- Director-triggered Direct Reaction Rerun now serializes against existing AI work for the current image instead of being rejected by the generic active-image exclusion as `No eligible images`.
+- If the current image already has queued/processing AI work, the rerun waits for that work to leave the active state before creating its own job.
+- After the explicit rerun job is created, the workspace follows that exact job until it reaches a terminal state even if the queue engine starts it first. This removes the false `Queued` failure.
+- A narrow race retry handles automatic AI work claiming the image between the idle check and explicit rerun job creation.
+- Image-only, Image + Description, and Description-only use the same corrected job-coordination path.
+- No Reaction 60/40 math, evidence-source semantics, Worker protocol, or accepted UI geometry changed.
+- Worker remains **0.9.6.31-reaction-rerun-sources**; no Worker redeploy is required.
 
 ## v0.9.40.63 — Direct Reaction Rerun
 

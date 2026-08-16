@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.63";
+const GENREACTRIX_BUILD="v0.9.40.64";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2276,6 +2276,34 @@ $("clearCurrentBtn").addEventListener("click",()=>{
 $("directorUndoBtn").addEventListener("click",undo);
 $("directorRedoBtn").addEventListener("click",redo);
 
+const AI_DIRECTOR_RERUN_WAIT_MS=90000;
+const aiDirectorRerunDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function waitForDirectorRerunImageIdle(engine,imageId,{timeoutMs=AI_DIRECTOR_RERUN_WAIT_MS}={}){
+  const started=Date.now();
+  while(true){
+    const snapshot=await engine.snapshot?.();
+    const active=(snapshot?.items||[]).filter(item=>String(item.imageId)===String(imageId)&&["queued","processing"].includes(item.state));
+    if(!active.length)return snapshot;
+    const activeJobIds=[...new Set(active.map(item=>item.jobId).filter(Boolean))];
+    for(const jobId of activeJobIds){
+      const job=(snapshot?.jobs||[]).find(row=>row.id===jobId);
+      if(job?.state==="queued")Promise.resolve(engine.run(jobId)).catch(error=>console.warn("Could not advance existing AI job before Director rerun",error));
+    }
+    if(Date.now()-started>=timeoutMs)throw new Error("Current image still has AI work in progress. Wait for that job to finish, then submit the rerun again.");
+    await aiDirectorRerunDelay(250);
+  }
+}
+async function waitForDirectorRerunJob(engine,jobId,{timeoutMs=AI_DIRECTOR_RERUN_WAIT_MS}={}){
+  const terminal=new Set(["completed","completed-with-failures","cancelled","paused"]),started=Date.now();
+  while(true){
+    const snapshot=await engine.snapshot?.(),job=snapshot?.jobs?.find(row=>row.id===jobId);
+    if(job&&terminal.has(job.state))return{snapshot,job};
+    if(job?.state==="queued")Promise.resolve(engine.run(jobId)).catch(error=>console.warn("Could not advance Director rerun job",error));
+    if(Date.now()-started>=timeoutMs)throw new Error("AI rerun is still running. Its job remains active in the AI console.");
+    await aiDirectorRerunDelay(250);
+  }
+}
+
 async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false,reactionRerunSources=null,descriptionRerun=null,themeRerun=null}={}){
   const requested=[...new Set((components||[]).filter(component=>AI_RERUN_COMPONENTS.includes(component)))];
   if(!requested.length)throw new Error("No AI rerun component was selected.");
@@ -2289,10 +2317,25 @@ async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysi
   const guidance=String(analysisGuidance||"").trim().slice(0,6000);
   aiRerunInFlight=true;syncTabletAiRerunControls();
   try{
-    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),reactionRerunSources:reactionRerunSources?{image:reactionRerunSources.image!==false,description:Boolean(reactionRerunSources.description)}:null,descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null,themeRerun:themeRerun?structuredClone(themeRerun):null});
+    const explicitReactionRerun=Boolean(reactionRerunSources)&&requested.length===1&&requested[0]==="reactions";
+    let job=null;
+    for(let attempt=0;attempt<3;attempt++){
+      if(explicitReactionRerun)await waitForDirectorRerunImageIdle(engine,imageId);
+      job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),reactionRerunSources:reactionRerunSources?{image:reactionRerunSources.image!==false,description:Boolean(reactionRerunSources.description)}:null,descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null,themeRerun:themeRerun?structuredClone(themeRerun):null});
+      if(job?.id&&job.total)break;
+      if(!explicitReactionRerun||job?.message!=="No eligible images")break;
+      const raceSnapshot=await engine.snapshot?.(),raced=(raceSnapshot?.items||[]).some(item=>String(item.imageId)===String(imageId)&&["queued","processing"].includes(item.state));
+      if(!raced)break;
+    }
     if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
-    await engine.run(job.id);
-    const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
+    let snapshot,finalJob;
+    if(explicitReactionRerun){
+      Promise.resolve(engine.run(job.id)).catch(error=>console.warn("Director Reaction rerun runner failed",error));
+      const terminal=await waitForDirectorRerunJob(engine,job.id);snapshot=terminal.snapshot;finalJob=terminal.job;
+    }else{
+      await engine.run(job.id);
+      snapshot=await engine.snapshot?.();finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
+    }
     if(finalJob.state!=="completed"){
       const itemErrors=(snapshot?.items||[]).filter(row=>row.jobId===job.id&&row.state==="failed").map(row=>String(row.error||"").trim()).filter(Boolean);
       throw new Error(itemErrors.length?[...new Set(itemErrors)].join(" | "):(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`));
