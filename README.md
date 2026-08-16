@@ -1,4 +1,11 @@
-# Genreactrix v0.9.40.69 — Clean Post-processing / Purgatory Baseline
+# Genreactrix v0.9.40.70 — History Image Visibility Repair
+
+
+## v0.9.40.70 — History Image unavailable-overlay repair
+
+- Fixes the shared Investigation preview hide-state so `Image data unavailable` is not rendered over a valid full-resolution image or thumbnail.
+- No image lifecycle, Recycle, Maintenance, layout geometry, or Worker behavior changed.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
 
 ## v0.9.40.69 — Diagnostic injector removed after acceptance
 - Removes the temporary `PURGATORY_TEST_` Post-processing fault injector now that the Batch → Post-processing → Purgatory → manual Retry → Recycle traveler has passed on-device acceptance.
