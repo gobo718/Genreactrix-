@@ -1,6 +1,9 @@
-# Genreactrix v0.9.40.82 — Reports AI–Director Completion Boundary
+# Genreactrix v0.9.40.83 — Reports Agreement Threshold Input Integrity
 
-## v0.9.40.82
+## v0.9.40.83
+- AI–Director and AI-reaction numeric threshold filters now reject blank/non-numeric thresholds instead of coercing them to 0.
+- The Reaction-name input is now shown only for AI reaction filters; agreement filters expose only their numeric Percent value input, preventing threshold entry into the wrong field.
+- Agreement calculation/completion semantics from v0.9.40.82 are unchanged.
 - AI–Director agreement now evaluates only Director-complete Image Records.
 - Incomplete/unclassified/blocked/partial Director records remain in report populations but receive `aiAgreement: null`.
 - Per-reaction agreement comparable counts exclude incomplete Director records.
