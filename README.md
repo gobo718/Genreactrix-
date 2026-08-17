@@ -1,7 +1,14 @@
-# Genreactrix v0.9.40.95 — Prompt Diagnostics Expanded Results
+# Genreactrix v0.9.40.96 — Prompt Diagnostics Report Export
 
-## v0.9.40.95
+## v0.9.40.96
 
+- Adds **Print / PDF**, **Export HTML**, and **Export JSON** to portrait Settings → Prompt Diagnostics.
+- Print/HTML reports are fully expanded and include run metadata, evidence-source configuration, normal three-Theme result, a 105-concept score index, exact stored Worker definitions, every stored definition-component assessment/reason, and each overall score reason.
+- HTML is standalone and portable; JSON preserves the complete saved diagnostic run in machine-readable form.
+- Future diagnostic calls now retain successful-call response protocol and focused-repair/fallback metadata for later reports. Existing runs remain exportable; older runs correctly note that successful-call repair counts were not retained by the earlier site build.
+- No AI calls are required to export a saved run. Worker remains `0.9.6.40-prompt-diagnostics-three-wave-fallback`.
+
+## Inherited from v0.9.40.95
 - Prompt Diagnostics results now expand to natural height; the Settings body owns scrolling.
 - Hidden Settings panels are explicitly suppressed so Queue/Storage/etc. cannot leak below Prompt Diagnostics.
 

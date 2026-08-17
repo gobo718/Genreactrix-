@@ -8265,7 +8265,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .report-productivity-note{margin:0;color:var(--muted);font-size:.78rem;line-height:1.4}
 @media(max-width:700px){.report-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-gallery-card{padding:6px}.report-productivity-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* v0.9.40.93 — Prompt Diagnostics call-size comparison + persistent call/wave status */
+/* v0.9.40.96 — Prompt Diagnostics call-size comparison + persistent call/wave status */
 .prompt-diagnostics-panel{gap:10px!important}
 .prompt-diagnostics-selected-info,.prompt-diagnostics-evidence-summary,.prompt-diagnostics-status{margin:0;color:#bfdbfe;font-size:.78rem;line-height:1.35}
 .prompt-diagnostics-normal{display:grid;gap:6px;padding:9px;border:1px solid rgba(148,163,184,.25);border-radius:10px;background:rgba(15,23,42,.5)}
@@ -8311,7 +8311,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media (orientation:landscape){.prompt-diagnostics-settings-tab,[data-settings-panel="prompt-diagnostics"]{display:none!important}}
 @media(max-width:520px){.prompt-diagnostics-actions{grid-template-columns:1fr 1fr}.prompt-diagnostics-actions #promptDiagnosticsStop{grid-column:1/-1}.prompt-diagnostics-toolbar{grid-template-columns:1fr}.prompt-diagnostics-results{max-height:none;overflow:visible}}
 
-/* v0.9.40.93 Prompt Diagnostics execution modes */
+/* v0.9.40.96 Prompt Diagnostics execution modes */
 .prompt-diagnostics-call-mode{font-size:.75rem}
 .prompt-diagnostics-compare-scores{display:flex;gap:5px;align-items:center;white-space:nowrap;font-size:.68rem;color:#cbd5e1}
 .prompt-diagnostics-compare-scores em{font-style:normal;font-weight:800;color:#fde68a}
@@ -8320,3 +8320,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .prompt-diagnostics-evaluation.is-missing{border-style:dashed;color:#94a3b8}
 .prompt-diagnostics-evaluation p{margin:3px 0}
 @media(max-width:520px){.prompt-diagnostics-result summary{grid-template-columns:minmax(0,1fr) auto}.prompt-diagnostics-result summary small{grid-column:1/-1}.prompt-diagnostics-compare-scores{font-size:.64rem}}
+
+/* v0.9.40.96 Prompt Diagnostics report export controls */
+.prompt-diagnostics-export-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.prompt-diagnostics-export-actions button{min-width:0;padding:7px 5px;font-size:.7rem}
+@media(max-width:520px){.prompt-diagnostics-export-actions{grid-template-columns:1fr 1fr}.prompt-diagnostics-export-actions #promptDiagnosticsExportJson{grid-column:1/-1}}
