@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.99 — Compound PrimFusion Name Casing
+
+## v0.9.40.99
+
+- Naming-only cleanup: **PFM0110 🧸🤢 Uglycute → UglyCute** and **PFM0411 🤣👻 Comedy Horror → ComedyHorror**.
+- Establishes the closed-compound display style used by **CreepyCute, UglyCute, ComedyHorror, PartyTime**, and similar compound PrimFusion labels.
+- Stable PFM identities, Prim pairings, definitions/AI meanings, exactly-three Theme behavior, and all diagnostic/scoring logic are unchanged.
+- Bundles Worker **0.9.6.44-compound-name-casing**. PrimFusion Matrix remains **0.0.0.0**.
+- No layout or geometry changes.
+
 # Genreactrix v0.9.40.98 — Semantic Calibration Pass
 
 ## v0.9.40.98
@@ -5,7 +15,7 @@
 - Synchronizes the site with Worker **0.9.6.43-semantic-calibration** while keeping PrimFusion Matrix **0.0.0.0**.
 - Redefines **PFM0110 🧸🤢 as Uglycute** — “so ugly it’s cute” appeal — while preserving its stable PFM identity.
 - Applies the locked **PFM0309 Humiliation** wording and booked refinements/gates for Saccharine, Surreal, Liminal, Zany, Grossout, Freakshow, Parodic, Limerence, Horror, Obsessive, Uglycute, and Goofy.
-- Prompt Diagnostics now separates positive **MATCH EVIDENCE** from **GATE CONFIRMED**, uses explicit confidence calibration, and strengthens cue/meaning and evidence-fidelity rules.
+- Prompt Diagnostics separates positive **MATCH EVIDENCE** from **GATE CONFIRMED**, uses explicit confidence calibration, and strengthens cue/meaning and evidence-fidelity rules.
 - Adds post-parse consistency validation: score/component/WHY contradictions and same-wave cross-concept contamination trigger a focused quality repair instead of being saved as completed results.
 - Normal exactly-three Theme selection remains mandatory; when the third-best fit is weak, confidence should fall rather than evidence being fabricated.
 - Prompt Diagnostics keeps the 90-second diagnostics-only provider timeout; normal AI timeout remains unchanged.

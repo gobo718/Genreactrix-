@@ -8337,4 +8337,4 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media(max-width:520px){.prompt-diagnostics-image-card{grid-template-columns:76px minmax(0,1fr);gap:8px;padding:7px}.prompt-diagnostics-image-button{width:76px;height:76px;min-width:76px}.prompt-diagnostics-image-copy strong{font-size:.74rem}.prompt-diagnostics-image-copy small{font-size:.64rem}}
 
 
-/* v0.9.40.98 — semantic calibration; no layout/geometry changes */
+/* v0.9.40.99 — compound PrimFusion name casing; no layout/geometry changes */
