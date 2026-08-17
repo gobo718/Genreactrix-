@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.35-reaction-rerun-combined-multimodal.
+Current bundled Worker: v0.9.6.37-prompt-diagnostics-call-modes.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -36,3 +36,8 @@ Worker 0.9.6.33 validation note: top-four effort notes are optional for reaction
 ## Worker 0.9.6.34 — Combined Reaction evidence protocol
 
 Image + Description Direct Reaction reruns use the Vision model with a compact strict line protocol (`P01|weight` through `P14|weight`, then `RANKING|...`). Every Prim weight must be independently present and numeric; malformed or missing values trigger a retry. Image-only and Description-only routing are unchanged from their accepted 0.9.6.33 behavior.
+
+
+## Worker 0.9.6.37 — Prompt Diagnostics call modes
+
+Prompt Diagnostics can evaluate a complete 15-concept batch or one exact 5-concept wave from that same batch. Both paths use the same live Prim/PrimFusion registry definitions and the same independent 0–100 definition-part scoring contract. Five-concept waves use a smaller output allowance and return wave metadata so the portrait diagnostic surface can persist and compare results call-by-call.
