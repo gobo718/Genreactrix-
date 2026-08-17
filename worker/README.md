@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.37-prompt-diagnostics-call-modes.
+Current bundled Worker: v0.9.6.40-prompt-diagnostics-three-wave-fallback.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -41,3 +41,8 @@ Image + Description Direct Reaction reruns use the Vision model with a compact s
 ## Worker 0.9.6.37 — Prompt Diagnostics call modes
 
 Prompt Diagnostics can evaluate a complete 15-concept batch or one exact 5-concept wave from that same batch. Both paths use the same live Prim/PrimFusion registry definitions and the same independent 0–100 definition-part scoring contract. Five-concept waves use a smaller output allowance and return wave metadata so the portrait diagnostic surface can persist and compare results call-by-call.
+
+
+## Worker 0.9.6.40 — Prompt Diagnostics 3 × 5 + adaptive definition repair
+
+Adds 3-concept waves (five waves per 15-concept batch). The existing 5-concept and 15-concept paths remain available. If a concept cannot enumerate its complete numbered definition after one focused repair, the Worker falls back only for that concept to five-definition-component chunks, then derives a fresh final confidence score from the completed component findings. Score parsing also accepts trailing explanatory text after the numeric score.
