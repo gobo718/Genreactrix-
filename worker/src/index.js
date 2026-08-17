@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.35-reaction-rerun-combined-multimodal
+/* Genreactrix AI Worker v0.9.6.36-prompt-diagnostics
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.35-reaction-rerun-combined-multimodal';
+const API_VERSION = '0.9.6.36-prompt-diagnostics';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1065,6 +1065,186 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   return parseProviderResponse(payload);
 }
 
+
+const PROMPT_DIAGNOSTIC_BATCH_SIZE = 15;
+const PROMPT_DIAGNOSTIC_BATCH_COUNT = 7;
+
+function promptDiagnosticDefinitionParts(definition){
+  const text=String(definition||'').trim();
+  if(!text)return[];
+  const parts=[];
+  for(const paragraph of text.split(/\n+/).map(v=>v.trim()).filter(Boolean)){
+    const sentences=paragraph.split(/(?<=[.!?])\s+/).map(v=>v.trim()).filter(Boolean);
+    for(const sentence of sentences){
+      const clauses=sentence.split(/;\s+/).map(v=>v.trim()).filter(Boolean);
+      for(const clause of clauses)parts.push(clause);
+    }
+  }
+  return parts.length?parts:[text];
+}
+
+function promptDiagnosticVocabulary(){
+  const prims=PRIMFUSION_REGISTRY.primitives.map(row=>({
+    code:row.id,name:row.name,kind:'prim',symbol:row.symbol||'',primIds:[row.id],definition:String(row.aiMeaning||'')
+  }));
+  const themes=PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>({
+    code:row.code,name:row.name,kind:'fusion',symbol:'',primIds:Array.isArray(row.primIds)?[...row.primIds]:[],definition:String(row.aiMeaning||'')
+  }));
+  const batches=[];
+  for(let batchIndex=0;batchIndex<PROMPT_DIAGNOSTIC_BATCH_COUNT;batchIndex++){
+    const primSlice=prims.slice(batchIndex*2,batchIndex*2+2);
+    const themeSlice=themes.slice(batchIndex*13,batchIndex*13+13);
+    batches.push([...primSlice,...themeSlice].map((row,index)=>({
+      ...row,
+      batchIndex,
+      position:index+1,
+      definitionParts:promptDiagnosticDefinitionParts(row.definition)
+    })));
+  }
+  if(batches.length!==7||batches.some(batch=>batch.length!==15))throw new Error('Prompt Diagnostics vocabulary must resolve to seven 15-concept batches');
+  return batches;
+}
+
+const PROMPT_DIAGNOSTIC_BATCHES = promptDiagnosticVocabulary();
+
+function normalizePromptDiagnosticSources(input){
+  const sources={
+    image:Boolean(input?.image),
+    reactions:Boolean(input?.reactions),
+    description:Boolean(input?.description)
+  };
+  if(!sources.image&&!sources.reactions&&!sources.description)throw new Error('Prompt Diagnostics requires at least one evidence source');
+  return sources;
+}
+
+function normalizePromptDiagnosticReactionScores(raw){
+  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+  const out={};
+  for(const prim of PRIMFUSION_REGISTRY.primitives){
+    const value=source[prim.id];
+    const n=typeof value==='number'?value:Number(value?.percentage??value?.confidence??value?.score??value?.weight??value?.value??value);
+    out[prim.id]=Number.isFinite(n)?Math.max(0,Math.min(100,n)):0;
+  }
+  return out;
+}
+
+function promptDiagnosticSourceLabel(sources){
+  return ['image','reactions','description'].filter(key=>sources[key]).join('+');
+}
+
+function promptDiagnosticPrompt({batchIndex,sources,reactions,description}){
+  const batch=PROMPT_DIAGNOSTIC_BATCHES[batchIndex];
+  const sourceLabel=promptDiagnosticSourceLabel(sources);
+  const evidence=[];
+  if(sources.image)evidence.push('IMAGE: The supplied image is evidence. Judge only what can reasonably be seen or inferred from it.');
+  if(sources.reactions){
+    const reactionLines=PRIMFUSION_REGISTRY.primitives.map(p=>`${p.id} ${p.name}: ${Math.round((reactions[p.id]||0)*10)/10}%`).join('\n');
+    evidence.push(`CURRENT REACTION EVIDENCE: Treat these as supplied reaction measurements, not as ground truth and not as Theme selections.\n${reactionLines}`);
+  }
+  if(sources.description)evidence.push(`CURRENT AI DESCRIPTION: Treat this as supplied observational/interpretive evidence, not as ground truth and not as a Theme selection.\n${description}`);
+
+  const concepts=batch.map(row=>{
+    const numbered=row.definitionParts.map((part,index)=>`  [${index+1}] ${part}`).join('\n');
+    return `CONCEPT ${row.code} — ${row.name} — ${row.kind==='prim'?'PRIM BUILDING BLOCK (diagnostic only; not selectable as a final Theme)':'PRIMFUSION THEME'}\nCURRENT WORKER DEFINITION (verbatim):\n${row.definition}\nDEFINITION PARTS TO ASSESS:\n${numbered}`;
+  }).join('\n\n');
+
+  return `You are running GENREACTRIX PROMPT DIAGNOSTICS. This is research instrumentation, not normal Theme selection.
+
+EVIDENCE SOURCE COMBINATION: ${sourceLabel}
+${evidence.join('\n\n')}
+
+Evaluate EACH of the 15 concepts below INDEPENDENTLY against the available evidence and against its exact current Worker definition.
+
+SCORING RULES:
+- Give every concept its own 0-100 MATCH CONFIDENCE. These scores are independent. They do NOT add to 100, are NOT shares of a pool, and must NOT be normalized against one another.
+- Do NOT choose three winners. Do NOT rank concepts as a substitute for scoring them. A concept can score 0 even when others score highly, and many concepts can simultaneously score highly.
+- Base the score on the supplied definition. The purpose is to discover what the AI sees, does not see, understands, misunderstands, or fails to associate with the definition.
+- Assess EVERY numbered definition part for EVERY concept. Do not skip a part because the final score is low.
+- A 0% score requires a full explanation. For a zero, explicitly state why each definition part has no supporting evidence, is contradicted, or cannot be established from the selected evidence sources.
+- Conversely, high confidence must be justified by concrete definition-level support. Do not inflate confidence merely because a concept is vaguely plausible.
+- For PrimFusion Themes, do not automatically infer the Theme just because its two constituent Prims might fit. Judge the fusion Theme's own supplied definition.
+- For standalone Prims, judge the Prim definition directly. They are diagnostic building blocks and cannot be selected as final Genreactrix Themes.
+- If an evidence source is silent on something, say so. Do not invent missing image details, reaction meaning, or Description content.
+
+For each definition part use exactly one assessment label: SUPPORTS, PARTIAL, ABSENT, CONTRADICTS, or NOT_OBSERVABLE.
+
+Return ONLY valid JSON in this shape:
+{"results":[{"code":"P01 or PFM####","confidence":0,"definitionAnalysis":[{"part":1,"assessment":"SUPPORTS|PARTIAL|ABSENT|CONTRADICTS|NOT_OBSERVABLE","reason":"concise evidence-grounded reason"}],"scoreReason":"concise explanation of why the part-level findings justify the final score"}]}
+
+Every listed concept must appear exactly once, and every numbered definition part for that concept must appear exactly once.
+
+15 CONCEPTS:
+${concepts}`;
+}
+
+function parsePromptDiagnosticResponse(raw,batchIndex){
+  const parsed=parse(raw);
+  const rows=Array.isArray(parsed?.results)?parsed.results:[];
+  const expected=PROMPT_DIAGNOSTIC_BATCHES[batchIndex];
+  if(rows.length!==expected.length)throw new Error(`Prompt Diagnostics expected ${expected.length} results but received ${rows.length}`);
+  const byCode=new Map(rows.map(row=>[String(row?.code||'').trim().toUpperCase(),row]));
+  const allowedAssessments=new Set(['SUPPORTS','PARTIAL','ABSENT','CONTRADICTS','NOT_OBSERVABLE']);
+  return expected.map(concept=>{
+    const rawRow=byCode.get(concept.code);
+    if(!rawRow)throw new Error(`Prompt Diagnostics response omitted ${concept.code}`);
+    const confidence=Number(rawRow.confidence);
+    if(!Number.isFinite(confidence)||confidence<0||confidence>100)throw new Error(`Prompt Diagnostics confidence for ${concept.code} must be numeric 0-100`);
+    const analyses=Array.isArray(rawRow.definitionAnalysis)?rawRow.definitionAnalysis:[];
+    if(analyses.length!==concept.definitionParts.length)throw new Error(`Prompt Diagnostics ${concept.code} must assess all ${concept.definitionParts.length} definition parts`);
+    const byPart=new Map(analyses.map(item=>[Number(item?.part),item]));
+    const definitionAnalysis=concept.definitionParts.map((text,index)=>{
+      const part=index+1,item=byPart.get(part);
+      if(!item)throw new Error(`Prompt Diagnostics ${concept.code} omitted definition part ${part}`);
+      const assessment=String(item.assessment||'').trim().toUpperCase();
+      if(!allowedAssessments.has(assessment))throw new Error(`Prompt Diagnostics ${concept.code} part ${part} has invalid assessment`);
+      const reason=String(item.reason||'').trim();
+      if(!reason)throw new Error(`Prompt Diagnostics ${concept.code} part ${part} needs a reason`);
+      return{part,text,assessment,reason};
+    });
+    const scoreReason=String(rawRow.scoreReason||'').trim();
+    if(!scoreReason)throw new Error(`Prompt Diagnostics ${concept.code} needs a score reason`);
+    return{
+      code:concept.code,name:concept.name,kind:concept.kind,symbol:concept.symbol,primIds:[...concept.primIds],
+      confidence:Math.round(confidence*10)/10,definition:concept.definition,definitionAnalysis,scoreReason
+    };
+  });
+}
+
+async function runPromptDiagnosticBatch(env,body){
+  const batchIndex=Number(body?.batchIndex);
+  if(!Number.isInteger(batchIndex)||batchIndex<0||batchIndex>=PROMPT_DIAGNOSTIC_BATCH_COUNT)throw new Error('Prompt Diagnostics batchIndex must be 0-6');
+  const sources=normalizePromptDiagnosticSources(body?.sources);
+  const reactions=normalizePromptDiagnosticReactionScores(body?.reactions);
+  const description=sources.description?String(body?.description||'').trim().slice(0,12000):'';
+  if(sources.description&&!description)throw new Error('Prompt Diagnostics selected Description but no AI Description was supplied');
+  if(sources.reactions&&(!body?.reactions||typeof body.reactions!=='object'))throw new Error('Prompt Diagnostics selected Reactions but no Reaction scores were supplied');
+  const image=sources.image?(body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl)):null;
+  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
+  const prompt=promptDiagnosticPrompt({batchIndex,sources,reactions,description});
+  let lastError=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    const recovery=attempt===1?'':`\n\nRECOVERY: The previous diagnostic response was invalid${lastError?.message?`: ${String(lastError.message).slice(0,350)}`:''}. Return only valid JSON, include all 15 requested codes exactly once, and assess every numbered definition part exactly once.`;
+    const raw=await runStructured(env,model,image,prompt+recovery,null,7200,'text',{temperature:attempt===1?0.12:0.03});
+    try{
+      return{
+        schemaVersion:1,
+        matrixVersion:matrixVersion(),
+        workerVersion:API_VERSION,
+        batchIndex,
+        batchNumber:batchIndex+1,
+        batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,
+        batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,
+        sourceCombination:promptDiagnosticSourceLabel(sources),
+        sources,
+        model,
+        evaluatedAt:new Date().toISOString(),
+        results:parsePromptDiagnosticResponse(raw,batchIndex)
+      };
+    }catch(error){lastError=error;}
+  }
+  throw lastError||new Error('Prompt Diagnostics did not produce a valid response');
+}
+
 function themeRecoverySchema(){
   const validCodes = PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code);
   return {
@@ -1448,7 +1628,8 @@ export default {
         themeChoiceCount:PRIMFUSION_REGISTRY.aiThemeChoices.length,
         totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
         components:COMPONENT_IDS,
-        customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED
+        customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
+        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT}
       });
     }
 
@@ -1473,6 +1654,18 @@ export default {
         if (!bytes.length) return json({ok:false,error:'Image was empty'},{status:422});
         if (bytes.length > 6_000_000) return json({ok:false,error:'Image exceeds 6 MB'},{status:413});
         return new Response(bytes,{status:200,headers:{...cors,'content-type':contentType,'cache-control':'no-store','content-length':String(bytes.length)}});
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/prompt-diagnostics'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+        const body = await request.json().catch(()=>null);
+        if (!body) return json({ok:false,error:'JSON body required'},{status:400});
+        return json({ok:true,result:await runPromptDiagnosticBatch(env,body)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
