@@ -1,3 +1,12 @@
+# Genreactrix v0.9.40.86 — Reports Negated Filter Help
+
+## v0.9.40.86
+- Expands Reports Filter Help so every visible filter explicitly explains the result of selecting `Does not have`.
+- Compound filters show the negation of the whole condition, including cases such as `NOT(Funny AND NOT Adorable)` and reaction-combination negation.
+- Numeric/comparison help states the inverse threshold/range and preserves the existing rule that records missing required usable AI/comparison data remain excluded.
+- Gives the exact selection pattern for the inverse: keep the shown fields and change only the Operator where applicable.
+- No filter names, operator vocabulary, query semantics, lifecycle behavior, Worker behavior, or layout geometry changed.
+
 # Genreactrix v0.9.40.85 — Reports Filter Help
 
 ## v0.9.40.85
