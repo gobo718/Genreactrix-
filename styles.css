@@ -8249,3 +8249,18 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .report-filter-help-select span{color:var(--muted);font-size:.8rem;font-weight:700}
 .report-filter-help-select code,.report-filter-help-intro code,.report-filter-help-list p code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
 @media(max-width:760px){.report-condition-header-actions{gap:5px}.report-filter-help-dialog{width:96vw}.report-filter-help-shell{padding:10px}.report-filter-help-shell>header{top:-10px;padding:10px 0 7px}.report-filter-help-select{grid-template-columns:1fr}.report-filter-help-select span{margin-top:3px}}
+
+/* v0.9.40.88 — Reports research views */
+.report-research-view{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--panel-2)}
+.report-research-view-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.report-research-view-head h4{margin:0}.report-research-view-head span{font-weight:800;color:var(--muted)}
+.report-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:8px}
+.report-gallery-card{display:grid;grid-template-rows:auto auto;gap:6px;text-align:left;border:1px solid var(--line);border-radius:10px;padding:7px;background:var(--panel);min-width:0}
+.report-gallery-thumb{display:grid;place-items:center;aspect-ratio:1/1;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel-2)}
+.report-gallery-thumb img{width:100%;height:100%;object-fit:cover}.report-gallery-thumb span{padding:8px;text-align:center;color:var(--muted);font-size:.72rem}
+.report-gallery-meta{display:grid;gap:2px;min-width:0}.report-gallery-meta strong{overflow-wrap:anywhere}.report-gallery-meta small{color:var(--muted);overflow-wrap:anywhere}
+.report-review-reasons{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}.report-review-reasons span{border:1px solid var(--line);border-radius:999px;padding:2px 6px;font-size:.66rem;background:var(--panel-2)}
+.report-productivity-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px}.report-productivity-kpis>div{border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--panel)}
+.report-productivity-kpis strong,.report-productivity-kpis span{display:block}.report-productivity-kpis strong{font-size:1.05rem}.report-productivity-kpis span{font-size:.7rem;color:var(--muted);margin-top:2px}
+.report-productivity-note{margin:0;color:var(--muted);font-size:.78rem;line-height:1.4}
+@media(max-width:700px){.report-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-gallery-card{padding:6px}.report-productivity-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}

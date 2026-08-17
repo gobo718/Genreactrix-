@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.88 — Reports Research Views
+
+## v0.9.40.88
+- Adds the booked Reports research-output views: Matching Images, Uncertain Images, Difficult Images, and Productivity.
+- Matching Images renders the actual filtered population as a thumbnail gallery; tapping a card opens the existing Image Inspector.
+- Uncertain Images reports only recorded uncertainty evidence currently supported by the app: AI Analysis/SHOW AI was opened or was recorded visible during a Director commit.
+- Difficult Images reports explicit stored evidence: Undo, Redo, a prior Director classification changed after AI was viewed, or a manual Review flag.
+- Adds report telemetry for future SHOW AI openings by appending a history event when the existing AI button opens the AI workspace; no Director classification or lifecycle behavior changes.
+- Productivity reports Director-complete image counts and timestamp-supported completion span/throughput. It does not fabricate per-image work duration when no start/duration evidence exists.
+- Adds Research JSON and Research CSV exports containing the selected population, normalized Director/AI fields, AI reaction scores, workflow/source/timestamps, agreement, and review signals.
+- Extends Report Help for all new output views and research exports.
+- Existing v0.9.40.87 filters, operators, query semantics, accepted agreement behavior, AI Theme Usage, lifecycle behavior, and Worker behavior are preserved.
+
 # Genreactrix v0.9.40.87 — Reports Output Help
 
 ## v0.9.40.87

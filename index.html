@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.87</title>
-<link href="styles.css?v=0.9.40.87" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.88</title>
+<link href="styles.css?v=0.9.40.88" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.87</span>
+<span>v0.9.40.88</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.87</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.88</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -803,6 +803,10 @@
 <label><input checked="" data-report-module="" type="checkbox" value="agreement"/> AI–Director</label>
 <label><input checked="" data-report-module="" type="checkbox" value="sources"/> Sources</label>
 <label><input checked="" data-report-module="" type="checkbox" value="workflow"/> Workflow</label>
+<label><input checked="" data-report-module="" type="checkbox" value="gallery"/> Matching Images</label>
+<label><input data-report-module="" type="checkbox" value="uncertain"/> Uncertain Images</label>
+<label><input data-report-module="" type="checkbox" value="difficult"/> Difficult Images</label>
+<label><input data-report-module="" type="checkbox" value="productivity"/> Productivity</label>
 </div>
 <div class="report-condition-header"><strong>Filters</strong><div class="report-condition-header-actions"><button id="reportModuleHelp" type="button">Report Help</button><button id="reportFilterHelp" type="button">Filter Help</button><button id="reportAddCondition" type="button">+ Condition</button></div></div>
 <div class="report-conditions" id="reportConditions"></div>
@@ -810,7 +814,7 @@
 <div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button id="reportsAnalyticsOpen" type="button">Research Analytics</button><button id="reportAiThemeUsage" type="button">AI Theme Usage · Latest Run</button><button class="primary" id="reportRun" type="button">Run report</button></div>
 </section>
 <section><h3>Presets</h3><div class="report-presets" id="reportPresets"></div></section>
-<section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button></div></div><div class="report-visual-output" id="reportVisualOutput" hidden></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
+<section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button><button id="reportExportResearchJson" type="button">Research JSON</button><button id="reportExportResearchCsv" type="button">Research CSV</button></div></div><div class="report-visual-output" id="reportVisualOutput" hidden></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
 <section><h3>Stored reports</h3><div class="report-history" id="reportHistory"></div></section>
 </div>
 </dialog>
@@ -832,6 +836,11 @@
 <details><summary>AI–Director</summary><p><strong>Question it answers:</strong> How often do AI Reaction signals align with completed Director Reaction choices?</p><div class="report-filter-help-select"><span>Select</span><code>AI–Director</code><span>Shows for each Reaction</span><code>comparable · agree · agreementRate · highAiDirectorNo</code></div><p><strong>Comparable</strong> is the number of Director-complete matching records with a usable AI score for that Reaction. <strong>Agree</strong> counts cases where Director selected/not-selected matches AI’s 50% yes/no boundary. <strong>Agreement rate</strong> is Agree ÷ Comparable. <strong>highAiDirectorNo</strong> counts cases where Director did not select the Reaction but AI scored it at least 70%.</p><p><strong>Use it when:</strong> you are studying where AI and Director classifications align or diverge.</p><p><strong>Example:</strong> “For Funny, how many images were comparable, what percentage agreed, and how often was AI at 70%+ when Director said no?”</p></details>
 <details><summary>Sources</summary><p><strong>Question it answers:</strong> Where did the matching images come from?</p><div class="report-filter-help-select"><span>Select</span><code>Sources</code><span>Shows</span><code>count by source.type</code></div><p>Each matching record is counted under its stored source type; records without one are counted as <code>unknown</code>.</p><p><strong>Use it when:</strong> you want to compare how much of the population came from each acquisition/source category.</p><p><strong>Example:</strong> “How many of these matching images were local imports versus another stored source type?”</p></details>
 <details><summary>Workflow</summary><p><strong>Question it answers:</strong> Where are the matching records in the workflow, and do they carry key problem/retention states?</p><div class="report-filter-help-select"><span>Select</span><code>Workflow</code><span>Shows</span><code>stages · failed · recycled · missingSource</code></div><p><strong>Stages</strong> counts the current stored workflow stage. <strong>Failed</strong> counts records with the failed attribute. <strong>Recycled</strong> counts records marked in Recycle Bin. <strong>Missing source</strong> counts records whose stored source reference is missing.</p><p><strong>Use it when:</strong> you want operational status for the same research population.</p><p><strong>Example:</strong> “Of the images matching this Reaction query, how many are Batched, failed, recycled, or missing their source?”</p></details>
+<details><summary>Matching Images</summary><p><strong>Question it answers:</strong> Which actual images matched my Scope + Filters?</p><div class="report-filter-help-select"><span>Select</span><code>Matching Images</code><span>Shows</span><code>thumbnail · filename · workflow stage · Director completion · AI–Director agreement · Saved/Flagged</code></div><p>The gallery is a visual version of the matching-image rows. Tap any image card to open the existing Image Inspector for that canonical Image Record.</p><p><strong>Use it when:</strong> you want to inspect the actual examples behind a query instead of reading only counts or JSON rows.</p><p><strong>Example:</strong> “Show me the pictures that matched Funny + Zazzly.”</p></details>
+<details><summary>Uncertain Images</summary><p><strong>Question it answers:</strong> Which matching images have recorded evidence that the Director opened/viewed AI while evaluating them?</p><div class="report-filter-help-select"><span>Select</span><code>Uncertain Images</code><span>Shows</span><code>image · uncertainty reason · AI–Director agreement</code></div><p>This view does <strong>not</strong> guess uncertainty from low scores. Current supported evidence is a recorded AI-view/SHOW AI history event or legacy Director data showing AI was visible at commit time.</p><p><strong>Use it when:</strong> you want a review queue of classifications where AI was consulted.</p><p><strong>Example:</strong> “Among this Batch, which images caused me to open AI before deciding?”</p></details>
+<details><summary>Difficult Images</summary><p><strong>Question it answers:</strong> Which matching images have explicit stored signs of classification difficulty?</p><div class="report-filter-help-select"><span>Select</span><code>Difficult Images</code><span>Shows</span><code>image · Undo count · Redo count · changed-after-AI · manual flag · reasons</code></div><p>Current supported signals are recorded Undo, Redo, a prior Director classification that was changed after AI had been viewed, or a manual Review flag. The view reports the reason instead of assigning an invented difficulty score.</p><p><strong>Use it when:</strong> you want examples worth revisiting for methodology, definition tuning, or error analysis.</p><p><strong>Example:</strong> “Show me the filtered images where I undid a choice, changed an existing classification after viewing AI, or flagged the image for review.”</p></details>
+<details><summary>Productivity</summary><p><strong>Question it answers:</strong> What processing-rate information can the stored Director timestamps support for this population?</p><div class="report-filter-help-select"><span>Select</span><code>Productivity</code><span>Shows</span><code>Director-complete images · timestamped images · first/last completion · elapsed completion span · completion throughput · average completion interval</code></div><p>Genreactrix only calculates metrics supported by stored timestamps. If individual classification-start or duration evidence is absent, <code>averageTimePerImageMinutes</code> remains null rather than being invented.</p><p><strong>Use it when:</strong> you want a bounded throughput audit for a session, Batch, date range, or other filtered population.</p><p><strong>Example:</strong> “Across these timestamped completed images, what was the completion span and approximate completion rate?”</p></details>
+<details><summary>Research JSON / Research CSV</summary><p><strong>These are export buttons, not report checkboxes.</strong> They export the current report population in a research-oriented image-level structure.</p><div class="report-filter-help-select"><span>Select</span><code>Research JSON</code><span>Or</span><code>Research CSV</code><span>Includes</span><code>report definition/results · source/workflow/timestamps · Director data · AI reaction scores/current AI data · PrimFusion · agreement · review signals</code></div><p><strong>Research JSON</strong> preserves nested data and the report definition. <strong>Research CSV</strong> flattens one row per matching image and includes separate columns for the 14 canonical AI Reaction scores.</p><p><strong>Use it when:</strong> you want data for external research analysis rather than a human-readable report snapshot.</p></details>
 <details><summary>AI Theme Usage · Latest Run</summary><p><strong>This is a dedicated report button, not a checkbox module.</strong> It automatically finds the newest AI analysis job in which the Themes component was enabled and restricts the report population to images belonging to that job.</p><div class="report-filter-help-select"><span>Select</span><code>AI Theme Usage · Latest Run</code><span>Automatically uses</span><code>latest AI Themes-enabled job · Summary · AI Theme Usage</code></div><p>It produces the specialized AI Theme Usage visual without requiring you to configure Scope or Filters first.</p><p><strong>Use it when:</strong> you want the fastest audit of the most recent AI Theme run itself.</p><p><strong>Example:</strong> “What did AI do with Themes in the latest Themes-enabled analysis run?”</p></details>
 </section>
 </div>
@@ -1116,7 +1125,7 @@
 <script src="origin-pack-engine.js?v=0.9.40.37"></script>
 <script src="origin-gate-engine.js?v=0.9.40.37"></script>
 <script src="import-engine.js?v=0.9.40.34"></script>
-<script src="maintenance-engine.js?v=0.9.40.87"></script>
+<script src="maintenance-engine.js?v=0.9.40.88"></script>
 <script src="settings-engine.js?v=0.9.40.61"></script>
 <script src="director-classification-engine.js?v=0.9.40.37"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -1150,7 +1159,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.87"></script>
+<script src="app.js?v=0.9.40.88"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1169,7 +1178,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="queue-engine.js?v=0.9.40.43"></script>
 <script src="investigation-ui.js?v=0.9.40.43"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.40.14"></script>
-<script src="reports-engine.js?v=0.9.40.87"></script>
+<script src="reports-engine.js?v=0.9.40.88"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -1180,9 +1189,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="post-processing-engine.js?v=0.9.40.87"></script>
-<script src="housekeeping-engine.js?v=0.9.40.87"></script>
-<script src="batch-engine.js?v=0.9.40.87"></script>
+<script src="post-processing-engine.js?v=0.9.40.88"></script>
+<script src="housekeeping-engine.js?v=0.9.40.88"></script>
+<script src="batch-engine.js?v=0.9.40.88"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>

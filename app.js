@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.87";
+const GENREACTRIX_BUILD="v0.9.40.88";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -2175,7 +2175,7 @@ document.addEventListener("click",e=>{
   }
 });
 
-$("openAiBtn").addEventListener("click",()=>{ if(!isTabletWorkspace()){ $("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); } });
+$("openAiBtn").addEventListener("click",()=>{ if(!isTabletWorkspace()){ const record=currentImageRecord();if(record)appendHistory({imageId:record.id,eventType:"director-ai-viewed",actor:"director",sourceEngine:"director-ui",summary:"Director opened AI Analysis",payload:{workspace:"aiWorkspace"}});$("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); } });
 $("directorPrimFusionBtn").addEventListener("click",()=>{
   if($("directorWorkspace").open) $("directorWorkspace").close();
   openThemeWorkspace(state.targetSlot || 1);
