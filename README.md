@@ -1,4 +1,12 @@
-# Genreactrix v0.9.40.76 — Daily Housekeeping Retry Import Source Diagnostic
+# Genreactrix v0.9.40.77 — Clean Daily Housekeeping / Recycle Baseline
+
+## v0.9.40.77 — clean Daily Housekeeping / Recycle acceptance baseline
+- Removes all temporary Housekeeping acceptance diagnostics and hard-coded test targets after on-device acceptance.
+- Keeps the validated local-calendar-day Purgatory dedupe fix: one Daily Housekeeping Purgatory retry per local day.
+- Keeps normal Daily Housekeeping behavior for Purgatory, Retry Import Source, and expired Recycle retention; AI and Quarantine remain outside the Housekeeping call path.
+- Keeps the generic Fold-router query/hash handoff repair discovered during diagnostics; no diagnostic query parameters or listeners remain.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
+
 
 ## v0.9.40.76 — controlled Housekeeping test #4
 - Temporary query-gated diagnostic: `?housekeepingOriginSourceTest=1`.
