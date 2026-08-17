@@ -1,20 +1,380 @@
-# Genreactrix v0.9.40.79 — Reports Semantic Query Integrity
+# Genreactrix v0.9.40.80 — Reports Output Completeness
 
-## Reports repairs
+## v0.9.40.80 — Reports query integrity
 
-- Preserves the v0.9.40.78 Boolean/negation and immediate Batch-to-Reports synchronization fixes.
-- Resolves stored Director reaction selections to human-readable reaction identities before Reports filtering, counting, PrimFusion fallback output, or AI–Director comparison. Existing Image Records are not rewritten.
-- Resolves custom Director reaction tokens to their current human-readable labels when available.
-- Corrects AI disagreement detection to compare canonical AI reaction names against normalized Director reaction names.
-- Adds AI–Director agreement minimum/maximum percentage filters required by the booked Reports query architecture.
-- “Most recent AI run” now means the most recent AI job regardless of component. The dedicated AI Theme Usage report separately targets the most recent Theme-enabled AI job.
-- Date-range scope uses local calendar-day boundaries instead of UTC-midnight boundaries, including DST-safe next-day construction.
-- Normal custom reports now retain useful matching-image rows even though the current Reports UI has no field selector.
-- CSV export emits those matching-image rows as actual columns; aggregate-only reports retain the aggregate fallback CSV.
+- Fixes mixed normal/history **OR** report filters so every visible condition participates in one true OR expression instead of being split into accidental AND groups.
+- Makes the visible **Does not have** operator actually negate Director exact-set, source, Batch, Saved, Flagged, AI threshold/disagreement, and history-backed filters.
+- Saved/Flagged filters now use the operator itself as the boolean choice: **Has / equals** = true; **Does not have** = false. The generic Value field is ignored for those boolean filters.
+- Newly finalized Batch records are synchronized into the Reports store immediately using their deterministic Batch-record ID; startup migration remains an idempotent recovery path instead of the normal handoff.
+- A Reports sync failure cannot roll back an already-completed Batch; it is surfaced for attention and remains recoverable by startup migration.
+- No report layout redesign, new report dimensions, lifecycle changes, Housekeeping changes, or Worker changes.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
 
-## Boundaries
+---
 
-- No Reports layout redesign.
-- No CSS changes.
-- No lifecycle/Housekeeping/Post-processing changes.
-- Cloudflare Worker remains 0.9.6.35-reaction-rerun-combined-multimodal.
+## v0.9.40.77 — clean Daily Housekeeping / Recycle acceptance baseline
+- Removes all temporary Housekeeping acceptance diagnostics and hard-coded test targets after on-device acceptance.
+- Keeps the validated local-calendar-day Purgatory dedupe fix: one Daily Housekeeping Purgatory retry per local day.
+- Keeps normal Daily Housekeeping behavior for Purgatory, Retry Import Source, and expired Recycle retention; AI and Quarantine remain outside the Housekeeping call path.
+- Keeps the generic Fold-router query/hash handoff repair discovered during diagnostics; no diagnostic query parameters or listeners remain.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
+
+
+## v0.9.40.76 — controlled Housekeeping test #4
+- Temporary query-gated diagnostic: `?housekeepingOriginSourceTest=1`.
+- Uses the already-purged dated `PURGATORY_TEST_` rubber-band-ball record only as a safe known Image Record with a retained permanent thumbnail.
+- Seeds exactly one temporary **Retry Import Source** case and one temporary **true Import Failure** case.
+- Runs real Daily Housekeeping once. Acceptance requires Retry Import Source to receive one successful Housekeeping retry and resolve, while true Import Failure remains blocked with zero retry attempts.
+- The temporary recoverable source is the record's own retained thumbnail exposed through a short-lived same-page blob URL; no external network source and no Worker AI call are used.
+- Safety gates abort before mutation if real Purgatory, real Retry Import Source, or expired/near-expiry Recycle work is present.
+- Diagnostic cleanup removes both temporary Origin cases, removes the temporary recovered working asset, restores the exact Image Record snapshot, removes diagnostic-created Image Record history, restores the prior Daily Housekeeping marker, and revokes the temporary blob URL.
+- The READY/RUNNING/PASS/INCOMPLETE in-page panel pattern from accepted test #3 is retained.
+- The v0.9.40.73 local-calendar-day dedupe fix remains in production Post-processing code.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`. No Worker redeploy is required.
+- No layout geometry, CSS, AI, Quarantine, Recycle, Maintenance, or Investigation behavior changes.
+
+## v0.9.40.75 — Housekeeping test #3 accepted
+- On-device acceptance passed: first Daily Housekeeping run added exactly one `daily` Purgatory retry; a second forced run on the same local calendar day added none.
+- Temporary Purgatory state cleaned successfully.
+- The local-calendar-day dedupe correction is validated.
+
+### v0.9.40.75 launcher repair
+- Preserves `?housekeepingPurgatoryTest=1` while routing through the Fold unfolded mirror.
+- Synchronizes the Housekeeping script cache-bust and visible build labels to v0.9.40.75.
+- Shows a persistent READY/RUNNING/PASS/INCOMPLETE diagnostic panel for test #3.
+- No Worker, lifecycle, Recycle, AI, Quarantine, or layout-geometry changes.
+
+
+## v0.9.40.75 — controlled Purgatory daily-retry acceptance
+
+- Temporary query-gated diagnostic: `?housekeepingPurgatoryTest=1`.
+- Hard-scoped to the already-purged `PURGATORY_TEST_` throwaway Image ID used for Recycle acceptance.
+- Seeds a temporary Purgatory plan with three pre-recorded automatic failures, then runs Daily Housekeeping twice.
+- Acceptance requires the first Daily Housekeeping run to add exactly one `daily` attempt and the second forced run on the same local calendar day to add none.
+- Fixes a discovered local-day/UTC-date dedupe defect by recording the Housekeeping local day on daily attempts and comparing that explicit day.
+- The temporary Post-processing plan and Purgatory lifecycle state are cleaned up after the diagnostic.
+- No Worker change.
+
+## v0.9.40.72 — Recycle expiry diagnostic removed after acceptance
+
+- Removes the temporary `?recycleExpiryTest=1` controlled Recycle-expiry diagnostic after on-device acceptance.
+- Accepted traveler: Recycle restore -> controlled expiry -> normal Daily Housekeeping purge -> permanent Image Record retained -> permanent 64×64 thumbnail retained.
+- Normal Daily Housekeeping remains non-AI and does not retry or operate Quarantine.
+- Keeps the accepted v0.9.40.70 History Image unavailable-overlay fix.
+- No Recycle lifecycle, Post-processing, Maintenance, Investigation geometry, or Worker behavior changed.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
+
+## v0.9.40.70 — History Image unavailable-overlay repair
+
+- Fixes the shared Investigation preview hide-state so `Image data unavailable` is not rendered over a valid full-resolution image or thumbnail.
+- No image lifecycle, Recycle, Maintenance, layout geometry, or Worker behavior changed.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
+
+## v0.9.40.69 — Diagnostic injector removed after acceptance
+- Removes the temporary `PURGATORY_TEST_` Post-processing fault injector now that the Batch → Post-processing → Purgatory → manual Retry → Recycle traveler has passed on-device acceptance.
+- Normal Post-processing behavior is restored for every filename, including names beginning with `PURGATORY_TEST_`.
+- Keeps the accepted singular Maintenance wording: **1 Purgatory item is ready to retry**.
+- Keeps the v0.9.40.68 Maintenance Quick Check `issue` TDZ repair and Maintenance Inspector preview fallback through the Images Engine display resolver.
+- Keeps v0.9.40.66 Image View Depot and Inbox Thumbnail View unchanged.
+- Worker remains **0.9.6.35-reaction-rerun-combined-multimodal**; no Worker redeploy is required.
+- No Landscape geometry or CSS changes.
+
+## v0.9.40.68 — Purgatory Retry / Inspector Repair
+- Repairs the Maintenance Quick Check temporal-dead-zone bug that could throw `ReferenceError: Cannot access 'issue' before initialization` while resolving repairable findings.
+- Uses singular Purgatory Retry-All wording when exactly one item is unresolved.
+- Maintenance Image Inspector now resolves preview data through the Images Engine display resolver first, allowing cached full-resolution or permanent-thumbnail fallback.
+- The temporary Purgatory fault injector remained present only for traveler acceptance and is removed in v0.9.40.69.
+
+## Historical v0.9.40.67 — Maintenance Console Entry Fix
+
+## v0.9.40.67 — Open Maintenance repaired; Purgatory diagnostic continues
+- Defines the missing Maintenance Engine `openConsole()` API that Settings and operational shortcuts already call.
+- `Open maintenance` now closes Settings, opens the existing Maintenance dialog, and refreshes current maintenance data.
+- No Worker change. No Landscape geometry change.
+- v0.9.40.66 Image View Depot, Inbox Thumbnail View, and `PURGATORY_TEST_` post-processing diagnostic remain intact.
+
+## Historical Genreactrix v0.9.40.66 — Image View Depot + Inbox Thumbnail View
+
+## v0.9.40.66 — Bundled navigation update; Purgatory diagnostic continues
+
+- Worker remains **0.9.6.35-reaction-rerun-combined-multimodal**; no Worker redeploy is required.
+- **Image View Depot:** the enlarged Image View now has a five-button row: **Back | Next | Flag | Keep | Depot**. Depot is the same canonical `attributes.depot` state used by the normal Director view, not a parallel flag. Toggling from either view updates both controls.
+- Image View Depot uses the same normal-view visual identity: ordinary toolbar treatment while off; booked indigo/purple Depot treatment while on.
+- **Inbox Thumbnail View:** the existing Filter popup now has a **Thumbnail View** button at bottom-right. It opens a separate modal grid, so the accepted Landscape workspace does not get squeezed or rearranged.
+- The thumbnail grid uses the current Inbox Filter and Sort result, uses stored permanent thumbnails first, identifies the current image, and shows filenames beneath thumbnails. Tapping a thumbnail jumps directly to that exact Inbox image and closes the modal.
+- **Purgatory traveler diagnostic remains intentionally present:** a newly imported image whose original filename begins exactly with `PURGATORY_TEST_` still fails its first three automatic Post-processing attempts, then allows manual Retry / Retry All through normally. Files without that prefix are unaffected.
+- The two unrelated CSS mutations produced during the interrupted `.66` generation were removed before packaging; normal Director and AI control geometry remains byte-for-byte equivalent in those rules to `.65`.
+
+## v0.9.40.65 — Controlled Post-processing failure traveler
+
+- **Temporary diagnostic behavior.** A newly imported image whose original filename begins exactly with `PURGATORY_TEST_` is deliberately failed during its first **three automatic Post-processing attempts**.
+- The injected failure occurs after the Batch/Post-processing attempt has started and before Images Engine finalization, so the image must remain unresolved in Purgatory rather than partially reaching Keep, Recycle, or a final exclusion stage.
+- The diagnostic injection applies only to `automatic` attempts 1–3. **Manual Retry, Retry All, and Daily Housekeeping are not fault-injected**, allowing the real recovery path to complete.
+- The error is explicitly named `GenreactrixDiagnosticPurgatoryFailure` and is preserved in the ordered Post-processing attempt/error history.
+- Remove this diagnostic injector after the Purgatory traveler acceptance tests are complete.
+
+## Prior accepted site baseline: v0.9.40.64
+
+## Worker 0.9.6.35 — Combined Image + Description multimodal Scout
+
+- Site build remains **v0.9.40.64**; accepted Reaction Rerun layout, checkbox behavior, queue coordination, and 60/40 recombination are unchanged.
+- Image-only remains on the already-passing Llama 3.2 Vision path with the legacy `image` field.
+- Description-only remains on the already-passing Llama 4 Scout text-only `guided_json` path and sends no image bytes.
+- **Image + Description** now uses Llama 4 Scout as a true multimodal chat request: the same user message contains the Reaction prompt/Description as a text content part and the image as an `image_url` data-URI content part.
+- Combined mode restores `guided_json` for the 14 Reaction weights/ranking/notes and removes the temporary v0.9.6.34 line protocol from the active path.
+- The rerun instruction explicitly tells combined mode to reassess the image and AI Description together as the two selected evidence sources.
+- Existing numeric-range, all-zero, all-identical, ranking, retry, and Hamilton apportionment gates remain unchanged.
+- Worker advances to **0.9.6.35-reaction-rerun-combined-multimodal**.
+
+## Worker 0.9.6.34 — Combined Image + Description line protocol
+
+- Site build remains **v0.9.40.64**; accepted Reaction Rerun layout, checkbox behavior, queue coordination, and 60/40 recombination are unchanged.
+- Image-only remains on the already-passing Llama 3.2 Vision text/JSON-tolerant path.
+- Description-only remains on the already-passing Llama 4 Scout `guided_json` path and still sends no image bytes.
+- **Image + Description** now requests a compact plain-text protocol: exactly one numeric `P01|weight` through `P14|weight` line plus one complete `RANKING|...` line. Reaction Reasons add four `NOTE|P##|reason` lines only when that component is requested.
+- Combined-mode parsing is strict: every P01-P14 numeric line must be independently present. Missing or malformed values are rejected and retried rather than inferred from neighboring text.
+- All existing numeric-range, all-zero, all-identical, ranking, and Hamilton apportionment gates remain unchanged.
+- Worker advances to **0.9.6.34-reaction-rerun-combined-line-protocol**.
+
+## Worker 0.9.6.32 — Reaction rerun Vision routing
+
+- Site build remains **v0.9.40.64**; accepted Reaction Rerun layout and queue coordination are unchanged.
+- Image-only and Image + Description Reaction reruns now use the configured Genreactrix Vision model (`@cf/meta/llama-3.2-11b-vision-instruct` by default) with actual image bytes.
+- Image-bearing Reaction responses are requested as text, parsed locally, and then passed through the same strict 14-Prim weight/ranking/top-four-note validator before 100-point apportionment.
+- Description-only keeps the already-passing Llama 4 Scout `guided_json` path and sends no image bytes.
+- The all-zero and all-identical Reaction gates remain hard failures; image-bearing reruns retry once after a semantic/format validation failure.
+- Worker advances to **0.9.6.33-reaction-reasons-optional**.
+
+Built forward from v0.9.40.63. Accepted Landscape geometry and the Reaction Rerun checkbox layout are unchanged.
+
+## v0.9.40.64 — Explicit Reaction rerun queue repair
+
+- Director-triggered Direct Reaction Rerun now serializes against existing AI work for the current image instead of being rejected by the generic active-image exclusion as `No eligible images`.
+- If the current image already has queued/processing AI work, the rerun waits for that work to leave the active state before creating its own job.
+- After the explicit rerun job is created, the workspace follows that exact job until it reaches a terminal state even if the queue engine starts it first. This removes the false `Queued` failure.
+- A narrow race retry handles automatic AI work claiming the image between the idle check and explicit rerun job creation.
+- Image-only, Image + Description, and Description-only use the same corrected job-coordination path.
+- No Reaction 60/40 math, evidence-source semantics, Worker protocol, or accepted UI geometry changed.
+- Worker remains **0.9.6.31-reaction-rerun-sources**; no Worker redeploy is required.
+
+## v0.9.40.63 — Direct Reaction Rerun
+
+- AI Rerun Reactions now opens a compact evidence-source workspace inside the existing 54px/two-row control band. No accepted Landscape panel, image, Theme, Reaction, or drawer geometry is resized.
+- Two checkboxes define the rerun evidence source: **Image** and **Description**. Both are checked every time the workspace opens, making **Image + Description** the default.
+- Valid modes are Image only, Image + Description, and Description only. Submit is disabled if neither source is selected.
+- Description means the current AI Description artifact/projection. Description-only reruns do not send image bytes to the Worker.
+- Only the direct Reaction 40% is rerun. The existing Theme-derived 60% remains authoritative and untouched; Combined Reactions are then recalculated from the unchanged Theme 60% plus the new direct 40%.
+- Reaction rerun attempts record which evidence sources were used.
+- Worker advances to **0.9.6.31-reaction-rerun-sources** to support Image-only, Image + Description, and Description-only Reaction assessment.
+
+## v0.9.40.62 — Theme Rerun Clear
+
+- Theme Rerun **Clear** now preserves the three Theme Red / Green / Neutral states exactly as selected.
+- Clear removes all PrimPicker assignments from Theme 1, Theme 2, Theme 3, and General scopes.
+- Clear removes every Theme Exclusion.
+- Clear unselects every included AI Description reference/context selection.
+- Clear does not erase Theme History or Description History, does not change the current Theme values, and does not submit or rerun AI.
+- Successful Theme reruns continue to create a new immutable Theme artifact which becomes Current; prior Theme artifacts remain in Theme History.
+- Worker remains **0.9.6.30-theme-rerun-parser-fallback**. No Worker change is required for v0.9.40.62.
+
+## v0.9.40.61 — Theme Rerun Submit all-Neutral repair
+
+- AI rerun failures now surface the actual failed-item Worker/provider error instead of only `Completed with 1 failure(s)`.
+- Theme Rerun no longer depends on provider JSON Mode. The Worker requests a compact pipe-delimited text protocol for open Theme slots, then performs the authoritative PFM eligibility, Preserve/Replace, Theme Exclusion, uniqueness, confidence, and rationale validation locally.
+- Preserve slots are now resolved locally and are not sent back to the model as output work. If every slot is Preserve, the Theme rerun completes without an AI provider call.
+- The text parser tolerates harmless bullets/spacing and can still accept a valid JSON object if the model emits one voluntarily, but JSON is no longer requested for Theme reruns. Invalid line responses are retried up to two times with the exact parse failure fed into the recovery instruction.
+- Bundled Worker: **0.9.6.30-theme-rerun-parser-fallback**.
+- No Landscape geometry, Theme Rerun Clear semantics, or Current-retention behavior changed.
+- Packaging correction: all hardcoded on-screen/site title version labels now report **v0.9.40.61**.
+- The obsolete `genreactrix-v3-114-point-prims` AI Prompt-set default/fallback is retired. Existing copies of that stale label are cleared to blank on settings migration; blank now saves and remains blank. The Worker remains authoritative for actual per-component prompt versions returned with each analysis.
+- `.61` cache-busts the changed Settings/App/AI-analysis scripts and awaits AI Provider setting writes before reporting Saved, preventing a browser-cached older script from resurrecting the retired Prompt-set label after refresh.
+
+## AI Description rerun workspace
+
+Opening **AI Rerun Description** temporarily repurposes the existing Reaction rectangle as a guidance/current-work text field. The surrounding Landscape regions do not move or resize. AI Themes and AI Description remain visible, and the rerun control band occupies the existing 4×2 AI-button footprint.
+
+Button order, left-to-right then top-to-bottom:
+
+**Save Draft · Select Draft · Preview Request · Submit**
+
+**Review Reactions · Descriptions · Clear · Return**
+
+### Current state and drafts
+
+- Guidance and rerun choices are Current state and remain sticky through Return and repeated submissions until explicitly cleared or finalized through Batch.
+- Blank/whitespace-only guidance is omitted from the AI request.
+- Save Draft stores the complete current rerun setup as an **AI Desc Rerun Draft**.
+- Select Draft restores the complete saved setup; the main Undo/Redo controls can reverse/reapply that restore.
+- Immediately before Batch commitment, meaningful Current rerun state is automatically saved as an **AI Desc Rerun Draft**, then its live Current state is cleared.
+- Portable Project backup already captures the project-scoped Current localStorage state; saved drafts live on the permanent Image Record.
+
+### Selectable context
+
+- The image is always included.
+- Each of the 3 Director Themes and 3 AI Themes can be independently selected/deselected as AI context.
+- **Descriptions** normal tap prefers the most recent prior Description. Long press opens the dated Description-version list.
+- Descriptions checkboxes independently include any number of Description versions as AI context. Populating a Description does not automatically include it.
+- The populated Description has a mirrored Include checkbox on the existing AI Description display.
+
+### Edit mode from the existing AI Description field
+
+No separate mode buttons are added.
+
+- No deliberate cursor/highlight: **ALL / Rewrite All**.
+- Blinking cursor in nonblank Description text: **ADD at cursor**.
+- One contiguous highlighted span: **REPLACE highlighted section**.
+- Add/Replace targeting turns the entire AI Description field **maroon**.
+- Manual typing/pasting into the AI Description target is blocked; it is a targeting surface, not a direct editor.
+- For Add/Replace the Worker returns only the insertion/replacement fragment. Genreactrix splices that fragment into the target locally, preserving all text outside the allowed boundary.
+
+### Preview, review, clear, and return
+
+- Preview Request exposes the complete request before an AI call, including operation, always-included image, guidance/no guidance, selected Themes/no Themes, included Description versions/no Descriptions, and exact cursor/highlight target.
+- Review Reactions is press-and-hold reference viewing only. Releasing restores the rerun workspace unchanged.
+- Clear offers **Clear Text Entry** and **Clear Highlights/Cursor** independently; its Submit path requires confirmation.
+- Return exits without discarding Current rerun state.
+
+### Immutable AI history
+
+Every actual Description submission creates a new AI attempt/artifact version. The exact structured rerun request is retained with attempt/history metadata. Add/Replace also preserves the raw returned edit fragment in immutable history while the live Description projection contains only the complete resulting Description.
+
+## Worker contract
+
+This build extends the bundled Cloudflare Worker to accept structured Description rerun context: selected Themes, included Description versions, and All/Add/Replace target information. The bundled Worker now supports both structured Description reruns and Director-guided Theme reruns. The current Worker version is **0.9.6.30-theme-rerun-parser-fallback**.
+
+The updated Worker must be deployed before testing actual structured Submit calls. UI-only inspection does not require a Worker call.
+
+## Protected scope
+
+- No existing Landscape CSS rule was edited; v0.9.40.48 CSS remains an exact prefix of this build and the new workstation styles are scoped/appended.
+- No existing image, Director Theme, AI Theme, AI Description, drawer, or surrounding panel geometry was moved.
+- Existing v0.9.40.48 AI-drawer load defaults remain intact outside rerun mode.
+- 60/40 Reaction architecture is unchanged.
+
+Real-device/browser acceptance is still required.
+
+
+## v0.9.40.50 surgical correction
+- The populated-Description **Include** checkbox now receives the same measured vertical offset as the AI Description panel.
+- This keeps the checkbox with the populated AI Description field instead of falling back onto the Submit-button row.
+- No rerun behavior, surrounding geometry, typography, Worker contract, or other UI logic changed.
+
+
+## v0.9.40.52 — Theme Rerun PrimPicker visual pass
+
+- Adds the Landscape Theme Rerun 4×2 control shell.
+- Adds PrimPicker with code-backed P01–P14 rows, fixed ascending order, one-emoji-width spacing, and centered status dots.
+- AI Theme cells cycle Neutral → Replace (red) → Preserve (green) → Neutral. Replace slots create Theme-specific PrimPicker rows; General fills the remaining row until all three slots are specific.
+- Tap cycles Mandatory → Preferred → Optional → Discouraged → Forbidden → Unchosen. Long-press opens direct status selection or Clear.
+- Destructive row loss requires confirmation; Clear resets PrimPicker assignments while retaining Theme selections/rows.
+- Theme rerun submission/history/exclusions/description-context actions remain reserved for a later bounded pass; Worker is unchanged.
+- Renames the AI Description rerun control label Classics → Descriptions.
+
+## v0.9.40.52 — PrimPicker Discouraged Dot Contrast
+- Darkens the Discouraged red-orange status dot to a deeper red-orange so it is visually distinct from Forbidden hot magenta.
+- No PrimPicker behavior or surrounding Landscape geometry changed.
+- Worker unchanged from v0.9.40.51.
+
+
+## v0.9.40.53 — Theme Exclusions
+
+- Theme Exclusions is now a working Theme-rerun control.
+- The exclusion catalog is generated from stable PFM codes (PFM0102 through the canonical non-diagonal PrimFusion set); visible Theme words are resolved from those codes at render time.
+- Tap a Theme to prohibit it from being returned by this rerun; tap again to remove the prohibition.
+- Exclusions are stored in Current rerun state by PFM code, persist per image, and survive closing/reopening the Theme rerun workspace.
+- The exclusion dialog is searchable by displayed Theme name (and internally by PFM code), with selected exclusions shown in hot magenta.
+- A preserved/green current Theme cannot simultaneously be excluded; the UI blocks either conflicting action instead of silently resolving it.
+- PrimPicker behavior and accepted Landscape geometry are unchanged from v0.9.40.52.
+- Theme Exclusions are state/UI only in this bounded pass; Preview/Submit wiring remains for subsequent Theme-rerun passes. Worker files are unchanged.
+
+
+## v0.9.40.54 — Theme Rerun Description Context
+
+- The Theme Rerun **Descriptions** control now reuses the established AI Description-rerun history behavior.
+- On the first Theme-rerun Current state for an image, the current AI Description is populated and included by default, preserving the Image + current Description failsafe.
+- Normal tap on **Descriptions** populates the most recent prior Description when one exists. Long press opens the dated/versioned Description history.
+- Every history row has an independent **Include** checkbox; any number of Description artifacts may be included simultaneously.
+- Tapping a history row populates it for inspection but does not change its Include state.
+- The populated Description receives the same mirrored **Include** checkbox beside the existing AI Description field.
+- Theme-rerun Description state stores artifact IDs/references, not human-readable labels; immutable Description history remains the authority.
+- Existing PrimPicker, Theme Exclusions, Theme-state controls, and accepted Landscape geometry are unchanged.
+- This is a UI/state pass only. Preview Request and Submit do not consume the selected Description context yet. Worker files are unchanged from v0.9.40.53.
+
+
+## v0.9.40.55 — Saved Draft deletion
+
+- **Select Draft** entries now support deletion by long-press.
+- A long-press opens a destructive confirmation before removing that saved AI Description rerun draft.
+- A normal tap still restores the draft exactly as before.
+- This pass does not change Theme Rerun state, AI request behavior, Worker code, or accepted Landscape geometry.
+
+
+## v0.9.40.56 — Theme Rerun Preview Request
+
+- **Preview Request** now renders the complete current Theme-rerun request without sending an AI call.
+- The preview always identifies the image as included.
+- All three current Theme slots are shown with their Neutral / Red / Green instruction and whether PrimPicker guidance applies. Green/protected Theme slots are explicitly marked untouched.
+- PrimPicker preview is grouped by its active Theme/General scopes. Primitive identity remains code-backed; the interface resolves the current human-readable Prim names from those P-codes.
+- Prim states are displayed in the locked order: Mandatory, Preferred, Optional, Discouraged, Forbidden, Unchosen. Unchosen is shown with its derived 40/50 effective weight for that scope; it is not treated as a selectable 40/50 state.
+- Theme Exclusions are previewed from their stored PFM codes while displaying the current Theme names.
+- Included Description artifacts are shown with date/time, version, and full text. The preview explicitly says when no descriptions or no exclusions are included.
+- **Submit** and **Theme History** remain intentionally unwired in this bounded pass. Preview performs no Worker call.
+- The v0.9.40.55 long-press Saved Draft deletion fix is carried forward.
+- Preview uses the established scrollable request-preview modal language; no accepted Landscape workspace geometry was changed. Worker files are unchanged.
+
+
+
+## v0.9.40.58 — Stable Include Reserve
+
+- Fixes the repeatable Description-width collapse when repeatedly changing Theme rerun states.
+- The mirrored Include control reserve is now recalculated from the baseline Description padding on every render instead of compounding the previous render's reserve.
+- No Landscape geometry, Theme sizing, Reaction geometry, or Worker behavior changed from v0.9.40.57.
+
+## v0.9.40.57 — Landscape Packing + Include Repair
+
+- Removes the large blank band below the 4×2 AI/rerun button band using live rendered measurements rather than a guessed offset.
+- The space below the second button row is made exactly equal to the rendered gap between button row 1 and row 2.
+- Director Themes move upward by that measured amount and grow by the same amount, so their bottom edge stays fixed. AI Themes and AI Description continue to inherit the exact Director geometry.
+- Horizontal Landscape geometry and reaction X coordinates are not changed.
+- The outer image socket remains square; its internal content box reserves the overlapped strip so Director Theme fields do not cover image pixels.
+- Fixes Theme Rerun's mirrored Include control so it is positioned on the AI Description instead of the Submit button.
+- Reserves the measured Include-control footprint inside AI Description in both rerun modes so Description text cannot render underneath the checkbox.
+- Carries forward Theme Rerun Preview Request and long-press Saved Draft deletion. Worker files remain unchanged.
+
+
+## v0.9.40.59 — Theme Rerun Theme History
+- Theme History is now a read-only modal backed by immutable `themes` artifacts.
+- Entries show date/time, current/version status, the three Theme labels derived from stable fusion codes when available, weights, which slots changed from the prior artifact, and recorded attempt context.
+- Tapping a history entry expands details only; it never changes the current Theme rerun state.
+- Submit remains intentionally unwired for the next bounded pass.
+- No Landscape geometry or Worker files changed in this pass.
+
+## v0.9.40.60 — Theme Rerun Submit
+
+- **Submit** now executes the structured Theme rerun shown by Preview Request.
+- Image input is always included. Included Description artifacts are passed as additional Theme context.
+- Green/Preserve slots are immutable and are copied forward by their stable `PFM####` code.
+- Red/Replace slots cannot return their current PFM code. Neutral slots may keep or replace their current PFM.
+- Theme Exclusions are hard prohibitions. Protected Theme codes are also excluded from every open slot so the three final Themes remain unique.
+- PrimPicker uses code-backed `P##` assignments. Mandatory and Forbidden are hard gates; Preferred, Optional, derived Unchosen, and Discouraged are steering weights. The Worker calculates each eligible fusion's preference from the two P-code weights while continuing to judge image fit.
+- Impossible hard-constraint combinations fail before the AI call instead of silently relaxing Director instructions.
+- The Worker schema restricts each slot to its eligible PFM code set and validates uniqueness; invalid duplicate/eligibility responses are retried up to two times.
+- Successful Theme reruns create a new immutable Theme artifact and AI attempt containing the exact Theme-rerun context. The existing direct-Reaction artifact remains untouched; the Theme-derived 60% and combined Reaction artifact are recalculated through the established 60/40 architecture.
+- Theme History can immediately expose the new version and its recorded rerun context.
+- Current Theme-rerun controls remain available after Submit for further fine-tuning. If the new confidences reorder the three displayed AI Theme rows, Theme-state instructions and Theme-specific PrimPicker scopes are remapped to the corresponding rerun result so they do not attach to the wrong displayed Theme.
+- No Landscape CSS or geometry changed from v0.9.40.59.
+- **Worker deploy required:** bundled Worker `0.9.6.26-theme-rerun-submit`.
+
+
+Worker 0.9.6.29 Theme Rerun format compatibility: rerun output now uses the established Theme Analysis `rank|matrix|PFM|confidence|reason` protocol, while the Worker parser remains backward-compatible with the short-lived v0.9.6.28 `THEME n|PFM|confidence|reason` format.
+
+
+Worker 0.9.6.30 Theme Rerun parser fallback: accepts Markdown table rows, prose/Markdown PFM selections, and ordered PFM-code output in addition to the established pipe protocol. Slot-specific eligibility remains authoritative; final parse failures now include a short provider-response preview for diagnosis.
+
+
+Worker 0.9.6.33 validation note: top-four effort notes are optional for reactions-only requests and remain required for reactionReasons requests.
+
+## v0.9.40.80 Reports output completeness
+- Custom reports no longer hide all non-AI-Theme modules when AI Theme Usage is selected.
+- Dedicated AI Theme Usage reports keep the specialized theme table only.
+- No layout, lifecycle, Housekeeping, Post-processing, or Worker behavior changes.
