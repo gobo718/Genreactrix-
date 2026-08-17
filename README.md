@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.82 — Reports AI–Director Completion Boundary
+
+## v0.9.40.82
+- AI–Director agreement now evaluates only Director-complete Image Records.
+- Incomplete/unclassified/blocked/partial Director records remain in report populations but receive `aiAgreement: null`.
+- Per-reaction agreement comparable counts exclude incomplete Director records.
+- AI-disagreement filters exclude incomplete Director records instead of treating missing Director choices as fourteen explicit No votes.
+- Completion statistics use Director completion state and no longer infer completion merely from a Batched lifecycle stage.
+- No Image Record rewrite, Director workflow change, layout change, or Worker change.
+
 # Genreactrix v0.9.40.81 — Reports Record Interpretation Integrity
 
 ## v0.9.40.81
