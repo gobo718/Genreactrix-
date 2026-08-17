@@ -1,6 +1,11 @@
-# Genreactrix v0.9.40.94 — Prompt Diagnostics 3 × 5 + Adaptive Definition Repair
+# Genreactrix v0.9.40.95 — Prompt Diagnostics Expanded Results
 
-## v0.9.40.94
+## v0.9.40.95
+
+- Prompt Diagnostics results now expand to natural height; the Settings body owns scrolling.
+- Hidden Settings panels are explicitly suppressed so Queue/Storage/etc. cannot leak below Prompt Diagnostics.
+
+## Inherited from v0.9.40.94
 - Adds **3 × 5 waves** as a Prompt Diagnostics execution mode: five 3-concept calls per 15-concept batch, 35 calls for a complete 105-concept pass when no fallback repair is needed.
 - Preserves **5 × 3**, **15 at once**, and the existing **15 ↔ 5 comparison** mode.
 - Prompt Diagnostics still uses the exact current Worker definitions for all 14 Prims and 91 PrimFusion Themes; scoring semantics and evidence-source combinations are unchanged.
