@@ -28,7 +28,8 @@
     if(!response.ok){const payload=await response.json().catch(()=>({}));throw new Error(payload.error||`Image proxy failed (${response.status})`)}
     const blob=await response.blob();if(!blob.type?.startsWith('image/'))throw new Error('Image proxy did not return an image');return blob;
   },
-  analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)})
+  analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)}),
+  promptDiagnostics:(specimen,key)=>request('/api/genreactrix/prompt-diagnostics',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)})
  });
  window.addEventListener('genreactrix:settings-ready',()=>window.GenreactrixCloudApi.reload(),{once:true});
 })();

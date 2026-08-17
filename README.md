@@ -1,3 +1,12 @@
+# Genreactrix v0.9.40.91 — Prompt Diagnostics
+
+## v0.9.40.91
+- Adds portrait Settings → Prompt Diagnostics.
+- Uses the current Worker registry definitions directly: 14 Prims + 91 PrimFusion Themes = 105 concepts.
+- Seven balanced batches of 15 (2 Prims + 13 Themes), with independent 0–100 confidence and definition-part reasoning.
+- Supports Image, Reactions, AI Description, and any selected combination; first-15 testing can be continued to the full 105 only when useful.
+- Diagnostic history is isolated from normal evaluation data.
+
 # Genreactrix v0.9.40.90 — Reports Image List Stability Repair
 
 ## v0.9.40.90
