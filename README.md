@@ -1,4 +1,13 @@
-# Genreactrix v0.9.40.91 — Prompt Diagnostics
+# Genreactrix v0.9.40.92 — Prompt Diagnostics Status
+
+
+## v0.9.40.92
+- Adds a persistent Prompt Diagnostics status panel in portrait Settings.
+- Shows RUNNING / PAUSED / COMPLETE / FAILED / INTERRUPTED state, current batch out of 7, and completed concepts out of 105.
+- Shows a seven-step batch track and preserves the failed batch marker.
+- Failed runs now visibly render their saved exact error instead of only `0/105 · failed`.
+- Cloud API errors retain HTTP status and provider diagnostics when the Worker supplies them.
+- No Worker behavior or diagnostic scoring methodology changed in this site-only build.
 
 ## v0.9.40.91
 - Adds portrait Settings → Prompt Diagnostics.

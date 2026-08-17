@@ -3,7 +3,7 @@
  const BASE_KEY='genreactrix-ai-worker-base',KEY_KEY='genreactrix-ai-analysis-key';
  const normalize=v=>String(v||'').trim().replace(/\/+$/,'');
  let base=normalize(window.genreactrixSettingsEngine?.get?.('ai.worker.base','')||localStorage.getItem(BASE_KEY)||window.GENREACTRIX_AI_WORKER_BASE||'');
- const request=async(path,init={})=>{if(!base)throw new Error('AI Worker URL is not configured');const response=await fetch(`${base}${path}`,{...init,headers:{'content-type':'application/json',...(init.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`AI request failed (${response.status})`);return payload;};
+ const request=async(path,init={})=>{if(!base)throw new Error('AI Worker URL is not configured');const response=await fetch(`${base}${path}`,{...init,headers:{'content-type':'application/json',...(init.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(payload.error||`AI request failed (${response.status})`);error.httpStatus=response.status;error.providerDiagnostic=payload.providerDiagnostic||null;error.responsePayload=payload;throw error}return payload;};
  const storedKey=()=>String(window.genreactrixSettingsEngine?.get?.('ai.worker.accessKey','')||localStorage.getItem(KEY_KEY)||'');
  const verifyConnection=async()=>{
   if(!base)throw new Error('AI Worker URL is not configured');
