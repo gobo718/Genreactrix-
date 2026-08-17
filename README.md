@@ -1,4 +1,17 @@
-# Genreactrix v0.9.40.80 — Reports Output Completeness
+# Genreactrix v0.9.40.81 — Reports Record Interpretation Integrity
+
+## v0.9.40.81
+- Reports now prefers canonical Director `reactions` when present, falling back to legacy `selectedReactions`.
+- Matching-image rows use Image Record `originalFilename` / `originalUrl`.
+- PrimFusion rows/groups fall back to the resolved Director reaction pair when no labeled fusion object is stored.
+- Classification dates use Director `recordedAt` / `updatedAt` with processed timestamp fallback.
+- AI–Director breakdown includes AI-only reaction signals as well as Director-selected reactions.
+- No Image Record rewrite, Director behavior change, layout change, or Worker change.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
+
+---
+
+# Genreactrix v0.9.40.80 — Reports Filter Logic Integrity
 
 ## v0.9.40.80 — Reports query integrity
 
