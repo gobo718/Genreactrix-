@@ -1,6 +1,28 @@
-# Genreactrix v0.9.40.96 — Prompt Diagnostics Report Export
+# Genreactrix v0.9.40.98 — Semantic Calibration Pass
 
-## v0.9.40.96
+## v0.9.40.98
+
+- Synchronizes the site with Worker **0.9.6.43-semantic-calibration** while keeping PrimFusion Matrix **0.0.0.0**.
+- Redefines **PFM0110 🧸🤢 as Uglycute** — “so ugly it’s cute” appeal — while preserving its stable PFM identity.
+- Applies the locked **PFM0309 Humiliation** wording and booked refinements/gates for Saccharine, Surreal, Liminal, Zany, Grossout, Freakshow, Parodic, Limerence, Horror, Obsessive, Uglycute, and Goofy.
+- Prompt Diagnostics now separates positive **MATCH EVIDENCE** from **GATE CONFIRMED**, uses explicit confidence calibration, and strengthens cue/meaning and evidence-fidelity rules.
+- Adds post-parse consistency validation: score/component/WHY contradictions and same-wave cross-concept contamination trigger a focused quality repair instead of being saved as completed results.
+- Normal exactly-three Theme selection remains mandatory; when the third-best fit is weak, confidence should fall rather than evidence being fabricated.
+- Prompt Diagnostics keeps the 90-second diagnostics-only provider timeout; normal AI timeout remains unchanged.
+- No evaluation-version or Matrix-version increment is created. Test-era reports remain disposable until the baseline is deliberately locked.
+
+# Genreactrix v0.9.40.97 — Prompt Diagnostics Image Reference
+
+## v0.9.40.97
+
+- Adds a **sticky diagnostic-image thumbnail** inside portrait Settings → Prompt Diagnostics so the image remains visible while reviewing long 105-concept reasoning.
+- The thumbnail follows the currently selected Image Record or loaded Saved Run.
+- Tap the thumbnail to open the existing full Image Inspector / zoom path.
+- Uses the existing image asset or permanent thumbnail; no duplicate image binary is added to Prompt Diagnostics history.
+- No Prompt Diagnostics scoring, evidence, execution-mode, Matrix, or evaluation behavior changes.
+- Bundled Worker source is synchronized to **0.9.6.42-prompt-diagnostics-component-parser**; Matrix remains **0.0.0.0**.
+
+## Inherited from v0.9.40.96
 
 - Adds **Print / PDF**, **Export HTML**, and **Export JSON** to portrait Settings → Prompt Diagnostics.
 - Print/HTML reports are fully expanded and include run metadata, evidence-source configuration, normal three-Theme result, a 105-concept score index, exact stored Worker definitions, every stored definition-component assessment/reason, and each overall score reason.
