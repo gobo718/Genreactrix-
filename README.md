@@ -1,4 +1,13 @@
-# Genreactrix v0.9.40.89 — Reports Gallery Thumbnail Loader Repair
+# Genreactrix v0.9.40.90 — Reports Image List Stability Repair
+
+## v0.9.40.90
+- Replaces Reports research-gallery thumbnail rendering with lightweight Image Record cards.
+- Matching Images, Uncertain Images, and Difficult Images perform no image/blob/thumbnail reads while the report renders.
+- Result cards retain filename, workflow state, Director completion, AI–Director agreement, Saved/Flagged status, and review reasons where applicable.
+- Tapping a result still opens the existing Image Inspector, where image viewing is explicit and isolated from report rendering.
+- Removes the v0.9.40.89 thumbnail hydration queue, object-URL lifecycle, IntersectionObserver path, and thumbnail loading placeholders from Reports.
+- Query/filter semantics, research calculations/exports, Productivity, lifecycle engines, and Worker behavior are unchanged.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
 
 ## v0.9.40.89
 - Repairs the Reports research-gallery loader after v0.9.40.88 could stall the phone browser while rendering Matching Images.
