@@ -1,3 +1,15 @@
+# Genreactrix v0.9.40.94 — Prompt Diagnostics 3 × 5 + Adaptive Definition Repair
+
+## v0.9.40.94
+- Adds **3 × 5 waves** as a Prompt Diagnostics execution mode: five 3-concept calls per 15-concept batch, 35 calls for a complete 105-concept pass when no fallback repair is needed.
+- Preserves **5 × 3**, **15 at once**, and the existing **15 ↔ 5 comparison** mode.
+- Prompt Diagnostics still uses the exact current Worker definitions for all 14 Prims and 91 PrimFusion Themes; scoring semantics and evidence-source combinations are unchanged.
+- Worker parser now accepts score lines such as `P01 SCORE 0 - reason` instead of discarding the score because explanatory text follows it.
+- If a concept still fails to enumerate its full numbered definition after one focused whole-concept repair, only that concept falls back to groups of five definition components.
+- After fallback component chunks are complete, the Worker asks for a fresh final 0–100 score derived from those completed component findings.
+- Component fallback is not the default path and does not fragment definitions that already complete normally.
+- Requires Worker `0.9.6.40-prompt-diagnostics-three-wave-fallback`.
+
 # Genreactrix v0.9.40.93 — Prompt Diagnostics Call Modes
 
 ## v0.9.40.93
