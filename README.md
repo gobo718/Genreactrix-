@@ -1,4 +1,16 @@
-# Genreactrix v0.9.40.77 — Clean Daily Housekeeping / Recycle Baseline
+# Genreactrix v0.9.40.78 — Reports Filter Logic Integrity
+
+## v0.9.40.78 — Reports query integrity
+
+- Fixes mixed normal/history **OR** report filters so every visible condition participates in one true OR expression instead of being split into accidental AND groups.
+- Makes the visible **Does not have** operator actually negate Director exact-set, source, Batch, Saved, Flagged, AI threshold/disagreement, and history-backed filters.
+- Saved/Flagged filters now use the operator itself as the boolean choice: **Has / equals** = true; **Does not have** = false. The generic Value field is ignored for those boolean filters.
+- Newly finalized Batch records are synchronized into the Reports store immediately using their deterministic Batch-record ID; startup migration remains an idempotent recovery path instead of the normal handoff.
+- A Reports sync failure cannot roll back an already-completed Batch; it is surfaced for attention and remains recoverable by startup migration.
+- No report layout redesign, new report dimensions, lifecycle changes, Housekeeping changes, or Worker changes.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`.
+
+---
 
 ## v0.9.40.77 — clean Daily Housekeeping / Recycle acceptance baseline
 - Removes all temporary Housekeeping acceptance diagnostics and hard-coded test targets after on-device acceptance.
