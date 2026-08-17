@@ -1,3 +1,14 @@
+# Genreactrix v0.9.40.84 — Reports Query Surface Completion
+
+## v0.9.40.84
+- Completes the booked Reports reaction-query surface without changing lifecycle, layout, AI scoring, or Worker behavior.
+- Adds Director reaction combination, Director reaction-without-another, AI reaction bounded-range, reaction-specific Director/AI minimum and maximum filters, thresholded Director disagreement, AI-only signals, and Director-only signals.
+- AI-only and Director-only filters require a completed Director record so unfinished records cannot masquerade as Director “No” decisions.
+- Keeps the accepted v0.9.40.83 aggregate AI–Director agreement threshold behavior unchanged.
+- Invalid or blank numeric/range thresholds match nothing instead of coercing to zero.
+- Numeric comparison predicates require real comparable AI data even when negated; missing/non-comparable records do not become false-positive “NOT” matches.
+- Reaction-name inputs now offer the 14 canonical Reaction names while preserving typed/custom query text where applicable.
+
 # Genreactrix v0.9.40.83 — Reports Agreement Threshold Input Integrity
 
 ## v0.9.40.83
