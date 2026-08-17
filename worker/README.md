@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.40-prompt-diagnostics-three-wave-fallback.
+Current bundled Worker: v0.9.6.43-semantic-calibration.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -42,6 +42,18 @@ Image + Description Direct Reaction reruns use the Vision model with a compact s
 
 Prompt Diagnostics can evaluate a complete 15-concept batch or one exact 5-concept wave from that same batch. Both paths use the same live Prim/PrimFusion registry definitions and the same independent 0–100 definition-part scoring contract. Five-concept waves use a smaller output allowance and return wave metadata so the portrait diagnostic surface can persist and compare results call-by-call.
 
+
+## Worker 0.9.6.43 — Semantic calibration + diagnostic consistency repair
+
+Keeps Matrix `0.0.0.0`. Synchronizes the booked pre-lock PrimFusion wording changes, including the locked Humiliation definition and the PFM0110 redefinition as Uglycute. Prompt Diagnostics now uses MATCH_EVIDENCE versus GATE_CONFIRMED, explicit 0–100 calibration, cue≠meaning/evidence-fidelity rules, target isolation, and an automatic consistency/evidence repair when a complete response contradicts its own score or leaks unrelated same-wave concepts. Exactly-three normal Theme selection remains mandatory; weak forced-third matches should lower confidence rather than fabricate evidence. Diagnostics retain the 90-second provider timeout; normal analysis remains at 45 seconds.
+
+## Worker 0.9.6.42 — Prompt Diagnostics component parser
+
+Keeps Matrix version `0.0.0.0`, the locked PFM0309 Humiliation working definition, and the 90-second Prompt Diagnostics-only provider timeout from 0.9.6.41. Component repair parsing now anchors on the known component ID and accepts the assessment token after intervening definition text, including forms such as `PFM0412.02 :: [definition text]. SUPPORTS - reason`.
+
+## Worker 0.9.6.41 — Prompt Diagnostics timeout + locked Humiliation
+
+Prompt Diagnostics provider calls use a 90-second timeout while ordinary AI calls remain unchanged. PFM0309 Humiliation uses the locked pre-baseline working definition. Matrix version remains `0.0.0.0`; test-era report cleanup will occur before the historical Matrix baseline is locked.
 
 ## Worker 0.9.6.40 — Prompt Diagnostics 3 × 5 + adaptive definition repair
 
