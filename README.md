@@ -1,4 +1,13 @@
-# Genreactrix v0.9.40.88 — Reports Research Views
+# Genreactrix v0.9.40.89 — Reports Gallery Thumbnail Loader Repair
+
+## v0.9.40.89
+- Repairs the Reports research-gallery loader after v0.9.40.88 could stall the phone browser while rendering Matching Images.
+- Report galleries now use only the stored Genreactrix thumbnail blob (`storage.thumbnailKey` / image ID). They never fall back to full-resolution assets, hyperlinks, or remote source URLs.
+- Missing stored thumbnails resolve to **Thumbnail unavailable** rather than triggering a remote/full-image fetch.
+- The report body renders immediately; thumbnail hydration is asynchronous and is no longer awaited by `openReport`.
+- Thumbnail work is lazy and bounded: near-viewport cards are queued through `IntersectionObserver` with at most two thumbnail reads active at a time; the no-observer fallback is deferred and uses the same concurrency bound.
+- Closing or replacing a report cancels pending gallery hydration and revokes report-only object URLs.
+- Report calculations, query/filter semantics, exports, Inspector behavior, lifecycle engines, and Cloudflare Worker remain unchanged.
 
 ## v0.9.40.88
 - Adds the booked Reports research-output views: Matching Images, Uncertain Images, Difficult Images, and Productivity.

@@ -208,12 +208,77 @@ function addCondition(initial={}){const row=document.createElement('div');row.cl
 async function render(){const all=await allReports(),ps=await presets();const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=String(v)};set('portraitReportCount',all.length);set('portraitLastReport',all[0]?.title||'None');const list=document.getElementById('reportHistory');if(list)list.innerHTML=all.slice(0,30).map(r=>`<article class="report-row" data-report-id="${r.id}"><button type="button" data-open-report="${r.id}"><span>${escapeHtml(r.title)}<small>${new Date(r.createdAt).toLocaleString()}</small></span><strong>${r.imageIds.length}</strong></button><div><button type="button" data-json="${r.id}">JSON</button><button type="button" data-csv="${r.id}">CSV</button><button type="button" data-print="${r.id}">Print</button></div></article>`).join('')||'<p>No reports yet.</p>';const preset=document.getElementById('reportPresets');if(preset)preset.innerHTML=ps.map(p=>`<button type="button" data-run-preset="${p.id}">${escapeHtml(p.name)}</button>`).join('')||'<span>No presets yet.</span>'}
 function renderAiThemeUsage(data){if(!data)return'';const rows=data.rows||[],custom=data.customRows||[],top=rows[0];const rowHtml=rows.map(x=>`<tr><td><strong>${escapeHtml(x.name)}</strong>${x.code?`<small>${escapeHtml(x.code)}</small>`:''}</td><td>${x.selected}</td><td>${x.percentImages}%</td><td>${x.rank1}</td><td>${x.rank2}</td><td>${x.rank3}</td><td>${x.avgConfidence??'—'}</td></tr>`).join('');const customHtml=custom.length?`<h4>Custom proposals</h4><table class="ai-theme-report-table"><thead><tr><th>Custom</th><th>Selected</th><th>% images</th><th>#1</th><th>#2</th><th>#3</th><th>Avg conf.</th></tr></thead><tbody>${custom.map(x=>`<tr><td><strong>${escapeHtml(x.name)}</strong></td><td>${x.selected}</td><td>${x.percentImages}%</td><td>${x.rank1}</td><td>${x.rank2}</td><td>${x.rank3}</td><td>${x.avgConfidence??'—'}</td></tr>`).join('')}</tbody></table>`:'';const never=(data.neverSelected||[]);return `<div class="ai-theme-report-kpis"><div><strong>${data.scopeImages}</strong><span>Images in scope</span></div><div><strong>${data.analyzedImages}</strong><span>Theme results</span></div><div><strong>${data.missingThemeResults}</strong><span>Missing theme results</span></div><div><strong>${data.customRate}%</strong><span>Custom selection rate</span></div></div>${top?`<p class="ai-theme-report-lead"><strong>Most selected:</strong> ${escapeHtml(top.name)} · ${top.selected} selections · ${top.percentImages}% of analyzed images</p>`:'<p>No AI Theme selections in this scope.</p>'}<div class="ai-theme-report-scroll"><table class="ai-theme-report-table"><thead><tr><th>Theme</th><th>Selected</th><th>% images</th><th>#1</th><th>#2</th><th>#3</th><th>Avg conf.</th></tr></thead><tbody>${rowHtml}</tbody></table></div>${customHtml}<details class="ai-theme-report-never"><summary>Never selected (${never.length})</summary><p>${never.map(escapeHtml).join(', ')||'None'}</p></details><details><summary>Run metadata</summary><pre>${escapeHtml(JSON.stringify({promptVersions:data.promptVersions,models:data.models,totalSelections:data.totalSelections,matrixSelections:data.matrixSelections,customSelections:data.customSelections},null,2))}</pre></details>`}
 let reportObjectUrls=[];
-function releaseReportObjectUrls(){for(const url of reportObjectUrls)try{URL.revokeObjectURL(url)}catch{}reportObjectUrls=[]}
+let reportThumbnailRun=0;
+let reportThumbnailObserver=null;
+function releaseReportObjectUrls(){
+ reportThumbnailRun++;
+ if(reportThumbnailObserver){try{reportThumbnailObserver.disconnect()}catch{}reportThumbnailObserver=null}
+ for(const url of reportObjectUrls)try{URL.revokeObjectURL(url)}catch{}
+ reportObjectUrls=[];
+}
+function reportThumbnailUnavailable(img){
+ if(!img)return;
+ img.hidden=true;
+ const empty=img.parentElement?.querySelector('[data-report-thumb-empty]');
+ if(empty){empty.hidden=false;empty.textContent='Thumbnail unavailable'}
+}
+async function loadReportThumbnail(img,run){
+ if(!img||run!==reportThumbnailRun)return;
+ const engine=window.genreactrixImagesEngine;
+ if(!engine?.thumbnailBlobGet){reportThumbnailUnavailable(img);return}
+ const id=img.dataset.imageId;
+ const record=window.genreactrixImageRecordEngine?.get?.(id,{touch:false})||engine.recordById?.(id);
+ if(!record){reportThumbnailUnavailable(img);return}
+ const key=record.storage?.thumbnailKey||record.id;
+ const blob=key?await engine.thumbnailBlobGet(key).catch(()=>null):null;
+ if(run!==reportThumbnailRun)return;
+ if(!blob){reportThumbnailUnavailable(img);return}
+ const src=URL.createObjectURL(blob);
+ if(run!==reportThumbnailRun){try{URL.revokeObjectURL(src)}catch{};return}
+ reportObjectUrls.push(src);
+ img.src=src;
+ img.hidden=false;
+ const empty=img.parentElement?.querySelector('[data-report-thumb-empty]');
+ if(empty)empty.hidden=true;
+}
+function hydrateReportThumbnails(container){
+ releaseReportObjectUrls();
+ const run=reportThumbnailRun;
+ if(!container)return;
+ const images=[...container.querySelectorAll('[data-report-thumb]')];
+ if(!images.length)return;
+ if(!window.genreactrixImagesEngine?.thumbnailBlobGet){for(const img of images)reportThumbnailUnavailable(img);return}
+ const queue=[];
+ let active=0;
+ const queued=new WeakSet();
+ const pump=()=>{
+  if(run!==reportThumbnailRun)return;
+  while(active<2&&queue.length){
+   const img=queue.shift();
+   if(!img?.isConnected)continue;
+   active++;
+   loadReportThumbnail(img,run).catch(()=>{if(run===reportThumbnailRun)reportThumbnailUnavailable(img)}).finally(()=>{active--;pump()});
+  }
+ };
+ const enqueue=img=>{
+  if(!img||queued.has(img)||run!==reportThumbnailRun)return;
+  queued.add(img);queue.push(img);pump();
+ };
+ if('IntersectionObserver' in window){
+  reportThumbnailObserver=new IntersectionObserver(entries=>{
+   if(run!==reportThumbnailRun)return;
+   for(const entry of entries){if(entry.isIntersecting){reportThumbnailObserver?.unobserve(entry.target);enqueue(entry.target)}}
+  },{root:null,rootMargin:'320px 0px',threshold:0.01});
+  for(const img of images)reportThumbnailObserver.observe(img);
+ }else{
+  const start=()=>{for(const img of images)enqueue(img)};
+  if('requestIdleCallback' in window)requestIdleCallback(start,{timeout:250});else setTimeout(start,0);
+ }
+}
 function reasonHtml(reasons=[]){return reasons.length?`<span class="report-review-reasons">${reasons.map(reason=>`<span>${escapeHtml(reason)}</span>`).join('')}</span>`:''}
 function reportImageCards(data,{title='Matching Images',empty='No matching images in this view.'}={}){const images=data?.images||[];return `<section class="report-research-view"><div class="report-research-view-head"><h4>${escapeHtml(title)}</h4><span>${images.length}</span></div>${images.length?`<div class="report-gallery-grid">${images.map(image=>`<button type="button" class="report-gallery-card" data-report-image-id="${escapeHtml(image.imageId)}"><span class="report-gallery-thumb"><img alt="" data-report-thumb data-image-id="${escapeHtml(image.imageId)}" hidden><span data-report-thumb-empty>Loading thumbnail…</span></span><span class="report-gallery-meta"><strong>${escapeHtml(image.filename||image.imageId)}</strong><small>${escapeHtml(image.stage||'unknown')} · Director ${escapeHtml(image.directorCompletion||'unclassified')}${Number.isFinite(image.aiAgreement)?` · agreement ${image.aiAgreement}%`:''}</small>${reasonHtml(image.reasons||[])}</span></button>`).join('')}</div>`:`<p class="report-productivity-note">${escapeHtml(empty)}</p>`}</section>`}
 function renderProductivity(data){if(!data)return'';const metric=(value,suffix='')=>value==null?'—':`${value}${suffix}`;return `<section class="report-research-view"><div class="report-research-view-head"><h4>Productivity</h4><span>${data.imagesProcessed||0} complete</span></div><div class="report-productivity-kpis"><div><strong>${data.imagesProcessed||0}</strong><span>Director-complete images</span></div><div><strong>${data.timestampedImages||0}</strong><span>Timestamped completions</span></div><div><strong>${metric(data.elapsedMinutes,' min')}</strong><span>Completion span</span></div><div><strong>${metric(data.imagesPerHour,'/hr')}</strong><span>Completion throughput</span></div><div><strong>${metric(data.averageCompletionIntervalMinutes,' min')}</strong><span>Avg completion interval</span></div><div><strong>${metric(data.averageTimePerImageMinutes,' min')}</strong><span>Avg time/image</span></div></div><p class="report-productivity-note">First: ${escapeHtml(data.firstProcessedAt||'—')} · Last: ${escapeHtml(data.lastProcessedAt||'—')}. Average time/image remains blank unless Genreactrix has stored per-image duration evidence.</p></section>`}
-async function hydrateReportThumbnails(container){releaseReportObjectUrls();const engine=window.genreactrixImagesEngine;if(!container||!engine)return;for(const img of container.querySelectorAll('[data-report-thumb]')){const id=img.dataset.imageId,record=window.genreactrixImageRecordEngine?.get?.(id,{touch:false})||engine.recordById?.(id);let src='';if(record){const blob=await engine.thumbnailBlobGet?.(record.storage?.thumbnailKey||record.id).catch?.(()=>null)||null;if(blob){src=URL.createObjectURL(blob);reportObjectUrls.push(src)}else src=record.storage?.hyperlink||record.source?.originalUrl||''}const empty=img.parentElement?.querySelector('[data-report-thumb-empty]');if(src){img.src=src;img.hidden=false;if(empty)empty.hidden=true}else{img.hidden=true;if(empty){empty.hidden=false;empty.textContent='Thumbnail unavailable'}}}}
-async function openReport(id){const r=await get(REPORTS,id);if(!r)return;const raw=document.getElementById('reportOutput'),visual=document.getElementById('reportVisualOutput');raw.dataset.reportId=id;document.getElementById('reportOutputTitle').textContent=r.title;const dedicatedAiThemeReport=r.type==='ai-theme-usage',parts=[];if(r.results?.aiThemes)parts.push(renderAiThemeUsage(r.results.aiThemes));if(r.results?.gallery)parts.push(reportImageCards(r.results.gallery,{title:'Matching Images'}));if(r.results?.uncertain)parts.push(reportImageCards(r.results.uncertain,{title:'Uncertain Images',empty:'No matching images contain recorded AI-view / SHOW AI evidence.'}));if(r.results?.difficult)parts.push(reportImageCards(r.results.difficult,{title:'Difficult Images',empty:'No matching images contain the currently supported difficulty signals.'}));if(r.results?.productivity)parts.push(renderProductivity(r.results.productivity));visual.innerHTML=parts.join('');visual.hidden=!parts.length;if(parts.length)await hydrateReportThumbnails(visual);else releaseReportObjectUrls();if(dedicatedAiThemeReport){raw.textContent='';raw.hidden=true}else{const otherResults={};for(const [key,value] of Object.entries(r.results||{}))if(key!=='aiThemes')otherResults[key]=value;raw.textContent=JSON.stringify(otherResults,null,2);raw.hidden=false}}
+async function openReport(id){const r=await get(REPORTS,id);if(!r)return;const raw=document.getElementById('reportOutput'),visual=document.getElementById('reportVisualOutput');raw.dataset.reportId=id;document.getElementById('reportOutputTitle').textContent=r.title;const dedicatedAiThemeReport=r.type==='ai-theme-usage',parts=[];if(r.results?.aiThemes)parts.push(renderAiThemeUsage(r.results.aiThemes));if(r.results?.gallery)parts.push(reportImageCards(r.results.gallery,{title:'Matching Images'}));if(r.results?.uncertain)parts.push(reportImageCards(r.results.uncertain,{title:'Uncertain Images',empty:'No matching images contain recorded AI-view / SHOW AI evidence.'}));if(r.results?.difficult)parts.push(reportImageCards(r.results.difficult,{title:'Difficult Images',empty:'No matching images contain the currently supported difficulty signals.'}));if(r.results?.productivity)parts.push(renderProductivity(r.results.productivity));visual.innerHTML=parts.join('');visual.hidden=!parts.length;if(parts.length)hydrateReportThumbnails(visual);else releaseReportObjectUrls();if(dedicatedAiThemeReport){raw.textContent='';raw.hidden=true}else{const otherResults={};for(const [key,value] of Object.entries(r.results||{}))if(key!=='aiThemes')otherResults[key]=value;raw.textContent=JSON.stringify(otherResults,null,2);raw.hidden=false}}
 
 function openConsole(){document.getElementById('reportsDialog')?.showModal();render()}
 function initUi(){document.getElementById('reportsClose')?.addEventListener('click',()=>document.getElementById('reportsDialog')?.close());document.getElementById('reportsDialog')?.addEventListener('close',releaseReportObjectUrls);document.getElementById('reportModuleHelp')?.addEventListener('click',()=>document.getElementById('reportModuleHelpDialog')?.showModal());document.getElementById('reportModuleHelpClose')?.addEventListener('click',()=>document.getElementById('reportModuleHelpDialog')?.close());document.getElementById('reportFilterHelp')?.addEventListener('click',()=>document.getElementById('reportFilterHelpDialog')?.showModal());document.getElementById('reportFilterHelpClose')?.addEventListener('click',()=>document.getElementById('reportFilterHelpDialog')?.close());document.getElementById('reportAddCondition')?.addEventListener('click',()=>addCondition());document.getElementById('reportRun')?.addEventListener('click',async()=>{const r=await generate(formDefinition());openReport(r.id)});document.getElementById('reportAiThemeUsage')?.addEventListener('click',async()=>{const r=await generate({type:'ai-theme-usage',title:'AI Theme Usage · Latest AI Run',scope:{type:'latest-ai-theme-job'},filters:{logic:'and',conditions:[]},modules:['summary','ai-themes'],fields:[],statistics:['count'],generatedBy:'research-reports'});openReport(r.id)});document.getElementById('reportSavePreset')?.addEventListener('click',async()=>{const name=prompt('Preset name',document.getElementById('reportTitle').value||'Report preset');if(name){await savePreset({name,definition:formDefinition()});render()}});document.getElementById('reportHistory')?.addEventListener('click',e=>{const id=e.target.closest('[data-open-report]')?.dataset.openReport;if(id)openReport(id);const j=e.target.dataset.json,c=e.target.dataset.csv,p=e.target.dataset.print;if(j)exportJson(j);if(c)exportCsv(c);if(p)printReport(p)});document.getElementById('reportPresets')?.addEventListener('click',async e=>{const id=e.target.dataset.runPreset;if(id){const r=await runPreset(id);openReport(r.id)}});document.getElementById('reportExportCurrentJson')?.addEventListener('click',()=>{const id=document.getElementById('reportOutput').dataset.reportId;if(id)exportJson(id)});document.getElementById('reportExportCurrentCsv')?.addEventListener('click',()=>{const id=document.getElementById('reportOutput').dataset.reportId;if(id)exportCsv(id)});document.getElementById('reportExportResearchJson')?.addEventListener('click',()=>{const id=document.getElementById('reportOutput').dataset.reportId;if(id)exportResearchJson(id)});document.getElementById('reportExportResearchCsv')?.addEventListener('click',()=>{const id=document.getElementById('reportOutput').dataset.reportId;if(id)exportResearchCsv(id)});document.getElementById('reportVisualOutput')?.addEventListener('click',e=>{const card=e.target.closest('[data-report-image-id]');if(card?.dataset.reportImageId)window.genreactrixInvestigationUI?.openImage?.(card.dataset.reportImageId,{title:'Report Image Inspector'})});addCondition()}
