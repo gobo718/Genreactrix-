@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.87 — Reports Output Help
+
+## v0.9.40.87
+- Adds in-app Reports Help for every current report-output module plus the specialized `AI Theme Usage · Latest Run` report.
+- Each help entry explains what the module shows, what question it answers, the output fields/counts produced, when to select it, and a concrete example.
+- Clarifies that Scope + Filters determine the matching image population first; report-module checkboxes only choose which analyses are produced for that population.
+- Documents the default matching-image rows returned by Custom Reports.
+- Reuses the existing phone-readable Reports help dialog styling.
+- No report calculations, query semantics, filter/operator behavior, lifecycle behavior, Worker behavior, or layout geometry changed.
+
 # Genreactrix v0.9.40.86 — Reports Negated Filter Help
 
 ## v0.9.40.86

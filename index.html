@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.86</title>
-<link href="styles.css?v=0.9.40.86" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.87</title>
+<link href="styles.css?v=0.9.40.87" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.86</span>
+<span>v0.9.40.87</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.86</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.87</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -804,7 +804,7 @@
 <label><input checked="" data-report-module="" type="checkbox" value="sources"/> Sources</label>
 <label><input checked="" data-report-module="" type="checkbox" value="workflow"/> Workflow</label>
 </div>
-<div class="report-condition-header"><strong>Filters</strong><div class="report-condition-header-actions"><button id="reportFilterHelp" type="button">Filter Help</button><button id="reportAddCondition" type="button">+ Condition</button></div></div>
+<div class="report-condition-header"><strong>Filters</strong><div class="report-condition-header-actions"><button id="reportModuleHelp" type="button">Report Help</button><button id="reportFilterHelp" type="button">Filter Help</button><button id="reportAddCondition" type="button">+ Condition</button></div></div>
 <div class="report-conditions" id="reportConditions"></div>
 <datalist id="reportReactionNames"><option value="Adorable"></option><option value="Beautiful"></option><option value="Tragic"></option><option value="Funny"></option><option value="Intense"></option><option value="Weird"></option><option value="Ticket"></option><option value="Dreamy"></option><option value="Zazzly"></option><option value="Disgusting"></option><option value="Scary"></option><option value="Smart"></option><option value="Celebration"></option><option value="Angry"></option></datalist>
 <div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button id="reportsAnalyticsOpen" type="button">Research Analytics</button><button id="reportAiThemeUsage" type="button">AI Theme Usage · Latest Run</button><button class="primary" id="reportRun" type="button">Run report</button></div>
@@ -812,6 +812,28 @@
 <section><h3>Presets</h3><div class="report-presets" id="reportPresets"></div></section>
 <section class="report-output-section"><div class="report-output-header"><h3 id="reportOutputTitle">Report output</h3><div><button id="reportExportCurrentJson" type="button">JSON</button><button id="reportExportCurrentCsv" type="button">CSV</button></div></div><div class="report-visual-output" id="reportVisualOutput" hidden></div><pre class="report-output" id="reportOutput">Run or open a report.</pre></section>
 <section><h3>Stored reports</h3><div class="report-history" id="reportHistory"></div></section>
+</div>
+</dialog>
+<dialog class="report-filter-help-dialog" id="reportModuleHelpDialog">
+<div class="report-filter-help-shell">
+<header><div><h2>Reports Output Help</h2><p>What each report option shows, why you would select it, and what appears in the output.</p></div><button aria-label="Close report help" id="reportModuleHelpClose" type="button">×</button></header>
+<section class="report-filter-help-intro">
+<p><strong>How Reports works.</strong> Scope + Filters determine the matching image population first. The report checkboxes do <strong>not</strong> change which images match; they choose which analysis blocks are calculated for that same population.</p>
+<p><strong>Matching image rows.</strong> Custom Reports also include one row per matching image with Image ID, filename, Batch, Director Reactions, Director Themes, PrimFusion, AI–Director agreement, Saved, and Flagged. These rows are the image-level evidence behind the selected report summaries.</p>
+</section>
+<section class="report-filter-help-list">
+<details><summary>Summary</summary><p><strong>Question it answers:</strong> How large and complete is the matching population?</p><div class="report-filter-help-select"><span>Select</span><code>Summary</code><span>Shows</span><code>images · saved · flagged · aiCovered · directorCovered · incomplete</code></div><p><strong>What the numbers mean:</strong> Images is the number of matching records. Saved and Flagged count those attributes. AI-covered counts records containing AI analysis data. Director-covered counts records containing Director analysis data. Incomplete counts matching records with no Director analysis record.</p><p><strong>Use it when:</strong> you want the basic size, coverage, and status totals before examining distributions.</p><p><strong>Example:</strong> “Of the 100 images matching these filters, how many have AI data, Director data, or are still untouched by Director?”</p></details>
+<details><summary>Director Reactions</summary><p><strong>Question it answers:</strong> Which Director Reactions occur in the matching population, and in what complete combinations?</p><div class="report-filter-help-select"><span>Select</span><code>Director Reactions</code><span>Shows</span><code>counts · combinations</code></div><p><strong>Counts</strong> totals each individual Director Reaction. <strong>Combinations</strong> totals complete Reaction sets, normalized into a consistent displayed order.</p><p><strong>Use it when:</strong> you want Reaction frequencies or want to see which groups of Reactions tend to occur together.</p><p><strong>Example:</strong> “How often is Funny selected, and what full Reaction combinations are most common in this Batch?”</p></details>
+<details><summary>Director Themes</summary><p><strong>Question it answers:</strong> Which Director Themes occur in the matching population, and in what complete combinations?</p><div class="report-filter-help-select"><span>Select</span><code>Director Themes</code><span>Shows</span><code>counts · combinations</code></div><p><strong>Counts</strong> totals each individual Director Theme. <strong>Combinations</strong> totals the complete Theme sets assigned to matching images.</p><p><strong>Use it when:</strong> you want Theme frequencies or recurring Theme combinations.</p><p><strong>Example:</strong> “Among images with Funny + Zazzly, how often does Exposure appear and which Theme trios recur?”</p></details>
+<details><summary>AI Theme Usage</summary><p><strong>Question it answers:</strong> Which Themes is AI selecting in this report population, where are they ranking, and how confident is AI?</p><div class="report-filter-help-select"><span>Select</span><code>AI Theme Usage</code><span>Shows</span><code>scope images · theme results · missing results · custom rate · selections · % images · #1/#2/#3 · avg confidence</code></div><p>The visual table separates matrix Themes from Custom proposals, shows selection and rank frequencies, lists current Themes never selected in the population, and includes AI Theme prompt/model metadata when stored.</p><p><strong>Use it when:</strong> you want to analyze AI Theme behavior for whatever Scope + Filters you chose.</p><p><strong>Example:</strong> “Within these 80 filtered images, which Theme does AI choose most often, and is it usually its first-ranked choice?”</p></details>
+<details><summary>Reactions Info</summary><p><strong>Question it answers:</strong> What stored AI Reaction explanation or diagnostic information exists for the matching images?</p><div class="report-filter-help-select"><span>Select</span><code>Reactions Info</code><span>Shows</span><code>imageId · stored reactionReasons or reactionDiagnostics</code></div><p>Only matching images that actually contain stored Reaction reasons or diagnostics appear in this block.</p><p><strong>Use it when:</strong> you need image-by-image AI Reaction evidence rather than Reaction frequency counts.</p><p><strong>Example:</strong> “Show me the stored AI Reaction explanations for the images that matched my disagreement filter.”</p></details>
+<details><summary>Themes Info</summary><p><strong>Question it answers:</strong> What stored AI Theme reasoning exists for the matching images?</p><div class="report-filter-help-select"><span>Select</span><code>Themes Info</code><span>Shows</span><code>imageId · stored genreReasons</code></div><p>Only matching images that contain stored Theme reasoning appear in this block.</p><p><strong>Use it when:</strong> you want image-by-image Theme reasoning instead of Theme frequency statistics.</p><p><strong>Example:</strong> “For these AI-only Reaction cases, what Theme reasoning did AI store for each image?”</p></details>
+<details><summary>PrimFusion</summary><p><strong>Question it answers:</strong> Which PrimFusion classifications occur most often in the matching population?</p><div class="report-filter-help-select"><span>Select</span><code>PrimFusion</code><span>Shows</span><code>counts by PrimFusion label/ID</code></div><p>Reports counts the stored Director PrimFusion label or ID. When no labeled PrimFusion is stored, records with sufficient Director Reaction data may use the Reaction-derived fallback already used by the Reports engine.</p><p><strong>Use it when:</strong> you want the distribution of PrimFusion classifications for the selected population.</p><p><strong>Example:</strong> “Which PrimFusion occurs most often among images the Director marked Zazzly?”</p></details>
+<details><summary>AI–Director</summary><p><strong>Question it answers:</strong> How often do AI Reaction signals align with completed Director Reaction choices?</p><div class="report-filter-help-select"><span>Select</span><code>AI–Director</code><span>Shows for each Reaction</span><code>comparable · agree · agreementRate · highAiDirectorNo</code></div><p><strong>Comparable</strong> is the number of Director-complete matching records with a usable AI score for that Reaction. <strong>Agree</strong> counts cases where Director selected/not-selected matches AI’s 50% yes/no boundary. <strong>Agreement rate</strong> is Agree ÷ Comparable. <strong>highAiDirectorNo</strong> counts cases where Director did not select the Reaction but AI scored it at least 70%.</p><p><strong>Use it when:</strong> you are studying where AI and Director classifications align or diverge.</p><p><strong>Example:</strong> “For Funny, how many images were comparable, what percentage agreed, and how often was AI at 70%+ when Director said no?”</p></details>
+<details><summary>Sources</summary><p><strong>Question it answers:</strong> Where did the matching images come from?</p><div class="report-filter-help-select"><span>Select</span><code>Sources</code><span>Shows</span><code>count by source.type</code></div><p>Each matching record is counted under its stored source type; records without one are counted as <code>unknown</code>.</p><p><strong>Use it when:</strong> you want to compare how much of the population came from each acquisition/source category.</p><p><strong>Example:</strong> “How many of these matching images were local imports versus another stored source type?”</p></details>
+<details><summary>Workflow</summary><p><strong>Question it answers:</strong> Where are the matching records in the workflow, and do they carry key problem/retention states?</p><div class="report-filter-help-select"><span>Select</span><code>Workflow</code><span>Shows</span><code>stages · failed · recycled · missingSource</code></div><p><strong>Stages</strong> counts the current stored workflow stage. <strong>Failed</strong> counts records with the failed attribute. <strong>Recycled</strong> counts records marked in Recycle Bin. <strong>Missing source</strong> counts records whose stored source reference is missing.</p><p><strong>Use it when:</strong> you want operational status for the same research population.</p><p><strong>Example:</strong> “Of the images matching this Reaction query, how many are Batched, failed, recycled, or missing their source?”</p></details>
+<details><summary>AI Theme Usage · Latest Run</summary><p><strong>This is a dedicated report button, not a checkbox module.</strong> It automatically finds the newest AI analysis job in which the Themes component was enabled and restricts the report population to images belonging to that job.</p><div class="report-filter-help-select"><span>Select</span><code>AI Theme Usage · Latest Run</code><span>Automatically uses</span><code>latest AI Themes-enabled job · Summary · AI Theme Usage</code></div><p>It produces the specialized AI Theme Usage visual without requiring you to configure Scope or Filters first.</p><p><strong>Use it when:</strong> you want the fastest audit of the most recent AI Theme run itself.</p><p><strong>Example:</strong> “What did AI do with Themes in the latest Themes-enabled analysis run?”</p></details>
+</section>
 </div>
 </dialog>
 <dialog class="report-filter-help-dialog" id="reportFilterHelpDialog">
@@ -1094,7 +1116,7 @@
 <script src="origin-pack-engine.js?v=0.9.40.37"></script>
 <script src="origin-gate-engine.js?v=0.9.40.37"></script>
 <script src="import-engine.js?v=0.9.40.34"></script>
-<script src="maintenance-engine.js?v=0.9.40.86"></script>
+<script src="maintenance-engine.js?v=0.9.40.87"></script>
 <script src="settings-engine.js?v=0.9.40.61"></script>
 <script src="director-classification-engine.js?v=0.9.40.37"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -1128,7 +1150,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.86"></script>
+<script src="app.js?v=0.9.40.87"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1147,7 +1169,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="queue-engine.js?v=0.9.40.43"></script>
 <script src="investigation-ui.js?v=0.9.40.43"></script>
 <script src="genreactrix-cloud-api.js?v=0.9.40.14"></script>
-<script src="reports-engine.js?v=0.9.40.86"></script>
+<script src="reports-engine.js?v=0.9.40.87"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -1158,9 +1180,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="post-processing-engine.js?v=0.9.40.86"></script>
-<script src="housekeeping-engine.js?v=0.9.40.86"></script>
-<script src="batch-engine.js?v=0.9.40.86"></script>
+<script src="post-processing-engine.js?v=0.9.40.87"></script>
+<script src="housekeeping-engine.js?v=0.9.40.87"></script>
+<script src="batch-engine.js?v=0.9.40.87"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>
