@@ -1,4 +1,22 @@
-# Genreactrix v0.9.40.75 — Daily Housekeeping / Purgatory Retry Diagnostic Launcher Repair
+# Genreactrix v0.9.40.76 — Daily Housekeeping Retry Import Source Diagnostic
+
+## v0.9.40.76 — controlled Housekeeping test #4
+- Temporary query-gated diagnostic: `?housekeepingOriginSourceTest=1`.
+- Uses the already-purged dated `PURGATORY_TEST_` rubber-band-ball record only as a safe known Image Record with a retained permanent thumbnail.
+- Seeds exactly one temporary **Retry Import Source** case and one temporary **true Import Failure** case.
+- Runs real Daily Housekeeping once. Acceptance requires Retry Import Source to receive one successful Housekeeping retry and resolve, while true Import Failure remains blocked with zero retry attempts.
+- The temporary recoverable source is the record's own retained thumbnail exposed through a short-lived same-page blob URL; no external network source and no Worker AI call are used.
+- Safety gates abort before mutation if real Purgatory, real Retry Import Source, or expired/near-expiry Recycle work is present.
+- Diagnostic cleanup removes both temporary Origin cases, removes the temporary recovered working asset, restores the exact Image Record snapshot, removes diagnostic-created Image Record history, restores the prior Daily Housekeeping marker, and revokes the temporary blob URL.
+- The READY/RUNNING/PASS/INCOMPLETE in-page panel pattern from accepted test #3 is retained.
+- The v0.9.40.73 local-calendar-day dedupe fix remains in production Post-processing code.
+- Worker remains `0.9.6.35-reaction-rerun-combined-multimodal`. No Worker redeploy is required.
+- No layout geometry, CSS, AI, Quarantine, Recycle, Maintenance, or Investigation behavior changes.
+
+## v0.9.40.75 — Housekeeping test #3 accepted
+- On-device acceptance passed: first Daily Housekeeping run added exactly one `daily` Purgatory retry; a second forced run on the same local calendar day added none.
+- Temporary Purgatory state cleaned successfully.
+- The local-calendar-day dedupe correction is validated.
 
 ### v0.9.40.75 launcher repair
 - Preserves `?housekeepingPurgatoryTest=1` while routing through the Fold unfolded mirror.
@@ -11,7 +29,7 @@
 
 - Temporary query-gated diagnostic: `?housekeepingPurgatoryTest=1`.
 - Hard-scoped to the already-purged `PURGATORY_TEST_` throwaway Image ID used for Recycle acceptance.
-- Seeds a temporary real Post-processing plan, proves 3 automatic failures reach Purgatory, then runs Daily Housekeeping twice.
+- Seeds a temporary Purgatory plan with three pre-recorded automatic failures, then runs Daily Housekeeping twice.
 - Acceptance requires the first Daily Housekeeping run to add exactly one `daily` attempt and the second forced run on the same local calendar day to add none.
 - Fixes a discovered local-day/UTC-date dedupe defect by recording the Housekeeping local day on daily attempts and comparing that explicit day.
 - The temporary Post-processing plan and Purgatory lifecycle state are cleaned up after the diagnostic.
