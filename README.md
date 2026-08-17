@@ -1,4 +1,16 @@
-# Genreactrix v0.9.40.92 — Prompt Diagnostics Status
+# Genreactrix v0.9.40.93 — Prompt Diagnostics Call Modes
+
+## v0.9.40.93
+- Adds three Prompt Diagnostics execution modes: **15 at once**, **5 × 3 waves**, and **Compare both**.
+- The 105-concept vocabulary and exact current Worker definitions are unchanged. Only diagnostic call grouping changes.
+- 5 × 3 mode persists each 5-concept wave immediately; a later wave failure does not discard earlier completed waves.
+- Compare both evaluates each concept once in a 5-concept wave and once in the 15-concept batch, then shows the two confidence scores and absolute difference together.
+- Compare both runs the smaller waves first so their evidence is preserved before the larger comparison call is attempted.
+- Live status now identifies the active batch, execution pass, wave number, concept range, completed evaluations, and exact failed call.
+- Full 105 runs automatically advance call-by-call until complete, stopped, or failed.
+- Prompt Diagnostics remains research-only and does not alter normal Theme selection, Reactions, Director data, Batch, or evaluation versions.
+- Requires Worker `0.9.6.37-prompt-diagnostics-call-modes`.
+
 
 
 ## v0.9.40.92
