@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.37-prompt-diagnostics-call-modes
+/* Genreactrix AI Worker v0.9.6.40-prompt-diagnostics-three-wave-fallback
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.37-prompt-diagnostics-call-modes';
+const API_VERSION = '0.9.6.40-prompt-diagnostics-three-wave-fallback';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1068,7 +1068,9 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
 
 const PROMPT_DIAGNOSTIC_BATCH_SIZE = 15;
 const PROMPT_DIAGNOSTIC_BATCH_COUNT = 7;
-const PROMPT_DIAGNOSTIC_WAVE_SIZE = 5;
+const PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE = 5;
+const PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE = 3;
+const PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE = 5;
 
 function promptDiagnosticDefinitionParts(definition){
   const text=String(definition||'').trim();
@@ -1137,19 +1139,20 @@ function promptDiagnosticCallSpec(body){
   const batchIndex=Number(body?.batchIndex);
   if(!Number.isInteger(batchIndex)||batchIndex<0||batchIndex>=PROMPT_DIAGNOSTIC_BATCH_COUNT)throw new Error('Prompt Diagnostics batchIndex must be 0-6');
   const requested=String(body?.callMode||'fifteen').trim().toLowerCase();
-  const callMode=requested==='five'?'five':'fifteen';
+  const callMode=['fifteen','five','three'].includes(requested)?requested:'fifteen';
   const batch=PROMPT_DIAGNOSTIC_BATCHES[batchIndex];
   if(callMode==='fifteen')return{batchIndex,callMode,waveIndex:null,waveNumber:null,waveCount:1,conceptOffset:0,concepts:batch};
+  const waveSize=callMode==='three'?PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE;
+  const waveCount=callMode==='three'?5:3;
   const waveIndex=Number(body?.waveIndex);
-  if(!Number.isInteger(waveIndex)||waveIndex<0||waveIndex>2)throw new Error('Prompt Diagnostics five-concept waveIndex must be 0-2');
-  const conceptOffset=waveIndex*PROMPT_DIAGNOSTIC_WAVE_SIZE;
-  const concepts=batch.slice(conceptOffset,conceptOffset+PROMPT_DIAGNOSTIC_WAVE_SIZE);
-  if(concepts.length!==PROMPT_DIAGNOSTIC_WAVE_SIZE)throw new Error('Prompt Diagnostics five-concept wave did not resolve to exactly 5 concepts');
-  return{batchIndex,callMode,waveIndex,waveNumber:waveIndex+1,waveCount:3,conceptOffset,concepts};
+  if(!Number.isInteger(waveIndex)||waveIndex<0||waveIndex>=waveCount)throw new Error(`Prompt Diagnostics ${waveSize}-concept waveIndex must be 0-${waveCount-1}`);
+  const conceptOffset=waveIndex*waveSize;
+  const concepts=batch.slice(conceptOffset,conceptOffset+waveSize);
+  if(concepts.length!==waveSize)throw new Error(`Prompt Diagnostics ${waveSize}-concept wave did not resolve to exactly ${waveSize} concepts`);
+  return{batchIndex,callMode,waveIndex,waveNumber:waveIndex+1,waveCount,conceptOffset,concepts};
 }
 
-function promptDiagnosticPrompt({callSpec,sources,reactions,description}){
-  const {concepts:batch,callMode,waveNumber}=callSpec;
+function promptDiagnosticEvidence({sources,reactions,description}){
   const sourceLabel=promptDiagnosticSourceLabel(sources);
   const evidence=[];
   if(sources.image)evidence.push('IMAGE: The supplied image is evidence. Judge only what can reasonably be seen or inferred from it.');
@@ -1158,74 +1161,353 @@ function promptDiagnosticPrompt({callSpec,sources,reactions,description}){
     evidence.push(`CURRENT REACTION EVIDENCE: Treat these as supplied reaction measurements, not as ground truth and not as Theme selections.\n${reactionLines}`);
   }
   if(sources.description)evidence.push(`CURRENT AI DESCRIPTION: Treat this as supplied observational/interpretive evidence, not as ground truth and not as a Theme selection.\n${description}`);
+  return{sourceLabel,evidenceText:evidence.join('\n\n')};
+}
 
-  const concepts=batch.map(row=>{
-    const numbered=row.definitionParts.map((part,index)=>`  [${index+1}] ${part}`).join('\n');
-    return `CONCEPT ${row.code} — ${row.name} — ${row.kind==='prim'?'PRIM BUILDING BLOCK (diagnostic only; not selectable as a final Theme)':'PRIMFUSION THEME'}\nCURRENT WORKER DEFINITION (verbatim):\n${row.definition}\nDEFINITION PARTS TO ASSESS:\n${numbered}`;
-  }).join('\n\n');
+function promptDiagnosticPartId(code,index){
+  return `${code}.${String(index+1).padStart(2,'0')}`;
+}
 
-  const callLabel=callMode==='five'?`5-concept wave ${waveNumber} of 3 within this 15-concept batch`:'15 concepts at once';
+function promptDiagnosticConceptBlock(row){
+  const numbered=row.definitionParts.map((part,index)=>`  ${promptDiagnosticPartId(row.code,index)} :: ${part}`).join('\n');
+  return `CONCEPT ${row.code} — ${row.name} — ${row.kind==='prim'?'PRIM BUILDING BLOCK (diagnostic only; not selectable as a final Theme)':'PRIMFUSION THEME'}\nCURRENT WORKER DEFINITION (verbatim):\n${row.definition}\nDEFINITION COMPONENTS TO ASSESS ONE BY ONE:\n${numbered}`;
+}
+
+function promptDiagnosticRequiredRecords(concepts){
+  return concepts.map(row=>{
+    const parts=row.definitionParts.map((_,index)=>`${promptDiagnosticPartId(row.code,index)} <ASSESSMENT> - <reason>`).join('\n');
+    return `${row.code} SCORE <0-100>\n${parts}\n${row.code} WHY - <overall score reason>`;
+  }).join('\n');
+}
+
+function promptDiagnosticPrompt({callSpec,sources,reactions,description}){
+  const {concepts:batch,callMode,waveNumber}=callSpec;
+  const {sourceLabel,evidenceText}=promptDiagnosticEvidence({sources,reactions,description});
+  const concepts=batch.map(promptDiagnosticConceptBlock).join('\n\n');
+  const callLabel=callMode==='five'?`5-concept wave ${waveNumber} of 3 within this 15-concept batch`:callMode==='three'?`3-concept wave ${waveNumber} of 5 within this 15-concept batch`:'15 concepts at once';
   const count=batch.length;
   return `You are running GENREACTRIX PROMPT DIAGNOSTICS. This is research instrumentation, not normal Theme selection.
 
 DIAGNOSTIC CALL FORMAT: ${callLabel}
 EVIDENCE SOURCE COMBINATION: ${sourceLabel}
-${evidence.join('\n\n')}
+${evidenceText}
 
 Evaluate EACH of the ${count} concepts below INDEPENDENTLY against the available evidence and against its exact current Worker definition.
 
 SCORING RULES:
 - Give every concept its own 0-100 MATCH CONFIDENCE. These scores are independent. They do NOT add to 100, are NOT shares of a pool, and must NOT be normalized against one another.
-- Do NOT choose three winners. Do NOT rank concepts as a substitute for scoring them. A concept can score 0 even when others score highly, and many concepts can simultaneously score highly.
+- Do NOT choose three winners. Do NOT rank concepts as a substitute for scoring them.
 - Base the score on the supplied definition. The purpose is to discover what the AI sees, does not see, understands, misunderstands, or fails to associate with the definition.
-- Assess EVERY numbered definition part for EVERY concept. Do not skip a part because the final score is low.
-- A 0% score requires a full explanation. For a zero, explicitly state why each definition part has no supporting evidence, is contradicted, or cannot be established from the selected evidence sources.
-- Conversely, high confidence must be justified by concrete definition-level support. Do not inflate confidence merely because a concept is vaguely plausible.
-- For PrimFusion Themes, do not automatically infer the Theme just because its two constituent Prims might fit. Judge the fusion Theme's own supplied definition.
-- For standalone Prims, judge the Prim definition directly. They are diagnostic building blocks and cannot be selected as final Genreactrix Themes.
-- If an evidence source is silent on something, say so. Do not invent missing image details, reaction meaning, or Description content.
+- Assess EVERY explicitly identified definition component for EVERY concept. Do not collapse the definition into one generalized judgment.
+- A 0% score requires the same complete component-by-component analysis as a high score.
+- High confidence must be justified by concrete component-level support. Do not inflate confidence because a concept is merely plausible.
+- For PrimFusion Themes, judge the fusion Theme's own supplied definition; do not automatically infer it from its two Prims.
+- Standalone Prims are diagnostic building blocks only and cannot become final Genreactrix Themes.
+- If an evidence source is silent on something, say so. Do not invent missing evidence.
 
-For each definition part use exactly one assessment label: SUPPORTS, PARTIAL, ABSENT, CONTRADICTS, or NOT_OBSERVABLE.
+For each definition component use exactly one assessment label: SUPPORTS, PARTIAL, ABSENT, CONTRADICTS, or NOT_OBSERVABLE.
 
-Return ONLY valid JSON in this shape:
-{"results":[{"code":"P01 or PFM####","confidence":0,"definitionAnalysis":[{"part":1,"assessment":"SUPPORTS|PARTIAL|ABSENT|CONTRADICTS|NOT_OBSERVABLE","reason":"concise evidence-grounded reason"}],"scoreReason":"concise explanation of why the part-level findings justify the final score"}]}
+OUTPUT: plain text only. Markdown decoration is unnecessary. The Worker accepts minor punctuation variation, but EVERY required record identifier below must be present so each judgment can be tied to the exact definition component.
+Use this shape:
+P01 SCORE 72
+P01.01 SUPPORTS - concrete evidence-grounded reason
+P01 WHY - explanation of why the component findings justify the final score
 
-Every listed concept must appear exactly once, and every numbered definition part for that concept must appear exactly once.
+Do not substitute a paragraph such as "Definition / Evidence / Score" for the numbered component records.
+Do not skip numbered components even at 0%.
+
+REQUIRED RECORDS TO COMPLETE:
+${promptDiagnosticRequiredRecords(batch)}
 
 ${count} CONCEPTS:
 ${concepts}`;
 }
 
-function parsePromptDiagnosticResponse(raw,expected){
-  const parsed=parse(raw);
-  const rows=Array.isArray(parsed?.results)?parsed.results:[];
-  if(rows.length!==expected.length)throw new Error(`Prompt Diagnostics expected ${expected.length} results but received ${rows.length}`);
-  const byCode=new Map(rows.map(row=>[String(row?.code||'').trim().toUpperCase(),row]));
-  const allowedAssessments=new Set(['SUPPORTS','PARTIAL','ABSENT','CONTRADICTS','NOT_OBSERVABLE']);
-  return expected.map(concept=>{
-    const rawRow=byCode.get(concept.code);
-    if(!rawRow)throw new Error(`Prompt Diagnostics response omitted ${concept.code}`);
-    const confidence=Number(rawRow.confidence);
-    if(!Number.isFinite(confidence)||confidence<0||confidence>100)throw new Error(`Prompt Diagnostics confidence for ${concept.code} must be numeric 0-100`);
-    const analyses=Array.isArray(rawRow.definitionAnalysis)?rawRow.definitionAnalysis:[];
-    if(analyses.length!==concept.definitionParts.length)throw new Error(`Prompt Diagnostics ${concept.code} must assess all ${concept.definitionParts.length} definition parts`);
-    const byPart=new Map(analyses.map(item=>[Number(item?.part),item]));
-    const definitionAnalysis=concept.definitionParts.map((text,index)=>{
-      const part=index+1,item=byPart.get(part);
-      if(!item)throw new Error(`Prompt Diagnostics ${concept.code} omitted definition part ${part}`);
-      const assessment=String(item.assessment||'').trim().toUpperCase();
-      if(!allowedAssessments.has(assessment))throw new Error(`Prompt Diagnostics ${concept.code} part ${part} has invalid assessment`);
-      const reason=String(item.reason||'').trim();
-      if(!reason)throw new Error(`Prompt Diagnostics ${concept.code} part ${part} needs a reason`);
-      return{part,text,assessment,reason};
-    });
-    const scoreReason=String(rawRow.scoreReason||'').trim();
-    if(!scoreReason)throw new Error(`Prompt Diagnostics ${concept.code} needs a score reason`);
-    return{
-      code:concept.code,name:concept.name,kind:concept.kind,symbol:concept.symbol,primIds:[...concept.primIds],position:concept.position,
-      confidence:Math.round(confidence*10)/10,definition:concept.definition,definitionAnalysis,scoreReason
-    };
+function cleanPromptDiagnosticLine(rawLine){
+  return String(rawLine||'')
+    .trim()
+    .replace(/^[-*•]+\s*/,'')
+    .replace(/\*\*/g,'')
+    .replace(/`/g,'')
+    .trim();
+}
+
+function promptDiagnosticEmptyState(expected){
+  const state=new Map();
+  for(const concept of expected)state.set(concept.code,{score:null,why:'',parts:new Map()});
+  return state;
+}
+
+function parsePromptDiagnosticPartial(raw,expected){
+  const text=String(raw||'').replace(/```(?:text)?/gi,'').replace(/```/g,'').trim();
+  const expectedCodes=new Set(expected.map(c=>c.code));
+  const state=promptDiagnosticEmptyState(expected);
+  let currentCode=null;
+  const assessmentPattern='SUPPORTS|PARTIAL|ABSENT|CONTRADICTS|NOT_OBSERVABLE';
+
+  const setScore=(code,value)=>{
+    code=String(code||'').toUpperCase();
+    if(!expectedCodes.has(code))return;
+    const n=Number(value);
+    if(Number.isFinite(n)&&n>=0&&n<=100&&state.get(code).score==null)state.get(code).score=n;
+  };
+  const setWhy=(code,reason)=>{
+    code=String(code||'').toUpperCase();
+    reason=String(reason||'').trim().replace(/^[-–—:|\s]+/,'');
+    if(expectedCodes.has(code)&&reason&&!state.get(code).why)state.get(code).why=reason;
+  };
+  const setPart=(code,part,assessment,reason)=>{
+    code=String(code||'').toUpperCase();
+    part=Number(part);assessment=String(assessment||'').toUpperCase();reason=String(reason||'').trim().replace(/^[-–—:|\s]+/,'');
+    if(!expectedCodes.has(code)||!Number.isInteger(part)||part<1||!reason)return;
+    if(!['SUPPORTS','PARTIAL','ABSENT','CONTRADICTS','NOT_OBSERVABLE'].includes(assessment))return;
+    const concept=expected.find(c=>c.code===code);
+    if(!concept||part>concept.definitionParts.length)return;
+    if(!state.get(code).parts.has(part))state.get(code).parts.set(part,{part,assessment,reason});
+  };
+
+  for(const rawLine of text.split(/\r?\n/)){
+    const line=cleanPromptDiagnosticLine(rawLine);
+    if(!line)continue;
+
+    let m=line.match(/^(?:#{1,6}\s*)?(?:CONCEPT\s+)?(P\d{2}|PFM\d{4})(?:\s*[-–—:]\s*|\s+)(?:[A-Za-z].*)?$/i);
+    if(m&&expectedCodes.has(m[1].toUpperCase()))currentCode=m[1].toUpperCase();
+
+    m=line.match(/^SCORE\s*\|\s*(P\d{2}|PFM\d{4})\s*\|\s*(-?\d+(?:\.\d+)?)\s*%?(?:\s*[-–—:]\s*(.+))?\s*$/i);
+    if(m){setScore(m[1],m[2]);if(m[3])setWhy(m[1],m[3]);continue;}
+    m=line.match(/^(P\d{2}|PFM\d{4})\s*(?:\||[-–—:]?\s*)SCORE\s*(?:\||[:=\-–—]?\s*)*(-?\d+(?:\.\d+)?)\s*%?(?:\s*[-–—:]\s*(.+))?\s*$/i);
+    if(m){setScore(m[1],m[2]);if(m[3])setWhy(m[1],m[3]);currentCode=m[1].toUpperCase();continue;}
+    m=line.match(/^SCORE\s+(?:FOR\s+)?(P\d{2}|PFM\d{4})\s*[:=\-–—]?\s*(-?\d+(?:\.\d+)?)\s*%?(?:\s*[-–—:]\s*(.+))?\s*$/i);
+    if(m){setScore(m[1],m[2]);if(m[3])setWhy(m[1],m[3]);continue;}
+    m=line.match(/^(?:SCORE|MATCH\s+CONFIDENCE)\s*[:=\-–—]\s*(-?\d+(?:\.\d+)?)\s*%?(?:\s*[-–—:]\s*(.+))?\s*$/i);
+    if(m&&currentCode){setScore(currentCode,m[1]);if(m[2])setWhy(currentCode,m[2]);continue;}
+
+    m=line.match(/^PART\s*\|\s*(P\d{2}|PFM\d{4})\s*\|\s*(\d+)\s*\|\s*(${assessmentPattern})\s*\|\s*(.+)$/i);
+    if(m){setPart(m[1],m[2],m[3],m[4]);continue;}
+    m=line.match(new RegExp(`^(P\\d{2}|PFM\\d{4})\\.(\\d{1,2})\\s*(?:\\||[:\\-–—]?\\s*)(${assessmentPattern})\\s*(?:\\||[:\\-–—]\\s*)+(.+)$`,'i'));
+    if(m){setPart(m[1],m[2],m[3],m[4]);currentCode=m[1].toUpperCase();continue;}
+    m=line.match(new RegExp(`^(?:PART\\s*)?\\[?(\\d{1,2})\\]?\\s*[.):\\-–—]?\\s*(${assessmentPattern})\\s*(?:[:\\-–—]\\s*)+(.+)$`,'i'));
+    if(m&&currentCode){setPart(currentCode,m[1],m[2],m[3]);continue;}
+
+    m=line.match(/^WHY\s*\|\s*(P\d{2}|PFM\d{4})\s*\|\s*(.+)$/i);
+    if(m){setWhy(m[1],m[2]);continue;}
+    m=line.match(/^(P\d{2}|PFM\d{4})\s*(?:\||[-–—:]?\s*)WHY\s*(?:\||[:\-–—]?\s*)+(.+)$/i);
+    if(m){setWhy(m[1],m[2]);currentCode=m[1].toUpperCase();continue;}
+    m=line.match(/^WHY\s*[:\-–—]\s*(.+)$/i);
+    if(m&&currentCode){setWhy(currentCode,m[1]);continue;}
+  }
+  return{state,responsePreview:text.slice(0,1200)};
+}
+
+function promptDiagnosticMissingForConcept(concept,data){
+  const missing=[];
+  if(data.score==null)missing.push(`${concept.code} SCORE`);
+  for(let index=0;index<concept.definitionParts.length;index++)if(!data.parts.has(index+1))missing.push(promptDiagnosticPartId(concept.code,index));
+  if(!data.why)missing.push(`${concept.code} WHY`);
+  return missing;
+}
+
+function finalizePromptDiagnosticConcept(concept,data){
+  const missing=promptDiagnosticMissingForConcept(concept,data);
+  if(missing.length)throw new Error(`Prompt Diagnostics ${concept.code} incomplete; missing ${missing.join(', ')}`);
+  const confidence=Number(data.score);
+  if(!Number.isFinite(confidence)||confidence<0||confidence>100)throw new Error(`Prompt Diagnostics confidence for ${concept.code} must be numeric 0-100`);
+  const definitionAnalysis=concept.definitionParts.map((partText,index)=>{
+    const item=data.parts.get(index+1);
+    return{part:index+1,id:promptDiagnosticPartId(concept.code,index),text:partText,assessment:item.assessment,reason:item.reason};
   });
+  return{
+    code:concept.code,name:concept.name,kind:concept.kind,symbol:concept.symbol,primIds:[...concept.primIds],position:concept.position,
+    confidence:Math.round(confidence*10)/10,definition:concept.definition,definitionAnalysis,scoreReason:data.why
+  };
+}
+
+function promptDiagnosticRepairPrompt({concept,sources,reactions,description,missing}){
+  const {sourceLabel,evidenceText}=promptDiagnosticEvidence({sources,reactions,description});
+  return `GENREACTRIX PROMPT DIAGNOSTICS — INCOMPLETE CONCEPT REPAIR.
+
+The previous multi-concept answer did not complete the required component-level diagnostic for ${concept.code} ${concept.name}. Re-evaluate THIS ONE CONCEPT from scratch so its final score is based on every definition component, not on a generalized impression.
+
+EVIDENCE SOURCE COMBINATION: ${sourceLabel}
+${evidenceText}
+
+${promptDiagnosticConceptBlock(concept)}
+
+SCORING RULES:
+- Produce an independent 0-100 match confidence for this concept only.
+- Assess every numbered definition component separately, including at 0%.
+- Use only SUPPORTS, PARTIAL, ABSENT, CONTRADICTS, or NOT_OBSERVABLE.
+- The final score must follow from the component-level findings.
+- Do not collapse the definition into a single Evidence paragraph.
+
+The prior response was incomplete. Missing identifiers included: ${missing.join(', ')}.
+Return the COMPLETE concept, not merely those missing lines, using these exact record identifiers. Minor punctuation around them is acceptable:
+${promptDiagnosticRequiredRecords([concept])}
+
+No JSON is required. No table is required. Every component identifier must appear.`;
+}
+
+function promptDiagnosticMergeState(target,source,concept){
+  if(!target||!source)return target;
+  if(target.score==null&&source.score!=null)target.score=source.score;
+  if(!target.why&&source.why)target.why=source.why;
+  for(const [part,item] of source.parts||[]){
+    const partNumber=Number(part);
+    if(Number.isInteger(partNumber)&&partNumber>=1&&partNumber<=concept.definitionParts.length&&!target.parts.has(partNumber))target.parts.set(partNumber,item);
+  }
+  return target;
+}
+
+function promptDiagnosticComponentChunkPrompt({concept,sources,reactions,description,partNumbers}){
+  const {sourceLabel,evidenceText}=promptDiagnosticEvidence({sources,reactions,description});
+  const requested=partNumbers.map(partNumber=>{
+    const index=partNumber-1;
+    return `${promptDiagnosticPartId(concept.code,index)} :: ${concept.definitionParts[index]}`;
+  }).join('\n');
+  const required=partNumbers.map(partNumber=>`${concept.code}.${String(partNumber).padStart(2,'0')} <ASSESSMENT> - <reason>`).join('\n');
+  return `GENREACTRIX PROMPT DIAGNOSTICS — COMPONENT CHUNK REPAIR.
+
+Evaluate ONLY the numbered definition components listed below for ${concept.code} ${concept.name}. This is a fallback because the model did not reliably enumerate the entire definition in one response.
+
+EVIDENCE SOURCE COMBINATION: ${sourceLabel}
+${evidenceText}
+
+CURRENT WORKER DEFINITION (verbatim):
+${concept.definition}
+
+COMPONENTS TO ASSESS NOW:
+${requested}
+
+For every component use exactly one label: SUPPORTS, PARTIAL, ABSENT, CONTRADICTS, or NOT_OBSERVABLE.
+Give a concrete evidence-grounded reason for every component, including ABSENT, CONTRADICTS, and NOT_OBSERVABLE.
+Do not give an overall score in this call. Do not discuss unlisted component IDs.
+
+REQUIRED RECORDS:
+${required}
+
+Plain text only. Every listed component ID must appear.`;
+}
+
+function promptDiagnosticScoreFromPartsPrompt({concept,sources,reactions,description,data}){
+  const {sourceLabel,evidenceText}=promptDiagnosticEvidence({sources,reactions,description});
+  const findings=concept.definitionParts.map((partText,index)=>{
+    const item=data.parts.get(index+1);
+    return `${promptDiagnosticPartId(concept.code,index)} ${item.assessment} - ${item.reason}`;
+  }).join('\n');
+  return `GENREACTRIX PROMPT DIAGNOSTICS — FINAL SCORE FROM COMPLETED COMPONENT FINDINGS.
+
+Concept: ${concept.code} ${concept.name}
+EVIDENCE SOURCE COMBINATION: ${sourceLabel}
+${evidenceText}
+
+CURRENT WORKER DEFINITION (verbatim):
+${concept.definition}
+
+COMPLETED COMPONENT FINDINGS:
+${findings}
+
+Now derive ONE independent 0-100 match confidence from those completed findings. The score is not a share of a 100% pool and is not relative to other concepts. Do not change the component findings in this call.
+
+Return only:
+${concept.code} SCORE <0-100>
+${concept.code} WHY - <why these component findings justify that score>`;
+}
+
+async function runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data}){
+  let chunkCalls=0;
+  let retries=0;
+  while(true){
+    const missingParts=[];
+    for(let partNumber=1;partNumber<=concept.definitionParts.length;partNumber++)if(!data.parts.has(partNumber))missingParts.push(partNumber);
+    if(!missingParts.length)break;
+    const partNumbers=missingParts.slice(0,PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE);
+    let completed=false,lastRaw='';
+    for(let attempt=1;attempt<=2;attempt++){
+      const prompt=promptDiagnosticComponentChunkPrompt({concept,sources,reactions,description,partNumbers});
+      const raw=await runStructured(env,model,image,prompt,null,Math.max(900,500+partNumbers.length*180),'text',{temperature:attempt===1?0.04:0.01,preserveWhitespace:true});
+      chunkCalls++;if(attempt>1)retries++;
+      lastRaw=String(raw||'');
+      const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
+      promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
+      completed=partNumbers.every(partNumber=>data.parts.has(partNumber));
+      if(completed)break;
+    }
+    if(!completed){
+      const stillMissing=partNumbers.filter(partNumber=>!data.parts.has(partNumber)).map(partNumber=>`${concept.code}.${String(partNumber).padStart(2,'0')}`);
+      throw diagnosticError(
+        `Prompt Diagnostics ${concept.code} component chunk remained incomplete; missing ${stillMissing.join(', ')}`,
+        {phase:'prompt-diagnostics-component-chunk-repair',conceptCode:concept.code,missingRequirements:stillMissing,responsePreview:lastRaw.slice(0,1200)}
+      );
+    }
+  }
+  return{chunkCalls,retries};
+}
+
+async function runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data}){
+  let lastRaw='';
+  for(let attempt=1;attempt<=2;attempt++){
+    data.score=null;data.why='';
+    const prompt=promptDiagnosticScoreFromPartsPrompt({concept,sources,reactions,description,data});
+    const raw=await runStructured(env,model,image,prompt,null,1000,'text',{temperature:attempt===1?0.04:0.01,preserveWhitespace:true});
+    lastRaw=String(raw||'');
+    const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
+    const scored=partial.state.get(concept.code);
+    if(scored?.score!=null)data.score=scored.score;
+    if(scored?.why)data.why=scored.why;
+    if(data.score!=null&&data.why)return{attempts:attempt,raw:lastRaw};
+  }
+  const missing=[];if(data.score==null)missing.push(`${concept.code} SCORE`);if(!data.why)missing.push(`${concept.code} WHY`);
+  throw diagnosticError(
+    `Prompt Diagnostics ${concept.code} final score remained incomplete; missing ${missing.join(', ')}`,
+    {phase:'prompt-diagnostics-final-score',conceptCode:concept.code,missingRequirements:missing,responsePreview:lastRaw.slice(0,1200)}
+  );
+}
+
+async function runPromptDiagnosticConceptRepair(env,{model,image,concept,sources,reactions,description,missing,seedData}){
+  const data=promptDiagnosticEmptyState([concept]).get(concept.code);
+  if(seedData)promptDiagnosticMergeState(data,seedData,concept);
+  let fullRepairAttempts=0,lastRaw='';
+
+  // One focused whole-concept attempt comes first. Component chunking is fallback, not the default path.
+  {
+    const prompt=promptDiagnosticRepairPrompt({concept,sources,reactions,description,missing});
+    const raw=await runStructured(env,model,image,prompt,null,Math.max(1800,Math.min(4800,1200+concept.definitionParts.length*110)),'text',{temperature:0.02,preserveWhitespace:true});
+    fullRepairAttempts=1;lastRaw=String(raw||'');
+    const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
+    promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
+  }
+
+  const missingParts=[];
+  for(let partNumber=1;partNumber<=concept.definitionParts.length;partNumber++)if(!data.parts.has(partNumber))missingParts.push(partNumber);
+  let componentChunkCalls=0,componentChunkRetries=0,finalScoreAttempts=0;
+  if(missingParts.length){
+    const chunked=await runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data});
+    componentChunkCalls=chunked.chunkCalls;componentChunkRetries=chunked.retries;
+  }
+
+  // After fallback chunking, recompute the score from the completed component findings.
+  // If no chunking was needed but SCORE/WHY are missing, this also supplies them cleanly.
+  if(missingParts.length||data.score==null||!data.why){
+    const scored=await runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data});
+    finalScoreAttempts=scored.attempts;lastRaw=scored.raw;
+  }
+
+  const stillMissing=promptDiagnosticMissingForConcept(concept,data);
+  if(stillMissing.length){
+    throw diagnosticError(
+      `Prompt Diagnostics ${concept.code} remained incomplete after adaptive repair; missing ${stillMissing.join(', ')}`,
+      {phase:'prompt-diagnostics-adaptive-repair',conceptCode:concept.code,missingRequirements:stillMissing,responsePreview:lastRaw.slice(0,1200)}
+    );
+  }
+  return{
+    result:finalizePromptDiagnosticConcept(concept,data),
+    raw:lastRaw,
+    attempts:fullRepairAttempts,
+    strategy:componentChunkCalls?'focused+component-chunks+final-score':'focused',
+    componentChunkCalls,
+    componentChunkRetries,
+    finalScoreAttempts
+  };
 }
 
 async function runPromptDiagnosticBatch(env,body){
@@ -1239,35 +1521,59 @@ async function runPromptDiagnosticBatch(env,body){
   const image=sources.image?(body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl)):null;
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
   const prompt=promptDiagnosticPrompt({callSpec,sources,reactions,description});
-  let lastError=null;
-  const outputTokens=callMode==='five'?3600:7200;
-  for(let attempt=1;attempt<=3;attempt++){
-    const recovery=attempt===1?'':`\n\nRECOVERY: The previous diagnostic response was invalid${lastError?.message?`: ${String(lastError.message).slice(0,350)}`:''}. Return only valid JSON, include all ${concepts.length} requested codes exactly once, and assess every numbered definition part exactly once.`;
-    const raw=await runStructured(env,model,image,prompt+recovery,null,outputTokens,'text',{temperature:attempt===1?0.12:0.03});
-    try{
-      return{
-        schemaVersion:2,
-        matrixVersion:matrixVersion(),
-        workerVersion:API_VERSION,
-        batchIndex,
-        batchNumber:batchIndex+1,
-        batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,
-        batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,
-        callMode,
-        callConceptCount:concepts.length,
-        conceptOffset,
-        waveIndex,
-        waveNumber,
-        waveCount,
-        sourceCombination:promptDiagnosticSourceLabel(sources),
-        sources,
-        model,
-        evaluatedAt:new Date().toISOString(),
-        results:parsePromptDiagnosticResponse(raw,concepts)
-      };
-    }catch(error){lastError=error;}
+  const outputTokens=callMode==='three'?3000:callMode==='five'?3600:7200;
+  let lastRaw='',initialPartial=null;
+
+  for(let attempt=1;attempt<=2;attempt++){
+    const recovery=attempt===1?'':`\n\nRECOVERY: Your previous response did not reliably use the explicit component IDs. Do not write Definition/Evidence/Score paragraphs. Complete the required CODE SCORE, CODE.NN assessment, and CODE WHY records.`;
+    const raw=await runStructured(env,model,image,prompt+recovery,null,outputTokens,'text',{temperature:attempt===1?0.10:0.02,preserveWhitespace:true});
+    lastRaw=String(raw||'');
+    initialPartial=parsePromptDiagnosticPartial(lastRaw,concepts);
+    const complete=concepts.filter(c=>promptDiagnosticMissingForConcept(c,initialPartial.state.get(c.code)).length===0);
+    if(complete.length===concepts.length)break;
+    // One multi-concept retry is useful only when the first answer was almost compliant.
+    // If nothing was complete, proceed directly to focused one-concept repairs instead of repeating the same failure shape.
+    if(complete.length===0||attempt===2)break;
   }
-  throw lastError||new Error('Prompt Diagnostics did not produce a valid response');
+
+  if(!initialPartial)initialPartial=parsePromptDiagnosticPartial(lastRaw,concepts);
+  const resultsByCode=new Map();
+  const focusedRepairs=[];
+  for(const concept of concepts){
+    const data=initialPartial.state.get(concept.code);
+    const missing=promptDiagnosticMissingForConcept(concept,data);
+    if(!missing.length){
+      resultsByCode.set(concept.code,finalizePromptDiagnosticConcept(concept,data));
+      continue;
+    }
+    const repaired=await runPromptDiagnosticConceptRepair(env,{model,image,concept,sources,reactions,description,missing,seedData:data});
+    resultsByCode.set(concept.code,repaired.result);
+    focusedRepairs.push({code:concept.code,attempts:repaired.attempts,strategy:repaired.strategy,componentChunkCalls:repaired.componentChunkCalls,componentChunkRetries:repaired.componentChunkRetries,finalScoreAttempts:repaired.finalScoreAttempts,initialMissing:missing});
+  }
+
+  return{
+    schemaVersion:3,
+    matrixVersion:matrixVersion(),
+    workerVersion:API_VERSION,
+    batchIndex,
+    batchNumber:batchIndex+1,
+    batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,
+    batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,
+    callMode,
+    callConceptCount:concepts.length,
+    conceptOffset,
+    waveIndex,
+    waveNumber,
+    waveCount,
+    sourceCombination:promptDiagnosticSourceLabel(sources),
+    sources,
+    model,
+    evaluatedAt:new Date().toISOString(),
+    responseProtocol:'numbered-flex-v3',
+    focusedRepairCount:focusedRepairs.length,
+    focusedRepairs,
+    results:concepts.map(c=>resultsByCode.get(c.code))
+  };
 }
 
 function themeRecoverySchema(){
@@ -1654,7 +1960,7 @@ export default {
         totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
-        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSize:PROMPT_DIAGNOSTIC_WAVE_SIZE,executionModes:['fifteen','five','compare']}
+        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v3'}
       });
     }
 
