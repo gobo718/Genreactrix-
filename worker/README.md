@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.43-semantic-calibration.
+Current bundled Worker: v0.9.6.44-compound-name-casing.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -42,6 +42,10 @@ Image + Description Direct Reaction reruns use the Vision model with a compact s
 
 Prompt Diagnostics can evaluate a complete 15-concept batch or one exact 5-concept wave from that same batch. Both paths use the same live Prim/PrimFusion registry definitions and the same independent 0–100 definition-part scoring contract. Five-concept waves use a smaller output allowance and return wave metadata so the portrait diagnostic surface can persist and compare results call-by-call.
 
+
+## Worker 0.9.6.44 — Compound PrimFusion name casing
+
+Naming-only cleanup. **PFM0110** is now **UglyCute** and **PFM0411** is now **ComedyHorror**. Their stable PFM codes, Prim pairings, AI meanings, exactly-three Theme selection behavior, and Matrix `0.0.0.0` are unchanged. This establishes the closed-compound display style already used by names such as CreepyCute and PartyTime.
 
 ## Worker 0.9.6.43 — Semantic calibration + diagnostic consistency repair
 
