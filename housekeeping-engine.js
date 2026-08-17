@@ -1,4 +1,4 @@
-/* Genreactrix Housekeeping Engine v2 — v0.9.40.74 Purgatory daily-retry diagnostic
+/* Genreactrix Housekeeping Engine v2 — v0.9.40.75 Purgatory daily-retry diagnostic launcher repair
    Scheduled local non-AI operational recovery and retention.
    Housekeeping never launches/retries AI and never retries Quarantine.
    Temporary diagnostic seeds one isolated Purgatory journal row for the dated throwaway image. */
@@ -7,7 +7,7 @@ const MARKER_PREFIX='genreactrix-housekeeping-last-daily-v2';
 const PURGATORY_DIAGNOSTIC_PARAM='housekeepingPurgatoryTest';
 const PURGATORY_DIAGNOSTIC_IMAGE_ID='local-4d42e378-25ce-4654-a7e3-12497e01665b';
 const PURGATORY_DIAGNOSTIC_FILENAME='PURGATORY_TEST_picture0251125_162310.jpg';
-const PURGATORY_DIAGNOSTIC_TOKEN_PREFIX='diagnostic-housekeeping-purgatory-v0.9.40.74';
+const PURGATORY_DIAGNOSTIC_TOKEN_PREFIX='diagnostic-housekeeping-purgatory-v0.9.40.75';
 const POST_DB='genreactrix-post-processing-engine-v1',POST_STORE='plans';
 const now=()=>new Date().toISOString();
 const clone=v=>v==null?v:structuredClone(v);
@@ -30,7 +30,7 @@ async function runDaily({force=false}={}){
 }
 async function verify(){const scope=await context(),issues=[];if(!scope.projectId)issues.push({type:'housekeeping-missing-project',severity:'attention'});if(!scope.runtimeId)issues.push({type:'housekeeping-missing-runtime',severity:'attention'});return{checkedAt:now(),projectId:scope.projectId,runtimeId:scope.runtimeId,lastDaily:await lastDaily(),issueCount:issues.length,issues}}
 function diagnosticRequested(){try{return new URLSearchParams(location.search).get(PURGATORY_DIAGNOSTIC_PARAM)==='1'}catch{return false}}
-function clearDiagnosticParam(){try{const url=new URL(location.href);url.searchParams.delete(PURGATORY_DIAGNOSTIC_PARAM);history.replaceState(history.state,'',url.pathname+(url.searchParams.toString()?`?${url.searchParams.toString()}`:'')+url.hash)}catch{}}
+function clearDiagnosticParam(){try{const url=new URL(location.href);url.searchParams.delete(PURGATORY_DIAGNOSTIC_PARAM);history.replaceState(history.state,'',url.pathname+(url.searchParams.toString()?`?${url.searchParams.toString()}`:'')+url.hash);if(window.parent&&window.parent!==window)window.parent.postMessage({type:'genreactrix:clear-query-param',param:PURGATORY_DIAGNOSTIC_PARAM},location.origin)}catch{}}
 function diagnosticFilename(record){return String(record?.source?.originalFilename||record?.source?.originalLocation||record?.name||'')}
 function diagnosticPanel(){
   let panel=document.getElementById('housekeepingPurgatoryDiagnosticPanel');
@@ -46,6 +46,18 @@ function renderDiagnosticPanel(state,title,lines=[]){
   if(state!=='RUNNING'){
     const b=document.createElement('button');b.type='button';b.textContent='Close';Object.assign(b.style,{marginTop:'18px',padding:'10px 22px',font:'inherit'});b.onclick=()=>panel.remove();panel.append(b);
   }
+}
+function requestDiagnosticApproval(filename){
+  return new Promise(resolve=>{
+    const panel=diagnosticPanel();panel.replaceChildren();
+    const h=document.createElement('h2');h.textContent='READY — Housekeeping test #3';h.style.margin='0 0 16px';panel.append(h);
+    for(const line of [`Target: ${filename}`,'Diagnostic trigger reached the Genreactrix app.','This will seed one temporary Purgatory journal entry, run real Daily Housekeeping twice, then clean the temporary state.','Expected: run 1 adds exactly one DAILY retry; run 2 on the same local day adds none.']){const p=document.createElement('p');p.textContent=line;p.style.margin='10px 0';panel.append(p)}
+    const row=document.createElement('div');Object.assign(row.style,{display:'flex',gap:'10px',flexWrap:'wrap',marginTop:'18px'});
+    const run=document.createElement('button');run.type='button';run.textContent='Run test #3';Object.assign(run.style,{padding:'11px 22px',font:'inherit',fontWeight:'700'});
+    const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';Object.assign(cancel.style,{padding:'11px 22px',font:'inherit'});
+    const finish=value=>{run.disabled=true;cancel.disabled=true;resolve(value)};
+    run.onclick=()=>finish(true);cancel.onclick=()=>finish(false);row.append(run,cancel);panel.append(row);
+  });
 }
 async function openPostDb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(POST_DB);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Could not open Post-processing journal'))})}
 async function postPut(row){const db=await openPostDb();try{if(!db.objectStoreNames.contains(POST_STORE))throw new Error('Post-processing plan store is unavailable');await new Promise((resolve,reject)=>{const tx=db.transaction(POST_STORE,'readwrite');tx.objectStore(POST_STORE).put(clone(row));tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}finally{db.close()}}
@@ -65,7 +77,7 @@ async function runPurgatoryDailyDiagnostic(){
     const existingPurgatory=await post.purgatoryPlans();if(existingPurgatory.length)throw new Error(`Safety stop: ${existingPurgatory.length} real Purgatory item${existingPurgatory.length===1?' is':'s are'} already present.`);
     const sourceSnapshot=origin?.snapshot?await origin.snapshot():{sourceRetry:0};if(Number(sourceSnapshot?.sourceRetry)||0)throw new Error(`Safety stop: ${sourceSnapshot.sourceRetry} Origin source-retry case${sourceSnapshot.sourceRetry===1?' is':'s are'} pending.`);
     const retentionDays=Number(settings?.get?.('recycle.retentionDays',30));if(Number.isFinite(retentionDays)&&retentionDays>0){const cutoff=Date.now()-retentionDays*86400000,near=images.allRecords?.().filter(r=>r.attributes?.inRecycleBin&&!r.attributes?.saved&&r.storage?.recycle?.deletedAt&&Date.parse(r.storage.recycle.deletedAt)<cutoff+5*60000)||[];if(near.length)throw new Error(`Safety stop: ${near.length} other Recycle item${near.length===1?' is':'s are'} expired or within five minutes of expiry.`)}
-    const approved=confirm(`Daily Housekeeping / Purgatory test #3\n\nTarget only: ${filename}\n${PURGATORY_DIAGNOSTIC_IMAGE_ID}\n\nThis seeds one TEMPORARY Purgatory journal entry with 3 already-recorded automatic failures. It then runs real Daily Housekeeping twice.\n\nExpected: first run adds exactly one DAILY retry; second same-day run adds none.\n\nRun test?`);if(!approved){clearDiagnosticParam();return}
+    const approved=await requestDiagnosticApproval(filename);if(!approved){clearDiagnosticParam();renderDiagnosticPanel('INCOMPLETE','Daily Housekeeping Purgatory retry',['Test cancelled before any temporary Purgatory state was created.']);return}
     renderDiagnosticPanel('RUNNING','Housekeeping test #3',[`Target: ${filename}`,'Step 1/4: preparing one temporary Purgatory journal entry…']);
     const scope=await context();marker=markerKey(scope);try{priorMarker=localStorage.getItem(marker)}catch{}
     const token=`${PURGATORY_DIAGNOSTIC_TOKEN_PREFIX}:${Date.now()}`,batchId=`diagnostic-housekeeping-purgatory-${Date.now()}`;planId=`post::${token}::${PURGATORY_DIAGNOSTIC_IMAGE_ID}`;
