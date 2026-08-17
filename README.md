@@ -1,3 +1,11 @@
+# Genreactrix v0.9.40.85 — Reports Filter Help
+
+## v0.9.40.85
+- Adds in-app Reports Filter Help covering every current filter.
+- Each entry explains what the filter tests and gives the exact field/operator selections with an example.
+- Explicitly explains that `Has / equals` means the filter condition as written evaluates true, including compound filters such as `Funny AND NOT Adorable`.
+- Adds no filter names, operator changes, query-semantic changes, lifecycle changes, Worker changes, or layout redesign.
+
 # Genreactrix v0.9.40.84 — Reports Query Surface Completion
 
 ## v0.9.40.84

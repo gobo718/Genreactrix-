@@ -8226,3 +8226,26 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   .thumbnail-picker-meta strong{font-size:.72rem}
   .thumbnail-picker-meta small{font-size:.6rem}
 }
+
+
+/* v0.9.40.85 — Reports filter help only; no query semantics changed. */
+.report-condition-header-actions{display:flex;align-items:center;gap:6px}
+.report-filter-help-dialog{width:min(94vw,820px);max-height:92vh;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text)}
+.report-filter-help-dialog::backdrop{background:#000a}
+.report-filter-help-shell{padding:14px;display:grid;gap:12px;max-height:88vh;overflow:auto}
+.report-filter-help-shell>header{display:flex;align-items:flex-start;gap:10px;position:sticky;top:-14px;z-index:2;background:var(--panel);padding:14px 0 8px}
+.report-filter-help-shell>header>div{flex:1;min-width:0}
+.report-filter-help-shell h2{margin:0}
+.report-filter-help-shell header p{margin:3px 0 0;color:var(--muted);font-size:.86rem}
+.report-filter-help-shell button{min-width:40px;min-height:40px}
+.report-filter-help-intro{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}
+.report-filter-help-intro p{margin:0;line-height:1.4}
+.report-filter-help-list{display:grid;gap:7px}
+.report-filter-help-list details{border:1px solid var(--line);border-radius:10px;background:var(--panel-2);overflow:hidden}
+.report-filter-help-list summary{cursor:pointer;padding:10px 12px;font-weight:800}
+.report-filter-help-list details[open] summary{border-bottom:1px solid var(--line)}
+.report-filter-help-list details>p{margin:10px 12px;line-height:1.4}
+.report-filter-help-select{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 9px;margin:10px 12px;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.report-filter-help-select span{color:var(--muted);font-size:.8rem;font-weight:700}
+.report-filter-help-select code,.report-filter-help-intro code,.report-filter-help-list p code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+@media(max-width:760px){.report-condition-header-actions{gap:5px}.report-filter-help-dialog{width:96vw}.report-filter-help-shell{padding:10px}.report-filter-help-shell>header{top:-10px;padding:10px 0 7px}.report-filter-help-select{grid-template-columns:1fr}.report-filter-help-select span{margin-top:3px}}
