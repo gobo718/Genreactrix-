@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.36-prompt-diagnostics
+/* Genreactrix AI Worker v0.9.6.37-prompt-diagnostics-call-modes
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.36-prompt-diagnostics';
+const API_VERSION = '0.9.6.37-prompt-diagnostics-call-modes';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1068,6 +1068,7 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
 
 const PROMPT_DIAGNOSTIC_BATCH_SIZE = 15;
 const PROMPT_DIAGNOSTIC_BATCH_COUNT = 7;
+const PROMPT_DIAGNOSTIC_WAVE_SIZE = 5;
 
 function promptDiagnosticDefinitionParts(definition){
   const text=String(definition||'').trim();
@@ -1132,8 +1133,23 @@ function promptDiagnosticSourceLabel(sources){
   return ['image','reactions','description'].filter(key=>sources[key]).join('+');
 }
 
-function promptDiagnosticPrompt({batchIndex,sources,reactions,description}){
+function promptDiagnosticCallSpec(body){
+  const batchIndex=Number(body?.batchIndex);
+  if(!Number.isInteger(batchIndex)||batchIndex<0||batchIndex>=PROMPT_DIAGNOSTIC_BATCH_COUNT)throw new Error('Prompt Diagnostics batchIndex must be 0-6');
+  const requested=String(body?.callMode||'fifteen').trim().toLowerCase();
+  const callMode=requested==='five'?'five':'fifteen';
   const batch=PROMPT_DIAGNOSTIC_BATCHES[batchIndex];
+  if(callMode==='fifteen')return{batchIndex,callMode,waveIndex:null,waveNumber:null,waveCount:1,conceptOffset:0,concepts:batch};
+  const waveIndex=Number(body?.waveIndex);
+  if(!Number.isInteger(waveIndex)||waveIndex<0||waveIndex>2)throw new Error('Prompt Diagnostics five-concept waveIndex must be 0-2');
+  const conceptOffset=waveIndex*PROMPT_DIAGNOSTIC_WAVE_SIZE;
+  const concepts=batch.slice(conceptOffset,conceptOffset+PROMPT_DIAGNOSTIC_WAVE_SIZE);
+  if(concepts.length!==PROMPT_DIAGNOSTIC_WAVE_SIZE)throw new Error('Prompt Diagnostics five-concept wave did not resolve to exactly 5 concepts');
+  return{batchIndex,callMode,waveIndex,waveNumber:waveIndex+1,waveCount:3,conceptOffset,concepts};
+}
+
+function promptDiagnosticPrompt({callSpec,sources,reactions,description}){
+  const {concepts:batch,callMode,waveNumber}=callSpec;
   const sourceLabel=promptDiagnosticSourceLabel(sources);
   const evidence=[];
   if(sources.image)evidence.push('IMAGE: The supplied image is evidence. Judge only what can reasonably be seen or inferred from it.');
@@ -1148,12 +1164,15 @@ function promptDiagnosticPrompt({batchIndex,sources,reactions,description}){
     return `CONCEPT ${row.code} — ${row.name} — ${row.kind==='prim'?'PRIM BUILDING BLOCK (diagnostic only; not selectable as a final Theme)':'PRIMFUSION THEME'}\nCURRENT WORKER DEFINITION (verbatim):\n${row.definition}\nDEFINITION PARTS TO ASSESS:\n${numbered}`;
   }).join('\n\n');
 
+  const callLabel=callMode==='five'?`5-concept wave ${waveNumber} of 3 within this 15-concept batch`:'15 concepts at once';
+  const count=batch.length;
   return `You are running GENREACTRIX PROMPT DIAGNOSTICS. This is research instrumentation, not normal Theme selection.
 
+DIAGNOSTIC CALL FORMAT: ${callLabel}
 EVIDENCE SOURCE COMBINATION: ${sourceLabel}
 ${evidence.join('\n\n')}
 
-Evaluate EACH of the 15 concepts below INDEPENDENTLY against the available evidence and against its exact current Worker definition.
+Evaluate EACH of the ${count} concepts below INDEPENDENTLY against the available evidence and against its exact current Worker definition.
 
 SCORING RULES:
 - Give every concept its own 0-100 MATCH CONFIDENCE. These scores are independent. They do NOT add to 100, are NOT shares of a pool, and must NOT be normalized against one another.
@@ -1173,14 +1192,13 @@ Return ONLY valid JSON in this shape:
 
 Every listed concept must appear exactly once, and every numbered definition part for that concept must appear exactly once.
 
-15 CONCEPTS:
+${count} CONCEPTS:
 ${concepts}`;
 }
 
-function parsePromptDiagnosticResponse(raw,batchIndex){
+function parsePromptDiagnosticResponse(raw,expected){
   const parsed=parse(raw);
   const rows=Array.isArray(parsed?.results)?parsed.results:[];
-  const expected=PROMPT_DIAGNOSTIC_BATCHES[batchIndex];
   if(rows.length!==expected.length)throw new Error(`Prompt Diagnostics expected ${expected.length} results but received ${rows.length}`);
   const byCode=new Map(rows.map(row=>[String(row?.code||'').trim().toUpperCase(),row]));
   const allowedAssessments=new Set(['SUPPORTS','PARTIAL','ABSENT','CONTRADICTS','NOT_OBSERVABLE']);
@@ -1204,15 +1222,15 @@ function parsePromptDiagnosticResponse(raw,batchIndex){
     const scoreReason=String(rawRow.scoreReason||'').trim();
     if(!scoreReason)throw new Error(`Prompt Diagnostics ${concept.code} needs a score reason`);
     return{
-      code:concept.code,name:concept.name,kind:concept.kind,symbol:concept.symbol,primIds:[...concept.primIds],
+      code:concept.code,name:concept.name,kind:concept.kind,symbol:concept.symbol,primIds:[...concept.primIds],position:concept.position,
       confidence:Math.round(confidence*10)/10,definition:concept.definition,definitionAnalysis,scoreReason
     };
   });
 }
 
 async function runPromptDiagnosticBatch(env,body){
-  const batchIndex=Number(body?.batchIndex);
-  if(!Number.isInteger(batchIndex)||batchIndex<0||batchIndex>=PROMPT_DIAGNOSTIC_BATCH_COUNT)throw new Error('Prompt Diagnostics batchIndex must be 0-6');
+  const callSpec=promptDiagnosticCallSpec(body);
+  const {batchIndex,callMode,waveIndex,waveNumber,waveCount,conceptOffset,concepts}=callSpec;
   const sources=normalizePromptDiagnosticSources(body?.sources);
   const reactions=normalizePromptDiagnosticReactionScores(body?.reactions);
   const description=sources.description?String(body?.description||'').trim().slice(0,12000):'';
@@ -1220,25 +1238,32 @@ async function runPromptDiagnosticBatch(env,body){
   if(sources.reactions&&(!body?.reactions||typeof body.reactions!=='object'))throw new Error('Prompt Diagnostics selected Reactions but no Reaction scores were supplied');
   const image=sources.image?(body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl)):null;
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
-  const prompt=promptDiagnosticPrompt({batchIndex,sources,reactions,description});
+  const prompt=promptDiagnosticPrompt({callSpec,sources,reactions,description});
   let lastError=null;
+  const outputTokens=callMode==='five'?3600:7200;
   for(let attempt=1;attempt<=3;attempt++){
-    const recovery=attempt===1?'':`\n\nRECOVERY: The previous diagnostic response was invalid${lastError?.message?`: ${String(lastError.message).slice(0,350)}`:''}. Return only valid JSON, include all 15 requested codes exactly once, and assess every numbered definition part exactly once.`;
-    const raw=await runStructured(env,model,image,prompt+recovery,null,7200,'text',{temperature:attempt===1?0.12:0.03});
+    const recovery=attempt===1?'':`\n\nRECOVERY: The previous diagnostic response was invalid${lastError?.message?`: ${String(lastError.message).slice(0,350)}`:''}. Return only valid JSON, include all ${concepts.length} requested codes exactly once, and assess every numbered definition part exactly once.`;
+    const raw=await runStructured(env,model,image,prompt+recovery,null,outputTokens,'text',{temperature:attempt===1?0.12:0.03});
     try{
       return{
-        schemaVersion:1,
+        schemaVersion:2,
         matrixVersion:matrixVersion(),
         workerVersion:API_VERSION,
         batchIndex,
         batchNumber:batchIndex+1,
         batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,
         batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,
+        callMode,
+        callConceptCount:concepts.length,
+        conceptOffset,
+        waveIndex,
+        waveNumber,
+        waveCount,
         sourceCombination:promptDiagnosticSourceLabel(sources),
         sources,
         model,
         evaluatedAt:new Date().toISOString(),
-        results:parsePromptDiagnosticResponse(raw,batchIndex)
+        results:parsePromptDiagnosticResponse(raw,concepts)
       };
     }catch(error){lastError=error;}
   }
@@ -1629,7 +1654,7 @@ export default {
         totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
-        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT}
+        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSize:PROMPT_DIAGNOSTIC_WAVE_SIZE,executionModes:['fifteen','five','compare']}
       });
     }
 
