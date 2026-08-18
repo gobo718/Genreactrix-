@@ -1,8 +1,15 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.54-diagnostic-self-check-term-calibration.
+Current bundled Worker: v0.9.6.55-romance-obsessive-mundane-calibration.
 
-## Worker 0.9.6.54 — Diagnostic self-check + end-of-image calibration
+## Worker 0.9.6.55 — Romance + Obsessive/Mundane calibration
+
+- PFM0208 Romance tightened to specifically romantic evidence and explicitly includes marriage proposals and engagements.
+- PFM0512 Brilliant renamed to Obsessive; existing Obsessive semantics moved intact.
+- PFM1214 Obsessive renamed to Mundane with ordinary/dull/commonplace semantics.
+- Matrix remains 0.0.0.0.
+- All Worker parsing/recovery/self-check behavior from 0.9.6.54 is retained.
+
 
 - Adds a 105-wide final-score self-check: the AI must re-read its own completed component assessments/reasons and revise a conflicting score. Assessment → score; never score → assessment. No new evidence may be invented during the self-check.
 - Adds `<ASSESSMENT>` placeholder recovery: when a provider returns `CODE.NN <ASSESSMENT> - reason`, the Worker preserves the reason and makes a tiny label-only repair call for that exact component instead of guessing from prose or stopping the run.
