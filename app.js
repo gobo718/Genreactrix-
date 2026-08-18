@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.114";
+const GENREACTRIX_BUILD="v0.9.40.115";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1093,7 +1093,7 @@ function previewThemeRerunRequest(spec){
   lines.push('Theme Exclusions:');
   if(spec.excludedThemeCodes.length)for(const code of spec.excludedThemeCodes){const row=THEME_RERUN_FUSION_BY_CODE[code];if(row)lines.push(`- ${row.label}`);}else lines.push('No themes excluded.');
   lines.push('');
-  lines.push(`Explain Theme changes: ${spec.explainChanges!==false?'ON — save image-grounded reasoning for changed Themes.':'OFF'}`);
+  lines.push(`Theme Edit Log: ${spec.explainChanges!==false?'ON — save image-grounded reasoning for changed Themes.':'OFF'}`);
   lines.push('');
   lines.push('Included descriptions:');
   if(spec.includedDescriptions.length)spec.includedDescriptions.forEach((row,index)=>{lines.push(`\n[${index+1}] ${formatDescriptionRerunDate(row.createdAt)}${row.version?` · v${row.version}`:''}`);lines.push(row.text)});else lines.push('No descriptions included.');
