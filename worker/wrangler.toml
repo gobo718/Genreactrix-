@@ -1,6 +1,5 @@
-# Convenience root config. The canonical Worker config remains worker/wrangler.toml.
 name = "genreactrix-ai"
-main = "worker/src/index.js"
+main = "src/index.js"
 compatibility_date = "2026-07-01"
 
 [ai]
