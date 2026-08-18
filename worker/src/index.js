@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.56-nostalgia-theme-rerun-code-first
+/* Genreactrix AI Worker v0.9.6.57-maintenance-targeted-repair
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.56-nostalgia-theme-rerun-code-first';
+const API_VERSION = '0.9.6.57-maintenance-targeted-repair';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -446,6 +446,59 @@ function validateReactionAssessment(raw,{requireNotes=false}={}){
   return {weights,ranking,notes,rankingSource};
 }
 
+function invalidReactionWeightIds(raw){
+  const ids=PRIMFUSION_REGISTRY.primitives.map(p=>p.id),bad=[];
+  for(const id of ids){const value=Number(raw?.weights?.[id]);if(!Number.isFinite(value)||value<0||value>100)bad.push(id);}
+  return bad;
+}
+
+function reactionWeightRepairPrompt(raw,missingIds,evidence={}){
+  const byId=new Map(PRIMFUSION_REGISTRY.primitives.map(p=>[p.id,p]));
+  const accepted=PRIMFUSION_REGISTRY.primitives.map(p=>p.id).filter(id=>!missingIds.includes(id)).map(id=>`${id}=${Number(raw?.weights?.[id])}`).join(', ');
+  const missing=missingIds.map(id=>{const p=byId.get(id);return `${id} — ${p?.name||id}: ${String(p?.aiMeaning||'').trim()}`}).join('\n');
+  const description=String(evidence?.descriptionContext||'').trim();
+  const evidenceRule=evidence?.useImage===false
+    ? `Use ONLY the supplied AI Description evidence below. Do not invent visual evidence beyond it.`
+    : description
+      ? `Use the image and supplied AI Description together as the same evidence sources used for the original Reaction Analysis.`
+      : `Use the image as the same sole evidence source used for the original Reaction Analysis.`;
+  const descriptionBlock=description?`\n\nAI DESCRIPTION EVIDENCE:\n${description}`:'';
+  return `You are repairing ONLY malformed or missing numeric Reaction weight fields from an otherwise completed Genreactrix Reaction Analysis.\n\n${evidenceRule}\n\nThe accepted weights below are IMMUTABLE. Do not revise, recalculate, or return them:\n${accepted||'None'}\n\nRepair only these P-codes:\n${missing}\n\nChoose each missing relative weight from 0 to 100 so it fits coherently beside the immutable accepted weights. The 14 weights do not need to total 100. Do not change ranking, notes, or any accepted weight.${descriptionBlock}\n\nOUTPUT FORMAT — REQUIRED:\n${missingIds.map(id=>`${id}|<number from 0 to 100>`).join('\n')}\nReturn exactly ${missingIds.length} line${missingIds.length===1?'':'s'} and nothing else.`;
+}
+
+function parseReactionWeightRepair(raw,missingIds){
+  const wanted=new Set(missingIds),found={};
+  const text=String(raw||'').replace(/```(?:text|json)?/gi,'').trim();
+  const objectCandidate=reactionObjectCandidate(text);
+  if(objectCandidate){const source=objectCandidate.weights||objectCandidate;for(const id of missingIds){const direct=source?.[id],nested=direct&&typeof direct==='object'?(direct.relative_weight??direct.relativeWeight??direct.weight??direct.score??direct.value??direct.percentage??direct.percent):direct;const n=Number(nested);if(Number.isFinite(n)&&n>=0&&n<=100)found[id]=n;}}
+  for(const line of text.split(/\r?\n/)){
+    const m=line.trim().replace(/^[-*]\s*/,'').match(/^(P\d{2})\s*[|:=,-]\s*(-?\d+(?:\.\d+)?)\s*%?\s*$/i);
+    if(!m)continue;const id=m[1].toUpperCase(),n=Number(m[2]);if(wanted.has(id)&&Number.isFinite(n)&&n>=0&&n<=100)found[id]=n;
+  }
+  const missing=missingIds.filter(id=>!Object.prototype.hasOwnProperty.call(found,id));
+  if(missing.length)throw diagnosticError(`Reaction targeted weight repair was missing numeric values for ${missing.join(', ')}`,{phase:'reaction-weight-targeted-repair-parse',missingPrimCodes:missing,responsePreview:text.slice(0,1200)});
+  return found;
+}
+
+async function repairReactionWeightsIfNeeded(env,reactionModel,image,behavior,evidence,rawAssessment){
+  let assessment=rawAssessment&&typeof rawAssessment==='object'?structuredClone(rawAssessment):rawAssessment;
+  let missingIds=invalidReactionWeightIds(assessment);
+  if(!missingIds.length)return assessment;
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    const prompt=reactionWeightRepairPrompt(assessment,missingIds,evidence)+(attempt===2?`\n\nRECOVERY: The previous repair response was malformed. Return only the requested P-code|number lines.`:'');
+    try{
+      const useImage=evidence?.useImage!==false,description=String(evidence?.descriptionContext||'').trim(),combined=useImage&&Boolean(description);
+      const raw=await runStructured(env,reactionModel,useImage?image:null,prompt,null,700,'text',{behavior,reactionEvidenceMode:'targeted-weight-repair',multimodalMessages:combined,temperature:0});
+      const repaired=parseReactionWeightRepair(raw,missingIds);
+      assessment={...(assessment||{}),weights:{...((assessment&&assessment.weights)||{}),...repaired}};
+      missingIds=invalidReactionWeightIds(assessment);
+      if(!missingIds.length)return assessment;
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||`Reaction targeted weight repair failed for ${missingIds.join(', ')}`,{phase:'reaction-weight-targeted-repair',missingPrimCodes:missingIds});
+}
+
 function allocateReactionPool(assessment){
   const ids = PRIMFUSION_REGISTRY.primitives.map(p=>p.id);
   const total = ids.reduce((sum,id)=>sum+assessment.weights[id],0);
@@ -533,7 +586,8 @@ async function runReactionAssessment(env,model,image,behavior='analyze',evidence
           env,reactionModel,image,prompt,reactionSchema(),2300,'guided_json',
           {behavior,reactionEvidenceMode:evidenceMode,multimodalMessages:true,temperature:attempt===1?(behavior==='reanalyze'?0.28:0.08):0}
         );
-        return validateReactionAssessment(structured,{requireNotes});
+        const repaired=await repairReactionWeightsIfNeeded(env,reactionModel,image,behavior,evidence,structured);
+        return validateReactionAssessment(repaired,{requireNotes});
       }
 
       if (useImage){
@@ -543,7 +597,8 @@ async function runReactionAssessment(env,model,image,behavior='analyze',evidence
         );
         const parsed = parseReactionText(raw);
         try{
-          return validateReactionAssessment(parsed,{requireNotes});
+          const repaired=await repairReactionWeightsIfNeeded(env,reactionModel,image,behavior,evidence,parsed);
+          return validateReactionAssessment(repaired,{requireNotes});
         }catch(error){
           throw diagnosticError(
             error?.message || 'Reaction Vision response could not be validated',
@@ -562,7 +617,8 @@ async function runReactionAssessment(env,model,image,behavior='analyze',evidence
         env,reactionModel,null,prompt,reactionSchema(),2100,'guided_json',
         {behavior,temperature:attempt===1?(behavior==='reanalyze'?0.35:0.1):0}
       );
-      return validateReactionAssessment(structured,{requireNotes});
+      const repaired=await repairReactionWeightsIfNeeded(env,reactionModel,image,behavior,evidence,structured);
+      return validateReactionAssessment(repaired,{requireNotes});
     }catch(error){
       lastError = error;
       const message = String(error?.message||error);
@@ -941,6 +997,53 @@ function parseThemeRerunText(raw,rerun,sets){
   }
   return parseThemeRerunStructured(structured,rerun,sets);
 }
+function extractThemeRerunAcceptedPartial(raw,rerun,sets){
+  const text=typeof raw==='string'?String(raw).trim():'';
+  const accepted=new Map(),used=new Set(rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.currentThemeCode).filter(Boolean));
+  const openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve').map(row=>row.slot),allowed=new Map(openSlots.map(slot=>[slot,new Set(sets[slot].candidates.map(item=>item.code))]));
+  const put=(slot,code,confidence=70,rationale='')=>{code=String(code||'').toUpperCase();const n=Number(confidence);if(!openSlots.includes(Number(slot))||accepted.has(Number(slot))||!allowed.get(Number(slot))?.has(code)||used.has(code))return false;accepted.set(Number(slot),{code,confidence:Number.isFinite(n)?Math.max(0,Math.min(100,n)):70,rationale:String(rationale||`Provider response selected ${code}.`).trim().slice(0,1000)||`Provider response selected ${code}.`});used.add(code);return true;};
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const slot of openSlots){const row=raw[`theme${slot}`]||{};put(slot,row.code,row.confidence,row.rationale);}
+  if(!text)return accepted;
+  try{const obj=parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj))for(const slot of openSlots){const row=obj[`theme${slot}`]||{};put(slot,row.code,row.confidence,row.rationale);}}catch{}
+  const confidenceFrom=v=>{const text=String(v||'');const percent=text.match(/\b(100|[1-9]?\d(?:\.\d+)?)\s*%/);if(percent)return Number(percent[1]);const afterCode=text.match(/\bPFM\d{4}\b\s*(?:[|,:;\-–—]\s*)?(100|[1-9]?\d(?:\.\d+)?)(?=\s*(?:%|[|,:;\-–—]|$))/i);return afterCode?Number(afterCode[1]):70;};
+  const blockPattern=/(?:\*{0,2}\s*)?Theme\s*([123])\s*:[\s\S]*?(?=(?:\*{0,2}\s*)?Theme\s*[123]\s*:|$)/gi;let bm;
+  while((bm=blockPattern.exec(text))){const slot=Number(bm[1]),block=String(bm[0]||''),cm=block.match(/\b(PFM\d{4})\b/i);if(!cm)continue;const rm=block.match(/\bReason\s*[:=]\s*([\s\S]*)$/i);put(slot,cm[1],confidenceFrom(block),String(rm?.[1]||block).replace(/\*{1,2}/g,'').trim());}
+  for(const line of text.split(/\r?\n/)){
+    const sm=line.match(/\b(?:THEME|SLOT|RANK)\s*#?\s*([123])\b/i)||line.match(/^\s*#?\s*([123])\s*(?:[.)\]:\-|]|\|)/);
+    const cm=line.match(/\b(PFM\d{4})\b/i);if(sm&&cm)put(Number(sm[1]),cm[1],confidenceFrom(line),line);
+    const pipe=line.trim().replace(/^\|\s*/,'').replace(/\s*\|$/,'').split('|').map(x=>x.trim());if(pipe.length>=3&&/^[123]$/.test(pipe[0])){const pcm=pipe.join('|').match(/\b(PFM\d{4})\b/i);if(pcm)put(Number(pipe[0]),pcm[1],confidenceFrom(line),pipe.slice(4).join('|')||line);}
+  }
+  return accepted;
+}
+
+function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots){
+  const acceptedCodes=new Set([...accepted.values()].map(row=>row.code));
+  const fixed=[...accepted.entries()].sort((a,b)=>a[0]-b[0]).map(([slot,row])=>`Theme ${slot}: ${row.code} is already accepted and IMMUTABLE.`).join('\n')||'No open slot has been accepted yet.';
+  const blocks=missingSlots.map(slot=>{const candidates=sets[slot].candidates.filter(row=>!acceptedCodes.has(row.code));return `THEME ${slot}: choose exactly one code from ${candidates.map(row=>row.code).join(', ')}.\n${candidates.map(row=>`${row.code} — ${row.name} — ${row.aiMeaning}`).join('\n')}`;}).join('\n\n');
+  return `Repair ONLY the missing Theme Rerun slot${missingSlots.length===1?'':'s'} below. The image remains authoritative. Do not reconsider or return any already accepted slot. PFM code is authoritative identity; do not invent a Theme name. All final PFM codes must remain unique.\n\nALREADY ACCEPTED — IMMUTABLE:\n${fixed}\n\nMISSING SLOT${missingSlots.length===1?'':'S'}:\n${blocks}\n\nOUTPUT FORMAT — REQUIRED:\n${missingSlots.map(slot=>`${slot}|matrix|PFM####|0-100|Brief image-grounded reason`).join('\n')}\nReturn exactly ${missingSlots.length} line${missingSlots.length===1?'':'s'} and nothing else.`;
+}
+
+async function repairMissingThemeRerunSlots(env,model,image,behavior,rerun,sets,accepted){
+  let working=new Map(accepted),lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    const missing=rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).map(row=>row.slot);if(!missing.length)return working;
+    const prompt=themeRerunMissingRepairPrompt(rerun,sets,working,missing)+(attempt===2?'\n\nRECOVERY: Return only the exact requested pipe-delimited missing-slot lines.':'');
+    try{
+      const raw=await runStructured(env,model,image,prompt,null,1000,'text',{behavior,themeRerun:true,themeRerunRepair:true,temperature:0});
+      const newly=extractThemeRerunAcceptedPartial(raw,rerun,sets);for(const [slot,row] of newly)if(missing.includes(slot)&&!working.has(slot)&&![...working.values()].some(x=>x.code===row.code))working.set(slot,row);
+      if(rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).length===0)return working;
+    }catch(error){lastError=error;}
+  }
+  const missing=rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).map(row=>row.slot);
+  throw diagnosticError(lastError?.message||`Theme Rerun repair remained incomplete; missing Theme ${missing.join(', Theme ')}`,{phase:'theme-rerun-missing-slot-repair',missingSlots:missing});
+}
+
+function finalizeThemeRerunPartial(rerun,sets,accepted){
+  const structured={};
+  for(const row of rerun.themeSlots){if(row.state==='preserve')structured[`theme${row.slot}`]={code:row.currentThemeCode};else{const found=accepted.get(row.slot);if(!found)throw new Error(`Theme ${row.slot} remained missing after targeted repair.`);structured[`theme${row.slot}`]=found;}}
+  return parseThemeRerunStructured(structured,rerun,sets);
+}
+
 async function runThemeRerun(env,model,image,behavior,input){
   const rerun=normalizeThemeRerun(input);if(!rerun)throw new Error('Theme Rerun request was missing.');
   const sets=themeRerunCandidateSets(rerun),basePrompt=themeRerunPrompt(rerun,sets),openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve');
@@ -953,10 +1056,11 @@ async function runThemeRerun(env,model,image,behavior,input){
     const recovery=attempt===1?'':`\n\nRECOVERY: The prior response could not be accepted${lastError?.message?`: ${String(lastError.message).slice(0,300)}`:''}. Return only the exact established Theme Analysis pipe-delimited line format requested for each open Theme slot. Use an eligible PFM code for that slot, keep all final codes unique, and obey every REPLACE, PrimPicker, and Theme Exclusion constraint.`;
     const raw=await runStructured(env,model,image,basePrompt+recovery,null,1600,'text',{behavior,themeRerun:true,temperature:attempt===1?0.18:0.05});
     try{return{rerun,sets,selections:parseThemeRerunText(raw,rerun,sets)};}catch(error){
-      lastError=diagnosticError(
-        error?.message||'Theme Rerun text response could not be parsed.',
-        {phase:'theme-rerun-text-parse',attempt,responsePreview:String(raw||'').slice(0,1200)}
-      );
+      const accepted=extractThemeRerunAcceptedPartial(raw,rerun,sets),missing=openSlots.filter(row=>!accepted.has(row.slot));
+      if(accepted.size&&missing.length){
+        try{const repaired=await repairMissingThemeRerunSlots(env,model,image,behavior,rerun,sets,accepted);return{rerun,sets,selections:finalizeThemeRerunPartial(rerun,sets,repaired)};}catch(repairError){lastError=repairError;continue;}
+      }
+      lastError=diagnosticError(error?.message||'Theme Rerun text response could not be parsed.',{phase:'theme-rerun-text-parse',attempt,responsePreview:String(raw||'').slice(0,1200)});
     }
   }
   throw lastError||new Error('Theme Rerun did not produce a valid result.');
@@ -2493,10 +2597,10 @@ async function analyze(env,body){
       singleDominant:reactionResult.diagnostics.singleDominant
     };
     promptVersions.reactions = reactionSources.image&&reactionSources.description
-      ? 'genreactrix-reactions-registry-v10-combined-multimodal-guided-json'
+      ? 'genreactrix-reactions-registry-v11-targeted-weight-repair-combined'
       : reactionSources.image
-        ? 'genreactrix-reactions-registry-v8-vision-text-validated'
-        : 'genreactrix-reactions-registry-v7-rerun-evidence-sources';
+        ? 'genreactrix-reactions-registry-v9-vision-targeted-weight-repair'
+        : 'genreactrix-reactions-registry-v8-rerun-targeted-weight-repair';
     if (requested.includes('reactionReasons')) promptVersions.reactionReasons = 'genreactrix-reaction-info-v2-shared-assessment';
   }
 
@@ -2515,7 +2619,7 @@ async function analyze(env,body){
         includedDescriptionCount:rerunResult.rerun.includedDescriptions.length,
         candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
       };
-      promptVersions.themes='genreactrix-themes-pfm-v10-director-rerun-code-first';
+      promptVersions.themes='genreactrix-themes-pfm-v11-code-first-missing-slot-repair';
     }else{
       const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
       const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
