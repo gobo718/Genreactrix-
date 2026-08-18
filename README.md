@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.110 — Nostalgia + Theme Rerun code-first recovery
+
+## v0.9.40.110
+
+- PFM0308 is renamed from Liminal to Nostalgia. Definition: **Old-timey, vintage, retro, memory-filled, or evocative of the past, childhood, bygone eras, or “the good old days.”**
+- Theme Rerun now treats a valid eligible PFM code as authoritative identity even when the provider emits an incorrect human-readable label such as `Neutral`.
+- Adds block-format recovery for the observed Markdown rerun response while preserving slot eligibility, uniqueness, exclusions, Preserve/Replace state, and PrimPicker constraints.
+- Matrix remains **0.0.0.0**. No other Prim/PrimFusion definition changes are included.
+- Worker updated to **0.9.6.56-nostalgia-theme-rerun-code-first**.
+
 # Genreactrix v0.9.40.109 — Romance + Obsessive/Mundane calibration
 
 
