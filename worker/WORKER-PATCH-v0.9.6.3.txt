@@ -1,0 +1,20 @@
+Genreactrix AI Worker v0.9.6.3
+
+Purpose
+- Ground Theme Analysis in the actual PrimFusion Matrix v0.0.0.0 vocabulary instead of free-form theme invention.
+- Carry the pre-live Horny->Exposure, Dark->Shame, and Rejected->Humiliation vocabulary refinements into AI analysis.
+
+Changes
+- Adds the complete 91 canonical PrimFusion Theme definitions and image cues to the Theme prompt.
+- Uses the existing PFM#### [emoji pair] Theme - definition; cue formatting.
+- Requires the model to prefer exact canonical Theme labels when the concept is represented.
+- A synonym, grammatical variant, broader/narrower phrasing, or existing Theme combined with visible subject matter is not a Custom.
+- Customs are reserved for genuine semantic gaps.
+- Custom labels may not be settings, objects, professions, standalone Prims, or “and” compounds.
+- Prompt metadata is genreactrix-v2-theme-catalog.
+- Worker health/version metadata is 0.9.6.3 / primfusion-theme-catalog-v0.0.0.0-r1.
+
+Intentionally unchanged
+- Reaction scoring contract is unchanged in this Worker patch.
+- The planned 114-point reaction distribution is not implemented here.
+- Matrix version remains v0.0.0.0; this is still pre-live vocabulary development.
