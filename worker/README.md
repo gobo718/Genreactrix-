@@ -1,6 +1,15 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.49-playful-snarky-calibration.
+Current bundled Worker: v0.9.6.50-prompt-diagnostics-unlabeled-why-recovery.
+
+## Worker 0.9.6.50 — Prompt Diagnostics unlabeled-WHY recovery
+
+- Single-concept final-score repair accepts the provider form `CODE SCORE <0-100>` followed by a normal explanatory paragraph when the literal `WHY` label is omitted.
+- Scope is deliberately narrow: final-score repair only, one target concept only, and only after a valid target score. Explicit WHY labels retain precedence. Foreign concept codes, placeholders, component records, and ambiguous structured output are rejected by this fallback.
+- Covers the observed PFM0112 and PFM0204 failures without changing definitions or semantic scoring.
+- Matrix remains 0.0.0.0. Inherits 0.9.6.49 Playful/Snarky calibration and all 0.9.6.48 parser/provider recovery behavior.
+
+---
 
 ## Worker 0.9.6.49 — Playful / Snarky calibration
 
