@@ -1,5 +1,18 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.61-theme-edit-log-version-fix.
+
+## Worker 0.9.6.61 — synchronized site/version-label release
+
+- Worker behavior is unchanged from 0.9.6.60.
+- Version is advanced only to keep the deployed Worker synchronized with Genreactrix v0.9.40.115.
+- Theme Rerun targeted repair, Reaction targeted weight repair, and Theme Edit Log rationale behavior are unchanged.
+- No Prim or PrimFusion semantic definition changes. Matrix remains **0.0.0.0**.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.60-theme-change-checkbox-alignment.
 
 ## Worker 0.9.6.60 — synchronized site-layout release
