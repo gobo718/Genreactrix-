@@ -1,5 +1,15 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.57-maintenance-targeted-repair.
+
+## Worker 0.9.6.57 — Bundled maintenance + targeted repair
+
+- Theme Rerun preserves valid PFM-code selections and makes a small repair call only for missing open Theme slots.
+- Already accepted Theme slots are immutable during repair; slot eligibility, exclusions, PrimPicker requirements, Preserve/Replace behavior, and unique final PFM codes remain enforced.
+- Reaction Analysis preserves every valid P01–P14 weight and makes a small repair call only for missing, non-numeric, or out-of-range weights.
+- Valid reaction weights are never recalculated merely because another Prim weight failed.
+- Matrix remains **0.0.0.0**. No Prim or PrimFusion semantic definitions changed in this Worker.
+
 Current bundled Worker: v0.9.6.56-nostalgia-theme-rerun-code-first.
 
 ## Worker 0.9.6.56 — Nostalgia + Theme Rerun code-first recovery
