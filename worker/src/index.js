@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.59-theme-change-reasoning-cache-fix
+/* Genreactrix AI Worker v0.9.6.60-theme-change-checkbox-alignment
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.59-theme-change-reasoning-cache-fix';
+const API_VERSION = '0.9.6.60-theme-change-checkbox-alignment';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
