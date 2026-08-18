@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.112";
+const GENREACTRIX_BUILD="v0.9.40.113";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1159,6 +1159,10 @@ async function loadThemeRerunThemeHistory(){
 // rerun's changed PFM codes onto the confidence-sorted Landscape display.
 const themeChangeReasoningCache=new Map();
 const themeChangeReasoningLoading=new Map();
+// v0.9.40.113 — one guarded refresh may follow a stale artifact mapping.
+// A refresh may re-render only when it actually loaded the artifact currently
+// attached to the image; stale data can never recursively schedule itself.
+const themeChangeReasoningRenderRefreshPending=new Set();
 function themeChangeReasoningContext(entry){return entry?.attempt?.inputRefs?.themeRerun||entry?.attempt?.configRefs?.themeRerun||null}
 function themeChangeReasoningBuild(imageId,entries){
   const current=(entries||[]).find(entry=>entry.current)||entries?.[0]||null,ctx=themeChangeReasoningContext(current);
@@ -1199,7 +1203,16 @@ function renderThemeChangeReasoningDialog(item){
 async function openThemeChangeReasoningForDisplaySlot(slot){
   if(themeRerunWorkspace.active||descriptionRerunWorkspace.active||reactionRerunWorkspace.active)return false;let item=themeChangeReasoningForDisplaySlot(slot);if(!item){await refreshThemeChangeReasoning(currentKey(),{force:true}).catch(()=>null);item=themeChangeReasoningForDisplaySlot(slot);}return renderThemeChangeReasoningDialog(item);
 }
-function scheduleThemeChangeReasoningRefresh(){const key=String(currentKey()||'');if(!key||state.feedEmpty)return;refreshThemeChangeReasoning(key).then(()=>{if(String(currentKey())===key)renderThemeRerunChrome();}).catch(error=>console.warn('Theme change reasoning could not be loaded',error));}
+function scheduleThemeChangeReasoningRefresh(){
+  const key=String(currentKey()||'');if(!key||state.feedEmpty||themeChangeReasoningRenderRefreshPending.has(key))return;
+  const expectedArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),cached=themeChangeReasoningCache.get(key);
+  if(cached&&String(cached.artifactId||'')===expectedArtifactId)return;
+  themeChangeReasoningRenderRefreshPending.add(key);
+  refreshThemeChangeReasoning(key,{force:true}).then(data=>{
+    const sameImage=String(currentKey())===key,currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),actuallyRefreshed=String(data?.artifactId||'')===currentArtifactId;
+    if(sameImage&&actuallyRefreshed)renderThemeRerunChrome();
+  }).catch(error=>console.warn('Theme change reasoning could not be loaded',error)).finally(()=>themeChangeReasoningRenderRefreshPending.delete(key));
+}
 
 function renderThemeRerunHistoryDialog(){
   const list=$('themeRerunHistoryList');if(!list)return;list.innerHTML='';const entries=themeRerunWorkspace.themeHistoryCatalog||[];
