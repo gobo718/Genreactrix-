@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.106</title>
-<link href="styles.css?v=0.9.40.106" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.107</title>
+<link href="styles.css?v=0.9.40.107" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.106</span>
+<span>v0.9.40.107</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.106</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.107</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -253,6 +253,7 @@
 <button data-settings-section="project" type="button">Project</button>
 <button data-settings-section="maintenance" type="button">Maintenance</button>
 <button data-settings-section="backups" type="button">Backups</button>
+<button class="danger-zone-settings-tab" data-settings-section="danger-zone" type="button">Danger Zone</button>
 </nav>
 <div class="settings-console-body">
 <section data-settings-panel="defaults">
@@ -348,10 +349,112 @@
 <label class="settings-file-label">Import settings<input accept="application/json,.json" id="settingsImportFile" type="file"/></label>
 <p class="settings-note">Portable backup preserves project records, IndexedDB schema, and full-resolution binary image bytes. Full restore is performed in Maintenance. Data backups may contain the locally stored AI access key; keep backup files private.</p>
 </section>
+<section class="danger-zone-settings-panel" data-settings-panel="danger-zone" hidden="">
+<h3>Danger Zone</h3>
+<p class="settings-note">Password-protected administrative cleanup. Review thumbnails, sort and filter product, inspect impact, and verify what survives before any destructive action is allowed.</p>
+<button class="danger-zone-open-button" id="dangerZoneOpen" type="button">Open Danger Zone</button>
+<p class="settings-note">The Danger Zone can permanently delete product data. Genreactrix system code, Worker code, Customs, Prim/PrimFusion definitions, Matrix structure/version, display settings, report settings, storage configuration, and system history are outside its product-reset boundary.</p>
+</section>
 </div>
 <div aria-live="polite" class="settings-status" id="settingsStatus" role="status"></div>
 </div>
 </dialog>
+<dialog class="danger-zone-dialog" id="dangerZoneDialog">
+<div class="danger-zone-shell">
+<header class="danger-zone-header">
+<div><span class="danger-zone-kicker">SETTINGS · PASSWORD PROTECTED</span><h2>Danger Zone</h2><p id="dangerZoneHeaderStatus">Administrative product-data cleanup</p></div>
+<button aria-label="Close Danger Zone" id="dangerZoneClose" type="button">×</button>
+</header>
+<nav class="danger-zone-progress" aria-label="Danger Zone steps">
+<button data-danger-step="access" type="button">1 Access</button><button data-danger-step="scope" type="button">2 Scope</button><button data-danger-step="review" type="button">3 Review</button><button data-danger-step="impact" type="button">4 Impact</button><button data-danger-step="preserved" type="button">5 Preserved</button><button data-danger-step="confirm" type="button">6 Confirm</button><button data-danger-step="complete" type="button">7 Complete</button>
+</nav>
+<div class="danger-zone-body">
+<section class="danger-zone-screen" data-danger-screen="access">
+<div class="danger-zone-screen-copy"><h3>Unlock destructive maintenance</h3><p>This area is intentionally separated from ordinary image controls. Unlocking does not delete anything.</p></div>
+<div id="dangerZonePasswordSetup" class="danger-zone-card" hidden>
+<h4>Create Danger Zone password</h4><p>This password protects destructive maintenance in this browser. It is not your AI Worker key and is never sent to the Worker.</p>
+<label>New password<input id="dangerZoneNewPassword" type="password" autocomplete="new-password"/></label>
+<label>Confirm password<input id="dangerZoneNewPasswordConfirm" type="password" autocomplete="new-password"/></label>
+<button id="dangerZoneSetPassword" type="button">Set password &amp; unlock</button>
+</div>
+<div id="dangerZonePasswordUnlock" class="danger-zone-card" hidden>
+<h4>Enter Danger Zone password</h4><label>Password<input id="dangerZonePassword" type="password" autocomplete="current-password"/></label><button id="dangerZoneUnlock" type="button">Unlock</button>
+</div>
+<div class="danger-zone-status" id="dangerZoneAccessStatus" aria-live="polite"></div>
+</section>
+<section class="danger-zone-screen" data-danger-screen="scope" hidden>
+<div class="danger-zone-screen-copy"><h3>Choose the cleanup boundary</h3><p>Choose what you intend to remove. Nothing is selected for deletion merely by opening this screen.</p></div>
+<div class="danger-zone-scope-grid" id="dangerZoneScopeGrid">
+<label><input name="dangerZoneScope" type="radio" value="selected" checked/><span><b>Selected images</b><small>Choose individual images in the thumbnail review.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="filtered"/><span><b>Current filtered set</b><small>Delete every image visible under the Danger Zone filters.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="pack"/><span><b>Origin Pack</b><small>Choose a Pack, inspect its images, then purge that product.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="bundle"/><span><b>Bundle</b><small>Choose a Bundle and its attached image product.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="batch"/><span><b>Batch</b><small>Choose a Batch and its attached image product.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="stage"/><span><b>Stage / hold area</b><small>Inbox, Quarantine, Purgatory, Recycle, or another current stage.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="derived"/><span><b>Reset derived data only</b><small>Keep selected image files/records but clear AI/evaluation/diagnostic results for them.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="diagnostics"/><span><b>Purge Prompt Diagnostics history</b><small>Delete saved Prompt Diagnostics runs without deleting normal product.</small></span></label>
+<label class="danger-zone-scope-reset"><input name="dangerZoneScope" type="radio" value="reset-all"/><span><b>Reset All Product Data</b><small>Return Genreactrix to fully configured + zero product.</small></span></label>
+</div>
+<div class="danger-zone-scope-target" id="dangerZoneScopeTarget"></div>
+<div class="danger-zone-footer-actions"><span></span><button id="dangerZoneScopeNext" type="button">Review product →</button></div>
+</section>
+<section class="danger-zone-screen" data-danger-screen="review" hidden>
+<div class="danger-zone-screen-copy"><h3>Review the actual product</h3><p>Use thumbnails, filters, sorting, and the Image Inspector before deciding. The review set is not deleted until the final confirmation screen.</p></div>
+<div class="danger-zone-review-toolbar">
+<label>Search<input id="dangerZoneSearch" type="search" placeholder="Filename, Image ID, source…"/></label>
+<label>Sort<select id="dangerZoneSort"><option value="created-desc">Newest import</option><option value="created-asc">Oldest import</option><option value="filename-asc">Filename A → Z</option><option value="filename-desc">Filename Z → A</option><option value="size-desc">Largest file</option><option value="size-asc">Smallest file</option><option value="stage-asc">Stage</option><option value="pack-asc">Origin Pack</option><option value="bundle-asc">Bundle</option><option value="batch-asc">Batch</option></select></label>
+<label>Stage<select id="dangerZoneStageFilter"><option value="">All stages</option></select></label>
+<label>Pack<select id="dangerZonePackFilter"><option value="">All Packs</option></select></label>
+<label>Bundle<select id="dangerZoneBundleFilter"><option value="">All Bundles</option></select></label>
+<label>Batch<select id="dangerZoneBatchFilter"><option value="">All Batches</option></select></label>
+</div>
+<div class="danger-zone-selection-actions"><button id="dangerZoneSelectVisible" type="button">Select visible</button><button id="dangerZoneInvertVisible" type="button">Invert visible</button><button id="dangerZoneClearSelection" type="button">Clear selection</button><strong id="dangerZoneSelectionCount">0 selected</strong></div>
+<div class="danger-zone-thumbnail-grid" id="dangerZoneThumbnailGrid"></div>
+<div class="danger-zone-review-empty" id="dangerZoneReviewEmpty" hidden>No image records match this review.</div>
+<div class="danger-zone-footer-actions"><button data-danger-back="scope" type="button">← Scope</button><button id="dangerZoneReviewNext" type="button">Calculate impact →</button></div>
+</section>
+<section class="danger-zone-screen" data-danger-screen="impact" hidden>
+<div class="danger-zone-screen-copy"><h3>Deletion impact</h3><p>Genreactrix calculates the cascade before deletion. Counts distinguish product objects being removed from structural configuration that survives.</p></div>
+<div class="danger-zone-impact-summary" id="dangerZoneImpactSummary"></div>
+<div class="danger-zone-impact-list" id="dangerZoneImpactList"></div>
+<div class="danger-zone-footer-actions"><button data-danger-back="review" type="button">← Review</button><button id="dangerZoneImpactNext" type="button">Review what survives →</button></div>
+</section>
+<section class="danger-zone-screen" data-danger-screen="preserved" hidden>
+<div class="danger-zone-screen-copy"><h3>What this cleanup does not touch</h3><p>The product purge boundary is intentionally narrower than the Genreactrix system.</p></div>
+<div class="danger-zone-preserved-grid">
+<article><b>Prim / PrimFusion</b><span>Current Prim definitions, PrimFusion definitions/registry, stable codes, Matrix structure and Matrix version.</span></article>
+<article><b>Customs</b><span>Custom Reactions, Custom Themes, their identities, and current vocabulary configuration.</span></article>
+<article><b>Application &amp; Worker</b><span>Site code, Worker file/code, GitHub/repository contents, engines, schemas, and process logic.</span></article>
+<article><b>Settings</b><span>Display/layout settings, report definitions and presets, storage/file-system configuration, AI credentials, defaults, notification settings, and project configuration.</span></article>
+<article><b>System history</b><span>Build/version history, Matrix/versioning rules, maintenance history, methodology, terminology, knowledge-base material, and other system-history mechanisms.</span></article>
+<article><b>External files</b><span>Previously exported PDFs, HTML, JSON, ZIPs, backups, or other files already saved outside Genreactrix.</span></article>
+</div>
+<div class="danger-zone-preserved-warning"><b>Product history is different.</b> Image histories, Packs, Bundles, Batches, AI artifacts, Prompt Diagnostics runs, reports/results, Quarantine, Purgatory, Recycle, and other records created by the product being purged are within the deletion cascade.</div>
+<div class="danger-zone-footer-actions"><button data-danger-back="impact" type="button">← Impact</button><button id="dangerZonePreservedNext" type="button">Final confirmation →</button></div>
+</section>
+<section class="danger-zone-screen" data-danger-screen="confirm" hidden>
+<div class="danger-zone-screen-copy"><h3>Final destructive confirmation</h3><p>Review the scope again. The deletion is permanent inside Genreactrix and bypasses Recycle.</p></div>
+<div class="danger-zone-final-summary" id="dangerZoneFinalSummary"></div>
+<div class="danger-zone-final-thumbnails" id="dangerZoneFinalThumbnails"></div>
+<div class="danger-zone-confirm-card">
+<label>Danger Zone password<input id="dangerZoneConfirmPassword" type="password" autocomplete="current-password"/></label>
+<label>Type the confirmation phrase exactly<input id="dangerZoneConfirmPhrase" type="text" autocomplete="off" spellcheck="false"/></label>
+<code id="dangerZoneRequiredPhrase">DELETE SELECTED PRODUCT DATA</code>
+<label class="danger-zone-checkbox"><input id="dangerZoneAcknowledge" type="checkbox"/> I understand this permanently removes the product data described above.</label>
+<button class="danger-zone-destructive" id="dangerZoneExecute" type="button" disabled>Execute permanent cleanup</button>
+</div>
+<div class="danger-zone-status" id="dangerZoneExecuteStatus" aria-live="polite"></div>
+<div class="danger-zone-footer-actions"><button data-danger-back="preserved" type="button">← Preserved</button><span></span></div>
+</section>
+<section class="danger-zone-screen" data-danger-screen="complete" hidden>
+<div class="danger-zone-screen-copy"><h3>Cleanup complete</h3><p>The cleanup engine has finished its post-delete integrity check.</p></div>
+<div class="danger-zone-complete-card" id="dangerZoneCompleteCard"></div>
+<div class="danger-zone-footer-actions"><span></span><button id="dangerZoneReload" type="button">Reload Genreactrix</button></div>
+</section>
+</div>
+</div>
+</dialog>
+
 <dialog class="ai-analysis-dialog" id="aiAnalysisDialog">
 <form class="ai-analysis-form" method="dialog">
 <div class="image-intake-header"><h2>AI</h2><button aria-label="Close" id="aiAnalysisClose" type="button">×</button></div>
@@ -1161,7 +1264,7 @@
 <script src="origin-pack-engine.js?v=0.9.40.37"></script>
 <script src="origin-gate-engine.js?v=0.9.40.37"></script>
 <script src="import-engine.js?v=0.9.40.34"></script>
-<script src="maintenance-engine.js?v=0.9.40.106"></script>
+<script src="maintenance-engine.js?v=0.9.40.107"></script>
 <script src="settings-engine.js?v=0.9.40.61"></script>
 <script src="director-classification-engine.js?v=0.9.40.37"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -1195,7 +1298,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.106"></script>
+<script src="app.js?v=0.9.40.107"></script>
+<script src="danger-zone-engine.js?v=0.9.40.107"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1213,9 +1317,9 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="quarantine-engine.js?v=0.9.40.37"></script>
 <script src="queue-engine.js?v=0.9.40.43"></script>
 <script src="investigation-ui.js?v=0.9.40.43"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.40.106"></script>
-<script src="prompt-diagnostics-engine.js?v=0.9.40.106"></script>
-<script src="reports-engine.js?v=0.9.40.106"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.40.107"></script>
+<script src="prompt-diagnostics-engine.js?v=0.9.40.107"></script>
+<script src="reports-engine.js?v=0.9.40.107"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -1226,9 +1330,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="post-processing-engine.js?v=0.9.40.106"></script>
-<script src="housekeeping-engine.js?v=0.9.40.106"></script>
-<script src="batch-engine.js?v=0.9.40.106"></script>
+<script src="post-processing-engine.js?v=0.9.40.107"></script>
+<script src="housekeeping-engine.js?v=0.9.40.107"></script>
+<script src="batch-engine.js?v=0.9.40.107"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>

@@ -1,6 +1,6 @@
-# Genreactrix v0.9.40.106 — End-of-Image Diagnostic Calibration Bundle
+# Genreactrix v0.9.40.107 — End-of-Image Diagnostic Calibration Bundle
 
-## v0.9.40.106
+## v0.9.40.107
 
 Supersedes v0.9.40.105 and bundles Worker **0.9.6.54-diagnostic-self-check-term-calibration**.
 
@@ -15,3 +15,7 @@ Changes in this bundle:
 - Matrix remains **0.0.0.0**.
 
 The release remains shallow/flat at archive root except for the required Worker folder structure.
+
+
+## v0.9.40.107 — Danger Zone
+Adds a password-protected Settings → Danger Zone cleanup workspace with thumbnail review, sorting/filtering, scope-specific bulk deletion, preflight impact/preservation screens, typed confirmation, full product reset, Prompt Diagnostics purge, derived-data reset, and post-delete integrity checks. Reset All Product Data preserves the configured Genreactrix system while removing imported product and product-derived test data. Worker remains 0.9.6.54.
