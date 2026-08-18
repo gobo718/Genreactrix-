@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.44-compound-name-casing
+/* Genreactrix AI Worker v0.9.6.48-prompt-diagnostics-final-score-label-recovery
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.44-compound-name-casing';
+const API_VERSION = '0.9.6.48-prompt-diagnostics-final-score-label-recovery';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1081,6 +1081,72 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   return parseProviderResponse(payload);
 }
 
+function promptDiagnosticTransientProviderError(error){
+  const diagnostic=providerDiagnosticOf(error)||{};
+  if(diagnostic.transientProviderFailure===true)return true;
+  const providerPhase=String(diagnostic.providerPhase||diagnostic.phase||'');
+  if(providerPhase!=='provider-call')return false;
+  const status=Number(diagnostic.errorStatus??diagnostic.status??0);
+  if([429,500,502,503,504].includes(status))return true;
+  const text=`${error?.message||''} ${diagnostic.errorMessage||''}`.toLowerCase();
+  return /timed out|timeout|temporar|overload|unavailable|try again|rate limit|too many requests|network|failed to fetch|connection/.test(text);
+}
+
+function promptDiagnosticProviderFailureKind(error){
+  const diagnostic=providerDiagnosticOf(error)||{};
+  const text=`${error?.message||''} ${diagnostic.errorMessage||''}`.toLowerCase();
+  if(/timed out|timeout/.test(text))return'timeout';
+  if(/rate limit|too many requests|429/.test(text))return'rate-limit';
+  if(/overload|unavailable|temporar|502|503|504/.test(text))return'unavailable';
+  return'provider-transient';
+}
+
+function promptDiagnosticRecoveryEvent(recoveryLog,event){
+  if(!Array.isArray(recoveryLog))return;
+  recoveryLog.push({at:new Date().toISOString(),...event});
+}
+
+async function runPromptDiagnosticStructured(env,model,image,prompt,schema,maxTokens,responseMode,options={},meta={}){
+  const maxProviderAttempts=Math.max(1,Math.min(3,Number(meta.maxProviderAttempts)||2));
+  let lastError=null;
+  for(let providerAttempt=1;providerAttempt<=maxProviderAttempts;providerAttempt++){
+    try{
+      const value=await runStructured(env,model,image,prompt,schema,maxTokens,responseMode,options);
+      if(providerAttempt>1){
+        promptDiagnosticRecoveryEvent(meta.recoveryLog,{
+          type:'provider-recovered',failureKind:promptDiagnosticProviderFailureKind(lastError),
+          stage:meta.stage||null,conceptCode:meta.conceptCode||null,componentIds:meta.componentIds||null,
+          batchIndex:meta.callContext?.batchIndex??null,callMode:meta.callContext?.callMode??null,waveIndex:meta.callContext?.waveIndex??null,
+          providerAttempts:providerAttempt
+        });
+      }
+      return value;
+    }catch(error){
+      if(!promptDiagnosticTransientProviderError(error))throw error;
+      lastError=error;
+      promptDiagnosticRecoveryEvent(meta.recoveryLog,{
+        type:providerAttempt<maxProviderAttempts?'provider-retry':'provider-retries-exhausted',
+        failureKind:promptDiagnosticProviderFailureKind(error),stage:meta.stage||null,conceptCode:meta.conceptCode||null,componentIds:meta.componentIds||null,
+        batchIndex:meta.callContext?.batchIndex??null,callMode:meta.callContext?.callMode??null,waveIndex:meta.callContext?.waveIndex??null,
+        providerAttempt,maxProviderAttempts
+      });
+      if(providerAttempt<maxProviderAttempts)continue;
+      const inner=providerDiagnosticOf(error)||{};
+      throw diagnosticError(
+        error?.message||'Prompt Diagnostics provider call failed after automatic retries',
+        {
+          phase:'prompt-diagnostics-provider-retry-exhausted',providerPhase:inner.phase||'provider-call',
+          transientProviderFailure:true,failureKind:promptDiagnosticProviderFailureKind(error),
+          batchIndex:meta.callContext?.batchIndex??null,batchNumber:meta.callContext?.batchNumber??null,
+          callMode:meta.callContext?.callMode??null,waveIndex:meta.callContext?.waveIndex??null,waveNumber:meta.callContext?.waveNumber??null,
+          stage:meta.stage||null,conceptCode:meta.conceptCode||null,componentIds:meta.componentIds||null,
+          providerAttempts:maxProviderAttempts,errorName:inner.errorName||error?.name||null,errorMessage:inner.errorMessage||String(error?.message||error).slice(0,1200)
+        }
+      );
+    }
+  }
+  throw lastError||new Error('Prompt Diagnostics provider call failed');
+}
 
 const PROMPT_DIAGNOSTIC_BATCH_SIZE = 15;
 const PROMPT_DIAGNOSTIC_BATCH_COUNT = 7;
@@ -1285,7 +1351,10 @@ function parsePromptDiagnosticPartial(raw,expected){
   const text=String(raw||'').replace(/```(?:text)?/gi,'').replace(/```/g,'').trim();
   const expectedCodes=new Set(expected.map(c=>c.code));
   const state=promptDiagnosticEmptyState(expected);
+  const singleExpectedCode=expected.length===1?expected[0].code:null;
   let currentCode=null;
+  let pendingPart=null;
+  let pendingWhy=null;
   const assessmentPattern='MATCH[_ -]?EVIDENCE|GATE[_ -]?CONFIRMED|EXCLUSION(?:[_ -]?GATE)?[_ -]?CONFIRMED|SUPPORTS|PARTIAL|ABSENT|CONTRADICTS|NOT[_ -]?OBSERVABLE';
 
   const setScore=(code,value)=>{
@@ -1312,6 +1381,36 @@ function parsePromptDiagnosticPartial(raw,expected){
   for(const rawLine of text.split(/\r?\n/)){
     const line=cleanPromptDiagnosticLine(rawLine);
     if(!line)continue;
+
+    // Some provider repairs echo the template marker and put the real label at
+    // the end of the component line, then place the reason on the next line:
+    // P03.02 <ASSESSMENT> - ABSENT
+    // <reason>
+    // Preserve the valid label and consume the following prose line as its reason.
+    if(pendingPart){
+      const startsNewRecord=/^(?:(?:P\d{2}|PFM\d{4})(?:\.\d{1,2}\b|\s*(?:\||[-–—:]?\s*)(?:SCORE|WHY)\b)|(?:SCORE|WHY)\b|PART\s*\|)/i.test(line);
+      if(!startsNewRecord){
+        setPart(pendingPart.code,pendingPart.part,pendingPart.assessment,line);
+        pendingPart=null;
+        continue;
+      }
+      pendingPart=null;
+    }
+
+    // Focused final-score repairs are unambiguously scoped to one concept, but
+    // providers sometimes return a Markdown/bare WHY label on one line and put
+    // the actual reason on the next line, e.g. "**WHY:**" then prose. Preserve
+    // that reason instead of falsely declaring CODE WHY missing. Unqualified WHY
+    // remains disallowed for multi-concept responses.
+    if(pendingWhy){
+      const startsNewRecord=/^(?:(?:P\d{2}|PFM\d{4})(?:\.\d{1,2}\b|\s*(?:\||[-–—:]?\s*)(?:SCORE|WHY)\b)|(?:SCORE|WHY)\b|PART\s*\|)/i.test(line);
+      if(!startsNewRecord){
+        setWhy(pendingWhy,line);
+        pendingWhy=null;
+        continue;
+      }
+      pendingWhy=null;
+    }
 
     let m=line.match(/^(?:#{1,6}\s*)?(?:CONCEPT\s+)?(P\d{2}|PFM\d{4})(?:\s*[-–—:]\s*|\s+)(?:[A-Za-z].*)?$/i);
     if(m&&expectedCodes.has(m[1].toUpperCase()))currentCode=m[1].toUpperCase();
@@ -1340,6 +1439,11 @@ function parsePromptDiagnosticPartial(raw,expected){
       if(a){
         const after=tail.slice((a.index||0)+a[0].length).replace(/^\s*(?:\||::|[:.\-–—])+\s*/,'').trim();
         if(after){setPart(code,m[2],a[1],after);currentCode=code;continue;}
+        // A real assessment token is present, but the model put the reason on
+        // the next line. Keep the component pending instead of declaring it missing.
+        pendingPart={code,part:m[2],assessment:a[1]};
+        currentCode=code;
+        continue;
       }
     }
     m=line.match(new RegExp(`^(P\\d{2}|PFM\\d{4})\\.(\\d{1,2})\\s*(?:\\||[:\\-–—]?\\s*)(${assessmentPattern})\\s*(?:\\||[:\\-–—]\\s*)+(.+)$`,'i'));
@@ -1352,7 +1456,9 @@ function parsePromptDiagnosticPartial(raw,expected){
     m=line.match(/^(P\d{2}|PFM\d{4})\s*(?:\||[-–—:]?\s*)WHY\s*(?:\||[:\-–—]?\s*)+(.+)$/i);
     if(m){setWhy(m[1],m[2]);currentCode=m[1].toUpperCase();continue;}
     m=line.match(/^WHY\s*[:\-–—]\s*(.+)$/i);
-    if(m&&currentCode){setWhy(currentCode,m[1]);continue;}
+    if(m&&singleExpectedCode){setWhy(singleExpectedCode,m[1]);continue;}
+    m=line.match(/^WHY\s*[:\-–—]?\s*$/i);
+    if(m&&singleExpectedCode){pendingWhy=singleExpectedCode;continue;}
   }
   return{state,responsePreview:text.slice(0,1200)};
 }
@@ -1475,7 +1581,7 @@ ${concept.code} SCORE <0-100>
 ${concept.code} WHY - <why these component findings justify that score>`;
 }
 
-async function runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data}){
+async function runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data,recoveryLog,callContext}){
   let chunkCalls=0;
   let retries=0;
   while(true){
@@ -1483,34 +1589,66 @@ async function runPromptDiagnosticComponentChunks(env,{model,image,concept,sourc
     for(let partNumber=1;partNumber<=concept.definitionParts.length;partNumber++)if(!data.parts.has(partNumber))missingParts.push(partNumber);
     if(!missingParts.length)break;
     const partNumbers=missingParts.slice(0,PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE);
-    let completed=false,lastRaw='';
+    let completed=false,lastRaw='',fallbackToSingles=false;
     for(let attempt=1;attempt<=2;attempt++){
       const prompt=promptDiagnosticComponentChunkPrompt({concept,sources,reactions,description,partNumbers});
-      const raw=await runStructured(env,model,image,prompt,null,Math.max(900,500+partNumbers.length*180),'text',{temperature:attempt===1?0.04:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS});
-      chunkCalls++;if(attempt>1)retries++;
-      lastRaw=String(raw||'');
-      const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
-      promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
-      completed=partNumbers.every(partNumber=>data.parts.has(partNumber));
-      if(completed)break;
+      try{
+        chunkCalls++;if(attempt>1)retries++;
+        const raw=await runPromptDiagnosticStructured(env,model,image,prompt,null,Math.max(900,500+partNumbers.length*180),'text',{temperature:attempt===1?0.04:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS},{recoveryLog,callContext,stage:'component-chunk',conceptCode:concept.code,componentIds:partNumbers.map(n=>promptDiagnosticPartId(concept.code,n-1)),maxProviderAttempts:2});
+        lastRaw=String(raw||'');
+        const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
+        promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
+        completed=partNumbers.every(partNumber=>data.parts.has(partNumber));
+        if(completed)break;
+      }catch(error){
+        if(!promptDiagnosticTransientProviderError(error))throw error;
+        fallbackToSingles=true;
+        promptDiagnosticRecoveryEvent(recoveryLog,{type:'provider-fallback',from:'component-chunk',to:'single-components',failureKind:promptDiagnosticProviderFailureKind(error),stage:'component-chunk',conceptCode:concept.code,componentIds:partNumbers.map(n=>promptDiagnosticPartId(concept.code,n-1)),batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null});
+        break;
+      }
     }
+
+    if(fallbackToSingles){
+      for(const partNumber of partNumbers){
+        if(data.parts.has(partNumber))continue;
+        let singleComplete=false;
+        for(let attempt=1;attempt<=2;attempt++){
+          const prompt=promptDiagnosticComponentChunkPrompt({concept,sources,reactions,description,partNumbers:[partNumber]});
+          chunkCalls++;if(attempt>1)retries++;
+          const raw=await runPromptDiagnosticStructured(env,model,image,prompt,null,900,'text',{temperature:attempt===1?0.03:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS},{recoveryLog,callContext,stage:'single-component',conceptCode:concept.code,componentIds:[promptDiagnosticPartId(concept.code,partNumber-1)],maxProviderAttempts:3});
+          lastRaw=String(raw||'');
+          const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
+          promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
+          if(data.parts.has(partNumber)){singleComplete=true;break;}
+        }
+        if(!singleComplete){
+          const id=promptDiagnosticPartId(concept.code,partNumber-1);
+          throw diagnosticError(
+            `Prompt Diagnostics ${concept.code} single-component recovery remained incomplete; missing ${id}`,
+            {phase:'prompt-diagnostics-single-component-repair',conceptCode:concept.code,missingRequirements:[id],batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null,responsePreview:lastRaw.slice(0,1200)}
+          );
+        }
+      }
+      completed=partNumbers.every(partNumber=>data.parts.has(partNumber));
+    }
+
     if(!completed){
       const stillMissing=partNumbers.filter(partNumber=>!data.parts.has(partNumber)).map(partNumber=>`${concept.code}.${String(partNumber).padStart(2,'0')}`);
       throw diagnosticError(
         `Prompt Diagnostics ${concept.code} component chunk remained incomplete; missing ${stillMissing.join(', ')}`,
-        {phase:'prompt-diagnostics-component-chunk-repair',conceptCode:concept.code,missingRequirements:stillMissing,responsePreview:lastRaw.slice(0,1200)}
+        {phase:'prompt-diagnostics-component-chunk-repair',conceptCode:concept.code,missingRequirements:stillMissing,batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null,responsePreview:lastRaw.slice(0,1200)}
       );
     }
   }
   return{chunkCalls,retries};
 }
 
-async function runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data}){
+async function runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data,recoveryLog,callContext}){
   let lastRaw='';
   for(let attempt=1;attempt<=2;attempt++){
     data.score=null;data.why='';
     const prompt=promptDiagnosticScoreFromPartsPrompt({concept,sources,reactions,description,data});
-    const raw=await runStructured(env,model,image,prompt,null,1000,'text',{temperature:attempt===1?0.04:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS});
+    const raw=await runPromptDiagnosticStructured(env,model,image,prompt,null,1000,'text',{temperature:attempt===1?0.04:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS},{recoveryLog,callContext,stage:'final-score',conceptCode:concept.code,maxProviderAttempts:3});
     lastRaw=String(raw||'');
     const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
     const scored=partial.state.get(concept.code);
@@ -1521,36 +1659,42 @@ async function runPromptDiagnosticFinalScore(env,{model,image,concept,sources,re
   const missing=[];if(data.score==null)missing.push(`${concept.code} SCORE`);if(!data.why)missing.push(`${concept.code} WHY`);
   throw diagnosticError(
     `Prompt Diagnostics ${concept.code} final score remained incomplete; missing ${missing.join(', ')}`,
-    {phase:'prompt-diagnostics-final-score',conceptCode:concept.code,missingRequirements:missing,responsePreview:lastRaw.slice(0,1200)}
+    {phase:'prompt-diagnostics-final-score',conceptCode:concept.code,missingRequirements:missing,batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null,responsePreview:lastRaw.slice(0,1200)}
   );
 }
 
-async function runPromptDiagnosticConceptRepair(env,{model,image,concept,sources,reactions,description,missing,seedData}){
+async function runPromptDiagnosticConceptRepair(env,{model,image,concept,sources,reactions,description,missing,seedData,recoveryLog,callContext}){
   const data=promptDiagnosticEmptyState([concept]).get(concept.code);
   if(seedData)promptDiagnosticMergeState(data,seedData,concept);
-  let fullRepairAttempts=0,lastRaw='';
+  let fullRepairAttempts=0,lastRaw='',focusedProviderFallback=false;
 
-  // One focused whole-concept attempt comes first. Component chunking is fallback, not the default path.
+  // One focused whole-concept attempt comes first. A transient provider failure
+  // is infrastructure noise: retry it automatically, then fall through to the
+  // smaller component path instead of killing the diagnostic run.
   {
     const prompt=promptDiagnosticRepairPrompt({concept,sources,reactions,description,missing});
-    const raw=await runStructured(env,model,image,prompt,null,Math.max(1800,Math.min(4800,1200+concept.definitionParts.length*110)),'text',{temperature:0.02,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS});
-    fullRepairAttempts=1;lastRaw=String(raw||'');
-    const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
-    promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
+    try{
+      const raw=await runPromptDiagnosticStructured(env,model,image,prompt,null,Math.max(1800,Math.min(4800,1200+concept.definitionParts.length*110)),'text',{temperature:0.02,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS},{recoveryLog,callContext,stage:'focused-concept',conceptCode:concept.code,maxProviderAttempts:2});
+      fullRepairAttempts=1;lastRaw=String(raw||'');
+      const partial=parsePromptDiagnosticPartial(lastRaw,[concept]);
+      promptDiagnosticMergeState(data,partial.state.get(concept.code),concept);
+    }catch(error){
+      if(!promptDiagnosticTransientProviderError(error))throw error;
+      focusedProviderFallback=true;
+      promptDiagnosticRecoveryEvent(recoveryLog,{type:'provider-fallback',from:'focused-concept',to:'component-chunks',failureKind:promptDiagnosticProviderFailureKind(error),stage:'focused-concept',conceptCode:concept.code,batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null});
+    }
   }
 
   const missingParts=[];
   for(let partNumber=1;partNumber<=concept.definitionParts.length;partNumber++)if(!data.parts.has(partNumber))missingParts.push(partNumber);
   let componentChunkCalls=0,componentChunkRetries=0,finalScoreAttempts=0;
   if(missingParts.length){
-    const chunked=await runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data});
+    const chunked=await runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data,recoveryLog,callContext});
     componentChunkCalls=chunked.chunkCalls;componentChunkRetries=chunked.retries;
   }
 
-  // After fallback chunking, recompute the score from the completed component findings.
-  // If no chunking was needed but SCORE/WHY are missing, this also supplies them cleanly.
-  if(missingParts.length||data.score==null||!data.why){
-    const scored=await runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data});
+  if(missingParts.length||data.score==null||!data.why||focusedProviderFallback){
+    const scored=await runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data,recoveryLog,callContext});
     finalScoreAttempts=scored.attempts;lastRaw=scored.raw;
   }
 
@@ -1558,14 +1702,14 @@ async function runPromptDiagnosticConceptRepair(env,{model,image,concept,sources
   if(stillMissing.length){
     throw diagnosticError(
       `Prompt Diagnostics ${concept.code} remained incomplete after adaptive repair; missing ${stillMissing.join(', ')}`,
-      {phase:'prompt-diagnostics-adaptive-repair',conceptCode:concept.code,missingRequirements:stillMissing,responsePreview:lastRaw.slice(0,1200)}
+      {phase:'prompt-diagnostics-adaptive-repair',conceptCode:concept.code,missingRequirements:stillMissing,batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null,responsePreview:lastRaw.slice(0,1200)}
     );
   }
   return{
     result:finalizePromptDiagnosticConcept(concept,data),
     raw:lastRaw,
     attempts:fullRepairAttempts,
-    strategy:componentChunkCalls?'focused+component-chunks+final-score':'focused',
+    strategy:componentChunkCalls?(focusedProviderFallback?'provider-fallback+component-chunks+final-score':'focused+component-chunks+final-score'):'focused',
     componentChunkCalls,
     componentChunkRetries,
     finalScoreAttempts
@@ -1574,15 +1718,8 @@ async function runPromptDiagnosticConceptRepair(env,{model,image,concept,sources
 
 function promptDiagnosticEscapedRegex(value){return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-function promptDiagnosticConsistencyIssues(concept,result,callConcepts=[]){
-  const issues=[];
-  const confidence=Number(result?.confidence);
-  const why=String(result?.scoreReason||'').trim();
-  const whyLower=why.toLowerCase();
-  const parts=Array.isArray(result?.definitionAnalysis)?result.definitionAnalysis:[];
-  const positive=parts.filter(item=>item.assessment==='MATCH_EVIDENCE').length;
-  const partial=parts.filter(item=>item.assessment==='PARTIAL').length;
-
+function promptDiagnosticWhySignals(why){
+  why=String(why||'').trim();
   const negativeWhyPatterns=[
     /\bdoes not (?:provide|contain|show|have) (?:any |enough |sufficient )?evidence\b/i,
     /\bno (?:clear |meaningful |sufficient )?evidence\b/i,
@@ -1600,9 +1737,22 @@ function promptDiagnosticConsistencyIssues(concept,result,callConcepts=[]){
     /\bsupports (?:the )?(?:concept|theme)\b/i,
     /\bhighly consistent\b/i
   ];
+  const positive=positiveWhyPatterns.some(rx=>rx.test(why));
+  const negative=negativeWhyPatterns.some(rx=>rx.test(why));
+  return{positive,negative,polarity:positive&&negative?'mixed':positive?'positive':negative?'negative':'neutral'};
+}
 
-  if(Number.isFinite(confidence)&&confidence>=80&&negativeWhyPatterns.some(rx=>rx.test(why)))issues.push('high score conflicts with a negative/insufficient-evidence WHY');
-  if(Number.isFinite(confidence)&&confidence<=20&&positiveWhyPatterns.some(rx=>rx.test(why)))issues.push('low score conflicts with a strongly positive WHY');
+function promptDiagnosticConsistencyIssues(concept,result,callConcepts=[]){
+  const issues=[];
+  const confidence=Number(result?.confidence);
+  const why=String(result?.scoreReason||'').trim();
+  const parts=Array.isArray(result?.definitionAnalysis)?result.definitionAnalysis:[];
+  const positive=parts.filter(item=>item.assessment==='MATCH_EVIDENCE').length;
+  const partial=parts.filter(item=>item.assessment==='PARTIAL').length;
+  const whySignals=promptDiagnosticWhySignals(why);
+
+  if(Number.isFinite(confidence)&&confidence>=80&&whySignals.negative)issues.push('high score conflicts with a negative/insufficient-evidence WHY');
+  if(Number.isFinite(confidence)&&confidence<=20&&whySignals.positive)issues.push('low score conflicts with a strongly positive WHY');
   if(Number.isFinite(confidence)&&confidence>=80&&positive===0&&partial===0)issues.push('high score has no MATCH_EVIDENCE or PARTIAL component');
   if(Number.isFinite(confidence)&&confidence===0&&positive>0)issues.push('0 score conflicts with positive MATCH_EVIDENCE');
 
@@ -1617,6 +1767,38 @@ function promptDiagnosticConsistencyIssues(concept,result,callConcepts=[]){
     if(name&&name.length>=4&&!ownDefinition.includes(name.toLowerCase())&&new RegExp(`\\b${promptDiagnosticEscapedRegex(name)}\\b`,'i').test(why))issues.push(`WHY references unrelated same-call concept ${name}`);
   }
   return[...new Set(issues)];
+}
+
+function promptDiagnosticLiteralPlaceholderIssues(raw){
+  const issues=[];
+  const assessmentPattern='MATCH[_ -]?EVIDENCE|GATE[_ -]?CONFIRMED|EXCLUSION(?:[_ -]?GATE)?[_ -]?CONFIRMED|SUPPORTS|PARTIAL|ABSENT|CONTRADICTS|NOT[_ -]?OBSERVABLE';
+  const unresolved=String(raw||'').split(/\r?\n/).some(line=>{
+    const marker=/<ASSESSMENT>/i.exec(line);
+    if(!marker)return false;
+    const after=line.slice(marker.index+marker[0].length);
+    // Echoing <ASSESSMENT> is formatting noise, not a structural failure, when
+    // the same component line also supplies a real assessment token afterward.
+    return !new RegExp(`\\b(?:${assessmentPattern})\\b`,'i').test(after);
+  });
+  if(unresolved)issues.push('literal <ASSESSMENT> placeholder returned without an allowed assessment token');
+  return issues;
+}
+
+function promptDiagnosticValidationSnapshot(concept,data,result,raw){
+  const assessments={};
+  if(data?.parts instanceof Map){
+    for(const [part,item] of data.parts)assessments[promptDiagnosticPartId(concept.code,Number(part)-1)]=item?.assessment||null;
+  }else if(Array.isArray(result?.definitionAnalysis)){
+    for(const item of result.definitionAnalysis)assessments[item.id]=item.assessment;
+  }
+  const why=String(result?.scoreReason||data?.why||'').trim();
+  return{
+    parsedScore:result?.confidence??data?.score??null,
+    parsedAssessments:assessments,
+    whyPolarity:promptDiagnosticWhySignals(why).polarity,
+    missingRequirements:promptDiagnosticMissingForConcept(concept,data),
+    placeholderIssues:promptDiagnosticLiteralPlaceholderIssues(raw)
+  };
 }
 
 function promptDiagnosticConsistencyRepairPrompt({concept,sources,reactions,description,issues}){
@@ -1636,6 +1818,7 @@ ${promptDiagnosticConceptBlock(concept)}
 ${THEME_SEMANTIC_EVIDENCE_RULES}
 
 REPAIR RULES:
+- Replace every <ASSESSMENT> placeholder with an actual allowed assessment token. The literal text <ASSESSMENT> is invalid output.
 - Use MATCH_EVIDENCE only for positive evidence that raises confidence.
 - Use GATE_CONFIRMED when a limiting/non-qualifier rule is correctly recognized; it does not itself raise confidence.
 - Also allowed: PARTIAL, ABSENT, CONTRADICTS, NOT_OBSERVABLE.
@@ -1651,30 +1834,92 @@ ${promptDiagnosticRequiredRecords([concept])}
 Plain text only.`;
 }
 
-async function runPromptDiagnosticQualityRepair(env,{model,image,concept,sources,reactions,description,issues,callConcepts}){
+async function runPromptDiagnosticQualityRepair(env,{model,image,concept,sources,reactions,description,issues,callConcepts,recoveryLog,callContext}){
   let lastRaw='';
+  let lastIssues=[...(issues||[])];
+  let lastSnapshot={parsedScore:null,parsedAssessments:{},whyPolarity:'neutral',missingRequirements:[],placeholderIssues:[]};
+  let componentChunkCalls=0,componentChunkRetries=0,finalScoreAttempts=0;
+
   for(let attempt=1;attempt<=2;attempt++){
-    const prompt=promptDiagnosticConsistencyRepairPrompt({concept,sources,reactions,description,issues});
-    const raw=await runStructured(env,model,image,prompt,null,Math.max(1800,Math.min(4800,1200+concept.definitionParts.length*110)),'text',{temperature:attempt===1?0.02:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS});
-    lastRaw=String(raw||'');
-    const parsed=parsePromptDiagnosticPartial(lastRaw,[concept]);
-    const data=parsed.state.get(concept.code);
-    const missing=promptDiagnosticMissingForConcept(concept,data);
-    if(missing.length)continue;
+    const placeholderRecovery=attempt===1?'':`\n\nSTRICT RECOVERY: The previous repair may have copied instruction placeholders instead of choosing labels. The literal text <ASSESSMENT> is INVALID OUTPUT. Replace every component placeholder with exactly one allowed token: MATCH_EVIDENCE, GATE_CONFIRMED, PARTIAL, ABSENT, CONTRADICTS, or NOT_OBSERVABLE.`;
+    const prompt=promptDiagnosticConsistencyRepairPrompt({concept,sources,reactions,description,issues:lastIssues})+placeholderRecovery;
+    let data=null;
+    let placeholderIssues=[];
+    let providerFallback=false;
+    try{
+      const raw=await runPromptDiagnosticStructured(env,model,image,prompt,null,Math.max(1800,Math.min(4800,1200+concept.definitionParts.length*110)),'text',{temperature:attempt===1?0.02:0.01,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS},{recoveryLog,callContext,stage:'consistency-repair',conceptCode:concept.code,maxProviderAttempts:2});
+      lastRaw=String(raw||'');
+      const parsed=parsePromptDiagnosticPartial(lastRaw,[concept]);
+      data=parsed.state.get(concept.code);
+      placeholderIssues=promptDiagnosticLiteralPlaceholderIssues(lastRaw);
+    }catch(error){
+      if(!promptDiagnosticTransientProviderError(error))throw error;
+      providerFallback=true;
+      data=promptDiagnosticEmptyState([concept]).get(concept.code);
+      promptDiagnosticRecoveryEvent(recoveryLog,{type:'provider-fallback',from:'consistency-repair',to:'component-chunks',failureKind:promptDiagnosticProviderFailureKind(error),stage:'consistency-repair',conceptCode:concept.code,batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null});
+    }
+
+    let missing=promptDiagnosticMissingForConcept(concept,data);
+    if(missing.length||placeholderIssues.length||providerFallback){
+      try{
+        const missingParts=[];
+        for(let partNumber=1;partNumber<=concept.definitionParts.length;partNumber++)if(!data.parts.has(partNumber))missingParts.push(partNumber);
+        if(missingParts.length){
+          const chunked=await runPromptDiagnosticComponentChunks(env,{model,image,concept,sources,reactions,description,data,recoveryLog,callContext});
+          componentChunkCalls+=chunked.chunkCalls;componentChunkRetries+=chunked.retries;
+        }
+        if(missingParts.length||data.score==null||!data.why||placeholderIssues.length||providerFallback){
+          const scored=await runPromptDiagnosticFinalScore(env,{model,image,concept,sources,reactions,description,data,recoveryLog,callContext});
+          finalScoreAttempts+=scored.attempts;lastRaw=scored.raw||lastRaw;
+        }
+      }catch(error){
+        lastSnapshot=promptDiagnosticValidationSnapshot(concept,data,null,lastRaw);
+        lastIssues=[...new Set([...placeholderIssues,...lastSnapshot.missingRequirements.map(item=>`missing ${item}`)])];
+        if(attempt<2)continue;
+        throw diagnosticError(
+          `Prompt Diagnostics ${concept.code} quality repair remained structurally incomplete`,
+          {
+            phase:'prompt-diagnostics-consistency-repair',conceptCode:concept.code,validationIssues:lastIssues,
+            parsedScore:lastSnapshot.parsedScore,parsedAssessments:lastSnapshot.parsedAssessments,whyPolarity:lastSnapshot.whyPolarity,
+            missingRequirements:lastSnapshot.missingRequirements,placeholderIssues:lastSnapshot.placeholderIssues,
+            batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null,
+            responsePreview:lastRaw.slice(0,1200),nestedDiagnostic:error?.providerDiagnostic||null
+          }
+        );
+      }
+    }
+
+    missing=promptDiagnosticMissingForConcept(concept,data);
+    if(missing.length){
+      lastSnapshot=promptDiagnosticValidationSnapshot(concept,data,null,lastRaw);
+      lastIssues=[...new Set([...placeholderIssues,...missing.map(item=>`missing ${item}`)])];
+      continue;
+    }
+
     const result=finalizePromptDiagnosticConcept(concept,data);
     const remaining=promptDiagnosticConsistencyIssues(concept,result,callConcepts);
-    if(!remaining.length)return{result,attempts:attempt,raw:lastRaw};
-    issues=remaining;
+    lastSnapshot=promptDiagnosticValidationSnapshot(concept,data,result,lastRaw);
+    if(!remaining.length)return{result,attempts:attempt,raw:lastRaw,componentChunkCalls,componentChunkRetries,finalScoreAttempts};
+    lastIssues=remaining;
   }
+
   throw diagnosticError(
     `Prompt Diagnostics ${concept.code} remained inconsistent after quality repair`,
-    {phase:'prompt-diagnostics-consistency-repair',conceptCode:concept.code,validationIssues:issues,responsePreview:lastRaw.slice(0,1200)}
+    {
+      phase:'prompt-diagnostics-consistency-repair',conceptCode:concept.code,validationIssues:lastIssues,
+      parsedScore:lastSnapshot.parsedScore,parsedAssessments:lastSnapshot.parsedAssessments,whyPolarity:lastSnapshot.whyPolarity,
+      missingRequirements:lastSnapshot.missingRequirements,placeholderIssues:lastSnapshot.placeholderIssues,
+      batchIndex:callContext?.batchIndex??null,callMode:callContext?.callMode??null,waveIndex:callContext?.waveIndex??null,
+      responsePreview:lastRaw.slice(0,1200)
+    }
   );
 }
 
 async function runPromptDiagnosticBatch(env,body){
   const callSpec=promptDiagnosticCallSpec(body);
   const {batchIndex,callMode,waveIndex,waveNumber,waveCount,conceptOffset,concepts}=callSpec;
+  const callContext={batchIndex,batchNumber:batchIndex+1,callMode,waveIndex,waveNumber,conceptCodes:concepts.map(c=>c.code)};
+  const recoveryLog=[];
   const sources=normalizePromptDiagnosticSources(body?.sources);
   const reactions=normalizePromptDiagnosticReactionScores(body?.reactions);
   const description=sources.description?String(body?.description||'').trim().slice(0,12000):'';
@@ -1688,14 +1933,22 @@ async function runPromptDiagnosticBatch(env,body){
 
   for(let attempt=1;attempt<=2;attempt++){
     const recovery=attempt===1?'':`\n\nRECOVERY: Your previous response did not reliably use the explicit component IDs. Do not write Definition/Evidence/Score paragraphs. Complete the required CODE SCORE, CODE.NN assessment, and CODE WHY records.`;
-    const raw=await runStructured(env,model,image,prompt+recovery,null,outputTokens,'text',{temperature:attempt===1?0.10:0.02,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS});
-    lastRaw=String(raw||'');
-    initialPartial=parsePromptDiagnosticPartial(lastRaw,concepts);
-    const complete=concepts.filter(c=>promptDiagnosticMissingForConcept(c,initialPartial.state.get(c.code)).length===0);
-    if(complete.length===concepts.length)break;
-    // One multi-concept retry is useful only when the first answer was almost compliant.
-    // If nothing was complete, proceed directly to focused one-concept repairs instead of repeating the same failure shape.
-    if(complete.length===0||attempt===2)break;
+    try{
+      const raw=await runPromptDiagnosticStructured(env,model,image,prompt+recovery,null,outputTokens,'text',{temperature:attempt===1?0.10:0.02,preserveWhitespace:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS},{recoveryLog,callContext,stage:'multi-concept-wave',componentIds:null,maxProviderAttempts:2});
+      lastRaw=String(raw||'');
+      initialPartial=parsePromptDiagnosticPartial(lastRaw,concepts);
+      const complete=concepts.filter(c=>promptDiagnosticMissingForConcept(c,initialPartial.state.get(c.code)).length===0);
+      if(complete.length===concepts.length)break;
+      if(complete.length===0||attempt===2)break;
+    }catch(error){
+      if(!promptDiagnosticTransientProviderError(error))throw error;
+      // A random provider outage must not kill a 105-concept run. Preserve any
+      // usable records from an earlier semantic attempt and let the normal
+      // focused repair loop complete only the missing concepts.
+      promptDiagnosticRecoveryEvent(recoveryLog,{type:'provider-fallback',from:'multi-concept-wave',to:'focused-concepts',failureKind:promptDiagnosticProviderFailureKind(error),stage:'multi-concept-wave',batchIndex,callMode,waveIndex,waveNumber,conceptCodes:concepts.map(c=>c.code)});
+      if(!initialPartial)initialPartial={state:promptDiagnosticEmptyState(concepts),responsePreview:''};
+      break;
+    }
   }
 
   if(!initialPartial)initialPartial=parsePromptDiagnosticPartial(lastRaw,concepts);
@@ -1709,17 +1962,17 @@ async function runPromptDiagnosticBatch(env,body){
     if(!missing.length){
       result=finalizePromptDiagnosticConcept(concept,data);
     }else{
-      const repaired=await runPromptDiagnosticConceptRepair(env,{model,image,concept,sources,reactions,description,missing,seedData:data});
+      const repaired=await runPromptDiagnosticConceptRepair(env,{model,image,concept,sources,reactions,description,missing,seedData:data,recoveryLog,callContext});
       result=repaired.result;
       repairMeta={code:concept.code,attempts:repaired.attempts,strategy:repaired.strategy,componentChunkCalls:repaired.componentChunkCalls,componentChunkRetries:repaired.componentChunkRetries,finalScoreAttempts:repaired.finalScoreAttempts,initialMissing:missing,qualityRepairAttempts:0,validationIssues:[]};
     }
 
     const validationIssues=promptDiagnosticConsistencyIssues(concept,result,concepts);
     if(validationIssues.length){
-      const quality=await runPromptDiagnosticQualityRepair(env,{model,image,concept,sources,reactions,description,issues:validationIssues,callConcepts:concepts});
+      const quality=await runPromptDiagnosticQualityRepair(env,{model,image,concept,sources,reactions,description,issues:validationIssues,callConcepts:concepts,recoveryLog,callContext});
       result=quality.result;
-      if(!repairMeta)repairMeta={code:concept.code,attempts:0,strategy:'consistency/evidence-repair',componentChunkCalls:0,componentChunkRetries:0,finalScoreAttempts:0,initialMissing:[],qualityRepairAttempts:quality.attempts,validationIssues};
-      else{repairMeta.strategy=`${repairMeta.strategy}+consistency/evidence-repair`;repairMeta.qualityRepairAttempts=quality.attempts;repairMeta.validationIssues=validationIssues;}
+      if(!repairMeta)repairMeta={code:concept.code,attempts:0,strategy:'consistency/evidence-repair',componentChunkCalls:quality.componentChunkCalls||0,componentChunkRetries:quality.componentChunkRetries||0,finalScoreAttempts:quality.finalScoreAttempts||0,initialMissing:[],qualityRepairAttempts:quality.attempts,validationIssues};
+      else{repairMeta.strategy=`${repairMeta.strategy}+consistency/evidence-repair`;repairMeta.qualityRepairAttempts=quality.attempts;repairMeta.validationIssues=validationIssues;repairMeta.componentChunkCalls+=(quality.componentChunkCalls||0);repairMeta.componentChunkRetries+=(quality.componentChunkRetries||0);repairMeta.finalScoreAttempts+=(quality.finalScoreAttempts||0);}
     }
     resultsByCode.set(concept.code,result);
     if(repairMeta)focusedRepairs.push(repairMeta);
@@ -1746,6 +1999,8 @@ async function runPromptDiagnosticBatch(env,body){
     responseProtocol:'numbered-flex-v4',
     focusedRepairCount:focusedRepairs.length,
     focusedRepairs,
+    providerRecoveryCount:recoveryLog.length,
+    providerRecoveries:recoveryLog,
     results:concepts.map(c=>resultsByCode.get(c.code))
   };
 }
