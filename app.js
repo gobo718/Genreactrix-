@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.113";
+const GENREACTRIX_BUILD="v0.9.40.114";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1753,8 +1753,10 @@ function renderTabletWorkbench(){
       const panelTop=Math.max(0,stackRect.top-drawerRect.top);
       const descriptionInclude=$("descriptionRerunPopulatedInclude");
       const themeInclude=$("themeRerunPopulatedInclude");
+      const themeExplain=$("themeRerunExplainChanges");
       if(descriptionInclude)descriptionInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
       if(themeInclude)themeInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
+      if(themeExplain)themeExplain.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
 
       /* v0.9.40.58 — mirrored Include reserve must be recalculated from the
          real baseline on every render. Clear the prior dynamic reserve first;
