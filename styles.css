@@ -8341,4 +8341,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 
 /* v0.9.40.101 — Playful/Snarky semantic calibration; no layout/geometry changes */
 
-/* v0.9.40.102 — Prompt Diagnostics unlabeled-WHY recovery; no layout/geometry changes */
+/* v0.9.40.103 — Prompt Diagnostics component-heading recovery; no layout/geometry changes */
+
+/* v0.9.40.105 — Prompt Diagnostics assessment-token/reason recovery; no layout/geometry changes */
+
+/* v0.9.40.106 — diagnostic self-check/parser/semantic calibration; no layout or geometry changes */
