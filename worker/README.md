@@ -1,6 +1,6 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.44-compound-name-casing.
+Current bundled Worker: v0.9.6.48-prompt-diagnostics-final-score-label-recovery.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
@@ -12,6 +12,11 @@ Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 
 The browser never receives provider credentials. The Worker accepts authenticated `POST /api/genreactrix/analyze` for AI results and `POST /api/genreactrix/image` as a bounded image-fetch proxy used when browser CORS would otherwise prevent Import from creating its required 64×64 thumbnail.
 
+
+
+## Worker 0.9.6.48 — Prompt Diagnostics final-score label recovery
+
+Single-concept final-score repair accepts harmless Markdown and unqualified `WHY` labels when the target concept is unambiguous, while multi-concept responses remain code-strict. Preserves 0.9.6.47 component-label recovery, 0.9.6.46 provider-timeout recovery, and 0.9.6.45 repair-state recovery. No semantic or Matrix changes.
 
 ## Reaction Rerun evidence routing
 
