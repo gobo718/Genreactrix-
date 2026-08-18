@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.115";
+const GENREACTRIX_BUILD="v0.9.40.116";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1063,7 +1063,16 @@ function buildThemeRerunPreviewSpec(){
   const primPicker=activeScopes.map(scope=>themeRerunPrimScopeSpec(scope,current));
   const excludedThemeCodes=[...new Set(current.excludedThemeCodes||[])].filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code]));
   const includedDescriptions=[...new Set(current.includedDescriptionIds||[])].map(id=>themeRerunDescriptionCatalogItem(id)).filter(Boolean).map(item=>({artifactId:item.artifactId||null,id:String(item.id),version:Number(item.version)||0,createdAt:item.createdAt||'',text:String(item.text||'')}));
-  return{schemaVersion:1,image:{id:imageId,name:image.name||imageId,alwaysIncluded:true},themeSlots,primPicker,excludedThemeCodes,includedDescriptions,explainChanges:current.explainChanges!==false};
+  const explainChanges=current.explainChanges!==false;
+  const currentThemeArtifactId=String(themeRerunHistoryCurrentArtifactId(imageId)||'');
+  const editLog=explainChanges?{
+    schemaVersion:2,
+    token:`theme_edit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,
+    imageId,
+    beforeThemeArtifactId:currentThemeArtifactId||null,
+    beforeThemes:themeSlots.map(row=>({slot:row.slot,code:row.currentThemeCode||null,label:row.currentThemeLabel||`Theme ${row.slot}`,weight:row.weight??null}))
+  }:null;
+  return{schemaVersion:1,image:{id:imageId,name:image.name||imageId,alwaysIncluded:true},themeSlots,primPicker,excludedThemeCodes,includedDescriptions,explainChanges,editLog};
 }
 function previewThemeRerunRequest(spec){
   const lines=[];
@@ -1164,22 +1173,54 @@ const themeChangeReasoningLoading=new Map();
 // attached to the image; stale data can never recursively schedule itself.
 const themeChangeReasoningRenderRefreshPending=new Set();
 function themeChangeReasoningContext(entry){return entry?.attempt?.inputRefs?.themeRerun||entry?.attempt?.configRefs?.themeRerun||null}
+function cleanThemeEditLogReason(raw,{slot=null,code=''}={}){
+  let text=String(raw||'').replace(/\r/g,'').trim();if(!text)return'';
+  const lines=text.split('\n').map(line=>line.trim()).filter(Boolean);
+  const codeUpper=String(code||'').toUpperCase();
+  for(const line of lines){
+    if(codeUpper&&!line.toUpperCase().includes(codeUpper))continue;
+    const cleaned=line.replace(/^\s*[-*•]+\s*/,'').replace(/^\|\s*/,'').replace(/\s*\|$/,'').trim();
+    if(!cleaned.includes('|'))continue;
+    const parts=cleaned.split('|').map(part=>part.trim()),codeIndex=parts.findIndex(part=>new RegExp(`\\b${codeUpper||'PFM\\d{4}'}\\b`,'i').test(part));
+    if(codeIndex<0)continue;
+    let tail=parts.slice(codeIndex+1);
+    if(tail.length&&/^(?:100|[1-9]?\d(?:\.\d+)?)\s*%?$/.test(tail[0]))tail=tail.slice(1);
+    else if(tail.length&&/^(?:0\s*[-–—]\s*100|CONFIDENCE(?:_0_TO_100)?)$/i.test(tail[0]))tail=tail.slice(1);
+    const candidate=tail.join('|').trim();if(candidate)text=candidate;
+    break;
+  }
+  text=text.replace(/^\*{0,2}\s*(?:Theme\s*[123]|Slot\s*[123]|Rank\s*[123])\s*[:\-–—]\s*/i,'')
+    .replace(/^Reason\s*[:=\-–—]\s*/i,'').replace(/\*{1,2}/g,'').trim();
+  if(slot!=null)text=text.replace(new RegExp(`^${Number(slot)}\\s*\\|\\s*matrix\\s*\\|\\s*PFM\\d{4}\\s*\\|\\s*(?:100|[1-9]?\\d(?:\\.\\d+)?|0\\s*[-–—]\\s*100|CONFIDENCE(?:_0_TO_100)?)\\s*\\|\\s*`,'i'),'').trim();
+  return text.slice(0,1000);
+}
+function themeChangeReasoningEmpty(imageId,artifactId=null){return{imageId:String(imageId||''),byCode:new Map(),artifactId:artifactId?String(artifactId):null}}
 function themeChangeReasoningBuild(imageId,entries){
-  const current=(entries||[]).find(entry=>entry.current)||entries?.[0]||null,ctx=themeChangeReasoningContext(current);
-  if(!current?.previous||!ctx||ctx.explainChanges===false)return{imageId:String(imageId),byCode:new Map(),artifactId:current?.artifactId||null};
+  const key=String(imageId||''),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),current=(entries||[]).find(entry=>entry.current)||null;
+  if(!current||String(current.artifactId||'')!==currentArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
+  const artifact=current.artifact,attempt=current.attempt,ctx=themeChangeReasoningContext(current),editLog=ctx?.editLog;
+  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<2||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  const artifactImageId=String(artifact.imageId||''),attemptImageId=String(attempt.imageId||''),contextImageId=String(ctx.image?.id||''),editImageId=String(editLog.imageId||'');
+  if([artifactImageId,attemptImageId,contextImageId,editImageId].some(id=>id!==key))return themeChangeReasoningEmpty(key,currentArtifactId);
+  if(String(artifact.attemptId||'')!==String(attempt.id||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  const priorThemeArtifactId=String(attempt.inputRefs?.priorArtifacts?.themes?.artifactId||''),capturedBeforeArtifactId=String(editLog.beforeThemeArtifactId||'');
+  if(priorThemeArtifactId!==capturedBeforeArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
+  const beforeBySlot=new Map((Array.isArray(editLog.beforeThemes)?editLog.beforeThemes:[]).map(row=>[Number(row?.slot),themeRerunHistoryThemeFromRaw({code:row?.code,label:row?.label,confidence:row?.weight},Number(row?.slot)-1)]));
+  if(beforeBySlot.size!==3)return themeChangeReasoningEmpty(key,currentArtifactId);
   const byCode=new Map();
-  for(const change of current.changes||[]){
-    const after=change.after,before=change.before,reason=String(after?.rationale||'').trim();
-    if(!after?.code||!reason)continue;
+  for(let slot=1;slot<=3;slot++){
+    const before=beforeBySlot.get(slot)||null,after=current.themes?.[slot-1]||null;
+    if(!before||!after||themeRerunHistoryThemeKey(before)===themeRerunHistoryThemeKey(after))continue;
+    const reason=cleanThemeEditLogReason(after.rationale,{slot,code:after.code});if(!after.code||!reason)continue;
     const evidence=['Image'];
     const descriptions=Array.isArray(ctx.includedDescriptions)?ctx.includedDescriptions:[];if(descriptions.length)evidence.push(`AI Description${descriptions.length===1?'':`s (${descriptions.length})`}`);
-    const slotSpec=Array.isArray(ctx.themeSlots)?ctx.themeSlots.find(row=>Number(row?.slot)===Number(change.slot)):null;
+    const slotSpec=Array.isArray(ctx.themeSlots)?ctx.themeSlots.find(row=>Number(row?.slot)===slot):null;
     if(slotSpec?.state==='replace')evidence.push('Director Replace instruction');else if(slotSpec?.state==='neutral')evidence.push('Neutral rerun slot');
     const scopeName=slotSpec?.primScope||null;if(scopeName)evidence.push(scopeName==='general'?'General PrimPicker':'Theme-specific PrimPicker');
     if(Array.isArray(ctx.excludedThemeCodes)&&ctx.excludedThemeCodes.length)evidence.push('Theme Exclusions');
-    byCode.set(after.code,{slot:change.slot,before,after,reason,evidence:[...new Set(evidence)],createdAt:current.createdAt,artifactId:current.artifactId});
+    byCode.set(after.code,{imageId:key,slot,before,after,reason,evidence:[...new Set(evidence)],createdAt:current.createdAt,artifactId:currentArtifactId,attemptId:String(attempt.id),editLogToken:String(editLog.token)});
   }
-  return{imageId:String(imageId),byCode,artifactId:current.artifactId||null};
+  return{imageId:key,byCode,artifactId:currentArtifactId};
 }
 async function refreshThemeChangeReasoning(imageId=currentKey(),{force=false}={}){
   const key=String(imageId||'');if(!key)return null;if(!force&&themeChangeReasoningCache.has(key))return themeChangeReasoningCache.get(key);if(themeChangeReasoningLoading.has(key))return themeChangeReasoningLoading.get(key);
@@ -1191,7 +1232,11 @@ async function refreshThemeChangeReasoning(imageId=currentKey(),{force=false}={}
   themeChangeReasoningLoading.set(key,task);return task;
 }
 function themeChangeReasoningForDisplaySlot(slot){
-  const key=String(currentKey()),data=themeChangeReasoningCache.get(key),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||'');if(!data||String(data.artifactId||'')!==currentArtifactId)return null;const snapshot=themeRerunAiThemeSnapshot(slot),code=String(snapshot?.id||'').trim().toUpperCase();return code&&data?.byCode?.get(code)||null;
+  const key=String(currentKey()),data=themeChangeReasoningCache.get(key),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||'');
+  if(!data||String(data.imageId||'')!==key||String(data.artifactId||'')!==currentArtifactId)return null;
+  const snapshot=themeRerunAiThemeSnapshot(slot),code=String(snapshot?.id||'').trim().toUpperCase(),item=code&&data?.byCode?.get(code)||null;
+  if(!item||String(item.imageId||'')!==key||String(item.artifactId||'')!==currentArtifactId||String(item.after?.code||'').toUpperCase()!==code)return null;
+  return item;
 }
 function renderThemeChangeReasoningDialog(item){
   if(!item)return false;const before=item.before||{},after=item.after||{};
@@ -1206,14 +1251,13 @@ async function openThemeChangeReasoningForDisplaySlot(slot){
 function scheduleThemeChangeReasoningRefresh(){
   const key=String(currentKey()||'');if(!key||state.feedEmpty||themeChangeReasoningRenderRefreshPending.has(key))return;
   const expectedArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),cached=themeChangeReasoningCache.get(key);
-  if(cached&&String(cached.artifactId||'')===expectedArtifactId)return;
+  if(cached&&String(cached.imageId||'')===key&&String(cached.artifactId||'')===expectedArtifactId)return;
   themeChangeReasoningRenderRefreshPending.add(key);
   refreshThemeChangeReasoning(key,{force:true}).then(data=>{
-    const sameImage=String(currentKey())===key,currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),actuallyRefreshed=String(data?.artifactId||'')===currentArtifactId;
+    const sameImage=String(currentKey())===key,currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),actuallyRefreshed=String(data?.imageId||'')===key&&String(data?.artifactId||'')===currentArtifactId;
     if(sameImage&&actuallyRefreshed)renderThemeRerunChrome();
-  }).catch(error=>console.warn('Theme change reasoning could not be loaded',error)).finally(()=>themeChangeReasoningRenderRefreshPending.delete(key));
+  }).catch(error=>console.warn('Theme Edit Log could not be loaded',error)).finally(()=>themeChangeReasoningRenderRefreshPending.delete(key));
 }
-
 function renderThemeRerunHistoryDialog(){
   const list=$('themeRerunHistoryList');if(!list)return;list.innerHTML='';const entries=themeRerunWorkspace.themeHistoryCatalog||[];
   if(!entries.length){list.textContent='No Theme history is available.';return;}
