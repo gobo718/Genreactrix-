@@ -1,9 +1,12 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.57-maintenance-targeted-repair.
+Current bundled Worker: v0.9.6.58-theme-change-reasoning.
 
-## Worker 0.9.6.57 — Bundled maintenance + targeted repair
+## Worker 0.9.6.58 — Theme-change reasoning + targeted repair
 
+- Theme Rerun accepts `explainChanges`; it defaults to **true** when absent for backward compatibility.
+- When enabled, each open Theme stores its brief image-grounded rationale with the immutable Theme artifact.
+- When disabled, the returned Theme artifact does not retain an incidental rationale.
 - Theme Rerun preserves valid PFM-code selections and makes a small repair call only for missing open Theme slots.
 - Already accepted Theme slots are immutable during repair; slot eligibility, exclusions, PrimPicker requirements, Preserve/Replace behavior, and unique final PFM codes remain enforced.
 - Reaction Analysis preserves every valid P01–P14 weight and makes a small repair call only for missing, non-numeric, or out-of-range weights.
