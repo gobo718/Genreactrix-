@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.101 — Playful / Snarky Calibration
+
+## v0.9.40.101
+
+- **PFM0113 Playful:** explicitly covers playful role-taking, dress-up, character customization, make-believe, character experimentation, and deliberately fun/lighthearted presentation when they function as play.
+- **PFM0713 Snarky:** adds a narrow gate so general humor, silliness, playfulness, costumes, joking, or lightheartedness do not become Snarky without specifically sarcastic, cutting, mocking, dismissive, or contemptuous content.
+- This completed-image cleanup is term-specific only; no new global 105-concept semantic rule was added.
+- Matrix remains **0.0.0.0**.
+- Bundled Worker: **0.9.6.49-playful-snarky-calibration**.
+- Inherits v0.9.40.100 Prompt Diagnostics transport recovery unchanged.
+
+---
+
 # Genreactrix v0.9.40.100 — Prompt Diagnostics Transport Recovery
 
 ## v0.9.40.100
