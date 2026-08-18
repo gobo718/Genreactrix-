@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.49-playful-snarky-calibration
+/* Genreactrix AI Worker v0.9.6.50-prompt-diagnostics-unlabeled-why-recovery
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.49-playful-snarky-calibration';
+const API_VERSION = '0.9.6.50-prompt-diagnostics-unlabeled-why-recovery';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1463,6 +1463,62 @@ function parsePromptDiagnosticPartial(raw,expected){
   return{state,responsePreview:text.slice(0,1200)};
 }
 
+// Final-score calls are single-concept and occasionally come back with a valid
+// CODE SCORE line followed by a normal explanatory paragraph but no literal WHY
+// label. Keep this tolerance local to the final-score repair path: other parser
+// modes remain code/label strict, so unlabeled prose cannot bleed across concepts.
+function promptDiagnosticUnlabeledFinalScoreWhy(raw,concept){
+  const code=String(concept?.code||'').toUpperCase();
+  if(!/^(?:P\d{2}|PFM\d{4})$/.test(code))return'';
+  const text=String(raw||'').replace(/```(?:text)?/gi,'').replace(/```/g,'').trim();
+  if(!text)return'';
+
+  // A foreign concept code makes the response ambiguous; never infer an unlabeled WHY.
+  const mentionedCodes=[...text.matchAll(/\b(P\d{2}|PFM\d{4})\b/gi)].map(m=>m[1].toUpperCase());
+  if(mentionedCodes.some(found=>found!==code))return'';
+
+  const lines=text.split(/\r?\n/);
+  let scoreLineIndex=-1;
+  for(let i=0;i<lines.length;i++){
+    const line=cleanPromptDiagnosticLine(lines[i]);
+    if(!line)continue;
+    const codedScore=new RegExp(`^${promptDiagnosticEscapedRegex(code)}\\s*(?:\\||[-–—:]?\\s*)SCORE\\s*(?:\\||[:=\\-–—]?\\s*)*(-?\\d+(?:\\.\\d+)?)\\s*%?(?:\\s*[-–—:]\\s*(.+))?\\s*$`,'i').exec(line);
+    const pipeScore=new RegExp(`^SCORE\\s*\\|\\s*${promptDiagnosticEscapedRegex(code)}\\s*\\|\\s*(-?\\d+(?:\\.\\d+)?)\\s*%?(?:\\s*[-–—:]\\s*(.+))?\\s*$`,'i').exec(line);
+    const forScore=new RegExp(`^SCORE\\s+(?:FOR\\s+)?${promptDiagnosticEscapedRegex(code)}\\s*[:=\\-–—]?\\s*(-?\\d+(?:\\.\\d+)?)\\s*%?(?:\\s*[-–—:]\\s*(.+))?\\s*$`,'i').exec(line);
+    const match=codedScore||pipeScore||forScore;
+    if(!match)continue;
+    const n=Number(match[1]);
+    if(!Number.isFinite(n)||n<0||n>100)continue;
+    // If the score line already carries prose after it, the normal parser treats
+    // that prose as WHY; this fallback is unnecessary.
+    if(match[2]&&String(match[2]).trim())return'';
+    scoreLineIndex=i;
+    break;
+  }
+  if(scoreLineIndex<0)return'';
+
+  const prose=[];
+  let started=false;
+  const structuredStart=/^(?:(?:P\d{2}|PFM\d{4})(?:\.\d{1,2}\b|\s*(?:\||[-–—:]?\s*)(?:SCORE|WHY)\b)|(?:SCORE|WHY)\b|PART\s*\|)/i;
+  for(let i=scoreLineIndex+1;i<lines.length;i++){
+    const rawLine=String(lines[i]||'');
+    if(!rawLine.trim()){
+      if(started)break; // first substantive paragraph only
+      continue;
+    }
+    const line=cleanPromptDiagnosticLine(rawLine);
+    if(!line)continue;
+    if(structuredStart.test(line))return''; // explicit structure takes precedence
+    if(/<\s*(?:WHY|OVERALL\s+SCORE\s+REASON|WHY\s+THESE\s+COMPONENT)/i.test(line))return'';
+    if(/^<[^>]+>$/.test(line))return'';
+    if(!/[A-Za-z]/.test(line))return'';
+    prose.push(line);
+    started=true;
+  }
+  const reason=prose.join(' ').trim();
+  return reason.length>=12?reason:'';
+}
+
 function promptDiagnosticMissingForConcept(concept,data){
   const missing=[];
   if(data.score==null)missing.push(`${concept.code} SCORE`);
@@ -1654,6 +1710,10 @@ async function runPromptDiagnosticFinalScore(env,{model,image,concept,sources,re
     const scored=partial.state.get(concept.code);
     if(scored?.score!=null)data.score=scored.score;
     if(scored?.why)data.why=scored.why;
+    if(data.score!=null&&!data.why){
+      const unlabeledWhy=promptDiagnosticUnlabeledFinalScoreWhy(lastRaw,concept);
+      if(unlabeledWhy)data.why=unlabeledWhy;
+    }
     if(data.score!=null&&data.why)return{attempts:attempt,raw:lastRaw};
   }
   const missing=[];if(data.score==null)missing.push(`${concept.code} SCORE`);if(!data.why)missing.push(`${concept.code} WHY`);
