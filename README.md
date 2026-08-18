@@ -1,3 +1,17 @@
+# Genreactrix v0.9.40.102 — Prompt Diagnostics Unlabeled-WHY Recovery
+
+## v0.9.40.102
+
+- Bundles Worker **0.9.6.50-prompt-diagnostics-unlabeled-why-recovery**.
+- Single-concept Prompt Diagnostics final-score repair now accepts a valid target `CODE SCORE` followed by a substantive explanatory paragraph when the provider omits the literal `WHY` label.
+- The fallback is intentionally narrow: final-score repair only, one concept only, after a valid target score, and only when no explicit WHY structure is present. Foreign concept codes, placeholders, component records, and other structured output are not promoted into WHY text.
+- Explicit coded or unqualified `WHY` formatting remains preferred and unchanged. Multi-concept parsing remains code-strict.
+- Regression coverage includes the observed **PFM0112 Innocence** and **PFM0204 Charming** unlabeled-WHY responses plus labeled-WHY, bare-WHY-next-line, placeholder, foreign-code, structured-record, and first-paragraph boundaries.
+- No Prim/PrimFusion definition, scoring, Theme-selection, reaction, layout, or geometry changes. Matrix remains **0.0.0.0**.
+- Inherits v0.9.40.101 Playful/Snarky calibration and v0.9.40.100 browser transport recovery unchanged.
+
+---
+
 # Genreactrix v0.9.40.101 — Playful / Snarky Calibration
 
 ## v0.9.40.101
