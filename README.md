@@ -1,4 +1,4 @@
-# Genreactrix v0.9.40.107 — End-of-Image Diagnostic Calibration Bundle
+# Genreactrix v0.9.40.108 — Danger Zone Browser-Bar Clearance
 
 ## v0.9.40.107
 
@@ -19,3 +19,9 @@ The release remains shallow/flat at archive root except for the required Worker 
 
 ## v0.9.40.107 — Danger Zone
 Adds a password-protected Settings → Danger Zone cleanup workspace with thumbnail review, sorting/filtering, scope-specific bulk deletion, preflight impact/preservation screens, typed confirmation, full product reset, Prompt Diagnostics purge, derived-data reset, and post-delete integrity checks. Reset All Product Data preserves the configured Genreactrix system while removing imported product and product-derived test data. Worker remains 0.9.6.54.
+
+
+## v0.9.40.108 — Danger Zone browser-bar clearance
+- Adds mobile-only black scroll clearance at the bottom of the Danger Zone so the final action controls can be scrolled completely above Android/Samsung Internet/Chrome browser bars.
+- Clearance is `150px + env(safe-area-inset-bottom)` and changes no Danger Zone control geometry, ordering, or behavior.
+- Worker remains **0.9.6.54** byte-for-byte unchanged. PrimFusion definitions and Matrix **0.0.0.0** remain unchanged.
