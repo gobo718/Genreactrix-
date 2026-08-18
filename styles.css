@@ -8386,3 +8386,47 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     padding-bottom:calc(150px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+
+/* v0.9.40.112 — shared portrait page origin + Theme-change reasoning. */
+:root{
+  --gx-page-safe-top:max(8px,env(safe-area-inset-top,0px));
+  --gx-page-safe-bottom:max(8px,env(safe-area-inset-bottom,0px));
+  --theme-change-reasoning:#FFAF4D;
+}
+@media (orientation:portrait){
+  /* One top boundary for portrait pages/dialogs. Dynamic viewport clamping keeps
+     the first content row below mobile browser chrome instead of letting tall
+     dialogs center partly outside the visible viewport. */
+  #app.app-shell{padding-top:var(--gx-page-safe-top)!important;}
+  dialog[open]{max-height:calc(100dvh - var(--gx-page-safe-top) - var(--gx-page-safe-bottom))!important;}
+  .danger-zone-dialog{height:min(calc(100dvh - var(--gx-page-safe-top) - var(--gx-page-safe-bottom)),920px)!important;}
+}
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .theme-rerun-explain-changes{
+    right:6px!important;
+    top:calc(var(--ai-theme-panel-top,0px) + 25px)!important;
+    border-color:rgba(255,175,77,.72)!important;
+  }
+  .theme-rerun-explain-changes input{accent-color:var(--theme-change-reasoning)!important;}
+  #tabletAiThemesPanel .tablet-theme-cell.theme-change-reasoning-available{
+    cursor:pointer!important;
+    border-color:var(--theme-change-reasoning)!important;
+    box-shadow:inset 0 0 0 1px rgba(255,175,77,.75)!important;
+  }
+  #tabletAiThemesPanel .tablet-theme-cell.theme-change-reasoning-available strong{color:var(--theme-change-reasoning)!important;}
+}
+.theme-change-reasoning-dialog{width:min(640px,92vw)}
+.theme-change-reasoning-shell{gap:12px}
+.theme-change-reasoning-comparison{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center}
+.theme-change-reasoning-comparison section{display:grid;gap:4px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#111019}
+.theme-change-reasoning-comparison section>span{color:var(--muted);font-size:.74rem}
+.theme-change-reasoning-comparison section>strong{font-size:1rem;overflow-wrap:anywhere}
+.theme-change-reasoning-comparison section:last-of-type>strong{color:var(--theme-change-reasoning)}
+.theme-change-reasoning-comparison small{color:var(--success);font-weight:800}
+.theme-change-reasoning-arrow{font-size:1.5rem;color:var(--muted)}
+.theme-change-reasoning-why,.theme-change-reasoning-evidence{display:grid;gap:5px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#111019}
+.theme-change-reasoning-why>strong,.theme-change-reasoning-evidence>strong{color:var(--theme-change-reasoning)}
+.theme-change-reasoning-why p,.theme-change-reasoning-evidence p{margin:0;line-height:1.42;color:var(--text);white-space:pre-wrap}
+.theme-change-reasoning-evidence p{color:var(--muted);font-size:.82rem}
+@media(max-width:520px){.theme-change-reasoning-comparison{grid-template-columns:1fr}.theme-change-reasoning-arrow{transform:rotate(90deg);justify-self:center}}
