@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.61-theme-edit-log-version-fix
+/* Genreactrix AI Worker v0.9.6.62-theme-edit-log-binding-confidence-fix
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.61-theme-edit-log-version-fix';
+const API_VERSION = '0.9.6.62-theme-edit-log-binding-confidence-fix';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -829,8 +829,8 @@ function themeRerunPrompt(rerun,sets){
   }
   const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
   const openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve').map(row=>row.slot);
-  const outputLines=openSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|0-100|Brief image-grounded reason`:`${slot}|matrix|PFM####|0-100`).join('\n');
-  return `You are performing a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nThe image is always authoritative visual evidence. Reassess every slot that is not PRESERVE. A PRESERVE slot is immutable and is handled locally by Genreactrix.\n\nTheme identity is the PFM code. Human-readable Theme names are semantic labels only. The three final PFM codes MUST be different.\n\n${THEME_SEMANTIC_EVIDENCE_RULES}\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while image fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nOUTPUT FORMAT — THIS IS REQUIRED:\nReturn exactly ${openSlots.length} pipe-delimited line${openSlots.length===1?'':'s'}, one for each open Theme slot in ascending slot order.\n${outputLines}\nUse an eligible PFM code for that exact slot. Confidence is 0-100. ${rerun.explainChanges?'For each open slot, briefly explain the image-grounded evidence for the selected Theme in the final field.':'Do not add a reason or explanation field.'}\nDo not return JSON. Do not use Markdown, bullets, headings, commentary, or lines for PRESERVE slots.`;
+  const outputLines=openSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|CONFIDENCE|Brief image-grounded reason`:`${slot}|matrix|PFM####|CONFIDENCE`).join('\n');
+  return `You are performing a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nThe image is always authoritative visual evidence. Reassess every slot that is not PRESERVE. A PRESERVE slot is immutable and is handled locally by Genreactrix.\n\nTheme identity is the PFM code. Human-readable Theme names are semantic labels only. The three final PFM codes MUST be different.\n\n${THEME_SEMANTIC_EVIDENCE_RULES}\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while image fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nOUTPUT FORMAT — THIS IS REQUIRED:\nReturn exactly ${openSlots.length} pipe-delimited line${openSlots.length===1?'':'s'}, one for each open Theme slot in ascending slot order.\n${outputLines}\nUse an eligible PFM code for that exact slot. Confidence must be one specific number from 0 through 100, such as 73. Replace CONFIDENCE with that number. Never output the literal text CONFIDENCE or a range such as 0-100. ${rerun.explainChanges?'For each open slot, briefly explain the image-grounded evidence for the selected Theme in the final field.':'Do not add a reason or explanation field.'}\nDo not return JSON. Do not use Markdown, bullets, headings, commentary, or lines for PRESERVE slots.`;
 }
 function parseThemeRerunStructured(raw,rerun,sets){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
@@ -844,6 +844,13 @@ function parseThemeRerunStructured(raw,rerun,sets){
     else{const confidence=Number(rawRow.confidence),rationale=rerun.explainChanges?String(rawRow.rationale||'').trim():'';if(!Number.isFinite(confidence))throw new Error(`Theme ${slotRow.slot} confidence was invalid.`);if(rerun.explainChanges&&!rationale)throw new Error(`Theme ${slotRow.slot} rationale was empty.`);selections.push({rank:slotRow.slot,source:'matrix',code,confidence:Math.max(0,Math.min(100,confidence)),rationale});}
   }
   return selections;
+}
+function themeRerunSpecificConfidence(value){
+  const text=String(value||'').trim();
+  if(!text||/\b0\s*[-–—]\s*100\b/.test(text)||/\bCONFIDENCE(?:_0_TO_100)?\b/i.test(text))return null;
+  const percent=text.match(/(?:^|\D)(100|[1-9]?\d(?:\.\d+)?)\s*%/);if(percent)return Math.max(0,Math.min(100,Number(percent[1])));
+  const afterCode=text.match(/\bPFM\d{4}\b\s*(?:[|,:;\-–—]\s*)?(100|[1-9]?\d(?:\.\d+)?)(?=\s*(?:%|[|,:;\-–—]|$))/i);if(afterCode)return Math.max(0,Math.min(100,Number(afterCode[1])));
+  const whole=text.match(/^(100|[1-9]?\d(?:\.\d+)?)\s*%?$/);return whole?Math.max(0,Math.min(100,Number(whole[1]))):null;
 }
 function parseThemeRerunText(raw,rerun,sets){
   if(raw&&typeof raw==='object'&&!Array.isArray(raw))return parseThemeRerunStructured(raw,rerun,sets);
@@ -863,12 +870,7 @@ function parseThemeRerunText(raw,rerun,sets){
   const allowedBySlot=new Map(openSlots.map(slot=>[slot,new Set(sets[slot].candidates.map(item=>item.code))]));
   const rawLines=text.split(/\r?\n/);
 
-  const confidenceFrom = value => {
-    const percent=String(value||'').match(/(?:^|\D)(100|[1-9]?\d(?:\.\d+)?)\s*%/);
-    if(percent)return Math.max(0,Math.min(100,Number(percent[1])));
-    const bare=String(value||'').match(/(?:^|[|,:;\-–—\s])(100|[1-9]?\d(?:\.\d+)?)(?=$|[|,:;\-–—\s])/);
-    return bare?Math.max(0,Math.min(100,Number(bare[1]))):null;
-  };
+  const confidenceFrom = value => themeRerunSpecificConfidence(value);
   const slotFrom = value => {
     const v=String(value||'');
     let m=v.match(/\b(?:THEME|SLOT|RANK)\s*#?\s*([123])\b/i);
@@ -899,8 +901,9 @@ function parseThemeRerunText(raw,rerun,sets){
     if(!codeMatch)continue;
     const code=codeMatch[1].toUpperCase();
     if(!allowedBySlot.get(slot)?.has(code)||preservedCodes.has(code))continue;
-    const confidenceLabel=block.match(/\bConfidence\s*[:=]\s*(100|[1-9]?\d(?:\.\d+)?)\s*%?/i);
-    const confidence=confidenceLabel?Math.max(0,Math.min(100,Number(confidenceLabel[1]))):(confidenceFrom(block)??70);
+    const confidenceLabel=block.match(/\bConfidence\s*[:=]\s*(100|[1-9]?\d(?:\.\d+)?)\s*%?(?!\s*[-–—]\s*100)/i);
+    const confidence=confidenceLabel?Math.max(0,Math.min(100,Number(confidenceLabel[1]))):confidenceFrom(block);
+    if(confidence==null)continue;
     const reasonMatch=block.match(/\bReason\s*[:=]\s*([\s\S]*)$/i);
     const rationale=String(reasonMatch?.[1]||`Provider response selected ${code}.`).replace(/\*{1,2}/g,'').trim().slice(0,1000) || `Provider response selected ${code}.`;
     rows.set(slot,{code,confidence,rationale});
@@ -928,7 +931,8 @@ function parseThemeRerunText(raw,rerun,sets){
       confidence=confidenceFrom(parts[codeIndex+1]||cleaned);
       rationale=parts.slice(codeIndex+2).join('|').trim();
     }
-    if(confidence==null)confidence=confidenceFrom(cleaned)??70;
+    if(confidence==null)confidence=confidenceFrom(cleaned);
+    if(confidence==null)continue;
     if(!rationale)rationale=rationaleFor(line,code);
     if(allowedBySlot.get(slot)?.has(code)&&!preservedCodes.has(code))rows.set(slot,{code,confidence,rationale});
   }
@@ -944,7 +948,8 @@ function parseThemeRerunText(raw,rerun,sets){
     while((m=re.exec(line))){
       const code=m[1].toUpperCase();
       const explicitSlot=slotFrom(line);
-      const confidence=confidenceFrom(line)??70;
+      const confidence=confidenceFrom(line);
+      if(confidence==null)continue;
       const occurrence={code,line,lineIndex,offset:m.index,explicitSlot,confidence,rationale:rationaleFor(line,code)};
       codeOccurrences.push(occurrence);
       if(explicitSlot&&openSlots.includes(explicitSlot)&&!rows.has(explicitSlot)&&allowedBySlot.get(explicitSlot)?.has(code)&&!preservedCodes.has(code)){
@@ -1001,11 +1006,11 @@ function extractThemeRerunAcceptedPartial(raw,rerun,sets){
   const text=typeof raw==='string'?String(raw).trim():'';
   const accepted=new Map(),used=new Set(rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.currentThemeCode).filter(Boolean));
   const openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve').map(row=>row.slot),allowed=new Map(openSlots.map(slot=>[slot,new Set(sets[slot].candidates.map(item=>item.code))]));
-  const put=(slot,code,confidence=70,rationale='')=>{code=String(code||'').toUpperCase();const n=Number(confidence);if(!openSlots.includes(Number(slot))||accepted.has(Number(slot))||!allowed.get(Number(slot))?.has(code)||used.has(code))return false;accepted.set(Number(slot),{code,confidence:Number.isFinite(n)?Math.max(0,Math.min(100,n)):70,rationale:String(rationale||`Provider response selected ${code}.`).trim().slice(0,1000)||`Provider response selected ${code}.`});used.add(code);return true;};
+  const put=(slot,code,confidence=null,rationale='')=>{code=String(code||'').toUpperCase();if(confidence==null)return false;const n=Number(confidence);if(!Number.isFinite(n)||!openSlots.includes(Number(slot))||accepted.has(Number(slot))||!allowed.get(Number(slot))?.has(code)||used.has(code))return false;accepted.set(Number(slot),{code,confidence:Math.max(0,Math.min(100,n)),rationale:String(rationale||`Provider response selected ${code}.`).trim().slice(0,1000)||`Provider response selected ${code}.`});used.add(code);return true;};
   if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const slot of openSlots){const row=raw[`theme${slot}`]||{};put(slot,row.code,row.confidence,row.rationale);}
   if(!text)return accepted;
   try{const obj=parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj))for(const slot of openSlots){const row=obj[`theme${slot}`]||{};put(slot,row.code,row.confidence,row.rationale);}}catch{}
-  const confidenceFrom=v=>{const text=String(v||'');const percent=text.match(/\b(100|[1-9]?\d(?:\.\d+)?)\s*%/);if(percent)return Number(percent[1]);const afterCode=text.match(/\bPFM\d{4}\b\s*(?:[|,:;\-–—]\s*)?(100|[1-9]?\d(?:\.\d+)?)(?=\s*(?:%|[|,:;\-–—]|$))/i);return afterCode?Number(afterCode[1]):70;};
+  const confidenceFrom=v=>themeRerunSpecificConfidence(v);
   const blockPattern=/(?:\*{0,2}\s*)?Theme\s*([123])\s*:[\s\S]*?(?=(?:\*{0,2}\s*)?Theme\s*[123]\s*:|$)/gi;let bm;
   while((bm=blockPattern.exec(text))){const slot=Number(bm[1]),block=String(bm[0]||''),cm=block.match(/\b(PFM\d{4})\b/i);if(!cm)continue;const rm=block.match(/\bReason\s*[:=]\s*([\s\S]*)$/i);put(slot,cm[1],confidenceFrom(block),String(rm?.[1]||block).replace(/\*{1,2}/g,'').trim());}
   for(const line of text.split(/\r?\n/)){
@@ -1020,7 +1025,7 @@ function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots){
   const acceptedCodes=new Set([...accepted.values()].map(row=>row.code));
   const fixed=[...accepted.entries()].sort((a,b)=>a[0]-b[0]).map(([slot,row])=>`Theme ${slot}: ${row.code} is already accepted and IMMUTABLE.`).join('\n')||'No open slot has been accepted yet.';
   const blocks=missingSlots.map(slot=>{const candidates=sets[slot].candidates.filter(row=>!acceptedCodes.has(row.code));return `THEME ${slot}: choose exactly one code from ${candidates.map(row=>row.code).join(', ')}.\n${candidates.map(row=>`${row.code} — ${row.name} — ${row.aiMeaning}`).join('\n')}`;}).join('\n\n');
-  return `Repair ONLY the missing Theme Rerun slot${missingSlots.length===1?'':'s'} below. The image remains authoritative. Do not reconsider or return any already accepted slot. PFM code is authoritative identity; do not invent a Theme name. All final PFM codes must remain unique.\n\nALREADY ACCEPTED — IMMUTABLE:\n${fixed}\n\nMISSING SLOT${missingSlots.length===1?'':'S'}:\n${blocks}\n\nOUTPUT FORMAT — REQUIRED:\n${missingSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|0-100|Brief image-grounded reason`:`${slot}|matrix|PFM####|0-100`).join('\n')}\n${rerun.explainChanges?'Include a brief image-grounded reason in the final field.':'Do not add a reason or explanation field.'}\nReturn exactly ${missingSlots.length} line${missingSlots.length===1?'':'s'} and nothing else.`;
+  return `Repair ONLY the missing Theme Rerun slot${missingSlots.length===1?'':'s'} below. The image remains authoritative. Do not reconsider or return any already accepted slot. PFM code is authoritative identity; do not invent a Theme name. All final PFM codes must remain unique.\n\nALREADY ACCEPTED — IMMUTABLE:\n${fixed}\n\nMISSING SLOT${missingSlots.length===1?'':'S'}:\n${blocks}\n\nOUTPUT FORMAT — REQUIRED:\n${missingSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|CONFIDENCE|Brief image-grounded reason`:`${slot}|matrix|PFM####|CONFIDENCE`).join('\n')}\nConfidence must be one specific number from 0 through 100, such as 73. Replace CONFIDENCE with that number. Never output the literal text CONFIDENCE or a range such as 0-100.\n${rerun.explainChanges?'Include a brief image-grounded reason in the final field.':'Do not add a reason or explanation field.'}\nReturn exactly ${missingSlots.length} line${missingSlots.length===1?'':'s'} and nothing else.`;
 }
 
 async function repairMissingThemeRerunSlots(env,model,image,behavior,rerun,sets,accepted){
@@ -2621,7 +2626,7 @@ async function analyze(env,body){
         explainChanges:rerunResult.rerun.explainChanges!==false,
         candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
       };
-      promptVersions.themes='genreactrix-themes-pfm-v12-change-reasoning-code-first-repair';
+      promptVersions.themes='genreactrix-themes-pfm-v13-edit-log-confidence-repair';
     }else{
       const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
       const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
