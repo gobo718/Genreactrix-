@@ -1,8 +1,17 @@
-# Genreactrix v0.9.40.108 — Danger Zone Browser-Bar Clearance
+# Genreactrix v0.9.40.109 — Romance + Obsessive/Mundane calibration
+
+
+## v0.9.40.109 — Romance + Obsessive/Mundane calibration
+
+- PFM0208 Romance now requires specifically romantic evidence and explicitly includes marriage proposals and engagements, weddings, engagement rings, love letters, romantic hearts, roses, gifts, and chocolates.
+- PFM0512 is renamed from Brilliant to Obsessive and carries forward the existing Obsessive definition.
+- PFM1214 is renamed from Obsessive to Mundane for ordinary, routine, dull, commonplace, generic, monotonous, or visually unremarkable imagery.
+- Matrix remains **0.0.0.0**. No other Prim/PrimFusion definition changes are included.
+- Worker updated to **0.9.6.55-romance-obsessive-mundane-calibration**.
 
 ## v0.9.40.107
 
-Supersedes v0.9.40.105 and bundles Worker **0.9.6.54-diagnostic-self-check-term-calibration**.
+Supersedes v0.9.40.108 and bundles Worker **0.9.6.55-romance-obsessive-mundane-calibration**.
 
 Changes in this bundle:
 - Adds a 105-wide Prompt Diagnostics final-score self-check: assessment -> score, never score -> assessment. Before each final score, the AI must re-read its own completed component findings and revise a conflicting score rather than inventing evidence to defend it.
