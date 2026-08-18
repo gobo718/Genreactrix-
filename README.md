@@ -1,3 +1,14 @@
+# Genreactrix v0.9.40.100 — Prompt Diagnostics Transport Recovery
+
+## v0.9.40.100
+
+- Prompt Diagnostics now treats browser-level `Failed to fetch` / equivalent transport failures as recoverable connection noise instead of immediately killing a 105-concept run.
+- Retries the exact unfinished diagnostic call automatically with increasing backoff (1s, 2s, 4s, 8s, 15s) while preserving every completed call.
+- The live status reports **RETRYING CONNECTION** during recovery. Successful transport recoveries are persisted in Call / repair diagnostics.
+- If all automatic transport retries are exhausted, the run is **paused**, not failed; the same unfinished call remains resumable with **Continue diagnostic**.
+- Worker behavior and semantic calibration are unchanged. The bundled Worker is synchronized to **0.9.6.48-prompt-diagnostics-final-score-label-recovery**.
+- PrimFusion Matrix remains **0.0.0.0**. Exactly-three Theme behavior is unchanged. No layout or geometry changes.
+
 # Genreactrix v0.9.40.99 — Compound PrimFusion Name Casing
 
 ## v0.9.40.99
