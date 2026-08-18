@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.110</title>
-<link href="styles.css?v=0.9.40.110" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.111</title>
+<link href="styles.css?v=0.9.40.111" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.110</span>
+<span>v0.9.40.111</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.110</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.111</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -113,18 +113,15 @@
           Add <input aria-label="Default quick-add image amount" id="portraitDefaultAmount" inputmode="numeric" min="1" step="1" type="number"/> images
         </label>
 <div aria-label="Main section counts" class="portrait-image-engine-status"><button data-portrait-status="active-total" title="Active = Origin + Queue + Quarantine + Inbox + Post + Purgatory" type="button">Active <strong id="portraitAvailableCount">0</strong></button><button data-portrait-status="images-origin" title="Origin" type="button">Origin <strong id="portraitTempImageCount">0</strong></button><button data-portrait-status="queue-total" title="Queue" type="button">Queue <strong id="portraitLinkedImageCount">0</strong></button><button data-portrait-status="ai-main" title="AI" type="button">AI <strong id="portraitReferenceImageCount">0</strong></button><button data-portrait-status="batch-total" title="Batch" type="button">Batch <strong id="portraitEngineFlaggedCount">0</strong></button><button data-portrait-status="reports-stored" title="Reports" type="button">Reports <strong id="portraitRecycleImageCount">0</strong></button></div>
-</section><section aria-label="Batch" class="portrait-panel portrait-batch-panel" data-quick-module="batch">
+</section><section aria-label="Queue" class="portrait-panel portrait-queue-panel" data-quick-module="queue">
 <div class="portrait-module-row">
-<div class="portrait-quick-slots" data-quick-slots="batch">
-<button class="portrait-quick-action" data-quick-slot="batch:1" id="portraitBatchQuick1" type="button"></button>
-<button class="portrait-quick-action" data-quick-slot="batch:2" id="portraitBatchQuick2" type="button"></button>
+<div class="portrait-quick-slots" data-quick-slots="queue">
+<button class="portrait-quick-action" data-quick-slot="queue:1" id="portraitQueueQuick1" type="button"></button>
+<button class="portrait-quick-action" data-quick-slot="queue:2" id="portraitQueueQuick2" type="button"></button>
 </div>
-<button class="portrait-module-button" data-module-button="batch" id="portraitBatchMenuBtn" type="button">Batch</button>
+<button class="portrait-module-button" data-module-button="queue" id="portraitQueueMenuBtn" type="button">Queue</button>
 </div>
-<div class="portrait-batch-summary-row"><div class="portrait-batch-name" id="portraitBatchName">New Batch</div><button data-portrait-status="batch-total" type="button">Total <strong id="portraitBatchTotal">0</strong></button></div>
-<div class="portrait-batch-progress"><button data-portrait-status="batch-working" type="button">Working <strong id="portraitBatchWorking">0</strong></button><button data-portrait-status="batch-yellow" type="button">Review <strong id="portraitBatchYellow">0</strong></button></div>
-<div class="portrait-batch-outcomes" aria-label="Inbox terminal states and independent Keep attribute"><button data-portrait-status="batch-depot" type="button">Depot <strong id="portraitBatchDepot">0</strong></button><button data-portrait-status="batch-red" type="button">Delete <strong id="portraitBatchRed">0</strong></button><button data-portrait-status="batch-hot-magenta" type="button">Reject <strong id="portraitBatchHotMagenta">0</strong></button><button data-portrait-status="batch-keep" type="button">Keep <strong id="portraitBatchKeep">0</strong></button></div>
-</section><section aria-label="AI" class="portrait-panel portrait-ai-panel" data-quick-module="ai">
+<div class="portrait-queue-status"><button data-portrait-status="queue-waiting" type="button">Waiting <strong id="portraitQueueRunningCount">0</strong></button><button data-portrait-status="queue-partial" type="button">Partial <strong id="portraitQueuedCount">0</strong></button><button data-portrait-status="queue-staged" type="button">Staged <strong id="portraitQueueFailedCount">0</strong></button></div></section><section aria-label="AI" class="portrait-panel portrait-ai-panel" data-quick-module="ai">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="ai">
 <button class="portrait-quick-action" data-quick-slot="ai:1" id="portraitAiQuick1" type="button"></button>
@@ -150,15 +147,18 @@
   <button id="portraitBundleStaged" type="button" title="Queue-owned shortcut: Bundle all currently Staged images">Bundle Available</button>
   <button id="portraitExportFails" type="button">Export Fails</button>
 </div>
-</section><section aria-label="Queue" class="portrait-panel portrait-queue-panel" data-quick-module="queue">
+</section><section aria-label="Batch" class="portrait-panel portrait-batch-panel" data-quick-module="batch">
 <div class="portrait-module-row">
-<div class="portrait-quick-slots" data-quick-slots="queue">
-<button class="portrait-quick-action" data-quick-slot="queue:1" id="portraitQueueQuick1" type="button"></button>
-<button class="portrait-quick-action" data-quick-slot="queue:2" id="portraitQueueQuick2" type="button"></button>
+<div class="portrait-quick-slots" data-quick-slots="batch">
+<button class="portrait-quick-action" data-quick-slot="batch:1" id="portraitBatchQuick1" type="button"></button>
+<button class="portrait-quick-action" data-quick-slot="batch:2" id="portraitBatchQuick2" type="button"></button>
 </div>
-<button class="portrait-module-button" data-module-button="queue" id="portraitQueueMenuBtn" type="button">Queue</button>
+<button class="portrait-module-button" data-module-button="batch" id="portraitBatchMenuBtn" type="button">Batch</button>
 </div>
-<div class="portrait-queue-status"><button data-portrait-status="queue-waiting" type="button">Waiting <strong id="portraitQueueRunningCount">0</strong></button><button data-portrait-status="queue-partial" type="button">Partial <strong id="portraitQueuedCount">0</strong></button><button data-portrait-status="queue-staged" type="button">Staged <strong id="portraitQueueFailedCount">0</strong></button></div></section><section aria-label="Reports" class="portrait-panel portrait-reports-panel" data-quick-module="reports">
+<div class="portrait-batch-summary-row"><div class="portrait-batch-name" id="portraitBatchName">New Batch</div><button data-portrait-status="batch-total" type="button">Total <strong id="portraitBatchTotal">0</strong></button></div>
+<div class="portrait-batch-progress"><button data-portrait-status="batch-working" type="button">Working <strong id="portraitBatchWorking">0</strong></button><button data-portrait-status="batch-yellow" type="button">Review <strong id="portraitBatchYellow">0</strong></button></div>
+<div class="portrait-batch-outcomes" aria-label="Inbox terminal states and independent Keep attribute"><button data-portrait-status="batch-depot" type="button">Depot <strong id="portraitBatchDepot">0</strong></button><button data-portrait-status="batch-red" type="button">Delete <strong id="portraitBatchRed">0</strong></button><button data-portrait-status="batch-hot-magenta" type="button">Reject <strong id="portraitBatchHotMagenta">0</strong></button><button data-portrait-status="batch-keep" type="button">Keep <strong id="portraitBatchKeep">0</strong></button></div>
+</section><section aria-label="Reports" class="portrait-panel portrait-reports-panel" data-quick-module="reports">
 <div class="portrait-module-row">
 <div class="portrait-quick-slots" data-quick-slots="reports">
 <button class="portrait-quick-action" data-quick-slot="reports:1" id="portraitReportsQuick1" type="button"></button>
@@ -391,7 +391,7 @@
 <label><input name="dangerZoneScope" type="radio" value="bundle"/><span><b>Bundle</b><small>Choose a Bundle and its attached image product.</small></span></label>
 <label><input name="dangerZoneScope" type="radio" value="batch"/><span><b>Batch</b><small>Choose a Batch and its attached image product.</small></span></label>
 <label><input name="dangerZoneScope" type="radio" value="stage"/><span><b>Stage / hold area</b><small>Inbox, Quarantine, Purgatory, Recycle, or another current stage.</small></span></label>
-<label><input name="dangerZoneScope" type="radio" value="derived"/><span><b>Reset derived data only</b><small>Keep selected image files/records but clear AI/evaluation/diagnostic results for them.</small></span></label>
+<label><input name="dangerZoneScope" type="radio" value="derived"/><span><b>Reset derived data only</b><small>Keep image files, Image Records, workflow placement, and shared parent records; clear only the selected image’s derived entries/results.</small></span></label>
 <label><input name="dangerZoneScope" type="radio" value="diagnostics"/><span><b>Purge Prompt Diagnostics history</b><small>Delete saved Prompt Diagnostics runs without deleting normal product.</small></span></label>
 <label class="danger-zone-scope-reset"><input name="dangerZoneScope" type="radio" value="reset-all"/><span><b>Reset All Product Data</b><small>Return Genreactrix to fully configured + zero product.</small></span></label>
 </div>
@@ -1264,7 +1264,7 @@
 <script src="origin-pack-engine.js?v=0.9.40.37"></script>
 <script src="origin-gate-engine.js?v=0.9.40.37"></script>
 <script src="import-engine.js?v=0.9.40.34"></script>
-<script src="maintenance-engine.js?v=0.9.40.110"></script>
+<script src="maintenance-engine.js?v=0.9.40.111"></script>
 <script src="settings-engine.js?v=0.9.40.61"></script>
 <script src="director-classification-engine.js?v=0.9.40.37"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -1298,8 +1298,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.110"></script>
-<script src="danger-zone-engine.js?v=0.9.40.110"></script>
+<script src="app.js?v=0.9.40.111"></script>
+<script src="danger-zone-engine.js?v=0.9.40.111"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1315,11 +1315,11 @@ window.grxOpenCustomDialog=function(dialogId){
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
 <script src="quarantine-engine.js?v=0.9.40.37"></script>
-<script src="queue-engine.js?v=0.9.40.43"></script>
+<script src="queue-engine.js?v=0.9.40.111"></script>
 <script src="investigation-ui.js?v=0.9.40.43"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.40.110"></script>
-<script src="prompt-diagnostics-engine.js?v=0.9.40.110"></script>
-<script src="reports-engine.js?v=0.9.40.110"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.40.111"></script>
+<script src="prompt-diagnostics-engine.js?v=0.9.40.111"></script>
+<script src="reports-engine.js?v=0.9.40.111"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -1330,9 +1330,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="post-processing-engine.js?v=0.9.40.110"></script>
-<script src="housekeeping-engine.js?v=0.9.40.110"></script>
-<script src="batch-engine.js?v=0.9.40.110"></script>
+<script src="post-processing-engine.js?v=0.9.40.111"></script>
+<script src="housekeeping-engine.js?v=0.9.40.111"></script>
+<script src="batch-engine.js?v=0.9.40.111"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>
