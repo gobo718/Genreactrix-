@@ -1,5 +1,19 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.49-playful-snarky-calibration.
+
+## Worker 0.9.6.49 — Playful / Snarky calibration
+
+- PFM0113 Playful now explicitly recognizes playful role-taking, dress-up, character customization, make-believe, character experimentation, and deliberately fun/lighthearted presentation when they function as play.
+- PFM0713 Snarky now gates out general humor, silliness, playfulness, costumes, joking, and lightheartedness unless the evidence is specifically sarcastic, cutting, mocking, dismissive, or contemptuous.
+- No global Prompt Diagnostics semantic rule was added from this image.
+- Matrix remains 0.0.0.0.
+- Inherits 0.9.6.48 parser/final-score recovery behavior unchanged.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.48-prompt-diagnostics-final-score-label-recovery.
 
 Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
