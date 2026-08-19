@@ -1,12 +1,12 @@
-# Genreactrix v0.9.40.117 — Theme Edit Log comparative reasoning repair
+# Genreactrix v0.9.40.118 — Theme Rerun frozen-evidence experiment
 
-## v0.9.40.117
+## v0.9.40.118
 
-- Renames the Theme-change reasoning dialog header to **Theme Edit Log**.
-- Theme Edit Log reasons for changed slots must directly compare the new Theme with the Theme it replaced; generic image-description text is rejected as a valid change reason.
-- Theme Edit Log identity schema advances to v3; older v2 logs are intentionally hidden so existing generic `.116` reasons cannot be presented as valid history.
-- If a changed slot lacks a valid comparative reason, the Worker repairs **only that reason**. The selected PFM code and confidence remain immutable and are not rerun.
-- The targeted reason repair must name both Theme labels and explain why the new Theme fits better using image-grounded evidence and applicable Director rerun constraints.
-- If comparative-reason repair still fails, the Theme selection survives but no misleading Edit Log reason is stored/displayed for that change.
-- Retains v0.9.40.116 image/artifact/attempt/slot identity binding and confidence-placeholder rejection.
+- Theme Rerun now uses a two-stage experimental pipeline.
+- Stage 1 creates a frozen factual Evidence Ledger from the image plus any included AI Description before any Theme is selected.
+- Stage 2 receives no image; it chooses/scales the exactly-three Theme result only from the frozen ledger plus the existing Theme definitions and Director constraints.
+- Theme Edit Log reasons must cite the frozen E# evidence used. Missing/bad reasons are repaired without image access and without changing the selected Theme or confidence.
+- Existing v0.9.40.117 Edit Log entries are intentionally not treated as current frozen-evidence logs.
+- Normal (non-rerun) AI Theme Analysis is unchanged.
 - No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
+- Worker counterpart: v0.9.6.64-theme-rerun-frozen-evidence.

@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.117";
+const GENREACTRIX_BUILD="v0.9.40.118";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1066,7 +1066,7 @@ function buildThemeRerunPreviewSpec(){
   const explainChanges=current.explainChanges!==false;
   const currentThemeArtifactId=String(themeRerunHistoryCurrentArtifactId(imageId)||'');
   const editLog=explainChanges?{
-    schemaVersion:3,
+    schemaVersion:4,
     token:`theme_edit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,
     imageId,
     beforeThemeArtifactId:currentThemeArtifactId||null,
@@ -1102,7 +1102,7 @@ function previewThemeRerunRequest(spec){
   lines.push('Theme Exclusions:');
   if(spec.excludedThemeCodes.length)for(const code of spec.excludedThemeCodes){const row=THEME_RERUN_FUSION_BY_CODE[code];if(row)lines.push(`- ${row.label}`);}else lines.push('No themes excluded.');
   lines.push('');
-  lines.push(`Theme Edit Log: ${spec.explainChanges!==false?'ON — save image-grounded reasoning for changed Themes.':'OFF'}`);
+  lines.push(`Theme Edit Log: ${spec.explainChanges!==false?'ON — save frozen-evidence reasoning for changed Themes.':'OFF'}`);
   lines.push('');
   lines.push('Included descriptions:');
   if(spec.includedDescriptions.length)spec.includedDescriptions.forEach((row,index)=>{lines.push(`\n[${index+1}] ${formatDescriptionRerunDate(row.createdAt)}${row.version?` · v${row.version}`:''}`);lines.push(row.text)});else lines.push('No descriptions included.');
@@ -1198,14 +1198,14 @@ function themeEditLogComparativeReasonValid(reason,before,after){
   const text=String(reason||'').trim().toLowerCase(),beforeLabel=String(before?.label||'').trim().toLowerCase(),afterLabel=String(after?.label||'').trim().toLowerCase(),beforeCode=String(before?.code||'').trim().toLowerCase(),afterCode=String(after?.code||'').trim().toLowerCase();
   if(!text||(!beforeLabel&&!beforeCode)||(!afterLabel&&!afterCode))return false;
   const mentionsBefore=(beforeLabel&&text.includes(beforeLabel))||(beforeCode&&text.includes(beforeCode)),mentionsAfter=(afterLabel&&text.includes(afterLabel))||(afterCode&&text.includes(afterCode));
-  return Boolean(mentionsBefore&&mentionsAfter&&/\b(?:better|stronger|closer|more|less|rather|instead|over|than|whereas|while|compared|outweigh|replace|replacement|fit|fits|fitting)\b/i.test(text));
+  return Boolean(mentionsBefore&&mentionsAfter&&/\bE\d{1,2}\b/i.test(text)&&/\b(?:better|stronger|closer|more|less|rather|instead|over|than|whereas|while|compared|outweigh|replace|replacement|fit|fits|fitting|support|supported)\b/i.test(text));
 }
 function themeChangeReasoningEmpty(imageId,artifactId=null){return{imageId:String(imageId||''),byCode:new Map(),artifactId:artifactId?String(artifactId):null}}
 function themeChangeReasoningBuild(imageId,entries){
   const key=String(imageId||''),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),current=(entries||[]).find(entry=>entry.current)||null;
   if(!current||String(current.artifactId||'')!==currentArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
   const artifact=current.artifact,attempt=current.attempt,ctx=themeChangeReasoningContext(current),editLog=ctx?.editLog;
-  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<3||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<4||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
   const artifactImageId=String(artifact.imageId||''),attemptImageId=String(attempt.imageId||''),contextImageId=String(ctx.image?.id||''),editImageId=String(editLog.imageId||'');
   if([artifactImageId,attemptImageId,contextImageId,editImageId].some(id=>id!==key))return themeChangeReasoningEmpty(key,currentArtifactId);
   if(String(artifact.attemptId||'')!==String(attempt.id||''))return themeChangeReasoningEmpty(key,currentArtifactId);
