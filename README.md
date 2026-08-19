@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.127 — AI AMA 3-question execution
+
+- Pairs with Worker v0.9.6.74-ai-ama-3q-resumable. Upload the Worker first, then this site build.
+- Keeps the persistent/resumable AMA architecture and all 68 canonical interview questions unchanged.
+- Removes the 9-question interview tier entirely. Normal AMA interview execution is now fixed at three canonical questions per step: Q1–Q3, Q4–Q6, and so on, with the final step Q67–Q68.
+- Every usable answer from a three-question response is checkpointed immediately.
+- If a three-question step times out, errors, or returns only some requested answers, only the still-missing question(s) fall back to one-question calls. There are no interview answer-repair passes and no retry of the same three-question step before single-question recovery.
+- Existing incomplete 9-question runs are migrated in place to the 3-question plan without discarding saved answers. A saved 9/68 run therefore resumes at Q10–Q12, not Q10–Q18.
+- Progress UI reports the exact 3-question step (23 total for 68 questions), Q range, saved count, elapsed time, and single-question recovery when needed.
+- Completed report/history semantics, Theme ranking, definitions, confidence, PrimFusion Matrix, image lifecycle, Theme Rerun, Tuned, SLOP?, and post-Batch outcomes are unchanged. Matrix remains 0.0.0.0.
+
+---
+
 # Genreactrix v0.9.40.126 — AI AMA adaptive interview chunks
 
 - Pairs with Worker v0.9.6.73-ai-ama-adaptive-chunks. Upload the Worker first, then this site build.
