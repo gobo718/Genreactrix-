@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.124";
+const GENREACTRIX_BUILD="v0.9.40.125";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1408,10 +1408,15 @@ function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveTh
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
 
 
-// v0.9.40.124 — resumable AI AMA; Tuned lineage and SLOP? advisory Director tools retained.
+// v0.9.40.125 — resumable AI AMA live-stage diagnostics; Tuned lineage and SLOP? advisory Director tools retained.
 const AMA_UI_COLOR='#EF806C';
-const amaUiState={reportId:null,runId:null,running:false};
+const amaUiState={reportId:null,runId:null,running:false,statusTimer:null,statusStartedAt:0,statusBase:''};
 function amaEsc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function amaBlockRange(run,blockIndex){const expected=Math.max(1,Number(run?.questionCount)||68),size=Math.max(1,Number(run?.blockSize)||9),start=Math.max(1,Number(blockIndex)*size+1),end=Math.min(expected,start+size-1);return{start,end,label:`Q${start}–Q${end}`}}
+function amaStageLabel(stage,blockIndex,run){if(stage==='visual')return'Reading image';if(stage==='candidates')return'Auditing candidate Themes';if(stage==='questions'){const blockCount=Math.max(1,Number(run?.blockCount)||Math.ceil((Number(run?.questionCount)||68)/(Number(run?.blockSize)||9))),range=amaBlockRange(run,blockIndex);return`Interview block ${Number(blockIndex)+1}/${blockCount} · ${range.label}`}if(stage==='finalize')return'Finalizing report';return'AI AMA'}
+function amaCompactError(error){return String(error?.message||error||'Unknown AMA error').replace(/\s+/g,' ').trim().slice(0,420)}
+function amaStopStatusClock(){if(amaUiState.statusTimer){clearInterval(amaUiState.statusTimer);amaUiState.statusTimer=null}amaUiState.statusStartedAt=0;amaUiState.statusBase=''}
+function amaStartStatusClock(base){amaStopStatusClock();amaUiState.statusStartedAt=Date.now();amaUiState.statusBase=String(base||'AI AMA');const render=()=>{const elapsed=Math.max(0,Math.floor((Date.now()-amaUiState.statusStartedAt)/1000));let hint='waiting for Worker / AI provider';if(elapsed>=181)hint='Worker may be retrying or repairing missing answers';else if(elapsed>=91)hint='first 90s provider window passed; automatic retry may be active';setAmaRunProgress(`${amaUiState.statusBase} · ${elapsed}s · ${hint}`)};render();amaUiState.statusTimer=setInterval(render,1000)}
 function amaDirectorThemes(){return(state.themes||[]).map((theme,index)=>{if(!theme)return null;const label=themeLabel(theme),fusion=themeRerunFusionFromLabel(label),rawId=String(theme?.id||'');return{slot:index+1,code:fusion?.code||(rawId.toUpperCase().startsWith('PFM')?rawId.toUpperCase():null),label,kind:theme?.kind||'director'};}).filter(Boolean)}
 function amaAiThemes(){return(currentAiRun()?.themes||[]).map((row,index)=>({slot:Number(row?.rank)||index+1,code:String(row?.id||row?.code||'').toUpperCase()||null,label:String(row?.label||row?.name||''),confidence:Number(row?.weight??row?.confidence)||0})).sort((a,b)=>b.confidence-a.confidence).slice(0,3)}
 function currentSlopAssessment(){return recordSlopAssessment(currentImageRecord())}
@@ -1460,7 +1465,7 @@ function amaRunProgressText(run){if(!run)return'';const progress=window.genreact
 function setAmaRunProgress(text=''){const node=$('amaRunProgress');if(node)node.textContent=String(text||'')}
 async function refreshAmaRunMenu(){
   const button=$('amaRunBtn'),record=currentImageRecord(),engine=window.genreactrixAmaEngine;if(!button||!record||!engine)return null;
-  const pending=await engine.latestIncompleteRun(record.id);if(pending){const progress=engine.runProgress(pending);button.disabled=false;button.textContent='Resume AI AMA';button.title='Resume the saved incomplete AMA from its first unfinished step.';setAmaRunProgress(`Incomplete AMA · ${progress.answered}/${progress.expected} saved · resume available`);return pending}
+  const pending=await engine.latestIncompleteRun(record.id);if(pending){const progress=engine.runProgress(pending),err=pending.lastError||null;button.disabled=false;button.textContent='Resume AI AMA';button.title='Resume the saved incomplete AMA from its first unfinished step.';if(err){const stage=amaStageLabel(err.stage,err.blockIndex,pending),when=err.at?new Date(err.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}):'';setAmaRunProgress(`Paused at ${stage} · ${progress.answered}/${progress.expected} saved · ${amaCompactError(err.message)}${when?` · ${when}`:''} · Resume restarts only the unfinished step.`)}else setAmaRunProgress(`Incomplete AMA · ${progress.answered}/${progress.expected} saved · resume available`);return pending}
   const directorCount=amaDirectorThemes().length,aiCount=amaAiThemes().length;button.disabled=directorCount<1||aiCount!==3;button.textContent='Run AI AMA?';button.title=directorCount<1?'Select at least one Director Theme first.':aiCount!==3?'Three AI Themes are required.':'';setAmaRunProgress('');return null;
 }
 async function openAmaMenu(){safelyShowDialog($('amaMenuDialog'));try{await refreshAmaRunMenu()}catch(error){console.warn('AMA resume state could not be loaded',error)}}
@@ -1469,34 +1474,36 @@ async function runAmaCurrent(){
   if(amaUiState.running)return;const record=currentImageRecord(),engine=window.genreactrixAmaEngine,api=window.GenreactrixCloudApi;if(!record||!engine)throw new Error('AMA Engine is unavailable.');if(!api?.isConfigured?.())throw new Error('AI Worker is not configured.');
   let run=await engine.latestIncompleteRun(record.id),currentStage='created',currentBlock=null;
   if(!run){const snapshot=buildAmaSnapshot();run=await engine.createRun({imageId:record.id,snapshot,siteVersion:GENREACTRIX_BUILD})}
-  amaUiState.runId=run.id;amaUiState.running=true;const runBtn=$('amaRunBtn');if(runBtn){runBtn.disabled=true;runBtn.textContent='Running AMA…'};
+  amaUiState.runId=run.id;amaUiState.running=true;const runBtn=$('amaRunBtn');if(runBtn){runBtn.disabled=true;runBtn.textContent='Starting AMA…'};
   const key=api.getKey();
   try{
     if(!String(run.visualRead||'').trim()){
-      currentStage='visual';setAmaRunProgress('Reading image… · 0/68 saved');setDirectorStatus('AI AMA · reading image…');
-      const imageInput=await amaPreparedImageInput(record),payload=await api.ama({mode:'visual',snapshot:run.snapshot,...imageInput},key),result=payload.result||payload;if(!String(result?.visualRead||'').trim())throw new Error('AI AMA visual read returned no result.');
+      currentStage='visual';setAmaRunProgress('Preparing image for AI visual read… · 0/68 saved');setDirectorStatus('AI AMA · preparing image…');if(runBtn)runBtn.textContent='Reading image…';
+      const imageInput=await amaPreparedImageInput(record);amaStartStatusClock('Reading image · 0/68 saved');
+      const payload=await api.ama({mode:'visual',snapshot:run.snapshot,...imageInput},key),result=payload.result||payload;amaStopStatusClock();if(!String(result?.visualRead||'').trim())throw new Error('AI AMA visual read returned no result.');
       run=await engine.checkpointRun(run.id,{stage:'visual',visualRead:result.visualRead,workerVersion:result.workerVersion||run.workerVersion,matrixVersion:result.matrixVersion||run.matrixVersion,model:result.model||run.model,questionCount:Number(result.questionCount)||68,blockSize:Number(result.blockSize)||9,blockCount:Number(result.blockCount)||0,questionBlocks:result.blocks||run.questionBlocks||[],lastError:null});
     }
     if(!run.candidatesReady){
-      currentStage='candidates';setAmaRunProgress(`Visual read saved · ${amaRunProgressText(run)} · auditing candidate Themes…`);setDirectorStatus('AI AMA · visual read saved · auditing candidate Themes…');
-      const payload=await api.ama({mode:'candidates',snapshot:run.snapshot,visualRead:run.visualRead},key),result=payload.result||payload;
+      currentStage='candidates';if(runBtn)runBtn.textContent='Auditing Themes…';amaStartStatusClock(`Auditing candidate Themes · ${amaRunProgressText(run)}`);setDirectorStatus('AI AMA · visual read saved · auditing candidate Themes…');
+      const payload=await api.ama({mode:'candidates',snapshot:run.snapshot,visualRead:run.visualRead},key),result=payload.result||payload;amaStopStatusClock();
       run=await engine.checkpointRun(run.id,{stage:'candidates',candidatesReady:true,candidateThemeCodes:Array.isArray(result.candidateThemeCodes)?result.candidateThemeCodes:[],themeDefinitions:Array.isArray(result.themeDefinitions)?result.themeDefinitions:[],workerVersion:result.workerVersion||run.workerVersion,matrixVersion:result.matrixVersion||run.matrixVersion,model:result.model||run.model,questionCount:Number(result.questionCount)||run.questionCount||68,blockSize:Number(result.blockSize)||run.blockSize||9,blockCount:Number(result.blockCount)||run.blockCount||0,questionBlocks:result.blocks||run.questionBlocks||[],lastError:null});
     }
     const blockCount=Number(run.blockCount)||Math.ceil((Number(run.questionCount)||68)/(Number(run.blockSize)||9));
     for(let blockIndex=0;blockIndex<blockCount;blockIndex++){
-      if((run.completedBlockIndexes||[]).includes(blockIndex))continue;currentStage='questions';currentBlock=blockIndex;let complete=false;
+      if((run.completedBlockIndexes||[]).includes(blockIndex))continue;currentStage='questions';currentBlock=blockIndex;let complete=false;const range=amaBlockRange(run,blockIndex);
       for(let attempt=1;attempt<=2&&!complete;attempt++){
-        const progress=engine.runProgress(run);setAmaRunProgress(`Interview block ${blockIndex+1}/${blockCount} · ${progress.answered}/${progress.expected} saved${attempt>1?' · repairing missing answers':''}`);setDirectorStatus(`AI AMA · block ${blockIndex+1}/${blockCount} · ${progress.answered}/${progress.expected} saved…`);
-        const payload=await api.ama({mode:'question-block',snapshot:run.snapshot,visualRead:run.visualRead,candidateThemeCodes:run.candidateThemeCodes||[],blockIndex},key),result=payload.result||payload;
+        const progress=engine.runProgress(run),passNote=attempt>1?' · answer-repair pass 2/2':' · pass 1/2';if(runBtn)runBtn.textContent=`Running ${range.label}…`;amaStartStatusClock(`Block ${blockIndex+1}/${blockCount} · ${range.label} · ${progress.answered}/${progress.expected} saved${passNote}`);setDirectorStatus(`AI AMA · block ${blockIndex+1}/${blockCount} · ${range.label} · ${progress.answered}/${progress.expected} saved…`);
+        const payload=await api.ama({mode:'question-block',snapshot:run.snapshot,visualRead:run.visualRead,candidateThemeCodes:run.candidateThemeCodes||[],blockIndex},key),result=payload.result||payload;amaStopStatusClock();
         run=await engine.saveQuestionBlock(run.id,{questions:result.questions||[],blockIndex,complete:result.complete===true,meta:{workerVersion:result.workerVersion||run.workerVersion,matrixVersion:result.matrixVersion||run.matrixVersion,model:result.model||run.model,questionCount:Number(result.questionCount)||run.questionCount||68,blockSize:Number(result.blockSize)||run.blockSize||9,blockCount:Number(result.blockCount)||run.blockCount||blockCount,questionBlocks:result.blocks||run.questionBlocks||[],lastError:null}});complete=result.complete===true;
+        if(!complete){const after=engine.runProgress(run),missing=Array.isArray(result.missingQuestionIds)&&result.missingQuestionIds.length?` · missing ${result.missingQuestionIds.join(', ')}`:'';setAmaRunProgress(`Block ${blockIndex+1}/${blockCount} returned partial results · ${after.answered}/${after.expected} saved${missing} · retrying only this block.`)}
       }
-      if(!complete){const progress=engine.runProgress(run);throw new Error(`AI AMA block ${blockIndex+1}/${blockCount} is still incomplete. ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}
+      if(!complete){const progress=engine.runProgress(run);throw new Error(`AI AMA block ${blockIndex+1}/${blockCount} (${range.label}) is still incomplete. ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}
     }
     const progress=engine.runProgress(run);if(progress.answered!==progress.expected)throw new Error(`AI AMA stopped with ${progress.answered}/${progress.expected} core answers saved.`);
-    currentStage='finalize';setAmaRunProgress(`Finalizing immutable report · ${progress.answered}/${progress.expected} saved`);const report=await engine.finalizeRun(run.id);amaUiState.runId=null;$('amaMenuDialog')?.close();await openAmaReport(report.id);setDirectorStatus(`AI AMA ${report.sequence} complete · ${progress.answered}/${progress.expected} saved.`);
+    currentStage='finalize';if(runBtn)runBtn.textContent='Finalizing…';setAmaRunProgress(`Finalizing immutable report · ${progress.answered}/${progress.expected} saved`);const report=await engine.finalizeRun(run.id);amaUiState.runId=null;$('amaMenuDialog')?.close();await openAmaReport(report.id);setDirectorStatus(`AI AMA ${report.sequence} complete · ${progress.answered}/${progress.expected} saved.`);
   }catch(error){
-    await engine.recordRunError(run.id,error,{stage:currentStage,blockIndex:currentBlock}).catch(()=>{});const saved=await engine.getRun(run.id).catch(()=>run),progress=engine.runProgress(saved);setAmaRunProgress(`AMA paused · ${progress.answered}/${progress.expected} saved · tap Resume AI AMA`);setDirectorStatus(`AI AMA paused · ${progress.answered}/${progress.expected} saved. Resume is available.`);throw error;
-  }finally{amaUiState.running=false;await refreshAmaRunMenu().catch(()=>{if(runBtn){runBtn.disabled=false;runBtn.textContent='Resume AI AMA'}})}
+    amaStopStatusClock();await engine.recordRunError(run.id,error,{stage:currentStage,blockIndex:currentBlock}).catch(()=>{});const saved=await engine.getRun(run.id).catch(()=>run),progress=engine.runProgress(saved),stage=amaStageLabel(currentStage,currentBlock,saved),message=amaCompactError(error);setAmaRunProgress(`Paused at ${stage} · ${progress.answered}/${progress.expected} saved · ${message} · Resume restarts only the unfinished step.`);setDirectorStatus(`AI AMA paused at ${stage} · ${progress.answered}/${progress.expected} saved · ${message}`);throw error;
+  }finally{amaStopStatusClock();amaUiState.running=false;await refreshAmaRunMenu().catch(()=>{if(runBtn){runBtn.disabled=false;runBtn.textContent='Resume AI AMA'}})}
 }
 async function renderAmaHistory(){const list=$('amaHistoryList'),engine=window.genreactrixAmaEngine,record=currentImageRecord();if(!list||!engine||!record)return;list.innerHTML='<p>Loading AMA History…</p>';const reports=await engine.reportsForImage(record.id);list.innerHTML='';if(!reports.length){list.innerHTML='<p>No saved AMAs for this image.</p>';return}for(const report of [...reports].reverse()){const bundle=await engine.getReportBundle(report.id),row=document.createElement('div');row.className='ama-history-row';const b=document.createElement('button');b.type='button';b.innerHTML=`<strong>${amaEsc(report.title)}</strong><small>${report.interview?.questionCount||report.interview?.questions?.length||0} core Q&amp;A${bundle?.followups?.length?` · ${bundle.followups.length} follow-up${bundle.followups.length===1?'':'s'}`:''}</small>`;b.addEventListener('click',()=>openAmaReport(report.id));const outcome=document.createElement('span');outcome.className='ama-history-outcome';const last=bundle?.outcomes?.at(-1);outcome.textContent=last?(last.verdict==='agreement'?'Post-Batch: Agreement':'Post-Batch: Director final'):'';row.append(b,outcome);list.append(row)}}
 function amaThemeListHtml(rows=[],withConfidence=false){return rows.length?`<ul>${rows.map(row=>`<li>${amaEsc(row.label||row.name||row.code||'—')}${withConfidence&&Number.isFinite(Number(row.confidence))?` · ${Number(row.confidence)}%`:''}</li>`).join('')}</ul>`:'<p>—</p>'}
@@ -3369,7 +3376,7 @@ $("themeChangeReasoningClose")?.addEventListener("click",()=>$("themeChangeReaso
 $("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 $("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.current.explainChanges=Boolean(event.target.checked);saveThemeRerunCurrent();renderThemeRerunChrome();});
-// v0.9.40.124 — resumable AI AMA / Tuned / SLOP Director diagnostics.
+// v0.9.40.125 — resumable AI AMA live-stage diagnostics / Tuned / SLOP Director diagnostics.
 $("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
 $("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
 $("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());

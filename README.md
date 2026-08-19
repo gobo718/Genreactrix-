@@ -1,3 +1,15 @@
+# Genreactrix v0.9.40.125 — AI AMA live-stage diagnostics
+
+- Site-only diagnostic patch. Worker remains v0.9.6.72-ai-ama-resumable; no Worker upload is required.
+- While an AMA call is active, the AI AMA dialog now names the exact stage, question block, Q-number range, saved Q&A count, and elapsed seconds.
+- After the first 90-second provider window passes, the status explicitly notes that the Worker's automatic retry may be active; longer waits note that retry or missing-answer repair may be in progress.
+- The Run button also names the current operation (Reading image, Auditing Themes, Q-range, Finalizing) instead of only saying “Running AMA…”.
+- Failed/paused AMAs now preserve the last error visibly in the AI AMA dialog, including the failing stage/block and saved progress. Reopening the dialog no longer overwrites that diagnostic with a generic “Incomplete AMA” message.
+- Resume messaging states that only the unfinished step/block is restarted and previously saved answers remain protected.
+- No AMA persistence architecture, Theme ranking, definitions, Matrix version, image lifecycle, Tuned, SLOP?, or normal Theme Rerun behavior changed.
+
+---
+
 # Genreactrix v0.9.40.124 — Resumable AI AMA execution
 
 - Replaces the single long-running AI AMA request with persistent, resumable execution.
