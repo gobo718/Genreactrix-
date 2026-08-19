@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.72-ai-ama-resumable
+/* Genreactrix AI Worker v0.9.6.74-ai-ama-3q-resumable
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.72-ai-ama-resumable';
+const API_VERSION = '0.9.6.74-ai-ama-3q-resumable';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -2863,11 +2863,11 @@ async function runAmaQuestionBlock(env,model,context,questions){
   const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
   const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
   const raw=await runAmaStructured(env,model,null,prompt,null,4200,'text',{temperature:0.15,amaInterview:true});
-  let answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
-  if(missing.length){const repair=`The prior AMA response omitted some required question IDs. Using the same case context below, answer ONLY the missing IDs. Return exactly ID: answer for each missing ID.\n\n${context}\n\nMISSING QUESTIONS:\n${missing.map(q=>`${q.id}: ${q.question}`).join('\n')}`;try{const raw2=await runAmaStructured(env,model,null,repair,null,2600,'text',{temperature:0,amaInterviewRepair:true}),repaired=parseAmaAnswers(raw2,missing);for(const [id,a] of repaired)answers.set(id,a);}catch{}}
-  return questions.map(q=>({id:q.id,question:q.question,answer:answers.get(q.id)||'AMA did not return an answer for this question.',section:q.section}));
+  const answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
+  if(missing.length)throw new Error(`Legacy AI AMA call returned incomplete answers: missing ${missing.map(q=>q.id).join(', ')}.`);
+  return questions.map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section}));
 }
-const AMA_QUESTION_BLOCK_SIZE=9;
+const AMA_QUESTION_BLOCK_SIZE=3;
 function validateAmaSnapshot(snapshot){
   const aiThemes=amaSnapshotThemes(snapshot,'aiThemes'),directorThemes=amaSnapshotThemes(snapshot,'directorThemes');
   if(aiThemes.length!==3)throw new Error('AI AMA requires the current three AI Themes.');
@@ -2899,13 +2899,11 @@ async function runAmaCandidateStep(env,body){
 async function runAmaQuestionChunk(env,model,context,questions){
   const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
   const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
-  const raw=await runAmaStructured(env,model,null,prompt,null,2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true});
-  let answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
-  if(missing.length){
-    const repair=`The prior AMA response omitted some required question IDs. Using the same case context below, answer ONLY the missing IDs. Return exactly ID: answer for each missing ID.\n\n${context}\n\nMISSING QUESTIONS:\n${missing.map(q=>`${q.id}: ${q.question}`).join('\n')}`;
-    try{const raw2=await runAmaStructured(env,model,null,repair,null,1600,'text',{temperature:0,amaInterviewRepair:true,amaResumableChunkRepair:true}),repaired=parseAmaAnswers(raw2,missing);for(const [id,a] of repaired)answers.set(id,a);}catch{}
-  }
-  missing=questions.filter(q=>!answers.has(q.id));
+  // Interview recovery deliberately uses ONE provider attempt at the current granularity.
+  // The site owns fallback (3 -> 1) and checkpoints every usable answer.
+  // There is no same-size interview repair/retry at this layer.
+  const raw=await runStructured(env,model,null,prompt,null,2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true,amaThreeQuestionChunk:true,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
+  const answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
   return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id)};
 }
 async function runAmaQuestionStep(env,body){
@@ -2914,8 +2912,14 @@ async function runAmaQuestionStep(env,body){
   if(!visualRead)throw new Error('AI AMA question block requires the saved visual read.');
   const candidateThemeCodes=Array.isArray(body?.candidateThemeCodes)?body.candidateThemeCodes:[],questions=amaQuestions(snapshot),plan=amaQuestionPlan(snapshot),blockIndex=Number(body?.blockIndex);
   if(!Number.isInteger(blockIndex)||blockIndex<0||blockIndex>=plan.blockCount)throw new Error(`AI AMA blockIndex must be an integer from 0 to ${plan.blockCount-1}.`);
-  const start=blockIndex*AMA_QUESTION_BLOCK_SIZE,block=questions.slice(start,start+AMA_QUESTION_BLOCK_SIZE),context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
+  const start=blockIndex*AMA_QUESTION_BLOCK_SIZE,fullBlock=questions.slice(start,start+AMA_QUESTION_BLOCK_SIZE),allowedIds=new Set(fullBlock.map(q=>q.id));
+  const supplied=Array.isArray(body?.questionIds)?[...new Set(body.questionIds.map(id=>String(id||'').toUpperCase()).filter(Boolean))]:[];
+  if(supplied.length>AMA_QUESTION_BLOCK_SIZE)throw new Error(`AI AMA question request cannot exceed ${AMA_QUESTION_BLOCK_SIZE} questions.`);
+  if(supplied.some(id=>!allowedIds.has(id)))throw new Error('AI AMA question IDs must belong to the requested canonical 3-question block.');
+  const requestedIds=supplied.length?supplied:fullBlock.map(q=>q.id),requestedSet=new Set(requestedIds),block=fullBlock.filter(q=>requestedSet.has(q.id));
+  if(!block.length)throw new Error('AI AMA question request contains no canonical questions.');
+  const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
