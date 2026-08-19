@@ -8431,7 +8431,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .theme-change-reasoning-evidence p{color:var(--muted);font-size:.82rem}
 @media(max-width:520px){.theme-change-reasoning-comparison{grid-template-columns:1fr}.theme-change-reasoning-arrow{transform:rotate(90deg);justify-self:center}}
 
-/* v0.9.40.122 — AI AMA + SLOP?/Tuned status controls. */
+/* v0.9.40.123 — AI AMA + SLOP?/Tuned status controls. */
 :root{--ama-accent:#EF806C;--tuned-accent:#9A85BB;--slop-accent:#808000}
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .landscape-judgment-header{position:relative!important}

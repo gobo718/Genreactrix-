@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.122";
+const GENREACTRIX_BUILD="v0.9.40.123";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1408,7 +1408,7 @@ function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveTh
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
 
 
-// v0.9.40.122 — AI AMA, Tuned lineage, and SLOP? advisory Director tools.
+// v0.9.40.123 — AI AMA, Tuned lineage, and SLOP? advisory Director tools.
 const AMA_UI_COLOR='#EF806C';
 const amaUiState={reportId:null,running:false};
 function amaEsc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -3335,7 +3335,7 @@ $("themeChangeReasoningClose")?.addEventListener("click",()=>$("themeChangeReaso
 $("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 $("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.current.explainChanges=Boolean(event.target.checked);saveThemeRerunCurrent();renderThemeRerunChrome();});
-// v0.9.40.122 — AI AMA / Tuned / SLOP Director diagnostics.
+// v0.9.40.123 — AI AMA / Tuned / SLOP Director diagnostics.
 $("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
 $("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
 $("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());

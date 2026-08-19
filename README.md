@@ -1,4 +1,12 @@
-# Genreactrix v0.9.40.122 — AI AMA, Tuned, and SLOP? Director diagnostics
+# Genreactrix v0.9.40.123 — AI AMA engine initialization fix
+## v0.9.40.123
+
+- Fixes **AI AMA failed: AMA Engine is unavailable**.
+- Defines the missing `getReport()` AMA-history adapter before the engine export is constructed.
+- AMA Engine now completes initialization and publishes `window.genreactrixAmaEngine`.
+- Retains the v0.9.40.122 AI AMA, Tuned, SLOP?, filtering, history, export, and post-Batch outcome behavior.
+- No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
+
 
 - Adds **AI AMA** to Landscape Theme Rerun. It is available with the current three AI Themes and at least one Director Theme.
 - **Run AI AMA?** captures the current total snapshot and creates a new immutable, numbered Q&A interview report. Director comparison is dynamic for 1, 2, or 3 Director Themes.
