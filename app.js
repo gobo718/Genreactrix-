@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.116";
+const GENREACTRIX_BUILD="v0.9.40.117";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1066,7 +1066,7 @@ function buildThemeRerunPreviewSpec(){
   const explainChanges=current.explainChanges!==false;
   const currentThemeArtifactId=String(themeRerunHistoryCurrentArtifactId(imageId)||'');
   const editLog=explainChanges?{
-    schemaVersion:2,
+    schemaVersion:3,
     token:`theme_edit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,
     imageId,
     beforeThemeArtifactId:currentThemeArtifactId||null,
@@ -1194,12 +1194,18 @@ function cleanThemeEditLogReason(raw,{slot=null,code=''}={}){
   if(slot!=null)text=text.replace(new RegExp(`^${Number(slot)}\\s*\\|\\s*matrix\\s*\\|\\s*PFM\\d{4}\\s*\\|\\s*(?:100|[1-9]?\\d(?:\\.\\d+)?|0\\s*[-–—]\\s*100|CONFIDENCE(?:_0_TO_100)?)\\s*\\|\\s*`,'i'),'').trim();
   return text.slice(0,1000);
 }
+function themeEditLogComparativeReasonValid(reason,before,after){
+  const text=String(reason||'').trim().toLowerCase(),beforeLabel=String(before?.label||'').trim().toLowerCase(),afterLabel=String(after?.label||'').trim().toLowerCase(),beforeCode=String(before?.code||'').trim().toLowerCase(),afterCode=String(after?.code||'').trim().toLowerCase();
+  if(!text||(!beforeLabel&&!beforeCode)||(!afterLabel&&!afterCode))return false;
+  const mentionsBefore=(beforeLabel&&text.includes(beforeLabel))||(beforeCode&&text.includes(beforeCode)),mentionsAfter=(afterLabel&&text.includes(afterLabel))||(afterCode&&text.includes(afterCode));
+  return Boolean(mentionsBefore&&mentionsAfter&&/\b(?:better|stronger|closer|more|less|rather|instead|over|than|whereas|while|compared|outweigh|replace|replacement|fit|fits|fitting)\b/i.test(text));
+}
 function themeChangeReasoningEmpty(imageId,artifactId=null){return{imageId:String(imageId||''),byCode:new Map(),artifactId:artifactId?String(artifactId):null}}
 function themeChangeReasoningBuild(imageId,entries){
   const key=String(imageId||''),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),current=(entries||[]).find(entry=>entry.current)||null;
   if(!current||String(current.artifactId||'')!==currentArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
   const artifact=current.artifact,attempt=current.attempt,ctx=themeChangeReasoningContext(current),editLog=ctx?.editLog;
-  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<2||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<3||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
   const artifactImageId=String(artifact.imageId||''),attemptImageId=String(attempt.imageId||''),contextImageId=String(ctx.image?.id||''),editImageId=String(editLog.imageId||'');
   if([artifactImageId,attemptImageId,contextImageId,editImageId].some(id=>id!==key))return themeChangeReasoningEmpty(key,currentArtifactId);
   if(String(artifact.attemptId||'')!==String(attempt.id||''))return themeChangeReasoningEmpty(key,currentArtifactId);
@@ -1211,7 +1217,7 @@ function themeChangeReasoningBuild(imageId,entries){
   for(let slot=1;slot<=3;slot++){
     const before=beforeBySlot.get(slot)||null,after=current.themes?.[slot-1]||null;
     if(!before||!after||themeRerunHistoryThemeKey(before)===themeRerunHistoryThemeKey(after))continue;
-    const reason=cleanThemeEditLogReason(after.rationale,{slot,code:after.code});if(!after.code||!reason)continue;
+    const reason=cleanThemeEditLogReason(after.rationale,{slot,code:after.code});if(!after.code||!reason||!themeEditLogComparativeReasonValid(reason,before,after))continue;
     const evidence=['Image'];
     const descriptions=Array.isArray(ctx.includedDescriptions)?ctx.includedDescriptions:[];if(descriptions.length)evidence.push(`AI Description${descriptions.length===1?'':`s (${descriptions.length})`}`);
     const slotSpec=Array.isArray(ctx.themeSlots)?ctx.themeSlots.find(row=>Number(row?.slot)===slot):null;
