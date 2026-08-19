@@ -1,5 +1,18 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.68-theme-rerun-plain-text-selection-transport.
+
+## Worker 0.9.6.68 — current bundled snapshot
+
+- Theme Rerun Stage 2 uses plain-text compact selection transport.
+- Frozen evidence, E# support, exactly-three PFM selection, targeted repair, and Theme Edit Log behavior are unchanged.
+- This Worker is unchanged by Genreactrix site v0.9.40.120.
+- No Prim or PrimFusion semantic definition changes. Matrix remains **0.0.0.0**.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.61-theme-edit-log-version-fix.
 
 ## Worker 0.9.6.61 — synchronized site/version-label release
