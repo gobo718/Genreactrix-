@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.118";
+const GENREACTRIX_BUILD="v0.9.40.119";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1066,7 +1066,8 @@ function buildThemeRerunPreviewSpec(){
   const explainChanges=current.explainChanges!==false;
   const currentThemeArtifactId=String(themeRerunHistoryCurrentArtifactId(imageId)||'');
   const editLog=explainChanges?{
-    schemaVersion:4,
+    schemaVersion:5,
+    evidenceProtocol:'frozen-ledger-support-refs-v2',
     token:`theme_edit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,
     imageId,
     beforeThemeArtifactId:currentThemeArtifactId||null,
@@ -1205,7 +1206,7 @@ function themeChangeReasoningBuild(imageId,entries){
   const key=String(imageId||''),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),current=(entries||[]).find(entry=>entry.current)||null;
   if(!current||String(current.artifactId||'')!==currentArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
   const artifact=current.artifact,attempt=current.attempt,ctx=themeChangeReasoningContext(current),editLog=ctx?.editLog;
-  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<4||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<5||String(editLog.evidenceProtocol||'')!=='frozen-ledger-support-refs-v2'||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
   const artifactImageId=String(artifact.imageId||''),attemptImageId=String(attempt.imageId||''),contextImageId=String(ctx.image?.id||''),editImageId=String(editLog.imageId||'');
   if([artifactImageId,attemptImageId,contextImageId,editImageId].some(id=>id!==key))return themeChangeReasoningEmpty(key,currentArtifactId);
   if(String(artifact.attemptId||'')!==String(attempt.id||''))return themeChangeReasoningEmpty(key,currentArtifactId);
