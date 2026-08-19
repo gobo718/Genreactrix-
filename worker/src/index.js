@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.68-theme-rerun-plain-text-selection-transport
+/* Genreactrix AI Worker v0.9.6.70-ai-ama-slop-advisory
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.68-theme-rerun-plain-text-selection-transport';
+const API_VERSION = '0.9.6.70-ai-ama-slop-advisory';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -879,7 +879,7 @@ function themeRerunPrompt(rerun,sets,evidenceLedger){
     const candidates=sets[row.slot].candidates.map(item=>`${item.code}:${item.pairWeight}`).join(', ');
     return `Theme ${row.slot} (${mode}${current}) eligible=${candidates}`;
   }).join('\n');
-  return `Choose the best eligible PrimFusion Theme for each listed Theme slot using ONLY the frozen evidence facts below. The image is not available in this step. Pair-weight numbers are Director preferences, not confidence scores. If the closest eligible Theme is only a weak match, keep its confidence low. 100 is for an exceptionally complete, unmistakable match. Each chosen Theme must cite one or more E# facts that actually support it. Final PFM codes must be different.\n\nReturn only one compact line per open slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nOPEN SLOTS\n${slots}\n\nELIGIBLE DEFINITIONS\n${vocabulary}`;
+  return `Choose the best eligible PrimFusion Themes for the open slots using ONLY the frozen evidence facts below. Simulate what an ordinary person would most naturally pick from the available Theme vocabulary. Evaluate ALL eligible candidates before deciding; do not stop at the first Theme that can be defended. A merely plausible or broad/easy Theme must not outrank a materially closer or more specific Theme. Treat the open slots jointly as one exactly-three ranking subject to their slot-specific eligibility and Director constraints. Confidence measures strength of fit, NOT rank: a second- or third-best Theme may legitimately have low confidence when it is only the closest available choice. Before finalizing, compare every selected Theme against the unselected eligible Themes and replace any selection if an unselected Theme is materially closer to the image evidence. The image is not available in this step. Pair-weight numbers are Director preferences, not confidence scores. 100 is for an exceptionally complete, unmistakable match. Each chosen Theme must cite one or more E# facts that actually support it. Final PFM codes must be different.\n\nReturn only one compact line per open slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nOPEN SLOTS\n${slots}\n\nELIGIBLE DEFINITIONS\n${vocabulary}`;
 }
 function parseThemeRerunStructured(raw,rerun,sets){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
@@ -1126,7 +1126,7 @@ function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots,evidence
     const defs=candidates.map(row=>`${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
     return `Theme ${slot} eligible=${candidates.map(row=>`${row.code}:${row.pairWeight}`).join(', ')}\n${defs}`;
   }).join('\n\n');
-  return `Fill only the missing Theme slots using the frozen evidence. Existing selections stay fixed. Choose one eligible PFM code per missing slot, give an evidence-calibrated confidence, and cite supporting E# facts.\n\nReturn only one compact line per missing slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nFIXED\n${fixed}\n\nMISSING\n${blocks}`;
+  return `Fill only the missing Theme slots using the frozen evidence. Existing selections stay fixed. For each missing slot, evaluate ALL remaining eligible candidates and choose the Theme an ordinary person would most naturally pick; do not settle for a merely defensible broad/easy Theme when a materially closer or more specific Theme is available. Confidence measures strength of fit, not rank, so a closest-available weak Theme should stay low-confidence. Before returning, check that no unselected eligible Theme is materially closer than the choice. Cite supporting E# facts.\n\nReturn only one compact line per missing slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nFIXED\n${fixed}\n\nMISSING\n${blocks}`;
 }
 async function repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger){
   let working=new Map(accepted),lastError=null;
@@ -1198,7 +1198,7 @@ async function runThemeRerun(env,model,image,behavior,input){
     const local={};for(const row of rerun.themeSlots)local[`theme${row.slot}`]={code:row.currentThemeCode};
     return{rerun,sets,evidenceLedger:[],selections:parseThemeRerunStructured(local,rerun,sets)};
   }
-  // v0.9.6.68 Theme Rerun pipeline:
+  // v0.9.6.69 Theme Rerun pipeline:
   // 1) image/Description -> frozen factual evidence ledger
   // 2) NO IMAGE -> compact plain-text selection: PFM code + confidence + supporting E# IDs
   // 3) lock the exactly-three result
@@ -2715,6 +2715,164 @@ function resolveThemes(rawThemes){
   });
 }
 
+
+// v0.9.6.70 — advisory SLOP assessment + immutable AI AMA interview service.
+function cleanSingleLine(value,max=800){return String(value||'').replace(/\s+/g,' ').trim().slice(0,max)}
+function parseSlopAssessment(raw,{basis='analysis'}={}){
+  const text=String(raw||'').replace(/\r/g,'').trim();
+  const detected=/\bSLOP\s*:\s*(?:YES|TRUE)\b/i.test(text);
+  const no=/\bSLOP\s*:\s*(?:NO|FALSE)\b/i.test(text);
+  const confMatch=text.match(/\bCONFIDENCE\s*:\s*(\d{1,3})\b/i);
+  const reasonMatch=text.match(/\bREASON\s*:\s*([\s\S]*)$/i);
+  if(!detected&&!no)throw new Error('SLOP advisory response did not contain YES or NO');
+  const confidence=Math.max(0,Math.min(100,Number(confMatch?.[1]||0)));
+  return{schemaVersion:1,assessmentId:`slop_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`,assessedAt:new Date().toISOString(),detected,confidence,reason:cleanSingleLine(reasonMatch?.[1]||'',900),basis};
+}
+async function runSlopAssessment(env,model,image,resolvedThemes=[],description='',basis='analysis'){
+  if(!image)return{schemaVersion:1,assessmentId:`slop_unavailable_${Date.now().toString(36)}`,assessedAt:new Date().toISOString(),detected:false,confidence:0,reason:'SLOP advisory unavailable because the image was unavailable.',basis,status:'unavailable'};
+  const themes=(resolvedThemes||[]).slice(0,3).map((row,index)=>`${index+1}. ${row.name||row.label||row.code||'Unknown'} ${Number(row.confidence)||0}%`).join('\n');
+  const prompt=`You are providing a separate curator advisory for Genreactrix AFTER the required Theme task has already been completed. This advisory must never replace, skip, weaken, or excuse the exactly-three Theme requirement.\n\nQuestion: Would a human curator plausibly flag this image as SLOP because it offers unusually little meaningful reaction/Theme territory for the game — for example it is generic, repetitive, low-information, redundant, accidental, or visually uninteresting, and the best Theme choices tend to collapse toward broad/easy territory such as Mundane or Chaotic?\n\nDo NOT mark an image SLOP merely because it is simple, minimalist, quiet, abstract, or difficult. If it has a distinctive mood, aesthetic, subject, joke, tension, beauty, strangeness, emotional pull, or other meaningful human reaction potential, it can be worth keeping.\n\nCURRENT THEMES (already selected; do not change them):\n${themes||'Unavailable'}\n\nCURRENT AI DESCRIPTION (if available):\n${cleanSingleLine(description,3500)||'Unavailable'}\n\nReturn exactly three lines:\nSLOP: YES or NO\nCONFIDENCE: one integer 0-100\nREASON: one concise sentence explaining the curator-value judgment.`;
+  try{
+    const raw=await runStructured(env,model,image,prompt,null,500,'text',{temperature:0.1,slopAdvisory:true});
+    return parseSlopAssessment(raw,{basis});
+  }catch(error){
+    return{schemaVersion:1,assessmentId:`slop_error_${Date.now().toString(36)}`,assessedAt:new Date().toISOString(),detected:false,confidence:0,reason:`SLOP advisory could not be completed: ${cleanSingleLine(error?.message||error,500)}`,basis,status:'unavailable'};
+  }
+}
+function amaThemeMeta(ref={}){
+  const code=String(ref.code||ref.id||'').toUpperCase();
+  const byCode=code?PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>row.code===code):null;
+  const label=String(ref.label||ref.name||'').trim().toLowerCase();
+  const byName=!byCode&&label?PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>String(row.name||'').trim().toLowerCase()===label):null;
+  const row=byCode||byName;
+  return row?{code:row.code,name:row.name,aiMeaning:row.aiMeaning||''}:{code:code||null,name:String(ref.label||ref.name||ref.code||'Unknown'),aiMeaning:String(ref.aiMeaning||'')};
+}
+function amaThemeLine(ref={}){const meta=amaThemeMeta(ref);const confidence=Number.isFinite(Number(ref.confidence??ref.weight))?Number(ref.confidence??ref.weight):null;return`${meta.code||'NO-CODE'} — ${meta.name}${confidence==null?'':` — ${confidence}%`} — ${meta.aiMeaning||'No stored definition available.'}`}
+function amaSnapshotThemes(snapshot,key){return(Array.isArray(snapshot?.[key])?snapshot[key]:[]).filter(Boolean)}
+function amaUniqueThemeMetas(snapshot,candidateCodes=[]){const rows=[],seen=new Set();for(const ref of [...amaSnapshotThemes(snapshot,'aiThemes'),...amaSnapshotThemes(snapshot,'directorThemes'),...(candidateCodes||[]).map(code=>({code}))]){const meta=amaThemeMeta(ref);const key=String(meta.code||meta.name).toLowerCase();if(seen.has(key))continue;seen.add(key);rows.push(meta)}return rows}
+function amaVisualPrompt(snapshot){return`Describe this image as a perceptive human would describe it to another person so it can support a later Theme-comparison interview. Include subject, composition, color, lighting, texture, style, setting, visible action, and any reasonably supported atmosphere, energy, aesthetic, or emotional impression. A little theatricality is welcome when the visible image earns it. Do not invent narrative, intent, symbolism, personality, unseen events, or Theme-specific justifications.\n\nExisting AI Description for context only (correct it if the image disagrees):\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None stored.'}\n\nReturn one concise but substantial paragraph.`}
+function amaAllThemeCatalog(){return PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>`${row.code} — ${row.name} — ${String(row.aiMeaning||'').replace(/\s+/g,' ')}`).join('\n')}
+async function amaCandidateAudit(env,model,visualRead,snapshot){
+  const selected=[...amaSnapshotThemes(snapshot,'aiThemes'),...amaSnapshotThemes(snapshot,'directorThemes')].map(row=>String(row.code||row.id||'').toUpperCase()).filter(Boolean);
+  const prompt=`You are preparing an AI-vs-Director diagnostic interview. Using the visual read below, identify up to 12 PrimFusion Themes from the current 91 that are materially plausible competitors or alternatives. This is NOT the final Theme selection and must not change historical results. Include any selected AI/Director codes when they are valid, but do not invent support just to keep them. Return only PFM codes separated by spaces.\n\nVISUAL READ:\n${visualRead}\n\nCURRENT AI/DIRECTOR CODES:\n${selected.join(' ')||'None'}\n\nCURRENT 91 THEMES:\n${amaAllThemeCatalog()}`;
+  let raw='';try{raw=await runStructured(env,model,null,prompt,null,900,'text',{temperature:0.05,amaCandidateAudit:true})}catch{}
+  const codes=[...new Set([...(String(raw).match(/PFM\d{4}/gi)||[]).map(x=>x.toUpperCase()),...selected])].filter(code=>PRIMFUSION_REGISTRY.aiThemeChoices.some(row=>row.code===code));
+  return codes.slice(0,14);
+}
+function amaRepresentative(snapshot){const ai=amaSnapshotThemes(snapshot,'aiThemes'),director=amaSnapshotThemes(snapshot,'directorThemes');const dLabels=director.map(x=>x.label||x.name||x.code).filter(Boolean),aLabels=ai.map(x=>x.label||x.name||x.code).filter(Boolean);const dSet=new Set(dLabels.map(x=>String(x).toLowerCase())),aSet=new Set(aLabels.map(x=>String(x).toLowerCase()));const aiOnly=aLabels.filter(x=>!dSet.has(String(x).toLowerCase())),directorOnly=dLabels.filter(x=>!aSet.has(String(x).toLowerCase())),all=[...new Set([...aLabels,...dLabels])];return{aiLabels:aLabels,directorLabels:dLabels,aiOnly,directorOnly,all,aiOne:aiOnly[0]||aLabels[0]||'the AI Theme',directorOne:directorOnly[0]||dLabels[0]||'the Director Theme',themeOne:all[0]||'the Theme',themeTwo:all[1]||all[0]||'the competing Theme'}}
+function amaQuestions(snapshot){
+  const r=amaRepresentative(snapshot),directorCount=r.directorLabels.length,dirN=directorCount===1?'the Director’s current Theme':`the Director’s ${directorCount} current Themes`,combined=`AI: ${r.aiLabels.join(', ')||'—'}; Director: ${r.directorLabels.join(', ')||'—'}`;
+  return[
+['Q1',`Summarize the AI Theme triplet and ${dirN} for this image. Where do they agree, and where do they disagree? (${combined})`],
+['Q2','Which Theme is the strongest point of agreement between AI and Director? If there is no overlap, say so explicitly.'],
+['Q3','Which choice from either side is strongest overall for this image?'],
+['Q4','If only one Theme could survive from the combined AI and Director choices, which should it be, and why?'],
+['Q5','If only three Themes could survive from the combined AI + Director set, which three should they be? Exactly three; do not inflate confidence merely because a Theme survives the ranking.'],
+['Q6','Rank all unique Themes from both AI and Director from strongest to weakest for this image. Preserve weak results as weak; rank and confidence are different.'],
+['Q7',`Why did AI choose each AI-only Theme (${r.aiOnly.join(', ')||'none'}) instead of each competing Director-only Theme (${r.directorOnly.join(', ')||'none'})? Explain ranking differences; do not merely restate definitions.`],
+['Q8',`Why did AI choose ${r.aiOne} instead of ${r.directorOne}?`],
+['Q9',`Why did AI rank ${r.aiOne} above ${r.directorOne}?`],
+['Q10','Which of AI’s three choices is weakest, and why?'],
+['Q11','Which AI-selected Theme has the weakest evidence or support?'],
+['Q12','Is each AI-selected Theme genuinely strong, merely defensible, or weak? Classify all three separately.'],
+['Q13','Are any AI selections merely defensible rather than genuinely strong?'],
+['Q14','Did AI appear to latch onto a misleading cue? If so, identify the cue and the Theme it distorted.'],
+['Q15',`What cue may have caused AI to over-select ${r.aiOne}?`],
+['Q16','Are any AI selections being justified after the fact rather than emerging naturally from the image? Look for answer-first rationalization.'],
+['Q17',`Why might each Director-only Theme (${r.directorOnly.join(', ')||'none'}) fit better than the competing AI choice? Treat Director choices as hypotheses, not automatically correct.`],
+['Q18',`Why might the Director choose ${r.directorOne} over ${r.aiOne}?`],
+['Q19',`Which of ${dirN} is strongest?`],
+['Q20',`Which of ${dirN} is weakest? If there is only one, assess whether that one is strong or weak.`],
+['Q21','Did AI overlook any Director Theme?'],
+['Q22',`Did AI overlook ${r.directorOne}? If so, what likely caused the miss?`],
+['Q23',`What cue may have caused AI to miss ${r.directorOne}?`],
+['Q24','Did Director potentially overrate any Theme? If so, which one and why? Be willing to disagree with Director when warranted.'],
+['Q25','Which Director Theme has the strongest visible support?'],
+['Q26',`Which better fits the image: ${r.themeOne} or ${r.themeTwo}? Also address the most important disputed pairs.`],
+['Q27','Which Theme is stronger in each AI-versus-Director disagreement? Give a winner for each disputed pair even when both are weak.'],
+['Q28',`What visible or image evidence supports each materially relevant Theme in this combined set: ${r.all.join(', ')}?`],
+['Q29',`What visible or image evidence argues against each materially relevant Theme in this combined set: ${r.all.join(', ')}?`],
+['Q30',`What evidence supports the Director choice(s): ${r.directorLabels.join(', ')||'none'}?`],
+['Q31','Which selected Theme has the weakest evidence?'],
+['Q32','Is any unselected or Director-selected Theme materially closer to the image than an AI-selected Theme? A merely defensible Theme must not outrank a materially closer one.'],
+['Q33','Which unselected Theme is materially closer than one of the selected Themes, if any?'],
+['Q34',`What would need to be different in the image for a disputed Theme such as ${r.themeOne} to become a genuinely strong match? Use a counterfactual image change, not a definition rewrite.`],
+['Q35',`What would have made AI choose ${r.directorOne}?`],
+['Q36','Are AI’s confidence scores appropriate for the actual strength of its selections? Confidence measures fit, not rank.'],
+['Q37','Which AI confidence score is most overconfident?'],
+['Q38','Which AI confidence score is most underconfident, if any?'],
+['Q39','Did AI confuse “best available” with “strong match”? A Theme can be third-best and still deserve low confidence.'],
+['Q40','Did AI choose a broad, easy, or low-effort Theme when a materially closer or more specific Theme existed?'],
+['Q41','Before finalizing its original answer, should AI have replaced any selected Theme with an unselected Theme that was materially closer? Which one?'],
+['Q42','For each disagreement, does the problem look most like image understanding, Theme definition, ranking, or confidence calibration? Assign one or more categories to every major disagreement.'],
+['Q43','Which disagreement is probably caused by the Theme definition rather than the image?'],
+['Q44','Which disagreement most likely comes from image interpretation?'],
+['Q45','Did AI misunderstand the image? If yes, what did it misunderstand?'],
+['Q46','Did AI misunderstand a Theme definition? If yes, which Theme and what meaning was misread?'],
+['Q47','Did AI see the relevant Theme but rank another Theme higher?'],
+['Q48','Did AI behave as though a Director Theme required something that was actually not required?'],
+['Q49','Was a useful cue or association missing from the Theme wording, or was this simply a bad semantic judgment?'],
+['Q50','Was this a ranking failure, confidence failure, image-understanding failure, definition failure, model limitation, or simply a one-off bad judgment? Do not force a systemic explanation.'],
+['Q51','Does this image appear to have unusually little meaningful Theme or reaction territory? SLOP? is advisory only and never excuses the exactly-three Theme task.'],
+['Q52','Would a human curator reasonably keep this image in a game intended to provoke meaningful reactions and Theme choices, or is it too generic, low-information, redundant, accidental, or visually uninteresting? Do not equate simple/minimalist with SLOP automatically.'],
+['Q53','Are weak or strange Theme answers more likely to reflect a Theme-discovery failure, or an image that simply offers little useful reaction content?'],
+['Q54','If SLOP? is suggested, what is the concise reason? Director makes the final Yellow / Red / Hot Magenta / NOT SLOP judgment.'],
+['Q55','What would you suggest changing so that you would be more likely to select the better Theme in a similar image in the future? Possible answers include Theme wording, image interpretation, ranking instruction, confidence calibration, missing association/cue, model capability, or no systemic change because this was simply a bad judgment.'],
+['Q56','Would your suggested change improve similar images generally, or is it too specific to this image?'],
+['Q57','Could your proposed fix cause a different Theme to become over-selected or under-selected? Which Theme, and how?'],
+['Q58','Would the proposed change improve one Theme while damaging another part of the 91-Theme vocabulary?'],
+['Q59','Is the safest improvement better Theme wording, better image interpretation, a ranking instruction, confidence calibration, a missing association/cue, a model change, or no systemic change?'],
+['Q60','If you recommend changing a Theme definition, what exact semantic gap caused the miss? Do not recommend definition edits merely to rescue this one image.'],
+['Q61','If you recommend a ranking change, what general ranking principle should change?'],
+['Q62','If you recommend a confidence change, what calibration behavior should change?'],
+['Q63','If you recommend no systemic change, explain why this should be treated as a one-off bad judgment instead of a rule change.'],
+['Q64','What is the single most important thing this AI-versus-Director disagreement teaches us about Theme discovery?'],
+['Q65','What is the most likely root cause of the disagreement overall?'],
+['Q66','What, if anything, should the Director change in Genreactrix based on this case? Recommendations are hypotheses only; AMA cannot modify Themes, code, prompts, or history.'],
+['Q67','What should the Director explicitly NOT change based on this case? Protect against overfitting to a single strange image.'],
+['Q68','Bottom line: if this exact image were evaluated again under the same current 91 Themes, what three Themes should a human-like Genreactrix AI most naturally choose, with realistic confidence levels?']
+  ].map(([id,question],index)=>({id,question,section:index<6?'Orientation':index<16?'AI Choice Interrogation':index<25?'Director Choice Interrogation':index<35?'Evidence and Theme Fit':index<41?'Confidence and Ranking Calibration':index<50?'Failure Diagnosis':index<54?'SLOP / Image Value':index<63?'Future Improvement Interview':'Overall Diagnosis'}));
+}
+function parseAmaAnswers(raw,questions){
+  const text=String(raw||'').replace(/\r/g,'').trim(),out=new Map();
+  const ids=questions.map(q=>q.id);for(let i=0;i<ids.length;i++){const id=ids[i],next=ids[i+1],start=new RegExp(`(?:^|\\n)${id}\\s*:\\s*`,'i').exec(text);if(!start)continue;const from=start.index+start[0].length;let to=text.length;if(next){const m=new RegExp(`(?:^|\\n)${next}\\s*:\\s*`,'i').exec(text.slice(from));if(m)to=from+m.index}const answer=text.slice(from,to).trim();if(answer)out.set(id,answer.slice(0,7000));}
+  return out;
+}
+function amaContext(snapshot,visualRead,candidateCodes){
+  const ai=amaSnapshotThemes(snapshot,'aiThemes').map(amaThemeLine).join('\n')||'None';
+  const director=amaSnapshotThemes(snapshot,'directorThemes').map(amaThemeLine).join('\n')||'None';
+  const themeContext=amaUniqueThemeMetas(snapshot,candidateCodes).map(row=>`${row.code||'NO-CODE'} — ${row.name} — ${String(row.aiMeaning||'').replace(/\s+/g,' ')}`).join('\n');
+  return`IMAGE / VISUAL READ:\n${visualRead}\n\nAI THEMES (historical current snapshot):\n${ai}\n\nDIRECTOR THEMES (current snapshot; Director may have 1, 2, or 3):\n${director}\n\nCURRENT AI DESCRIPTION:\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None'}\n\nCURRENT SLOP ADVISORY:\n${snapshot?.slopAssessment?JSON.stringify(snapshot.slopAssessment):'None'}\n\nRELEVANT CURRENT/CANDIDATE THEME DEFINITIONS:\n${themeContext}\n\nRERUN / CURRENT SNAPSHOT CONTEXT:\n${cleanSingleLine(JSON.stringify(snapshot?.rerunContext||{}),5000)||'None'}`;
+}
+async function runAmaQuestionBlock(env,model,context,questions){
+  const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
+  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
+  const raw=await runStructured(env,model,null,prompt,null,4200,'text',{temperature:0.15,amaInterview:true});
+  let answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
+  if(missing.length){const repair=`The prior AMA response omitted some required question IDs. Using the same case context below, answer ONLY the missing IDs. Return exactly ID: answer for each missing ID.\n\n${context}\n\nMISSING QUESTIONS:\n${missing.map(q=>`${q.id}: ${q.question}`).join('\n')}`;try{const raw2=await runStructured(env,model,null,repair,null,2600,'text',{temperature:0,amaInterviewRepair:true}),repaired=parseAmaAnswers(raw2,missing);for(const [id,a] of repaired)answers.set(id,a);}catch{}}
+  return questions.map(q=>({id:q.id,question:q.question,answer:answers.get(q.id)||'AMA did not return an answer for this question.',section:q.section}));
+}
+async function runAma(env,body){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  const snapshot=body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{};
+  const aiThemes=amaSnapshotThemes(snapshot,'aiThemes'),directorThemes=amaSnapshotThemes(snapshot,'directorThemes');
+  if(aiThemes.length!==3)throw new Error('AI AMA requires the current three AI Themes.');
+  if(directorThemes.length<1||directorThemes.length>3)throw new Error('AI AMA requires at least one and at most three Director Themes.');
+  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):(body.imageUrl?await fetchBytes(body.imageUrl):null);
+  if(!image&&!String(snapshot.aiDescription||'').trim())throw new Error('AI AMA requires the current image or an AI Description.');
+  const visualRead=image?String(await runStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
+  const candidateCodes=await amaCandidateAudit(env,model,visualRead,snapshot),context=amaContext(snapshot,visualRead,candidateCodes),questions=amaQuestions(snapshot),blocks=[questions.slice(0,17),questions.slice(17,35),questions.slice(35,54),questions.slice(54)];
+  const answered=[];for(const block of blocks)answered.push(...await runAmaQuestionBlock(env,model,context,block));
+  return{schemaVersion:1,amaVersion:'AMA-1',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,visualRead,candidateThemeCodes:candidateCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateCodes),questionCount:answered.length,questions:answered};
+}
+async function runAmaFollowup(env,body){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  const snapshot=body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{},question=String(body?.question||'').trim().slice(0,3000);if(!question)throw new Error('AMA follow-up question is required');
+  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,visualRead=String(body?.visualRead||snapshot.aiDescription||'').trim(),prior=String(body?.priorTranscript||'').slice(0,18000),candidateCodes=Array.isArray(body?.candidateThemeCodes)?body.candidateThemeCodes:[],context=amaContext(snapshot,visualRead,candidateCodes);
+  const prompt=`You are answering a Director follow-up question in an existing saved Genreactrix AI AMA. The historical report is immutable; your answer is a new linked Q/A record and must not alter prior answers, Themes, confidence, definitions, image status, or code. Be candid and diagnostic.\n\n${context}\n\nPRIOR AMA TRANSCRIPT (reference only):\n${prior||'Unavailable'}\n\nDIRECTOR QUESTION:\n${question}\n\nReturn only the answer.`;
+  const answer=String(await runStructured(env,model,null,prompt,null,1400,'text',{temperature:0.12,amaFollowup:true})).trim();if(!answer)throw new Error('AMA follow-up returned no answer');return{schemaVersion:1,createdAt:new Date().toISOString(),workerVersion:API_VERSION,model,answer};
+}
+
 async function analyze(env,body){
   if (!env.AI?.run) throw new Error('Workers AI binding AI is not configured');
 
@@ -2734,6 +2892,7 @@ async function analyze(env,body){
   const components = {};
   const promptVersions = {};
   let customThemeTriggered = false;
+  let resolvedThemesForSlop = null;
 
   const behaviorFor = names => names.some(name=>requested.includes(name) && body.componentBehaviors?.[name] === 'reanalyze') ? 'reanalyze' : 'analyze';
 
@@ -2830,6 +2989,7 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
       rationale:item.rationale,matrixVersion:item.matrixVersion
     }));
     customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
+    resolvedThemesForSlop = resolvedThemes.map(row=>({...row}));
     if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v1-shared-assessment';
   }
 
@@ -2839,6 +2999,13 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
     if (typeof description !== 'string' || !description.trim()) throw new Error('Description provider response did not contain description text');
     components.description = scopedEdit ? description : description.trim();
     promptVersions.description = descriptionRerun ? `genreactrix-freeform-v3-rerun-workspace-${descriptionRerun.operation}` : (String(body.directorGuidance||'').trim() ? 'genreactrix-freeform-v2-director-guidance' : 'genreactrix-freeform-v1');
+  }
+
+  if (requested.includes('themes') && resolvedThemesForSlop){
+    const basis=body.themeRerun?'theme-rerun':'origin-or-analysis';
+    const descriptionForSlop=String(components.description||body.themeAnalysisContext||'').trim();
+    components.slopAssessment=await runSlopAssessment(env,model,image,resolvedThemesForSlop,descriptionForSlop,basis);
+    promptVersions.slopAssessment='genreactrix-slop-advisory-v1';
   }
 
   return {
@@ -2921,6 +3088,20 @@ export default {
         const body = await request.json().catch(()=>null);
         if (!body) return json({ok:false,error:'JSON body required'},{status:400});
         return json({ok:true,result:await runPromptDiagnosticBatch(env,body)});
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/ama'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+        const body = await request.json().catch(()=>null);
+        if (!body) return json({ok:false,error:'JSON body required'},{status:400});
+        const mode=String(body.mode||'run');
+        const result=mode==='followup'?await runAmaFollowup(env,body):await runAma(env,body);
+        return json({ok:true,result});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
