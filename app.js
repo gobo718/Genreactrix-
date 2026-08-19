@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.119";
+const GENREACTRIX_BUILD="v0.9.40.120";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -4422,7 +4422,7 @@ window.genreactrixImagesStartupReady.then(()=>rehydrateLandscapeFeed()).catch(er
 window.addEventListener('genreactrix:housekeeping',()=>{rehydrateLandscapeFeed().catch(console.warn);renderPortraitControlStation();});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported","defective-finalized"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported","defective-finalized"].includes(type)||type.startsWith("theme-rerun-lifecycle-"))scheduleLandscapeRehydrate();
   if(type==="ai-attached"&&String(event.detail?.imageId||"")===String(currentKey())){
     delete state.aiRuns[String(event.detail.imageId)];
     renderTabletWorkbench();

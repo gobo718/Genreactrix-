@@ -1,3 +1,19 @@
+# Genreactrix v0.9.40.120 — Theme Rerun lifecycle isolation and recovery
+
+## v0.9.40.120
+
+- Theme Rerun AI jobs are lifecycle-isolated: they no longer move an image to AI Processing, Staged, Queue, Partial, or Quarantine.
+- Theme Rerun cannot trigger automatic Bundle movement or automatic Queue/AI maintenance after its job.
+- Each Theme Rerun job snapshots and guards the image lifecycle placement, Batch IDs, active/historical Bundle membership, storage references, recycle/archive/reject state, and isolated-failure/quarantine metadata.
+- If any guarded field drifts during a Theme Rerun, the job restores the pre-rerun value without rolling back the new Theme artifact.
+- Startup recovery inspects legacy Theme Rerun history and restores images whose most recent lifecycle changes were caused only by old Theme Rerun jobs. This includes Theme-Rerun-caused Quarantine.
+- Theme Rerun attempts are removed from Quarantine isolation evidence; an invalid Quarantine case is voided when fewer than three non-Theme-Rerun isolated failures remain.
+- No Theme prompt, Theme definition, confidence logic, Evidence Pass, exactly-three rule, PFM identity rule, or Theme Edit Log behavior changed.
+- PrimFusion Matrix remains 0.0.0.0.
+- Current Worker remains v0.9.6.68-theme-rerun-plain-text-selection-transport; no Worker upload is required for this site fix.
+
+---
+
 # Genreactrix v0.9.40.119 — Theme Rerun evidence-support selection
 
 ## v0.9.40.119
