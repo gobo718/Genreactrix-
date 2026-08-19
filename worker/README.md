@@ -1,5 +1,20 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.70-ai-ama-slop-advisory.
+
+## Worker 0.9.6.70 — AI AMA + SLOP advisory
+
+- Adds the authenticated AI AMA interview endpoint used by site v0.9.40.122.
+- Runs the complete 68-question AI-versus-Director Theme interview for the current immutable snapshot and supports linked follow-up Q&A.
+- Saves the Theme-definition snapshot used by the AMA for historical audit.
+- Adds a separate SLOP advisory after Theme selection during Origin analysis and later reruns. SLOP cannot skip, replace, or weaken exactly-three Theme selection.
+- Theme selection/rerun definitions and PrimFusion Registry are unchanged from the prior Worker baseline.
+- PrimFusion Matrix remains 0.0.0.0.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.68-theme-rerun-plain-text-selection-transport.
 
 ## Worker 0.9.6.68 — current bundled snapshot
