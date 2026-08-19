@@ -1,5 +1,21 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.72-ai-ama-resumable.
+
+## Worker 0.9.6.72 — Resumable AI AMA execution
+
+- Adds independent AMA modes for visual read, candidate audit, and small question blocks.
+- Uses eight question blocks with at most nine core questions per request instead of holding the complete 68-question interview open in one request.
+- Keeps the AMA-specific 90-second provider timeout and one transient retry per provider call.
+- Question-block responses preserve valid answers and report any still-missing IDs rather than inserting placeholder answers.
+- The site can persist each successful stage and resume from the first unfinished block after timeout, provider failure, refresh, or network interruption.
+- Legacy `mode=run` remains available for compatibility, but v0.9.40.124 uses the resumable modes.
+- No Theme selection/rerun, SLOP, Prim/PrimFusion definition, lifecycle, or Matrix behavior changes. Matrix remains 0.0.0.0.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.70-ai-ama-slop-advisory.
 
 ## Worker 0.9.6.70 — AI AMA + SLOP advisory
