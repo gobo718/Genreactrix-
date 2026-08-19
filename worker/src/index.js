@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.70-ai-ama-slop-advisory
+/* Genreactrix AI Worker v0.9.6.72-ai-ama-resumable
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.70-ai-ama-slop-advisory';
+const API_VERSION = '0.9.6.72-ai-ama-resumable';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -10,6 +10,7 @@ const COMPONENT_IDS = ['reactions','themes','description','reactionReasons','gen
 const CUSTOM_THEME_GENERATION_ENABLED = false;
 const PROVIDER_CALL_TIMEOUT_MS = 45000;
 const PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS = 90000;
+const AMA_PROVIDER_CALL_TIMEOUT_MS = 90000;
 
 const cors = {
   'access-control-allow-origin':'*',
@@ -2716,6 +2717,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.71 — AMA-specific 90s provider timeout + one transient retry.
 // v0.9.6.70 — advisory SLOP assessment + immutable AI AMA interview service.
 function cleanSingleLine(value,max=800){return String(value||'').replace(/\s+/g,' ').trim().slice(0,max)}
 function parseSlopAssessment(raw,{basis='analysis'}={}){
@@ -2748,6 +2750,19 @@ function amaThemeMeta(ref={}){
   return row?{code:row.code,name:row.name,aiMeaning:row.aiMeaning||''}:{code:code||null,name:String(ref.label||ref.name||ref.code||'Unknown'),aiMeaning:String(ref.aiMeaning||'')};
 }
 function amaThemeLine(ref={}){const meta=amaThemeMeta(ref);const confidence=Number.isFinite(Number(ref.confidence??ref.weight))?Number(ref.confidence??ref.weight):null;return`${meta.code||'NO-CODE'} — ${meta.name}${confidence==null?'':` — ${confidence}%`} — ${meta.aiMeaning||'No stored definition available.'}`}
+async function runAmaStructured(env,model,image,prompt,schema,maxTokens,responseMode='text',options={}){
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      return await runStructured(env,model,image,prompt,schema,maxTokens,responseMode,{...options,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
+    }catch(error){
+      lastError=error;
+      if(attempt>=2||!promptDiagnosticTransientProviderError(error))throw error;
+      await new Promise(resolve=>setTimeout(resolve,900));
+    }
+  }
+  throw lastError||new Error('AMA provider call failed');
+}
 function amaSnapshotThemes(snapshot,key){return(Array.isArray(snapshot?.[key])?snapshot[key]:[]).filter(Boolean)}
 function amaUniqueThemeMetas(snapshot,candidateCodes=[]){const rows=[],seen=new Set();for(const ref of [...amaSnapshotThemes(snapshot,'aiThemes'),...amaSnapshotThemes(snapshot,'directorThemes'),...(candidateCodes||[]).map(code=>({code}))]){const meta=amaThemeMeta(ref);const key=String(meta.code||meta.name).toLowerCase();if(seen.has(key))continue;seen.add(key);rows.push(meta)}return rows}
 function amaVisualPrompt(snapshot){return`Describe this image as a perceptive human would describe it to another person so it can support a later Theme-comparison interview. Include subject, composition, color, lighting, texture, style, setting, visible action, and any reasonably supported atmosphere, energy, aesthetic, or emotional impression. A little theatricality is welcome when the visible image earns it. Do not invent narrative, intent, symbolism, personality, unseen events, or Theme-specific justifications.\n\nExisting AI Description for context only (correct it if the image disagrees):\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None stored.'}\n\nReturn one concise but substantial paragraph.`}
@@ -2755,7 +2770,7 @@ function amaAllThemeCatalog(){return PRIMFUSION_REGISTRY.aiThemeChoices.map(row=
 async function amaCandidateAudit(env,model,visualRead,snapshot){
   const selected=[...amaSnapshotThemes(snapshot,'aiThemes'),...amaSnapshotThemes(snapshot,'directorThemes')].map(row=>String(row.code||row.id||'').toUpperCase()).filter(Boolean);
   const prompt=`You are preparing an AI-vs-Director diagnostic interview. Using the visual read below, identify up to 12 PrimFusion Themes from the current 91 that are materially plausible competitors or alternatives. This is NOT the final Theme selection and must not change historical results. Include any selected AI/Director codes when they are valid, but do not invent support just to keep them. Return only PFM codes separated by spaces.\n\nVISUAL READ:\n${visualRead}\n\nCURRENT AI/DIRECTOR CODES:\n${selected.join(' ')||'None'}\n\nCURRENT 91 THEMES:\n${amaAllThemeCatalog()}`;
-  let raw='';try{raw=await runStructured(env,model,null,prompt,null,900,'text',{temperature:0.05,amaCandidateAudit:true})}catch{}
+  let raw='';try{raw=await runAmaStructured(env,model,null,prompt,null,900,'text',{temperature:0.05,amaCandidateAudit:true})}catch{}
   const codes=[...new Set([...(String(raw).match(/PFM\d{4}/gi)||[]).map(x=>x.toUpperCase()),...selected])].filter(code=>PRIMFUSION_REGISTRY.aiThemeChoices.some(row=>row.code===code));
   return codes.slice(0,14);
 }
@@ -2847,10 +2862,60 @@ function amaContext(snapshot,visualRead,candidateCodes){
 async function runAmaQuestionBlock(env,model,context,questions){
   const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
   const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
-  const raw=await runStructured(env,model,null,prompt,null,4200,'text',{temperature:0.15,amaInterview:true});
+  const raw=await runAmaStructured(env,model,null,prompt,null,4200,'text',{temperature:0.15,amaInterview:true});
   let answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
-  if(missing.length){const repair=`The prior AMA response omitted some required question IDs. Using the same case context below, answer ONLY the missing IDs. Return exactly ID: answer for each missing ID.\n\n${context}\n\nMISSING QUESTIONS:\n${missing.map(q=>`${q.id}: ${q.question}`).join('\n')}`;try{const raw2=await runStructured(env,model,null,repair,null,2600,'text',{temperature:0,amaInterviewRepair:true}),repaired=parseAmaAnswers(raw2,missing);for(const [id,a] of repaired)answers.set(id,a);}catch{}}
+  if(missing.length){const repair=`The prior AMA response omitted some required question IDs. Using the same case context below, answer ONLY the missing IDs. Return exactly ID: answer for each missing ID.\n\n${context}\n\nMISSING QUESTIONS:\n${missing.map(q=>`${q.id}: ${q.question}`).join('\n')}`;try{const raw2=await runAmaStructured(env,model,null,repair,null,2600,'text',{temperature:0,amaInterviewRepair:true}),repaired=parseAmaAnswers(raw2,missing);for(const [id,a] of repaired)answers.set(id,a);}catch{}}
   return questions.map(q=>({id:q.id,question:q.question,answer:answers.get(q.id)||'AMA did not return an answer for this question.',section:q.section}));
+}
+const AMA_QUESTION_BLOCK_SIZE=9;
+function validateAmaSnapshot(snapshot){
+  const aiThemes=amaSnapshotThemes(snapshot,'aiThemes'),directorThemes=amaSnapshotThemes(snapshot,'directorThemes');
+  if(aiThemes.length!==3)throw new Error('AI AMA requires the current three AI Themes.');
+  if(directorThemes.length<1||directorThemes.length>3)throw new Error('AI AMA requires at least one and at most three Director Themes.');
+  return snapshot;
+}
+function amaQuestionPlan(snapshot){
+  const questions=amaQuestions(snapshot),blocks=[];
+  for(let start=0,index=0;start<questions.length;start+=AMA_QUESTION_BLOCK_SIZE,index++)blocks.push({index,questionIds:questions.slice(start,start+AMA_QUESTION_BLOCK_SIZE).map(q=>q.id)});
+  return{questionCount:questions.length,blockSize:AMA_QUESTION_BLOCK_SIZE,blockCount:blocks.length,blocks};
+}
+async function runAmaVisualStep(env,body){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  const snapshot=validateAmaSnapshot(body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{}),model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
+  const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):(body.imageUrl?await fetchBytes(body.imageUrl):null);
+  if(!image&&!String(snapshot.aiDescription||'').trim())throw new Error('AI AMA requires the current image or an AI Description.');
+  const visualRead=image?String(await runAmaStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
+  if(!visualRead)throw new Error('AI AMA visual read returned no usable description.');
+  const plan=amaQuestionPlan(snapshot);
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'visual',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,visualRead,...plan};
+}
+async function runAmaCandidateStep(env,body){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  const snapshot=validateAmaSnapshot(body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{}),model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,visualRead=String(body?.visualRead||'').trim();
+  if(!visualRead)throw new Error('AI AMA candidate audit requires the saved visual read.');
+  const candidateThemeCodes=await amaCandidateAudit(env,model,visualRead,snapshot),plan=amaQuestionPlan(snapshot);
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'candidates',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,candidateThemeCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateThemeCodes),...plan};
+}
+async function runAmaQuestionChunk(env,model,context,questions){
+  const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
+  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
+  const raw=await runAmaStructured(env,model,null,prompt,null,2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true});
+  let answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
+  if(missing.length){
+    const repair=`The prior AMA response omitted some required question IDs. Using the same case context below, answer ONLY the missing IDs. Return exactly ID: answer for each missing ID.\n\n${context}\n\nMISSING QUESTIONS:\n${missing.map(q=>`${q.id}: ${q.question}`).join('\n')}`;
+    try{const raw2=await runAmaStructured(env,model,null,repair,null,1600,'text',{temperature:0,amaInterviewRepair:true,amaResumableChunkRepair:true}),repaired=parseAmaAnswers(raw2,missing);for(const [id,a] of repaired)answers.set(id,a);}catch{}
+  }
+  missing=questions.filter(q=>!answers.has(q.id));
+  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id)};
+}
+async function runAmaQuestionStep(env,body){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  const snapshot=validateAmaSnapshot(body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{}),model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,visualRead=String(body?.visualRead||'').trim();
+  if(!visualRead)throw new Error('AI AMA question block requires the saved visual read.');
+  const candidateThemeCodes=Array.isArray(body?.candidateThemeCodes)?body.candidateThemeCodes:[],questions=amaQuestions(snapshot),plan=amaQuestionPlan(snapshot),blockIndex=Number(body?.blockIndex);
+  if(!Number.isInteger(blockIndex)||blockIndex<0||blockIndex>=plan.blockCount)throw new Error(`AI AMA blockIndex must be an integer from 0 to ${plan.blockCount-1}.`);
+  const start=blockIndex*AMA_QUESTION_BLOCK_SIZE,block=questions.slice(start,start+AMA_QUESTION_BLOCK_SIZE),context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
@@ -2860,7 +2925,7 @@ async function runAma(env,body){
   if(directorThemes.length<1||directorThemes.length>3)throw new Error('AI AMA requires at least one and at most three Director Themes.');
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):(body.imageUrl?await fetchBytes(body.imageUrl):null);
   if(!image&&!String(snapshot.aiDescription||'').trim())throw new Error('AI AMA requires the current image or an AI Description.');
-  const visualRead=image?String(await runStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
+  const visualRead=image?String(await runAmaStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
   const candidateCodes=await amaCandidateAudit(env,model,visualRead,snapshot),context=amaContext(snapshot,visualRead,candidateCodes),questions=amaQuestions(snapshot),blocks=[questions.slice(0,17),questions.slice(17,35),questions.slice(35,54),questions.slice(54)];
   const answered=[];for(const block of blocks)answered.push(...await runAmaQuestionBlock(env,model,context,block));
   return{schemaVersion:1,amaVersion:'AMA-1',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,visualRead,candidateThemeCodes:candidateCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateCodes),questionCount:answered.length,questions:answered};
@@ -2870,7 +2935,7 @@ async function runAmaFollowup(env,body){
   const snapshot=body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{},question=String(body?.question||'').trim().slice(0,3000);if(!question)throw new Error('AMA follow-up question is required');
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,visualRead=String(body?.visualRead||snapshot.aiDescription||'').trim(),prior=String(body?.priorTranscript||'').slice(0,18000),candidateCodes=Array.isArray(body?.candidateThemeCodes)?body.candidateThemeCodes:[],context=amaContext(snapshot,visualRead,candidateCodes);
   const prompt=`You are answering a Director follow-up question in an existing saved Genreactrix AI AMA. The historical report is immutable; your answer is a new linked Q/A record and must not alter prior answers, Themes, confidence, definitions, image status, or code. Be candid and diagnostic.\n\n${context}\n\nPRIOR AMA TRANSCRIPT (reference only):\n${prior||'Unavailable'}\n\nDIRECTOR QUESTION:\n${question}\n\nReturn only the answer.`;
-  const answer=String(await runStructured(env,model,null,prompt,null,1400,'text',{temperature:0.12,amaFollowup:true})).trim();if(!answer)throw new Error('AMA follow-up returned no answer');return{schemaVersion:1,createdAt:new Date().toISOString(),workerVersion:API_VERSION,model,answer};
+  const answer=String(await runAmaStructured(env,model,null,prompt,null,1400,'text',{temperature:0.12,amaFollowup:true})).trim();if(!answer)throw new Error('AMA follow-up returned no answer');return{schemaVersion:1,createdAt:new Date().toISOString(),workerVersion:API_VERSION,model,answer};
 }
 
 async function analyze(env,body){
@@ -3100,7 +3165,12 @@ export default {
         const body = await request.json().catch(()=>null);
         if (!body) return json({ok:false,error:'JSON body required'},{status:400});
         const mode=String(body.mode||'run');
-        const result=mode==='followup'?await runAmaFollowup(env,body):await runAma(env,body);
+        let result;
+        if(mode==='followup')result=await runAmaFollowup(env,body);
+        else if(mode==='visual')result=await runAmaVisualStep(env,body);
+        else if(mode==='candidates')result=await runAmaCandidateStep(env,body);
+        else if(mode==='question-block')result=await runAmaQuestionStep(env,body);
+        else result=await runAma(env,body);
         return json({ok:true,result});
       }
 
