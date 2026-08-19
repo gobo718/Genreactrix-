@@ -1,5 +1,32 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.74-ai-ama-3q-resumable.
+
+## Worker 0.9.6.74 — Fixed 3-question resumable AI AMA
+
+- Changes the canonical resumable AMA question plan from 9-question blocks to 3-question steps, producing 23 steps for the 68-question interview (22 groups of 3 plus Q67–Q68).
+- A resumable question request accepts at most the three canonical IDs belonging to that step.
+- Each current-granularity interview call makes one provider attempt and returns every usable answer plus explicit missing IDs. It performs no missing-answer repair pass.
+- The site owns the only interview fallback: a failed or partial 3-question step is reduced to one-question calls for the missing IDs.
+- Visual read and candidate-audit reliability behavior is unchanged. AMA history/report semantics, Theme logic, lifecycle isolation, Tuned, SLOP?, definitions, and Matrix behavior remain unchanged. Matrix remains 0.0.0.0.
+
+---
+
+# Genreactrix AI Worker
+
+Current bundled Worker: v0.9.6.73-ai-ama-adaptive-chunks.
+
+## Worker 0.9.6.73 — Adaptive AI AMA question chunks
+
+- Adds canonical question-subset support inside each existing 9-question AMA block, allowing the site to request 9, 3, or 1 question without changing the 68-question bank.
+- Resumable interview question calls now make one 90-second provider attempt at their current granularity. They do not silently retry the same oversized chunk for a second 90-second window.
+- Missing IDs are returned as partial results instead of triggering a hidden repair call; the site checkpoints valid answers and reduces only the missing work.
+- Existing visual read, candidate audit, AMA history/report semantics, Theme logic, lifecycle isolation, Tuned, SLOP?, definitions, and Matrix behavior remain unchanged. Matrix remains 0.0.0.0.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.72-ai-ama-resumable.
 
 ## Worker 0.9.6.72 — Resumable AI AMA execution
