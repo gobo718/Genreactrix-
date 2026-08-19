@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.121</title>
-<link href="styles.css?v=0.9.40.121" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.122</title>
+<link href="styles.css?v=0.9.40.122" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.121</span>
+<span>v0.9.40.122</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.121</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.122</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -577,6 +577,10 @@
 <div class="landscape-judgment-header" aria-label="Fixed reaction header">
 <div aria-label="Primitive reactions" class="tablet-prims-row" id="tabletWorkbenchPrims"></div>
 <div aria-label="AI reaction percentages" class="tablet-prims-percent-row" id="tabletWorkbenchPrimPcts"></div>
+<div class="landscape-ai-status-stack" id="landscapeAiStatusStack" aria-label="AI image status">
+<button id="landscapeSlopBtn" class="landscape-ai-status-tag slop-status-tag" type="button" hidden>SLOP?</button>
+<button id="landscapeTunedBtn" class="landscape-ai-status-tag tuned-status-tag" type="button" hidden>Tuned</button>
+</div>
 <div class="description-rerun-workspace" id="tabletDescriptionRerunWorkspace" hidden aria-label="AI Description rerun guidance">
 <textarea id="tabletDescriptionRerunGuidance" aria-label="AI Description rerun guidance" placeholder="Tap here to write rerun guidance"></textarea>
 </div>
@@ -632,6 +636,7 @@
 <label class="description-rerun-populated-include" id="descriptionRerunPopulatedInclude" hidden><input id="descriptionRerunPopulatedIncludeCheck" type="checkbox"><span>Include</span></label>
 <label class="description-rerun-populated-include theme-rerun-populated-include" id="themeRerunPopulatedInclude" hidden><input id="themeRerunPopulatedIncludeCheck" type="checkbox"><span>Include Description</span></label>
 <label class="description-rerun-populated-include theme-rerun-explain-changes" id="themeRerunExplainChanges" hidden><input id="themeRerunExplainChangesCheck" type="checkbox" checked><span>Theme Edit Log</span></label>
+<button class="theme-rerun-ama-button" id="themeRerunAmaBtn" type="button" hidden>AI AMA</button>
 <div class="landscape-customs-drawer customs-workspace-v63" id="tabletCustomsDrawer" hidden>
 <div class="customs-tab-strip" role="tablist" aria-label="Customs workspace">
 <button id="tabletCustomSearchTab" class="customs-tab active" type="button" role="tab" aria-selected="true" aria-controls="tabletCustomSearchPanel">Custom Search</button>
@@ -729,6 +734,8 @@
       <input id="landscapeFilterInclude_kept" type="checkbox" aria-label="Include Kept"><label>Kept</label><input id="landscapeFilterExclude_kept" type="checkbox" aria-label="Exclude Kept">
       <input id="landscapeFilterInclude_depot" type="checkbox" aria-label="Include Depot"><label>Depot</label><input id="landscapeFilterExclude_depot" type="checkbox" aria-label="Exclude Depot">
       <input id="landscapeFilterInclude_seen" type="checkbox" aria-label="Include Seen"><label>Seen</label><input id="landscapeFilterExclude_seen" type="checkbox" aria-label="Exclude Seen">
+      <input id="landscapeFilterInclude_tuned" type="checkbox" aria-label="Include Tuned"><label>Tuned</label><input id="landscapeFilterExclude_tuned" type="checkbox" aria-label="Exclude Tuned">
+      <input id="landscapeFilterInclude_slop" type="checkbox" aria-label="Include SLOP"><label>SLOP?</label><input id="landscapeFilterExclude_slop" type="checkbox" aria-label="Exclude SLOP">
     </div>
     <div class="landscape-filter-pack">
       <strong>Bundle</strong>
@@ -1264,6 +1271,40 @@
 <section class="theme-change-reasoning-evidence"><strong>Evidence / rerun context</strong><p id="themeChangeReasoningEvidence"></p></section>
 </div>
 </dialog>
+<dialog class="theme-rerun-dialog ama-menu-dialog" id="amaMenuDialog">
+<div class="theme-rerun-dialog-shell ama-menu-shell">
+<header><strong>AI AMA</strong><button type="button" id="amaMenuClose">Return</button></header>
+<p class="ama-menu-note">Interview the AI about the current AI-versus-Director Theme snapshot.</p>
+<div class="ama-menu-actions"><button id="amaRunBtn" type="button">Run AI AMA?</button><button id="amaHistoryBtn" type="button">AMA History</button></div>
+</div>
+</dialog>
+<dialog class="theme-rerun-dialog ama-history-dialog" id="amaHistoryDialog">
+<div class="theme-rerun-dialog-shell ama-history-shell">
+<header><strong>AMA History</strong><button type="button" id="amaHistoryClose">Return</button></header>
+<div id="amaHistoryList" class="ama-history-list"></div>
+</div>
+</dialog>
+<dialog class="theme-rerun-dialog ama-report-dialog" id="amaReportDialog">
+<div class="theme-rerun-dialog-shell ama-report-shell">
+<header><div><strong id="amaReportHeading">AI AMA</strong><small id="amaReportSubheading"></small></div><button type="button" id="amaReportClose">Return</button></header>
+<div class="ama-report-actions"><button id="amaPrintBtn" type="button">Print / Save PDF</button><button id="amaSaveHtmlBtn" type="button">Save HTML</button><button id="amaExportJsonBtn" type="button">Export JSON</button></div>
+<div id="amaReportBody" class="ama-report-body"></div>
+<section class="ama-followup-box"><label for="amaFollowupQuestion">Ask AI anything</label><textarea id="amaFollowupQuestion" placeholder="Ask a follow-up question about this image, the AI Themes, or the Director Themes."></textarea><button id="amaFollowupAskBtn" type="button">Ask</button><div id="amaFollowupStatus" aria-live="polite"></div></section>
+</div>
+</dialog>
+<dialog class="theme-rerun-dialog tuned-history-dialog" id="tunedHistoryDialog">
+<div class="theme-rerun-dialog-shell tuned-history-shell">
+<header><strong>AI History</strong><button type="button" id="tunedHistoryClose">Return</button></header>
+<div id="tunedHistoryBody" class="tuned-history-body"></div>
+</div>
+</dialog>
+<dialog class="theme-rerun-dialog slop-dialog" id="slopDialog">
+<div class="theme-rerun-dialog-shell slop-shell">
+<header><strong>SLOP?</strong><button type="button" id="slopClose">Return</button></header>
+<p id="slopReason"></p><p id="slopConfidence" class="slop-confidence"></p>
+<div class="slop-actions"><button data-slop-action="review" type="button">Yellow</button><button data-slop-action="delete" type="button">Red</button><button data-slop-action="reject" type="button">Hot Magenta</button><button data-slop-action="not-slop" type="button">NOT SLOP</button></div>
+</div>
+</dialog>
 <dialog class="theme-rerun-dialog theme-rerun-preview-dialog" id="themeRerunPreviewDialog">
 <div class="theme-rerun-dialog-shell">
 <header><strong>Preview Request</strong><button type="button" data-theme-rerun-close="themeRerunPreviewDialog">Return</button></header>
@@ -1277,7 +1318,7 @@
 <script src="origin-pack-engine.js?v=0.9.40.37"></script>
 <script src="origin-gate-engine.js?v=0.9.40.37"></script>
 <script src="import-engine.js?v=0.9.40.34"></script>
-<script src="maintenance-engine.js?v=0.9.40.121"></script>
+<script src="maintenance-engine.js?v=0.9.40.122"></script>
 <script src="settings-engine.js?v=0.9.40.61"></script>
 <script src="director-classification-engine.js?v=0.9.40.37"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -1311,8 +1352,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="app.js?v=0.9.40.121"></script>
-<script src="danger-zone-engine.js?v=0.9.40.121"></script>
+<script src="app.js?v=0.9.40.122"></script>
+<script src="danger-zone-engine.js?v=0.9.40.122"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1327,12 +1368,12 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="quarantine-engine.js?v=0.9.40.121"></script>
-<script src="queue-engine.js?v=0.9.40.121"></script>
+<script src="quarantine-engine.js?v=0.9.40.122"></script>
+<script src="queue-engine.js?v=0.9.40.122"></script>
 <script src="investigation-ui.js?v=0.9.40.43"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.40.121"></script>
-<script src="prompt-diagnostics-engine.js?v=0.9.40.121"></script>
-<script src="reports-engine.js?v=0.9.40.121"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.40.122"></script>
+<script src="prompt-diagnostics-engine.js?v=0.9.40.122"></script>
+<script src="reports-engine.js?v=0.9.40.122"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -1343,13 +1384,14 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="post-processing-engine.js?v=0.9.40.121"></script>
-<script src="housekeeping-engine.js?v=0.9.40.121"></script>
-<script src="batch-engine.js?v=0.9.40.121"></script>
+<script src="post-processing-engine.js?v=0.9.40.122"></script>
+<script src="housekeeping-engine.js?v=0.9.40.122"></script>
+<script src="batch-engine.js?v=0.9.40.122"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.121"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.122"></script>
+<script src="ama-engine.js?v=0.9.40.122"></script>
 <script src="home-count-engine.js?v=0.9.40.31"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">

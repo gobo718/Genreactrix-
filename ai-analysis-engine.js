@@ -252,6 +252,7 @@
       if(result.components?.reactionDiagnostics) returned.reactionDiagnostics=result.components.reactionDiagnostics;
       if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
       if(result.components?.themeRerunDiagnostics) returned.themeRerunDiagnostics=clone(result.components.themeRerunDiagnostics);
+      if(result.components?.slopAssessment) returned.slopAssessment=clone(result.components.slopAssessment);
 
       record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
       const latest=record.analysis?.ai||previous;
@@ -261,6 +262,13 @@
       const stored=await artifactEngine.recordSuccess({record,attemptId:artifactAttempt.id,requested,returned,mergedComponents,result,mode});artifactAttemptCompleted=true;
       const analysis={...latest,components:mergedComponents,provider:result.provider||latest.provider||{},model:result.model||result.provider?.model||latest.model||'',promptVersions:{...(latest.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(latest.requested||[]),...requested])],researchConfiguration:{...(latest.researchConfiguration||{}),...(result.researchConfiguration||{})},artifactHistory:stored.artifactHistory,recordedAt:now(),jobId:job.id};
       window.genreactrixImageRecordEngine.attachAI(record.id,analysis,componentUpdates);
+      const rerunCompleted=Object.values(componentBehaviors||{}).some(value=>value==='reanalyze');
+      const liveAfterAi=window.genreactrixImageRecordEngine.get(record.id,{touch:false});
+      const extAfterAi=liveAfterAi?.metadata?.extended||{};
+      const metadataPatch={};
+      if(rerunCompleted){metadataPatch.aiTuned=true;metadataPatch.aiTunedAt=now();metadataPatch.aiTunedCount=(Number(extAfterAi.aiTunedCount)||0)+1;metadataPatch.aiTunedAttemptId=artifactAttempt.id;metadataPatch.aiTunedJobId=job.id;}
+      if(result.components?.slopAssessment){metadataPatch.aiSlopAssessment=clone(result.components.slopAssessment);metadataPatch.aiSlopAssessmentAttemptId=artifactAttempt.id;metadataPatch.aiSlopAssessmentJobId=job.id;}
+      if(Object.keys(metadataPatch).length)window.genreactrixImageRecordEngine.update(record.id,{metadata:{extended:metadataPatch}},rerunCompleted?'ai-tuned-metadata':'ai-slop-advisory-metadata');
       await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{attemptId:artifactAttempt.id,artifactRefs:stored.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:{...returned,...(descriptionEdit!==null?{descriptionEdit}:{}),...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id,artifactHistory:stored.artifactHistory},componentUpdates,directorGuidance:guidance,reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),partial:false}});
     }catch(error){
       const message=`${requested.join('+')}: ${String(error.message||error)}`;errors.push(message);

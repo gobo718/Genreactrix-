@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.121";
+const GENREACTRIX_BUILD="v0.9.40.122";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -239,16 +239,16 @@ const state = {
 };
 
 // Queue owns AI-complete images as Staged until the Bundle Engine moves them into Inbox.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v4";
-const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v5";
+const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v4","genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
 const LEGACY_SIDELINE_FILTER_KEY=["par","ked"].join("");
-const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen"];
+const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen","tuned","slop"];
 const SORT_MODES=new Set(["bundle","newest","oldest","filename","random"]);
 const defaultLandscapeFilter=()=>({
   all:false,
   feed:true,
-  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
-  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
+  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false},
+  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false},
   bundleId:null,
   sort:"bundle",
   randomSeed:0
@@ -305,6 +305,12 @@ function aiOutputRecords(){return (window.genreactrixImagesEngine?.allRecords?.(
 function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!['quarantine','defective'].includes(String(record.workflow?.stage||''))&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyInInbox(record));}
 window.genreactrixInboxAiOutputRecords=()=>aiOutputRecords().map(record=>structuredClone(record));
 window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
+function recordIsTuned(record){
+  const ext=record?.metadata?.extended||{};if(ext.aiTuned)return true;
+  const refs=Object.values(record?.analysis?.ai?.artifactHistory?.currentArtifacts||{});return refs.some(ref=>(Number(ref?.version)||0)>1);
+}
+function recordSlopAssessment(record){return record?.metadata?.extended?.aiSlopAssessment||record?.analysis?.ai?.components?.slopAssessment||null}
+function recordHasSlopSuggestion(record){const assessment=recordSlopAssessment(record);if(!assessment?.detected)return false;const review=record?.metadata?.extended?.slopDirectorReview||null;if(review?.decision==='not-slop'&&String(review.assessmentId||'')===String(assessment.assessmentId||''))return false;return true}
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
@@ -312,6 +318,8 @@ function recordMatchesFilterCategory(record,key){
   if(key==="kept")return Boolean(record.attributes?.saved);
   if(key==="depot")return Boolean(record.attributes?.depot);
   if(key==="seen")return Boolean(record.attributes?.seen);
+  if(key==="tuned")return recordIsTuned(record);
+  if(key==="slop")return recordHasSlopSuggestion(record);
   return false;
 }
 function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage==="inbox-working";}
@@ -1389,7 +1397,7 @@ async function submitThemeRerun(){
 }
 
 function renderThemeRerunChrome(){
-  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls'),descriptionInclude=$('themeRerunPopulatedInclude'),descriptionIncludeCheck=$('themeRerunPopulatedIncludeCheck'),explain=$('themeRerunExplainChanges'),explainCheck=$('themeRerunExplainChangesCheck');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));const exclusions=$('themeRerunExclusionsBtn'),exclusionCount=active?themeRerunExcludedCodes().length:0;if(exclusions){exclusions.classList.toggle('has-data',Boolean(exclusionCount));exclusions.setAttribute('aria-label',exclusionCount?`Theme Exclusions, ${exclusionCount} selected`:'Theme Exclusions');}const displayedDescription=active?themeRerunDisplayedDescriptionItem():null,descriptionCount=active?themeRerunIncludedDescriptionCount():0,descriptionsBtn=$('themeRerunDescriptionsBtn');if(descriptionInclude){descriptionInclude.hidden=!active||!displayedDescription;if(descriptionIncludeCheck)descriptionIncludeCheck.checked=Boolean(displayedDescription&&(themeRerunWorkspace.current?.includedDescriptionIds||[]).includes(String(displayedDescription.id)));}if(explain){explain.hidden=!active;if(explainCheck)explainCheck.checked=themeRerunWorkspace.current?.explainChanges!==false;}if(descriptionsBtn){descriptionsBtn.classList.toggle('has-data',Boolean(descriptionCount));descriptionsBtn.setAttribute('aria-label',descriptionCount?`Descriptions, ${descriptionCount} included`:'Descriptions');}
+  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls'),descriptionInclude=$('themeRerunPopulatedInclude'),descriptionIncludeCheck=$('themeRerunPopulatedIncludeCheck'),explain=$('themeRerunExplainChanges'),explainCheck=$('themeRerunExplainChangesCheck');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));const exclusions=$('themeRerunExclusionsBtn'),exclusionCount=active?themeRerunExcludedCodes().length:0;if(exclusions){exclusions.classList.toggle('has-data',Boolean(exclusionCount));exclusions.setAttribute('aria-label',exclusionCount?`Theme Exclusions, ${exclusionCount} selected`:'Theme Exclusions');}const displayedDescription=active?themeRerunDisplayedDescriptionItem():null,descriptionCount=active?themeRerunIncludedDescriptionCount():0,descriptionsBtn=$('themeRerunDescriptionsBtn');if(descriptionInclude){descriptionInclude.hidden=!active||!displayedDescription;if(descriptionIncludeCheck)descriptionIncludeCheck.checked=Boolean(displayedDescription&&(themeRerunWorkspace.current?.includedDescriptionIds||[]).includes(String(displayedDescription.id)));}if(explain){explain.hidden=!active;if(explainCheck)explainCheck.checked=themeRerunWorkspace.current?.explainChanges!==false;}const amaButton=$('themeRerunAmaBtn');if(amaButton){const aiCount=amaAiThemes().length,directorCount=amaDirectorThemes().length;amaButton.hidden=!active;amaButton.disabled=!active||aiCount!==3||directorCount<1;amaButton.title=directorCount<1?'AI AMA requires at least one Director Theme.':aiCount!==3?'AI AMA requires the current three AI Themes.':'Interview AI about the current AI-versus-Director Theme snapshot.';}if(descriptionsBtn){descriptionsBtn.classList.toggle('has-data',Boolean(descriptionCount));descriptionsBtn.setAttribute('aria-label',descriptionCount?`Descriptions, ${descriptionCount} included`:'Descriptions');}
   for(let slot=1;slot<=3;slot++){const cell=$(`tabletWorkbenchAiTheme${slot}`)?.closest('.tablet-theme-cell');if(!cell)continue;const state=active?(themeRerunWorkspace.current?.themeStates?.[slot]||'neutral'):'neutral';cell.classList.toggle('theme-rerun-replace',active&&state==='replace');cell.classList.toggle('theme-rerun-preserve',active&&state==='preserve');const changeReason=!active&&!descriptionRerunWorkspace.active&&!reactionRerunWorkspace.active?themeChangeReasoningForDisplaySlot(slot):null;cell.classList.toggle('theme-change-reasoning-available',Boolean(changeReason));cell.dataset.themeRerunState=active?state:'';if(active){cell.tabIndex=0;cell.setAttribute('role','button');const theme=themeRerunAiThemeSnapshot(slot);cell.setAttribute('aria-label',`Theme ${slot}${theme?.label?` ${theme.label}`:''}: ${state==='replace'?'replace':state==='preserve'?'preserve':'neutral'}. Tap to cycle.`);}else if(changeReason&&!descriptionRerunWorkspace.active){cell.tabIndex=0;cell.setAttribute('role','button');cell.setAttribute('aria-label',`${changeReason.after?.label||`Theme ${slot}`} changed in the latest Theme rerun. Tap for reasoning.`);}else if(!descriptionRerunWorkspace.active){cell.tabIndex=-1;cell.setAttribute('role','group');cell.removeAttribute('aria-label');}}
   if(!active&&!descriptionRerunWorkspace.active&&!reactionRerunWorkspace.active){const key=String(currentKey()),cached=themeChangeReasoningCache.get(key),artifactId=String(themeRerunHistoryCurrentArtifactId(key)||'');if(!cached||String(cached.artifactId||'')!==artifactId)scheduleThemeChangeReasoningRefresh();}
   if(active&&themeRerunWorkspace.pickerOpen)renderThemeRerunPrimPicker();
@@ -1398,6 +1406,72 @@ async function activateThemeRerunImage(){if(!themeRerunWorkspace.active)return;t
 async function openThemeRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(themeRerunWorkspace.active)return;if(reactionRerunWorkspace.active)closeReactionRerunWorkspace();if(descriptionRerunWorkspace.active)closeDescriptionRerunWorkspace();themeRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};themeRerunWorkspace.active=true;themeRerunWorkspace.pickerOpen=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateThemeRerunImage()}
 function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveThemeRerunCurrent();themeRerunWorkspace.active=false;themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.pendingScopeChange=null;clearTimeout(themeRerunWorkspace.longPressTimer);clearTimeout(themeRerunWorkspace.descriptionsTimer);const prior=themeRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);themeRerunWorkspace.preDrawer=null;themeRerunWorkspace.imageId=null;themeRerunWorkspace.current=null;themeRerunWorkspace.descriptionCatalog=[];themeRerunWorkspace.themeHistoryCatalog=[];themeRerunWorkspace.descriptionsLongPress=false;renderTabletWorkbench()}
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
+
+
+// v0.9.40.122 — AI AMA, Tuned lineage, and SLOP? advisory Director tools.
+const AMA_UI_COLOR='#EF806C';
+const amaUiState={reportId:null,running:false};
+function amaEsc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function amaDirectorThemes(){return(state.themes||[]).map((theme,index)=>{if(!theme)return null;const label=themeLabel(theme),fusion=themeRerunFusionFromLabel(label),rawId=String(theme?.id||'');return{slot:index+1,code:fusion?.code||(rawId.toUpperCase().startsWith('PFM')?rawId.toUpperCase():null),label,kind:theme?.kind||'director'};}).filter(Boolean)}
+function amaAiThemes(){return(currentAiRun()?.themes||[]).map((row,index)=>({slot:Number(row?.rank)||index+1,code:String(row?.id||row?.code||'').toUpperCase()||null,label:String(row?.label||row?.name||''),confidence:Number(row?.weight??row?.confidence)||0})).sort((a,b)=>b.confidence-a.confidence).slice(0,3)}
+function currentSlopAssessment(){return recordSlopAssessment(currentImageRecord())}
+function buildAmaSnapshot(){
+  const record=currentImageRecord();if(!record)throw new Error('No current image is available.');
+  const aiThemes=amaAiThemes(),directorThemes=amaDirectorThemes();
+  if(aiThemes.length!==3)throw new Error('AI AMA requires the current three AI Themes.');
+  if(directorThemes.length<1)throw new Error('AI AMA requires at least one Director Theme.');
+  let rerunContext=null;try{if(themeRerunWorkspace.active)rerunContext=buildThemeRerunPreviewSpec()}catch{}
+  const ai=record.analysis?.ai||{};
+  return{schemaVersion:1,imageId:String(record.id),filename:record.source?.originalFilename||record.name||record.id,createdAt:record.createdAt||'',siteVersion:GENREACTRIX_BUILD,aiThemes,directorThemes,aiDescription:String(currentAiRun()?.description||currentDescription()||''),slopAssessment:currentSlopAssessment(),directorReactions:[...state.selectedReactions],rerunContext,aiContext:{provider:ai.provider||{},model:ai.model||'',promptVersions:ai.promptVersions||{},recordedAt:ai.recordedAt||'',jobId:ai.jobId||null,artifactHistory:ai.artifactHistory||null}};
+}
+function amaBlobDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)})}
+async function amaPreparedImageInput(record){
+  const remote=record?.storage?.hyperlink||record?.source?.originalUrl||'';if(record?.storage?.mode==='linked'&&/^https:\/\//i.test(remote))return{imageUrl:remote};
+  let blob=await imageBlobGet(record.id).catch(()=>null);if(!blob&&/^https:\/\//i.test(remote))return{imageUrl:remote};if(!blob)return{};
+  try{
+    if(blob.size<=3_800_000)return{imageDataUrl:await amaBlobDataUrl(blob)};
+    const bitmap=await createImageBitmap(blob),max=1600,scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();const reduced=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.88));return{imageDataUrl:await amaBlobDataUrl(reduced||blob)};
+  }catch{return{imageDataUrl:await amaBlobDataUrl(blob)}}
+}
+function renderAiStatusTags(){
+  const record=currentImageRecord(),tuned=$('landscapeTunedBtn'),slop=$('landscapeSlopBtn'),has=Boolean(record)&&!state.feedEmpty;
+  if(tuned)tuned.hidden=!has||!recordIsTuned(record);
+  if(slop)slop.hidden=!has||!recordHasSlopSuggestion(record);
+}
+async function openTunedHistory(){
+  const record=currentImageRecord();if(!record)return;const body=$('tunedHistoryBody');if(!body)return;body.innerHTML='<p>Loading AI history…</p>';$('tunedHistoryDialog')?.showModal();
+  try{
+    await window.genreactrixAiArtifactEngine?.ensureImageReady?.(record.id).catch(()=>{});
+    const [attempts,artifacts,timeline]=await Promise.all([window.genreactrixAiArtifactEngine?.attemptsForImage?.(record.id)||[],window.genreactrixAiArtifactEngine?.artifactsForImage?.(record.id)||[],window.genreactrixHistoryEngine?.timeline?.(record.id)||[]]);
+    const byAttempt=new Map();for(const artifact of artifacts){const key=String(artifact.attemptId||'unlinked');if(!byAttempt.has(key))byAttempt.set(key,[]);byAttempt.get(key).push(artifact)}
+    body.innerHTML='';const intro=document.createElement('details');intro.open=true;intro.innerHTML=`<summary>Current AI projection</summary><pre>${amaEsc(JSON.stringify(record.analysis?.ai||{},null,2))}</pre>`;body.append(intro);
+    attempts.sort((a,b)=>String(a.startedAt||'').localeCompare(String(b.startedAt||''))).forEach((attempt,index)=>{const d=document.createElement('details'),rerun=/rerun/i.test(String(attempt.mode||''))||Object.values(attempt.componentBehaviors||{}).some(x=>x==='reanalyze');const linked=byAttempt.get(String(attempt.id))||[];d.innerHTML=`<summary>${index===0?'Origin AI scan':rerun?'AI rerun':'AI analysis'} · ${amaEsc(new Date(attempt.startedAt||Date.now()).toLocaleString())} · ${amaEsc((attempt.components||[]).join(' + '))}</summary><pre>${amaEsc(JSON.stringify({attempt,artifacts:linked},null,2))}</pre>`;body.append(d)});
+    const h=document.createElement('details');h.innerHTML=`<summary>Full image history timeline · ${timeline.length} events</summary><pre>${amaEsc(JSON.stringify(timeline,null,2))}</pre>`;body.append(h);
+  }catch(error){body.innerHTML=`<p>AI history could not be loaded: ${amaEsc(error?.message||error)}</p>`}
+}
+function openSlopDecision(){const assessment=currentSlopAssessment();if(!assessment?.detected)return;const reason=$('slopReason'),confidence=$('slopConfidence');if(reason)reason.textContent=assessment.reason||'AI marked this image as possible SLOP.';if(confidence)confidence.textContent=`AI SLOP advisory confidence: ${Number(assessment.confidence)||0}%`;safelyShowDialog($('slopDialog'))}
+async function applySlopDecision(decision){
+  const record=currentImageRecord(),assessment=currentSlopAssessment();if(!record||!assessment)return;const at=new Date().toISOString();
+  if(decision==='not-slop')window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{slopDirectorReview:{decision:'not-slop',assessmentId:assessment.assessmentId||null,at}}}},'slop-director-not-slop');
+  else{const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(record.id,decision);state.flagged=Boolean(updated?.attributes?.flagged);window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{slopDirectorReview:{decision,assessmentId:assessment.assessmentId||null,at}}}},'slop-director-disposition');}
+  $('slopDialog')?.close();landscapeFeedDirty=true;await rehydrateLandscapeFeed().catch(()=>{});renderAll();renderTabletWorkbench();
+}
+function openAmaMenu(){const button=$('amaRunBtn'),directorCount=amaDirectorThemes().length,aiCount=amaAiThemes().length;if(button){button.disabled=directorCount<1||aiCount!==3;button.title=directorCount<1?'Select at least one Director Theme first.':aiCount!==3?'Three AI Themes are required.':'';}safelyShowDialog($('amaMenuDialog'))}
+function amaPriorTranscript(bundle){const report=bundle?.report;if(!report)return'';const core=(report.interview?.questions||[]).map(q=>`Q: ${q.question}\nA: ${q.answer}`).join('\n\n'),follow=(bundle.followups||[]).map(q=>`Q: ${q.question}\nA: ${q.answer}`).join('\n\n');return(core+'\n\n'+follow).slice(0,18000)}
+async function runAmaCurrent(){
+  if(amaUiState.running)return;const record=currentImageRecord(),engine=window.genreactrixAmaEngine;if(!record||!engine)throw new Error('AMA Engine is unavailable.');if(!window.GenreactrixCloudApi?.isConfigured?.())throw new Error('AI Worker is not configured.');
+  const snapshot=buildAmaSnapshot(),imageInput=await amaPreparedImageInput(record);amaUiState.running=true;const runBtn=$('amaRunBtn');if(runBtn){runBtn.disabled=true;runBtn.textContent='Running AMA…'};setDirectorStatus(`Running AI AMA · ${snapshot.directorThemes.length} Director Theme${snapshot.directorThemes.length===1?'':'s'} vs 3 AI Themes…`);
+  try{const payload=await window.GenreactrixCloudApi.ama({mode:'run',snapshot,...imageInput},window.GenreactrixCloudApi.getKey()),interview=payload.result||payload.report||payload;if(!interview?.questions?.length)throw new Error('AI AMA returned no interview questions.');const report=await engine.createReport({imageId:record.id,snapshot,interview,worker:{version:interview.workerVersion||''},siteVersion:GENREACTRIX_BUILD,matrixVersion:interview.matrixVersion||'0.0.0.0'});$('amaMenuDialog')?.close();await openAmaReport(report.id);setDirectorStatus(`AI AMA ${report.sequence} saved.`);}
+  finally{amaUiState.running=false;if(runBtn){runBtn.disabled=false;runBtn.textContent='Run AI AMA?'}}
+}
+async function renderAmaHistory(){const list=$('amaHistoryList'),engine=window.genreactrixAmaEngine,record=currentImageRecord();if(!list||!engine||!record)return;list.innerHTML='<p>Loading AMA History…</p>';const reports=await engine.reportsForImage(record.id);list.innerHTML='';if(!reports.length){list.innerHTML='<p>No saved AMAs for this image.</p>';return}for(const report of [...reports].reverse()){const bundle=await engine.getReportBundle(report.id),row=document.createElement('div');row.className='ama-history-row';const b=document.createElement('button');b.type='button';b.innerHTML=`<strong>${amaEsc(report.title)}</strong><small>${report.interview?.questionCount||report.interview?.questions?.length||0} core Q&amp;A${bundle?.followups?.length?` · ${bundle.followups.length} follow-up${bundle.followups.length===1?'':'s'}`:''}</small>`;b.addEventListener('click',()=>openAmaReport(report.id));const outcome=document.createElement('span');outcome.className='ama-history-outcome';const last=bundle?.outcomes?.at(-1);outcome.textContent=last?(last.verdict==='agreement'?'Post-Batch: Agreement':'Post-Batch: Director final'):'';row.append(b,outcome);list.append(row)}}
+function amaThemeListHtml(rows=[],withConfidence=false){return rows.length?`<ul>${rows.map(row=>`<li>${amaEsc(row.label||row.name||row.code||'—')}${withConfidence&&Number.isFinite(Number(row.confidence))?` · ${Number(row.confidence)}%`:''}</li>`).join('')}</ul>`:'<p>—</p>'}
+async function amaReportHtml(bundle,{standalone=false}={}){const report=bundle.report,snapshot=report.snapshot||{},questions=report.interview?.questions||[],sections=[];for(const q of questions){let sec=sections.find(x=>x.name===q.section);if(!sec){sec={name:q.section||'Interview',rows:[]};sections.push(sec)}sec.rows.push(q)}const outcome=bundle.outcomes?.at(-1),styles=standalone?'<style>body{font-family:system-ui;background:#fff;color:#111;max-width:900px;margin:auto;padding:24px}h1{font-size:22px}.qa{border-top:1px solid #bbb;padding:10px 0}.q{font-weight:800}.a{white-space:pre-wrap}.snapshot{display:grid;grid-template-columns:1fr 1fr;gap:16px}.meta{color:#555;font-size:12px}@media print{button{display:none}}</style>':'';return`${styles}<article class="ama-export"><h1>${amaEsc(report.title)}</h1><p class="meta">Site ${amaEsc(report.siteVersion)} · Worker ${amaEsc(report.worker?.version||report.interview?.workerVersion||'')} · Matrix ${amaEsc(report.matrixVersion)}</p><div class="snapshot"><section><h2>AI Themes</h2>${amaThemeListHtml(snapshot.aiThemes||[],true)}</section><section><h2>Director Themes</h2>${amaThemeListHtml(snapshot.directorThemes||[],false)}</section></div>${outcome?`<section><h2>Post-Batch outcome</h2><p>${outcome.verdict==='agreement'?'AI and final Director Theme sets agreed.':'Director final Theme set differed from the AMA AI Theme set.'}</p>${amaThemeListHtml(outcome.finalDirectorThemes||[],false)}</section>`:''}${sections.map(sec=>`<section><h2>${amaEsc(sec.name)}</h2>${sec.rows.map(q=>`<div class="qa"><div class="q">Q: ${amaEsc(q.question)}</div><div class="a">A: ${amaEsc(q.answer)}</div></div>`).join('')}</section>`).join('')}${bundle.followups?.length?`<section><h2>Follow-up AMA</h2>${bundle.followups.map(q=>`<div class="qa"><div class="q">Q: ${amaEsc(q.question)}</div><div class="a">A: ${amaEsc(q.answer)}</div></div>`).join('')}</section>`:''}</article>`}
+async function renderAmaReport(bundle){const report=bundle.report,body=$('amaReportBody');if(!body)return;$('amaReportHeading').textContent=`AI AMA ${report.sequence}`;$('amaReportSubheading').textContent=report.title;const snapshot=report.snapshot||{},questions=report.interview?.questions||[],sections=[];for(const q of questions){let sec=sections.find(x=>x.name===q.section);if(!sec){sec={name:q.section||'Interview',rows:[]};sections.push(sec)}sec.rows.push(q)}body.innerHTML=`<div class="ama-report-snapshot"><section><h4>AI Themes</h4>${amaThemeListHtml(snapshot.aiThemes||[],true)}</section><section><h4>Director Themes</h4>${amaThemeListHtml(snapshot.directorThemes||[],false)}</section></div>${bundle.outcomes?.length?`<section class="ama-outcome-card"><h4>Post-Batch outcome</h4><p>${bundle.outcomes.at(-1).verdict==='agreement'?'Agreement — final Director Theme set matches the AMA AI Theme set.':'Director final — final Director Theme set differs from the AMA AI Theme set.'}</p>${amaThemeListHtml(bundle.outcomes.at(-1).finalDirectorThemes||[],false)}</section>`:''}${sections.map(sec=>`<section class="ama-report-section"><h3 class="ama-report-section-title">${amaEsc(sec.name)}</h3>${sec.rows.map(q=>`<div class="ama-qa"><div class="q">${amaEsc(q.question)}</div><div class="a">${amaEsc(q.answer)}</div></div>`).join('')}</section>`).join('')}${bundle.followups?.length?`<section class="ama-report-section"><h3 class="ama-report-section-title">Follow-up AMA</h3>${bundle.followups.map(q=>`<div class="ama-followup-row"><div class="q">Q: ${amaEsc(q.question)}</div><div class="a">A: ${amaEsc(q.answer)}</div></div>`).join('')}</section>`:''}`}
+async function openAmaReport(reportId){const engine=window.genreactrixAmaEngine,bundle=await engine?.getReportBundle?.(reportId);if(!bundle)return;amaUiState.reportId=reportId;await renderAmaReport(bundle);$('amaHistoryDialog')?.close();safelyShowDialog($('amaReportDialog'))}
+function amaDownloadText(text,filename,type){const blob=new Blob([text],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1200)}
+async function currentAmaBundle(){return amaUiState.reportId?window.genreactrixAmaEngine?.getReportBundle?.(amaUiState.reportId):null}
+async function askAmaFollowup(){const bundle=await currentAmaBundle(),question=String($('amaFollowupQuestion')?.value||'').trim();if(!bundle||!question)return;const status=$('amaFollowupStatus'),btn=$('amaFollowupAskBtn');if(btn)btn.disabled=true;if(status)status.textContent='Asking AI…';try{const payload=await window.GenreactrixCloudApi.ama({mode:'followup',snapshot:bundle.report.snapshot,visualRead:bundle.report.interview?.visualRead||'',candidateThemeCodes:bundle.report.interview?.candidateThemeCodes||[],priorTranscript:amaPriorTranscript(bundle),question},window.GenreactrixCloudApi.getKey()),result=payload.result||payload;await window.genreactrixAmaEngine.addFollowup(bundle.report.id,question,result.answer,{workerVersion:result.workerVersion||''});$('amaFollowupQuestion').value='';if(status)status.textContent='Follow-up saved.';await renderAmaReport(await currentAmaBundle());}catch(error){if(status)status.textContent=`Follow-up failed: ${error?.message||error}`}finally{if(btn)btn.disabled=false}}
 
 // v0.9.40.49 — AI Description rerun workstation.
 // The Reaction rectangle is temporarily repurposed as the guidance surface.
@@ -1678,6 +1752,7 @@ function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
   const hasImage=!state.feedEmpty;
+  renderAiStatusTags();
   if(hasImage){
     $("landscapeFeedEmpty")?.setAttribute("hidden","");
     if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
@@ -1805,9 +1880,11 @@ function renderTabletWorkbench(){
       const descriptionInclude=$("descriptionRerunPopulatedInclude");
       const themeInclude=$("themeRerunPopulatedInclude");
       const themeExplain=$("themeRerunExplainChanges");
+      const themeAma=$("themeRerunAmaBtn");
       if(descriptionInclude)descriptionInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
       if(themeInclude)themeInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
       if(themeExplain)themeExplain.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
+      if(themeAma)themeAma.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
 
       /* v0.9.40.58 — mirrored Include reserve must be recalculated from the
          real baseline on every render. Clear the prior dynamic reserve first;
@@ -3258,6 +3335,22 @@ $("themeChangeReasoningClose")?.addEventListener("click",()=>$("themeChangeReaso
 $("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 $("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.current.explainChanges=Boolean(event.target.checked);saveThemeRerunCurrent();renderThemeRerunChrome();});
+// v0.9.40.122 — AI AMA / Tuned / SLOP Director diagnostics.
+$("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
+$("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
+$("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());
+$("slopClose")?.addEventListener("click",()=>$("slopDialog")?.close());
+document.querySelectorAll("[data-slop-action]").forEach(button=>button.addEventListener("click",()=>applySlopDecision(button.dataset.slopAction).catch(error=>{console.error("SLOP Director disposition failed",error);alert(error?.message||String(error));})));
+$("themeRerunAmaBtn")?.addEventListener("click",()=>openAmaMenu());
+$("amaMenuClose")?.addEventListener("click",()=>$("amaMenuDialog")?.close());
+$("amaRunBtn")?.addEventListener("click",()=>runAmaCurrent().catch(error=>{console.error("AI AMA failed",error);setDirectorStatus(`AI AMA failed: ${error?.message||error}`);alert(`AI AMA failed: ${error?.message||error}`);}));
+$("amaHistoryBtn")?.addEventListener("click",()=>{renderAmaHistory().then(()=>{$("amaMenuDialog")?.close();safelyShowDialog($("amaHistoryDialog"));}).catch(error=>{console.error("AMA History failed",error);alert(error?.message||String(error));})});
+$("amaHistoryClose")?.addEventListener("click",()=>$("amaHistoryDialog")?.close());
+$("amaReportClose")?.addEventListener("click",()=>$("amaReportDialog")?.close());
+$("amaFollowupAskBtn")?.addEventListener("click",()=>askAmaFollowup());
+$("amaPrintBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;const html=await amaReportHtml(bundle,{standalone:true}),win=window.open("","_blank","noopener,noreferrer");if(!win){alert("Print window could not be opened.");return}win.document.open();win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`);win.document.close();win.focus();setTimeout(()=>win.print(),120);});
+$("amaSaveHtmlBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;const html=await amaReportHtml(bundle,{standalone:true}),doc=`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`;amaDownloadText(doc,`Genreactrix_AI_AMA_${bundle.report.sequence}_${bundle.report.imageId}.html`,"text/html;charset=utf-8");});
+$("amaExportJsonBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;amaDownloadText(JSON.stringify(bundle,null,2),`Genreactrix_AI_AMA_${bundle.report.sequence}_${bundle.report.imageId}.json`,"application/json;charset=utf-8");});
 const themeDescriptionsButton=$("themeRerunDescriptionsBtn");
 themeDescriptionsButton?.addEventListener("pointerdown",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.descriptionsLongPress=false;clearTimeout(themeRerunWorkspace.descriptionsTimer);themeDescriptionsButton.setPointerCapture?.(event.pointerId);themeRerunWorkspace.descriptionsTimer=setTimeout(()=>{themeRerunWorkspace.descriptionsLongPress=true;renderThemeRerunDescriptionsDialog();$("themeRerunDescriptionsDialog")?.showModal();},520);});
 themeDescriptionsButton?.addEventListener("pointerup",()=>{if(!themeRerunWorkspace.active)return;clearTimeout(themeRerunWorkspace.descriptionsTimer);if(!themeRerunWorkspace.descriptionsLongPress){const prior=themeRerunWorkspace.descriptionCatalog.find(item=>!item.current)||themeRerunWorkspace.descriptionCatalog[0];if(prior)populateThemeRerunDescription(prior.id);}themeRerunWorkspace.descriptionsLongPress=false;});
