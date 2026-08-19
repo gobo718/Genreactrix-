@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.63-theme-edit-log-comparative-reason-fix
+/* Genreactrix AI Worker v0.9.6.64-theme-rerun-frozen-evidence
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.63-theme-edit-log-comparative-reason-fix';
+const API_VERSION = '0.9.6.64-theme-rerun-frozen-evidence';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -818,7 +818,41 @@ function themeRerunCandidateSets(rerun){
   if(!canAssign(0,new Set()))throw new Error('Theme Rerun constraints cannot produce three different Theme codes. Relax a Mandatory, Forbidden, or Theme Exclusion choice.');
   return sets;
 }
-function themeRerunPrompt(rerun,sets){
+function themeRerunEvidencePrompt(rerun){
+  const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
+  return `THEME RERUN — FROZEN EVIDENCE PASS.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Your only job is to make a compact ledger of evidence that exists BEFORE Theme selection.\n\nRecord concrete, atomic facts from the image and, when present, facts explicitly supplied by the included AI Description. Prefer directly visible properties: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other observable details. Do not add moods, metaphors, analogies, intentions, personalities, emotional qualities, or thematic interpretations unless the included Description explicitly states them; if it does, mark that item as description rather than image. Do not convert an ordinary visual fact into a semantic conclusion.\n\nThe image is authoritative. Description-derived evidence may supplement it but may not contradict what is visible. Keep each ledger item to one fact. Aim for 5–12 useful facts.\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nOUTPUT FORMAT — REQUIRED:\nE1|image|one concrete fact\nE2|image|one concrete fact\nE3|description|one explicitly supplied description fact\n\nUse sequential E-numbers. Use source image or description only. If no Description is included, every item must use image. Return only ledger lines and nothing else.`;
+}
+function parseThemeRerunEvidenceLedger(raw,rerun){
+  const text=String(raw||'').replace(/\r/g,'').trim();if(!text)throw new Error('Theme Rerun evidence pass returned an empty response.');
+  const allowDescription=rerun.includedDescriptions.length>0,rows=[];
+  for(const line of text.split('\n')){
+    const cleaned=line.replace(/^\s*[-*•]+\s*/,'').trim().replace(/^\|\s*/,'').replace(/\s*\|$/,'');
+    const m=cleaned.match(/^E(\d{1,2})\s*\|\s*(image|description)\s*\|\s*(.+)$/i);if(!m)continue;
+    const source=m[2].toLowerCase();if(source==='description'&&!allowDescription)continue;
+    let fact=String(m[3]||'').replace(/\*{1,2}/g,'').trim().replace(/\s+/g,' ');if(!fact||/\bPFM\d{4}\b/i.test(fact))continue;
+    rows.push({source,fact:fact.slice(0,420)});if(rows.length>=16)break;
+  }
+  if(rows.length<3)throw new Error(`Theme Rerun evidence pass produced only ${rows.length} usable facts; at least 3 are required.`);
+  return rows.map((row,index)=>({id:`E${index+1}`,source:row.source,fact:row.fact}));
+}
+function themeRerunEvidenceText(evidenceLedger){return evidenceLedger.map(row=>`${row.id}|${row.source}|${row.fact}`).join('\n')}
+async function runThemeRerunEvidencePass(env,model,image,behavior,rerun){
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const prompt=themeRerunEvidencePrompt(rerun)+(attempt===2?'\n\nRECOVERY: Return only sequential E#|image|fact or E#|description|fact lines. Do not classify the image.':'');
+      const raw=await runStructured(env,model,image,prompt,null,1200,'text',{behavior,themeRerun:true,themeRerunEvidencePass:true,temperature:0});
+      return parseThemeRerunEvidenceLedger(raw,rerun);
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Theme Rerun evidence pass failed.',{phase:'theme-rerun-frozen-evidence-pass'});
+}
+function themeRerunReasonEvidenceRefs(reason){return [...new Set((String(reason||'').match(/\bE\d{1,2}\b/gi)||[]).map(id=>id.toUpperCase()))]}
+function themeRerunReasonGrounded(reason,evidenceLedger){
+  const valid=new Set((evidenceLedger||[]).map(row=>String(row.id||'').toUpperCase())),refs=themeRerunReasonEvidenceRefs(reason);
+  return refs.length>0&&refs.every(id=>valid.has(id));
+}
+function themeRerunPrompt(rerun,sets,evidenceLedger){
   const unionCodes=new Set();for(const slot of [1,2,3])for(const item of sets[slot].candidates)unionCodes.add(item.code);
   const vocabulary=PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>unionCodes.has(row.code)).map(row=>`${row.code} — ${row.name}${row.aiMeaning?` — Meaning: ${row.aiMeaning}`:''}`).join('\n');
   const slotBlocks=[];
@@ -828,10 +862,9 @@ function themeRerunPrompt(rerun,sets){
     const currentTheme=PRIMFUSION_REGISTRY.aiThemeChoices.find(theme=>theme.code===row.currentThemeCode)||null,currentThemeText=currentTheme?`${currentTheme.code} ${currentTheme.name}`:(row.currentThemeCode||'the current Theme');
     slotBlocks.push(`THEME ${row.slot}: ${row.state==='replace'?`REPLACE the current ${currentThemeText}. The current code is not eligible for this slot.`:`NEUTRAL. You may keep ${currentThemeText} if it remains the best eligible fit.`}\nPrimPicker scope: ${data.scope}. Effective P-code weights: ${weightLine}.\nEligible PFM codes for this slot, with pair preference score in parentheses: ${candidateLine}`);
   }
-  const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
   const openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve').map(row=>row.slot);
-  const outputLines=openSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|CONFIDENCE|Comparative reason if changed; otherwise brief image-grounded reason`:`${slot}|matrix|PFM####|CONFIDENCE`).join('\n');
-  return `You are performing a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nThe image is always authoritative visual evidence. Reassess every slot that is not PRESERVE. A PRESERVE slot is immutable and is handled locally by Genreactrix.\n\nTheme identity is the PFM code. Human-readable Theme names are semantic labels only. The three final PFM codes MUST be different.\n\n${THEME_SEMANTIC_EVIDENCE_RULES}\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while image fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nOUTPUT FORMAT — THIS IS REQUIRED:\nReturn exactly ${openSlots.length} pipe-delimited line${openSlots.length===1?'':'s'}, one for each open Theme slot in ascending slot order.\n${outputLines}\nUse an eligible PFM code for that exact slot. Confidence must be one specific number from 0 through 100, such as 73. Replace CONFIDENCE with that number. Never output the literal text CONFIDENCE or a range such as 0-100. ${rerun.explainChanges?'For each open slot, use the final field for Theme Edit Log reasoning. If the selected PFM differs from that slot\'s current Theme, directly compare the new Theme with the old Theme and explain why the new Theme is the better result for this image/rerun. Name both Theme labels. Do not merely restate the image description. If the Theme did not change, a brief image-grounded support reason is enough.':'Do not add a reason or explanation field.'}\nDo not return JSON. Do not use Markdown, bullets, headings, commentary, or lines for PRESERVE slots.`;
+  const outputLines=openSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|CONFIDENCE|Evidence E#[,E#]: evidence-grounded reason`:`${slot}|matrix|PFM####|CONFIDENCE`).join('\n');
+  return `You are performing stage 2 of a DIRECTOR-GUIDED Genreactrix Theme Rerun.\n\nIMPORTANT: The image is NOT available in this stage. The evidence ledger below was frozen before any Theme was chosen. It is the complete factual evidence base for semantic Theme selection. You may reason from those facts and from Theme definitions, but you may NOT introduce any new visual fact, mood, analogy, intention, personality, atmosphere, emotional quality, or other support that is absent from the ledger. Theme definitions describe what a Theme means; they are not evidence that the image contains it. Director constraints determine eligibility/preference; they are not visual evidence.\n\nChoose the best available Themes from the frozen evidence. Exactly three final PFM codes must remain different. If only weak matches are available, still choose the closest eligible Themes but give them appropriately modest confidence. Never inflate confidence merely because a Theme ranks in the top three.\n\n${THEME_SEMANTIC_EVIDENCE_RULES}\n\nFROZEN EVIDENCE LEDGER:\n${themeRerunEvidenceText(evidenceLedger)}\n\nPrimPicker rules:\n- Mandatory (100): hard requirement. An eligible PFM for that slot must contain every Mandatory P-code.\n- Preferred (80), Optional (60), Unchosen (40 or 50), and Discouraged (20) are steering weights. Higher pair scores are stronger Director preference, while evidence fit still matters.\n- Forbidden (0): hard prohibition. A PFM containing a Forbidden P-code is not eligible.\n- Theme Exclusions and a red slot's current PFM are hard prohibitions.\n- Do not use Reaction-analysis scores. PrimPicker values are Director instructions, not Reaction Analysis.\n\n${slotBlocks.join('\n\n')}\n\nELIGIBLE THEME SEMANTICS (union of the slot-specific allowed codes):\n${vocabulary}\n\nOUTPUT FORMAT — THIS IS REQUIRED:\nReturn exactly ${openSlots.length} pipe-delimited line${openSlots.length===1?'':'s'}, one for each open Theme slot in ascending slot order.\n${outputLines}\nUse an eligible PFM code for that exact slot. Confidence must be one specific number from 0 through 100, such as 37 or 73. Replace CONFIDENCE with that number. Never output the literal text CONFIDENCE or a range such as 0-100. ${rerun.explainChanges?'Every reason must cite at least one ledger ID such as E2 or E2,E5 and must use only facts in those cited ledger items. If the selected PFM differs from that slot\'s current Theme, name both Theme labels and explain why the new Theme is better supported by the frozen evidence than the old Theme. Do not invent support after choosing the Theme. If the Theme did not change, give a brief evidence-grounded support reason with ledger IDs.':'Do not add a reason or explanation field.'}\nDo not return JSON. Do not use Markdown, bullets, headings, commentary, or lines for PRESERVE slots.`;
 }
 function parseThemeRerunStructured(raw,rerun,sets){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
@@ -1022,20 +1055,19 @@ function extractThemeRerunAcceptedPartial(raw,rerun,sets){
   return accepted;
 }
 
-function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots){
+function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots,evidenceLedger){
   const acceptedCodes=new Set([...accepted.values()].map(row=>row.code));
   const fixed=[...accepted.entries()].sort((a,b)=>a[0]-b[0]).map(([slot,row])=>`Theme ${slot}: ${row.code} is already accepted and IMMUTABLE.`).join('\n')||'No open slot has been accepted yet.';
   const blocks=missingSlots.map(slot=>{const slotRow=rerun.themeSlots.find(row=>row.slot===slot)||{},before=PRIMFUSION_REGISTRY.aiThemeChoices.find(theme=>theme.code===slotRow.currentThemeCode)||null,candidates=sets[slot].candidates.filter(row=>!acceptedCodes.has(row.code));return `THEME ${slot}: choose exactly one code from ${candidates.map(row=>row.code).join(', ')}.\nCurrent Theme before rerun: ${before?`${before.code} ${before.name}`:(slotRow.currentThemeCode||'unknown')}.\n${candidates.map(row=>`${row.code} — ${row.name} — ${row.aiMeaning}`).join('\n')}`;}).join('\n\n');
-  return `Repair ONLY the missing Theme Rerun slot${missingSlots.length===1?'':'s'} below. The image remains authoritative. Do not reconsider or return any already accepted slot. PFM code is authoritative identity; do not invent a Theme name. All final PFM codes must remain unique.\n\nALREADY ACCEPTED — IMMUTABLE:\n${fixed}\n\nMISSING SLOT${missingSlots.length===1?'':'S'}:\n${blocks}\n\nOUTPUT FORMAT — REQUIRED:\n${missingSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|CONFIDENCE|Comparative reason if changed; otherwise brief image-grounded reason`:`${slot}|matrix|PFM####|CONFIDENCE`).join('\n')}\nConfidence must be one specific number from 0 through 100, such as 73. Replace CONFIDENCE with that number. Never output the literal text CONFIDENCE or a range such as 0-100.\n${rerun.explainChanges?'If the repaired selection differs from that slot\'s current Theme, name both Theme labels and directly explain why the new Theme is a better fit. Do not merely restate the image description.':'Do not add a reason or explanation field.'}\nReturn exactly ${missingSlots.length} line${missingSlots.length===1?'':'s'} and nothing else.`;
+  return `Repair ONLY the missing Theme Rerun slot${missingSlots.length===1?'':'s'} below. The image is deliberately NOT available. Use ONLY the frozen pre-selection evidence ledger. Do not introduce new evidence and do not reconsider or return any already accepted slot. PFM code is authoritative identity; all final codes must remain unique.\n\nFROZEN EVIDENCE LEDGER:\n${themeRerunEvidenceText(evidenceLedger)}\n\nALREADY ACCEPTED — IMMUTABLE:\n${fixed}\n\nMISSING SLOT${missingSlots.length===1?'':'S'}:\n${blocks}\n\nOUTPUT FORMAT — REQUIRED:\n${missingSlots.map(slot=>rerun.explainChanges?`${slot}|matrix|PFM####|CONFIDENCE|Evidence E#[,E#]: evidence-grounded reason`:`${slot}|matrix|PFM####|CONFIDENCE`).join('\n')}\nConfidence must be one specific number from 0 through 100. Never output a range such as 0-100.\n${rerun.explainChanges?'Every reason must cite valid E# ledger IDs. If changed, name both Theme labels and compare them only from the cited frozen evidence.':'Do not add a reason or explanation field.'}\nReturn exactly ${missingSlots.length} line${missingSlots.length===1?'':'s'} and nothing else.`;
 }
-
-async function repairMissingThemeRerunSlots(env,model,image,behavior,rerun,sets,accepted){
+async function repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger){
   let working=new Map(accepted),lastError=null;
   for(let attempt=1;attempt<=2;attempt++){
     const missing=rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).map(row=>row.slot);if(!missing.length)return working;
-    const prompt=themeRerunMissingRepairPrompt(rerun,sets,working,missing)+(attempt===2?'\n\nRECOVERY: Return only the exact requested pipe-delimited missing-slot lines.':'');
+    const prompt=themeRerunMissingRepairPrompt(rerun,sets,working,missing,evidenceLedger)+(attempt===2?'\n\nRECOVERY: Return only the exact requested pipe-delimited missing-slot lines.':'');
     try{
-      const raw=await runStructured(env,model,image,prompt,null,1000,'text',{behavior,themeRerun:true,themeRerunRepair:true,temperature:0});
+      const raw=await runStructured(env,model,null,prompt,null,1000,'text',{behavior,themeRerun:true,themeRerunRepair:true,temperature:0});
       const newly=extractThemeRerunAcceptedPartial(raw,rerun,sets);for(const [slot,row] of newly)if(missing.includes(slot)&&!working.has(slot)&&![...working.values()].some(x=>x.code===row.code))working.set(slot,row);
       if(rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).length===0)return working;
     }catch(error){lastError=error;}
@@ -1043,15 +1075,15 @@ async function repairMissingThemeRerunSlots(env,model,image,behavior,rerun,sets,
   const missing=rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).map(row=>row.slot);
   throw diagnosticError(lastError?.message||`Theme Rerun repair remained incomplete; missing Theme ${missing.join(', Theme ')}`,{phase:'theme-rerun-missing-slot-repair',missingSlots:missing});
 }
-
 function themeRerunThemeMeta(code){return PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>row.code===String(code||'').toUpperCase())||null}
 function themeRerunReasonMentions(reason,theme){const text=String(reason||'').toLowerCase();if(!theme)return false;return text.includes(String(theme.name||'').toLowerCase())||text.includes(String(theme.code||'').toLowerCase())}
-function themeRerunComparativeReasonValid(reason,beforeCode,afterCode){
+function themeRerunComparativeReasonValid(reason,beforeCode,afterCode,evidenceLedger=[]){
   beforeCode=String(beforeCode||'').toUpperCase();afterCode=String(afterCode||'').toUpperCase();
+  const text=String(reason||'').trim();if(!text||!themeRerunReasonGrounded(text,evidenceLedger))return false;
   if(!beforeCode||!afterCode||beforeCode===afterCode)return true;
-  const before=themeRerunThemeMeta(beforeCode),after=themeRerunThemeMeta(afterCode),text=String(reason||'').trim();
-  if(!text||!themeRerunReasonMentions(text,before)||!themeRerunReasonMentions(text,after))return false;
-  return /\b(?:better|stronger|closer|more|less|rather|instead|over|than|whereas|while|compared|outweigh|replace|replacement|fit|fits|fitting)\b/i.test(text);
+  const before=themeRerunThemeMeta(beforeCode),after=themeRerunThemeMeta(afterCode);
+  if(!themeRerunReasonMentions(text,before)||!themeRerunReasonMentions(text,after))return false;
+  return /\b(?:better|stronger|closer|more|less|rather|instead|over|than|whereas|while|compared|outweigh|replace|replacement|fit|fits|fitting|support|supported)\b/i.test(text);
 }
 function cleanThemeRerunReasonOnly(raw){
   let text=String(raw||'').replace(/\r/g,'').trim();if(!text)return'';
@@ -1059,34 +1091,33 @@ function cleanThemeRerunReasonOnly(raw){
   if(lines.length>1){const reasonLine=lines.find(line=>/^reason\s*[:=\-–—]/i.test(line));if(reasonLine)text=reasonLine;else text=lines.join(' ');}
   return text.replace(/^[-*•\s]+/,'').replace(/^reason\s*[:=\-–—]\s*/i,'').replace(/^['"]|['"]$/g,'').replace(/\*{1,2}/g,'').trim().slice(0,1000);
 }
-function themeRerunComparativeReasonPrompt(rerun,slotRow,selection){
+function themeRerunComparativeReasonPrompt(rerun,slotRow,selection,evidenceLedger){
   const before=themeRerunThemeMeta(slotRow.currentThemeCode),after=themeRerunThemeMeta(selection.code);
-  const descriptions=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
   const director=slotRow.state==='replace'?'The Director explicitly marked the old Theme for replacement.':slotRow.state==='neutral'?'The slot was neutral and could have kept the old Theme if it remained the best fit.':'';
-  return `Repair ONLY the Theme Edit Log reason for Theme ${slotRow.slot}. The Theme selection and confidence are already final and IMMUTABLE. Do not choose or score a Theme.\n\nBEFORE: ${before?.code||slotRow.currentThemeCode} — ${before?.name||'Unknown'} — ${before?.aiMeaning||''}\nAFTER: ${after?.code||selection.code} — ${after?.name||'Unknown'} — ${after?.aiMeaning||''}\nFINAL CONFIDENCE: ${selection.confidence}%\n${director}\n\n${descriptions}\n\nWrite one concise paragraph explaining WHY ${after?.name||selection.code} is a better result for this image/rerun than ${before?.name||slotRow.currentThemeCode}. Name BOTH Theme labels exactly. Compare them directly using concrete visible/image-grounded evidence and relevant Director rerun constraints. Do not merely summarize or repeat the image description. Do not reconsider the Theme choice or confidence. Return only the reason paragraph.`;
+  return `Repair ONLY the Theme Edit Log reason for Theme ${slotRow.slot}. The Theme selection and confidence are already final and IMMUTABLE. The image is deliberately NOT available. Do not choose or score a Theme and do not introduce any evidence absent from the frozen ledger.\n\nFROZEN EVIDENCE LEDGER:\n${themeRerunEvidenceText(evidenceLedger)}\n\nBEFORE: ${before?.code||slotRow.currentThemeCode} — ${before?.name||'Unknown'} — ${before?.aiMeaning||''}\nAFTER: ${after?.code||selection.code} — ${after?.name||'Unknown'} — ${after?.aiMeaning||''}\nFINAL CONFIDENCE: ${selection.confidence}%\n${director}\n\nWrite one concise paragraph explaining WHY ${after?.name||selection.code} is better supported by the frozen evidence than ${before?.name||slotRow.currentThemeCode}. Name BOTH Theme labels exactly. Begin with or include "Evidence E#" citations to the specific ledger facts you use. Do not invent a mood, analogy, intention, personality, or quality that is not already in those cited facts. Do not reconsider the Theme choice or confidence. Return only the reason paragraph.`;
 }
-async function repairThemeRerunComparativeReason(env,model,image,behavior,rerun,slotRow,selection){
+async function repairThemeRerunComparativeReason(env,model,behavior,rerun,slotRow,selection,evidenceLedger){
   let last='';
   for(let attempt=1;attempt<=2;attempt++){
     try{
-      const raw=await runStructured(env,model,image,themeRerunComparativeReasonPrompt(rerun,slotRow,selection)+(attempt===2?'\n\nRECOVERY: Your prior reason was not comparative enough. Explicitly name both Themes and state why AFTER fits better than BEFORE.':''),null,700,'text',{behavior,themeRerun:true,themeRerunReasonRepair:true,temperature:0});
-      const reason=cleanThemeRerunReasonOnly(raw);last=reason;if(themeRerunComparativeReasonValid(reason,slotRow.currentThemeCode,selection.code))return reason;
+      const raw=await runStructured(env,model,null,themeRerunComparativeReasonPrompt(rerun,slotRow,selection,evidenceLedger)+(attempt===2?'\n\nRECOVERY: Name both Themes, cite valid E# evidence IDs, and compare only from those frozen facts.':''),null,700,'text',{behavior,themeRerun:true,themeRerunReasonRepair:true,temperature:0});
+      const reason=cleanThemeRerunReasonOnly(raw);last=reason;if(themeRerunComparativeReasonValid(reason,slotRow.currentThemeCode,selection.code,evidenceLedger))return reason;
     }catch(error){last=String(error?.message||'').slice(0,500);}
   }
   console.warn(`Theme Edit Log reason repair failed for Theme ${slotRow.slot}: ${last||'no usable reason'}`);return'';
 }
-async function ensureThemeRerunComparativeReasons(env,model,image,behavior,rerun,selections){
+async function ensureThemeRerunComparativeReasons(env,model,behavior,rerun,selections,evidenceLedger){
   if(!rerun.explainChanges)return selections;
   const out=selections.map(row=>({...row}));
   for(const slotRow of rerun.themeSlots){
     if(slotRow.state==='preserve'||!slotRow.currentThemeCode)continue;
-    const selection=out.find(row=>Number(row.rank)===Number(slotRow.slot));if(!selection||selection.code===slotRow.currentThemeCode)continue;
-    if(themeRerunComparativeReasonValid(selection.rationale,slotRow.currentThemeCode,selection.code))continue;
-    selection.rationale=await repairThemeRerunComparativeReason(env,model,image,behavior,rerun,slotRow,selection);
+    const selection=out.find(row=>Number(row.rank)===Number(slotRow.slot));if(!selection)continue;
+    if(themeRerunComparativeReasonValid(selection.rationale,slotRow.currentThemeCode,selection.code,evidenceLedger))continue;
+    if(selection.code===slotRow.currentThemeCode){selection.rationale='';continue;}
+    selection.rationale=await repairThemeRerunComparativeReason(env,model,behavior,rerun,slotRow,selection,evidenceLedger);
   }
   return out;
 }
-
 function finalizeThemeRerunPartial(rerun,sets,accepted){
   const structured={};
   for(const row of rerun.themeSlots){if(row.state==='preserve')structured[`theme${row.slot}`]={code:row.currentThemeCode};else{const found=accepted.get(row.slot);if(!found)throw new Error(`Theme ${row.slot} remained missing after targeted repair.`);structured[`theme${row.slot}`]=found;}}
@@ -1095,26 +1126,29 @@ function finalizeThemeRerunPartial(rerun,sets,accepted){
 
 async function runThemeRerun(env,model,image,behavior,input){
   const rerun=normalizeThemeRerun(input);if(!rerun)throw new Error('Theme Rerun request was missing.');
-  const sets=themeRerunCandidateSets(rerun),basePrompt=themeRerunPrompt(rerun,sets),openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve');
+  const sets=themeRerunCandidateSets(rerun),openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve');
   if(!openSlots.length){
     const local={};for(const row of rerun.themeSlots)local[`theme${row.slot}`]={code:row.currentThemeCode};
-    return{rerun,sets,selections:parseThemeRerunStructured(local,rerun,sets)};
+    return{rerun,sets,evidenceLedger:[],selections:parseThemeRerunStructured(local,rerun,sets)};
   }
+  // v0.9.6.64 experimental Theme Rerun pipeline:
+  // 1) image/Description -> frozen factual evidence ledger
+  // 2) NO IMAGE -> select/score exactly three from that frozen evidence only
+  const evidenceLedger=await runThemeRerunEvidencePass(env,model,image,behavior,rerun),basePrompt=themeRerunPrompt(rerun,sets,evidenceLedger);
   let lastError=null;
   for(let attempt=1;attempt<=3;attempt++){
-    const recovery=attempt===1?'':`\n\nRECOVERY: The prior response could not be accepted${lastError?.message?`: ${String(lastError.message).slice(0,300)}`:''}. Return only the exact established Theme Analysis pipe-delimited line format requested for each open Theme slot. Use an eligible PFM code for that slot, keep all final codes unique, and obey every REPLACE, PrimPicker, and Theme Exclusion constraint.`;
-    const raw=await runStructured(env,model,image,basePrompt+recovery,null,1600,'text',{behavior,themeRerun:true,temperature:attempt===1?0.18:0.05});
-    try{const selections=parseThemeRerunText(raw,rerun,sets);return{rerun,sets,selections:await ensureThemeRerunComparativeReasons(env,model,image,behavior,rerun,selections)};}catch(error){
+    const recovery=attempt===1?'':`\n\nRECOVERY: The prior response could not be accepted${lastError?.message?`: ${String(lastError.message).slice(0,300)}`:''}. Return only the exact established Theme Analysis pipe-delimited line format requested for each open Theme slot. Use only the frozen E# evidence, cite E# IDs in reasons, use an eligible PFM code for that slot, keep all final codes unique, and obey every REPLACE, PrimPicker, and Theme Exclusion constraint.`;
+    const raw=await runStructured(env,model,null,basePrompt+recovery,null,1600,'text',{behavior,themeRerun:true,themeRerunSelectionFromFrozenEvidence:true,temperature:attempt===1?0.12:0.03});
+    try{const selections=parseThemeRerunText(raw,rerun,sets);return{rerun,sets,evidenceLedger,selections:await ensureThemeRerunComparativeReasons(env,model,behavior,rerun,selections,evidenceLedger)};}catch(error){
       const accepted=extractThemeRerunAcceptedPartial(raw,rerun,sets),missing=openSlots.filter(row=>!accepted.has(row.slot));
       if(accepted.size&&missing.length){
-        try{const repaired=await repairMissingThemeRerunSlots(env,model,image,behavior,rerun,sets,accepted),selections=finalizeThemeRerunPartial(rerun,sets,repaired);return{rerun,sets,selections:await ensureThemeRerunComparativeReasons(env,model,image,behavior,rerun,selections)};}catch(repairError){lastError=repairError;continue;}
+        try{const repaired=await repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger),selections=finalizeThemeRerunPartial(rerun,sets,repaired);return{rerun,sets,evidenceLedger,selections:await ensureThemeRerunComparativeReasons(env,model,behavior,rerun,selections,evidenceLedger)};}catch(repairError){lastError=repairError;continue;}
       }
       lastError=diagnosticError(error?.message||'Theme Rerun text response could not be parsed.',{phase:'theme-rerun-text-parse',attempt,responsePreview:String(raw||'').slice(0,1200)});
     }
   }
   throw lastError||new Error('Theme Rerun did not produce a valid result.');
 }
-
 function normalizeDescriptionRerun(input){
   if(!input||typeof input!=='object')return null;
   const operation=['all','add','replace'].includes(String(input.operation||''))?String(input.operation):'all';
@@ -2661,7 +2695,10 @@ async function analyze(env,body){
       resolvedThemes=resolveThemes(rerunResult.selections);
       if(!rerunResult.rerun.explainChanges)resolvedThemes=resolvedThemes.map(row=>({...row,rationale:''}));
       components.themeRerunDiagnostics={
-        schemaVersion:1,applied:true,
+        schemaVersion:2,applied:true,
+        evidenceProtocol:'frozen-ledger-v1',
+        selectionImageAccess:false,
+        evidenceLedger:rerunResult.evidenceLedger.map(row=>({...row})),
         protectedSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.slot),
         replaceSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='replace').map(row=>row.slot),
         neutralSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='neutral').map(row=>row.slot),
@@ -2670,7 +2707,7 @@ async function analyze(env,body){
         explainChanges:rerunResult.rerun.explainChanges!==false,
         candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
       };
-      promptVersions.themes='genreactrix-themes-pfm-v14-comparative-edit-log-repair';
+      promptVersions.themes='genreactrix-themes-pfm-v15-frozen-evidence-rerun';
     }else{
       const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
       const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
