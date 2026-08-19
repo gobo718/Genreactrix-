@@ -1,3 +1,19 @@
+# Genreactrix v0.9.40.126 — AI AMA adaptive interview chunks
+
+- Pairs with Worker v0.9.6.73-ai-ama-adaptive-chunks. Upload the Worker first, then this site build.
+- Keeps the persistent/resumable AMA architecture and all 68 canonical interview questions unchanged.
+- A fresh unfinished interview block first tries its normal block (up to 9 questions) once.
+- If that provider call times out or returns a transient 5xx/429 failure, the site immediately falls back to groups of up to 3 questions.
+- If a 3-question recovery call fails the same way, only that group falls back again to single-question calls.
+- Valid answers from every successful or partial response are checkpointed immediately; already-saved Q&A are never rerun merely because a later chunk fails.
+- On Resume, a partially completed block skips the large attempt and starts from the first missing question group.
+- Existing saved failures from v0.9.40.125 are recognized: if that block already has a recorded question-stage failure, .126 skips another full-block wait and enters 3-question recovery immediately.
+- Interview chunks no longer receive a hidden second 90-second Worker retry at the same size; the adaptive fallback owns recovery instead. Visual-read/candidate stages retain their existing reliability behavior.
+- Live AMA status names the exact Q range and whether the call is a primary block attempt, 3-question recovery, or single-question recovery. A final pause records the precise Q ID(s) that failed.
+- No Theme ranking, definitions, confidence semantics, PrimFusion Matrix, image lifecycle, Theme Rerun, Tuned, SLOP?, completed AMA report/history, or post-Batch outcome behavior changed. Matrix remains 0.0.0.0.
+
+---
+
 # Genreactrix v0.9.40.125 — AI AMA live-stage diagnostics
 
 - Site-only diagnostic patch. Worker remains v0.9.6.72-ai-ama-resumable; no Worker upload is required.
