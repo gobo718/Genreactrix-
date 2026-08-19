@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.123</title>
-<link href="styles.css?v=0.9.40.123" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.124</title>
+<link href="styles.css?v=0.9.40.124" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.123</span>
+<span>v0.9.40.124</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.123</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.124</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -1275,6 +1275,7 @@
 <div class="theme-rerun-dialog-shell ama-menu-shell">
 <header><strong>AI AMA</strong><button type="button" id="amaMenuClose">Return</button></header>
 <p class="ama-menu-note">Interview the AI about the current AI-versus-Director Theme snapshot.</p>
+<div id="amaRunProgress" class="ama-run-progress" aria-live="polite"></div>
 <div class="ama-menu-actions"><button id="amaRunBtn" type="button">Run AI AMA?</button><button id="amaHistoryBtn" type="button">AMA History</button></div>
 </div>
 </dialog>
@@ -1318,7 +1319,7 @@
 <script src="origin-pack-engine.js?v=0.9.40.37"></script>
 <script src="origin-gate-engine.js?v=0.9.40.37"></script>
 <script src="import-engine.js?v=0.9.40.34"></script>
-<script src="maintenance-engine.js?v=0.9.40.123"></script>
+<script src="maintenance-engine.js?v=0.9.40.124"></script>
 <script src="settings-engine.js?v=0.9.40.61"></script>
 <script src="director-classification-engine.js?v=0.9.40.37"></script>
 <dialog class="custom-library-dialog" id="customReactionDialog">
@@ -1352,9 +1353,9 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
 <script src="bundle-engine.js?v=0.9.40.43"></script>
-<script src="ama-engine.js?v=0.9.40.123"></script>
-<script src="app.js?v=0.9.40.123"></script>
-<script src="danger-zone-engine.js?v=0.9.40.123"></script>
+<script src="ama-engine.js?v=0.9.40.124"></script>
+<script src="app.js?v=0.9.40.124"></script>
+<script src="danger-zone-engine.js?v=0.9.40.124"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
 <dialog class="notifications-dialog" id="notificationsDialog">
@@ -1369,12 +1370,12 @@ window.grxOpenCustomDialog=function(dialogId){
 </div>
 </dialog>
 <script src="notifications-engine.js?v=0.9.14.0"></script>
-<script src="quarantine-engine.js?v=0.9.40.123"></script>
-<script src="queue-engine.js?v=0.9.40.123"></script>
+<script src="quarantine-engine.js?v=0.9.40.124"></script>
+<script src="queue-engine.js?v=0.9.40.124"></script>
 <script src="investigation-ui.js?v=0.9.40.43"></script>
-<script src="genreactrix-cloud-api.js?v=0.9.40.123"></script>
-<script src="prompt-diagnostics-engine.js?v=0.9.40.123"></script>
-<script src="reports-engine.js?v=0.9.40.123"></script>
+<script src="genreactrix-cloud-api.js?v=0.9.40.124"></script>
+<script src="prompt-diagnostics-engine.js?v=0.9.40.124"></script>
+<script src="reports-engine.js?v=0.9.40.124"></script>
 <script src="analytics-engine.js?v=0.9.20.0"></script>
 <dialog class="analytics-dialog" id="analyticsDialog">
 <section class="analytics-shell">
@@ -1385,13 +1386,13 @@ window.grxOpenCustomDialog=function(dialogId){
 </section>
 </dialog>
 
-<script src="post-processing-engine.js?v=0.9.40.123"></script>
-<script src="housekeeping-engine.js?v=0.9.40.123"></script>
-<script src="batch-engine.js?v=0.9.40.123"></script>
+<script src="post-processing-engine.js?v=0.9.40.124"></script>
+<script src="housekeeping-engine.js?v=0.9.40.124"></script>
+<script src="batch-engine.js?v=0.9.40.124"></script>
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.123"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.124"></script>
 <script src="home-count-engine.js?v=0.9.40.31"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">

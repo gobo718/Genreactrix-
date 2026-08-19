@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.124 — Resumable AI AMA execution
+
+- Replaces the single long-running AI AMA request with persistent, resumable execution.
+- Creates an AMA run record before the first provider call and checkpoints the visual read, candidate audit, and each completed interview block.
+- Splits the 68-question interview into eight small Worker calls (maximum nine questions per block).
+- If a provider/network failure interrupts a run, already-saved answers remain intact and **Resume AI AMA** continues from the first unfinished block.
+- A partially answered block preserves valid returned Q&A and can repair/retry only the missing portion on resume.
+- The immutable numbered AMA report is created only after all 68 core answers and all question blocks are complete.
+- Existing completed AMA reports, AMA History, follow-up Q&A, exports, Tuned, SLOP?, Theme Rerun lifecycle isolation, Theme definitions, and Matrix 0.0.0.0 remain unchanged.
+- Worker counterpart: v0.9.6.72-ai-ama-resumable.
+
+---
+
 # Genreactrix v0.9.40.123 — AI AMA engine initialization fix
 ## v0.9.40.123
 

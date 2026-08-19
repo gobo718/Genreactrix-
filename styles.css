@@ -8431,7 +8431,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .theme-change-reasoning-evidence p{color:var(--muted);font-size:.82rem}
 @media(max-width:520px){.theme-change-reasoning-comparison{grid-template-columns:1fr}.theme-change-reasoning-arrow{transform:rotate(90deg);justify-self:center}}
 
-/* v0.9.40.123 — AI AMA + SLOP?/Tuned status controls. */
+/* v0.9.40.124 — resumable AI AMA + SLOP?/Tuned status controls. */
 :root{--ama-accent:#EF806C;--tuned-accent:#9A85BB;--slop-accent:#808000}
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .landscape-judgment-header{position:relative!important}
@@ -8459,6 +8459,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 }
 .ama-menu-dialog{width:min(420px,92vw)}
 .ama-menu-note{margin:0;color:var(--muted);font-size:11px}
+.ama-run-progress{min-height:14px;color:var(--ama-accent);font-size:10px;font-weight:800;line-height:1.35}
 .ama-menu-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .ama-menu-actions button{min-height:42px!important}
 .ama-history-dialog{width:min(760px,94vw);max-height:88dvh}
