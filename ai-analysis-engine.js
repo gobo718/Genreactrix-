@@ -100,6 +100,58 @@
   if(repaired){console.warn(`Recovered lifecycle placement for ${repaired} image${repaired===1?'':'s'} altered by legacy Theme Rerun jobs.`);runtimeWindow.renderPortraitControlStation?.();runtimeWindow.rehydrateLandscapeFeed?.().catch?.(console.warn);}
   return repaired;
  }
+ function priorStageBeforeThemeRerun(timeline,themeJobIds){
+  const wanted=new Set([...themeJobIds].map(String));
+  for(const entry of timeline||[]){
+   if(String(entry?.eventType||'')!=='ai-processing-started')continue;
+   const currentJob=String(entry?.payload?.current?.metadata?.extended?.activeAiJobId||entry?.payload?.current?.metadata?.extended?.lastAiJobId||'');
+   if(!wanted.has(currentJob))continue;
+   const prior=String(entry?.payload?.before?.workflow?.stage||'');
+   if(prior&&!['ai-processing','ai-partial','staged','quarantine','defective'].includes(prior))return prior;
+  }
+  return 'inbox-working';
+ }
+ async function notifyThemeRerunRecoveryProblem(imageId,message){
+  try{await runtimeWindow.genreactrixNotificationsEngine?.createOrUpdate?.({severity:'attention',title:'Theme Rerun recovery needs attention',message,ownerEngine:'maintenance',actionTarget:'maintenance',actionLabel:'Maintenance',dedupeKey:`theme-rerun-recovery:${imageId}`,persistent:true,resolved:false});}catch{}
+ }
+ async function reconcileThemeRerunPlacementIntegrity(){
+  const history=runtimeWindow.genreactrixHistoryEngine,engine=runtimeWindow.genreactrixImageRecordEngine,qEngine=runtimeWindow.genreactrixQuarantineEngine,images=runtimeWindow.genreactrixImagesEngine;
+  if(!engine?.get||!engine?.all||!history?.timeline||!qEngine?.all)return{repaired:0,payloadMissing:0,checked:0};
+  const [jobs,items]=await Promise.all([all(JOBS),all(ITEMS)]),themeJobIds=new Set(jobs.filter(job=>isThemeRerunConfig(job.config)).map(job=>String(job.id))),jobsByImage=new Map();
+  for(const item of items){const jobId=String(item?.jobId||''),imageId=String(item?.imageId||'');if(!themeJobIds.has(jobId)||!imageId)continue;if(!jobsByImage.has(imageId))jobsByImage.set(imageId,new Set());jobsByImage.get(imageId).add(jobId);}
+  let repaired=0,payloadMissing=0,checked=0;
+  // First repair Quarantine placement polluted by Theme Rerun attempts. This also completes a
+  // v0.9.40.120 partial recovery if the case was already voided but the record stayed in Quarantine.
+  for(const qCase of qEngine.all().filter(row=>row?.status==='open'||row?.resolution?.action==='void-theme-rerun-evidence')){
+   const imageId=String(qCase.imageId||''),record=engine.get(imageId,{touch:false});if(!record||String(record.workflow?.stage||'')!=='quarantine')continue;
+   const caseThemeJobs=new Set((qCase.attempts||[]).map(a=>String(a?.jobId||'')).filter(id=>themeJobIds.has(id))),alreadyVoided=qCase?.resolution?.action==='void-theme-rerun-evidence';
+   const imageThemeJobs=jobsByImage.get(imageId)||new Set(),recoveryThemeJobs=caseThemeJobs.size?caseThemeJobs:imageThemeJobs;
+   if(!recoveryThemeJobs.size&&!alreadyVoided)continue;checked++;
+   const remaining=alreadyVoided?(qCase.attempts||[]):(qCase.attempts||[]).filter(a=>!caseThemeJobs.has(String(a?.jobId||'')));
+   if(!alreadyVoided&&remaining.length>=3)continue; // Legitimate non-rerun isolation evidence still independently justifies Quarantine.
+   const blob=await images?.fullBlobForOriginCheck?.(imageId).catch?.(()=>null) || null;
+   if(!blob){payloadMissing++;await notifyThemeRerunRecoveryProblem(imageId,`Image ${record.name||imageId} has a surviving Image Record but its full-resolution payload is missing. Automatic Theme Rerun recovery did not move it back into Batch.`);continue;}
+   const timeline=await history.timeline(imageId).catch(()=>[]),priorStage=priorStageBeforeThemeRerun(timeline,recoveryThemeJobs),ext=record.metadata?.extended||{};
+   if(!alreadyVoided&&caseThemeJobs.size)qEngine.removeThemeRerunEvidence(imageId,[...caseThemeJobs]);
+   const filteredEvidence=(Array.isArray(ext.isolatedAiFailureEvidence)?ext.isolatedAiFailureEvidence:[]).filter(e=>!recoveryThemeJobs.has(String(e?.jobId||''))),last=remaining.at(-1)||null;
+   engine.update(imageId,{workflow:{stage:priorStage},error:'',metadata:{extended:{isolatedAiFailureStreak:remaining.length,isolatedAiFailureEvidence:filteredEvidence,lastIsolationCountedAttemptId:last?.attemptId||null,lastIsolatedAiFailureAt:last?.at||null,problemImage:false,quarantineCaseId:null,quarantineReason:null,quarantinedAt:null,themeRerunPlacementRecoveredAt:new Date().toISOString()}}},'theme-rerun-quarantine-recovered');
+   repaired++;
+  }
+  // Then repair any non-final Theme-Rerun image that is outside every authoritative active owner after legacy drift.
+  const home=runtimeWindow.genreactrixHomeCountEngine;
+  for(const record of engine.all()){
+   const imageId=String(record?.id||'');if(!jobsByImage.has(imageId)||String(record?.workflow?.stage||'')==='quarantine')continue;
+   const owner=home?.owner?.(record);if(owner)continue;
+   if(record?.attributes?.archived||record?.attributes?.inRecycleBin||record?.attributes?.rejected||['batched','red-excluded','hot-magenta-excluded','defective','archived','import-failed','ai-failure-exported'].includes(String(record?.workflow?.stage||'')))continue;
+   checked++;
+   const blob=await images?.fullBlobForOriginCheck?.(imageId).catch?.(()=>null) || null;
+   if(!blob){payloadMissing++;await notifyThemeRerunRecoveryProblem(imageId,`Image ${record.name||imageId} is outside the active lifecycle and its full-resolution payload is missing. Automatic recovery left the record untouched for inspection.`);continue;}
+   const timeline=await history.timeline(imageId).catch(()=>[]),priorStage=priorStageBeforeThemeRerun(timeline,jobsByImage.get(imageId));
+   engine.update(imageId,{workflow:{stage:priorStage},metadata:{extended:{themeRerunPlacementRecoveredAt:new Date().toISOString()}}},'theme-rerun-unaccounted-recovered');repaired++;
+  }
+  if(repaired){console.warn(`Theme Rerun integrity reconciliation restored ${repaired} image${repaired===1?'':'s'} to its active placement.`);runtimeWindow.renderPortraitControlStation?.();runtimeWindow.rehydrateLandscapeFeed?.().catch?.(console.warn);}
+  return{repaired,payloadMissing,checked};
+ }
  let snapshotCache={pending:0,available:0,output:0,bufferTarget:25,jobs:[],items:[]};
  let maintainBufferPromise=null,maintainFlowPromise=null;
  let cycleRunning=false,cycleStopRequested=false,cycleCurrentJobId=null;
@@ -490,6 +542,6 @@
  }
 
  async function verify(){const jobs=await all(JOBS),items=await all(ITEMS),issues=[],jobIds=new Set(jobs.map(j=>j.id));for(const item of items){if(!jobIds.has(item.jobId))issues.push({type:'ai-item-missing-job',recordId:item.id,severity:'attention'});if(item.state==='processing'&&!jobs.some(j=>j.id===item.jobId&&j.state==='running'))issues.push({type:'ai-item-stuck-processing',recordId:item.id,severity:'attention'})}for(const job of jobs)if(job.state==='running'&&Date.now()-new Date(job.startedAt||job.createdAt).getTime()>86400000)issues.push({type:'ai-job-stuck',jobId:job.id,severity:'attention'});const history=await window.genreactrixAiArtifactEngine?.verify?.().catch(error=>({attemptCount:0,artifactCount:0,issues:[{type:'ai-artifact-history-verification-failed',severity:'attention',summary:String(error?.message||error)}]}))||{attemptCount:0,artifactCount:0,issues:[]};issues.push(...(history.issues||[]));return{jobCount:jobs.length,itemCount:items.length,attemptCount:history.attemptCount||0,artifactCount:history.artifactCount||0,issueCount:issues.length,issues}}
- const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainAutomaticFlow,maintainBuffer,maintainActiveMode,bufferPolicy,planBufferStep,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await repairLegacyThemeRerunLifecycleDrift();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());window.addEventListener('genreactrix:bundle',()=>render());
+ const engine={createJob,run,pause,resume,stop,retryFailed,exportFails,snapshot,snapshotCached,queueNext,maintainAutomaticFlow,maintainBuffer,maintainActiveMode,bufferPolicy,planBufferStep,cycleMissing,openConsole,verify,components:COMPONENTS};window.genreactrixAiAnalysisEngine=engine;window.genreactrixAIAnalysisEngine=engine;window.addEventListener('DOMContentLoaded',async()=>{q()?.registerType?.('ai',{pause,resume,stop,retry:retryFailed});initUi();syncComponentChecksFromDefaults();await reconcileCancelledJobs();await repairLegacyThemeRerunLifecycleDrift();await reconcileThemeRerunPlacementIntegrity();await recoverInterruptedAiJobs();const startAfterSettings=async()=>{window.GenreactrixCloudApi?.reload?.();syncComponentChecksFromDefaults();await resumeStrandedJobs();render();maintainActiveMode().catch(console.warn)};if(window.genreactrixSettingsEngine?.ready)await startAfterSettings();else window.addEventListener('genreactrix:settings-ready',()=>startAfterSettings().catch(console.warn),{once:true});render()});window.addEventListener('genreactrix:image-record',()=>render());window.addEventListener('genreactrix:bundle',()=>render());
  window.addEventListener('genreactrix:setting',event=>{if(['queue.flow.enabled','queue.bundle.size','ai.lookAhead.enabled','ai.buffer.target','ai.buffer.refillThreshold','ai.lookAhead.priority'].includes(event.detail?.id))setTimeout(()=>maintainActiveMode().catch(console.warn),0)});
 })();

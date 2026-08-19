@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.121 — Theme Rerun placement integrity reconciliation
+
+- Recovers open Quarantine cases when Theme Rerun attempts incorrectly contributed to the three-isolated-failure threshold.
+- Restores the image to its pre-rerun active stage without clearing its AI artifacts.
+- Verifies the full-resolution payload before restoring placement.
+- If the payload itself is missing, leaves the record untouched and creates an explicit Maintenance notification instead of silently pretending recovery succeeded.
+- Also repairs Theme-Rerun images that are active but outside every authoritative lifecycle owner when history provides the prior stage.
+- Correctly accounted images are not touched.
+- No Theme definitions, scoring, Evidence Pass, Theme selection, or Matrix changes.
+
 # Genreactrix v0.9.40.120 — Theme Rerun lifecycle isolation and recovery
 
 ## v0.9.40.120
