@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.82-ama-calibration-integrity
+/* Genreactrix AI Worker v0.9.6.84-theme-exhaustion-slop-warning
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.82-ama-calibration-integrity';
+const API_VERSION = '0.9.6.84-theme-exhaustion-slop-warning';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -859,26 +859,27 @@ function themeDecisionCandidatePrompt(ledger,{excludeCodes=[]}={}){
   return `GENREACTRIX THEME DECISION — STAGE 2: BROAD CANDIDATE DISCOVERY.\n\nThis is NOT the final ranking. Using ONLY the literal evidence ledger, create a broad shortlist of up to ${THEME_DECISION_CANDIDATE_LIMIT} materially plausible PrimFusion Themes. The shortlist must be diverse enough to include literal, neutral, boring, ordinary, low-emotion, and low-stimulation interpretations whenever the evidence permits them. Do not prefer emotional, evocative, dramatic, expressive, funny, warm, sweet, nostalgic, beautiful, or interesting Themes merely because they make a richer answer.\n\nUse ordinary human context as a first-class constraint. Read the visible setting, attire/presentation, activity, action, expression, and composition together before proposing an emotionally or atmospherically loaded Theme. Neutral, formal, professional, calm, focused, deliberate, or composed evidence is not itself evidence of comfort, intimacy, sexual desire, craving, disorder, nostalgia, obsession, grandeur, cuteness, intelligence, or any other richer semantic conclusion. A loaded Theme may still be a candidate when separate concrete evidence actually earns its defining meaning.\n\nDo not turn simplicity/minimalism into playfulness; irregularity/random arrangement into silliness; neutral stillness into coziness; generic pleasantness into sweetness; visual appeal into emotional significance; reflective language into nostalgia/poignancy; concentration/focus into intimacy, desire, obsession, intelligence, grandeur, or chaos; or deliberate composition into emotional significance. Include competitors that require LESS inference when they fit the same evidence.\n\nA candidate only needs to be plausible enough to deserve an audit. Do not assign final confidence and do not defend a candidate. Return ${THEME_DECISION_CANDIDATE_LIMIT} unique PFM codes when possible.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCURRENT 91 THEMES\n${catalog}\n\nOUTPUT FORMAT — one code per line and nothing else:\nCANDIDATE|PFM####`;
 }
 
-function parseThemeDecisionCandidates(raw,{max=THEME_DECISION_CANDIDATE_LIMIT}={}){
-  const valid=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code)),out=[];
+function parseThemeDecisionCandidates(raw,{max=THEME_DECISION_CANDIDATE_LIMIT,min=3,excludeCodes=[]}={}){
+  const valid=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code)),excluded=new Set((excludeCodes||[]).map(code=>String(code||'').toUpperCase())),out=[];
   const seen=new Set();
   for(const m of String(raw||'').matchAll(/\bPFM\d{4}\b/gi)){
     const code=m[0].toUpperCase();
-    if(!valid.has(code)||seen.has(code))continue;
+    if(!valid.has(code)||excluded.has(code)||seen.has(code))continue;
     seen.add(code);out.push(code);
     if(out.length>=max)break;
   }
-  if(out.length<3)throw new Error(`Theme candidate discovery produced only ${out.length} valid candidates.`);
+  const required=Math.max(1,Math.min(Number(min)||1,max));
+  if(out.length<required)throw new Error(`Theme candidate discovery produced only ${out.length} valid candidates; ${required} required for this pass.`);
   return out;
 }
 
-async function runThemeDecisionCandidatePass(env,model,behavior,ledger,{excludeCodes=[]}={}){
+async function runThemeDecisionCandidatePass(env,model,behavior,ledger,{excludeCodes=[],minCandidates=3}={}){
   let lastError=null;
   for(let attempt=1;attempt<=2;attempt++){
     try{
       const prompt=themeDecisionCandidatePrompt(ledger,{excludeCodes})+(attempt===2?'\n\nRECOVERY: Return only CANDIDATE|PFM#### lines. Include neutral/literal competitors; do not return explanations.':'');
       const raw=await runStructured(env,model,null,prompt,null,900,'text',{behavior,themeDecisionCandidatePass:true,temperature:attempt===1?0.08:0});
-      return parseThemeDecisionCandidates(raw);
+      return parseThemeDecisionCandidates(raw,{min:minCandidates,excludeCodes});
     }catch(error){lastError=error;}
   }
   throw diagnosticError(lastError?.message||'Theme candidate discovery failed.',{phase:'theme-decision-candidates'});
@@ -900,7 +901,7 @@ function parseThemeDecisionAudits(raw,codes,ledger){
     const betterRaw=String(parts[4]||'').toUpperCase(),better=validCodes.has(betterRaw)&&betterRaw!==code?betterRaw:null;
     const reason=parts.slice(5).join('|').replace(/\s+/g,' ').trim().slice(0,900);
     if(status!=='REJECT'&&!refs.length)continue;
-    map.set(code,{code,status,supportEvidenceIds:refs,betterCode:better,reason});
+    map.set(code,{code,status,supportEvidenceIds:refs,betterCode:better,reason,synthetic:false});
   }
   return map;
 }
@@ -913,7 +914,7 @@ async function runThemeDecisionAuditBatch(env,model,behavior,ledger,codes){
     lastRaw=raw;const parsed=parseThemeDecisionAudits(raw,codes,ledger);for(const [code,row] of parsed)best.set(code,row);
     if(best.size===codes.length)break;
   }
-  for(const code of codes)if(!best.has(code))best.set(code,{code,status:'REJECT',supportEvidenceIds:[],betterCode:null,reason:'Audit did not return a valid attributable assessment for this candidate.'});
+  for(const code of codes)if(!best.has(code))best.set(code,{code,status:'REJECT',supportEvidenceIds:[],betterCode:null,reason:'Audit did not return a valid attributable assessment for this candidate.',synthetic:true});
   return{audits:[...best.values()],rawPreview:String(lastRaw||'').slice(0,1200)};
 }
 
@@ -948,19 +949,65 @@ async function runThemeDecisionFinalRank(env,model,behavior,ledger,audits){
   throw diagnosticError(lastError?.message||'Theme final rank failed.',{phase:'theme-decision-final-rank'});
 }
 
-async function runThemeAdversarialDecisionPipeline(env,model,image,behavior='analyze',analysisContext=""){
-  const evidenceLedger=await runThemeDecisionEvidencePass(env,model,image,behavior,analysisContext);
-  let candidateCodes=await runThemeDecisionCandidatePass(env,model,behavior,evidenceLedger),audits=await runThemeDecisionAudits(env,model,behavior,evidenceLedger,candidateCodes);
-  let survivors=audits.filter(row=>row.status!=='REJECT');
-  if(survivors.length<3){
-    const excluded=[...new Set(audits.filter(row=>row.status==='REJECT').map(row=>row.code))];
-    const expansion=await runThemeDecisionCandidatePass(env,model,behavior,evidenceLedger,{excludeCodes:excluded});
-    const newCodes=expansion.filter(code=>!candidateCodes.includes(code));
-    if(newCodes.length){candidateCodes=[...candidateCodes,...newCodes];audits=[...audits,...await runThemeDecisionAudits(env,model,behavior,evidenceLedger,newCodes)];}
-    survivors=audits.filter(row=>row.status!=='REJECT');
+function themeDecisionPartialFinalPrompt(ledger,audits){
+  const survivors=audits.filter(row=>row.status!=='REJECT'),count=survivors.length,codes=survivors.map(row=>row.code),defs=themeDecisionCatalog(codes);
+  const auditText=survivors.map(row=>`${row.code}|${row.status}|${row.supportEvidenceIds.join(',')||'NONE'}|${row.reason}`).join('\n');
+  return `GENREACTRIX THEME DECISION — SLOP WARNING PARTIAL RANK.\n\nThe adversarial audit has exhausted the full current Theme vocabulary and only ${count} defensible Theme${count===1?' remains':'s remain'}. Do NOT invent, resurrect, or weaken a rejected Theme merely to reach three. Rank exactly the surviving Theme${count===1?'':'s'} by closest ordinary-human semantic fit and assign realistic confidence using the same calibration as normal final ranking. High confidence still requires strong direct visual/contextual support. Every rationale must cite at least one supplied E# fact.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nAUDIT SURVIVORS\n${auditText}\n\nSURVIVOR DEFINITIONS\n${defs}\n\nReturn exactly ${count} line${count===1?'':'s'} and nothing else:\n${survivors.map((_,index)=>`${index+1}|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason`).join('\n')}`;
+}
+
+function parseThemeDecisionPartialRank(raw,allowedCodes,expectedCount){
+  const allowed=new Set(allowedCodes),validRefs=/\bE\d{1,2}\b/i,out=[],used=new Set();
+  for(const line of String(raw||'').replace(/\r/g,'').split('\n')){
+    const parts=line.trim().replace(/^[-*•]\s*/,'').split('|').map(x=>x.trim());
+    if(parts.length<5)continue;
+    const rank=Number(String(parts[0]||'').replace(/[^0-9]/g,'')),source=String(parts[1]||'').toLowerCase(),code=String(parts[2]||'').toUpperCase(),confidence=Number(String(parts[3]||'').replace(/[^0-9.]/g,'')),rationale=parts.slice(4).join('|').replace(/\s+/g,' ').trim();
+    if(rank<1||rank>expectedCount||source!=='matrix'||!allowed.has(code)||used.has(code)||!Number.isFinite(confidence)||!validRefs.test(rationale))continue;
+    used.add(code);out.push({rank,source:'matrix',code,confidence:Math.max(0,Math.min(100,confidence)),rationale});
   }
-  const selections=await runThemeDecisionFinalRank(env,model,behavior,evidenceLedger,audits);
-  return{selections,diagnostics:{schemaVersion:1,protocol:'literal-evidence-candidates-adversarial-audit-final-rank-v1',imageAccess:{evidence:true,candidates:false,audit:false,final:false},evidenceLedger,candidateCodes,audits,survivorCodes:audits.filter(row=>row.status!=='REJECT').map(row=>row.code)}};
+  out.sort((a,b)=>a.rank-b.rank);
+  if(out.length!==expectedCount)throw new Error(`Theme partial final rank yielded ${out.length} valid selections instead of ${expectedCount}.`);
+  return out.map((row,index)=>({...row,rank:index+1}));
+}
+
+async function runThemeDecisionPartialRank(env,model,behavior,ledger,audits){
+  const survivors=audits.filter(row=>row.status!=='REJECT'),allowed=survivors.map(row=>row.code),expected=allowed.length;
+  if(!expected)return[];
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const prompt=themeDecisionPartialFinalPrompt(ledger,audits)+(attempt===2?'\n\nRECOVERY: Use every survivor exactly once. Return only the requested pipe-delimited lines.':'');
+      const raw=await runStructured(env,model,null,prompt,null,800,'text',{behavior,themeDecisionPartialRank:true,temperature:0});
+      return parseThemeDecisionPartialRank(raw,allowed,expected);
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Theme partial final rank failed.',{phase:'theme-decision-partial-final-rank',survivors:allowed});
+}
+
+function themeExhaustionSlopWarning({survivorCount=0,auditedCount=0,candidateCount=0}={}){
+  const count=Math.max(0,Number(survivorCount)||0),audited=Math.max(0,Number(auditedCount)||0),candidates=Math.max(0,Number(candidateCount)||0);
+  return{schemaVersion:2,assessmentId:`slop_warning_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`,assessedAt:new Date().toISOString(),detected:false,warning:true,status:'warning',kind:'warning',confidence:null,reason:`Theme analysis exhausted the current ${PRIMFUSION_REGISTRY.aiThemeChoices.length}-Theme vocabulary and found only ${count} defensible Theme${count===1?'':'s'}; Director review is recommended.`,basis:'theme-evidence-exhaustion',trigger:'insufficient-theme-survivors',themeSurvivorCount:count,themeAuditedCount:audited,themeCandidateCount:candidates};
+}
+
+async function runThemeAdversarialDecisionPipeline(env,model,image,behavior='analyze',analysisContext=""){
+  const evidenceLedger=await runThemeDecisionEvidencePass(env,model,image,behavior,analysisContext),allThemeCodes=PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code);
+  let candidateCodes=await runThemeDecisionCandidatePass(env,model,behavior,evidenceLedger),audits=await runThemeDecisionAudits(env,model,behavior,evidenceLedger,candidateCodes),survivors=audits.filter(row=>row.status!=='REJECT');
+  const auditedCodes=new Set(candidateCodes),expansionRounds=[];
+  let expansionRound=0;
+  while(survivors.length<3&&auditedCodes.size<allThemeCodes.length){
+    expansionRound++;
+    const remaining=allThemeCodes.filter(code=>!auditedCodes.has(code));
+    const expansion=await runThemeDecisionCandidatePass(env,model,behavior,evidenceLedger,{excludeCodes:[...auditedCodes],minCandidates:Math.min(3,remaining.length)}),newCodes=expansion.filter(code=>!auditedCodes.has(code));
+    if(!newCodes.length)throw diagnosticError('Theme candidate expansion returned no previously unaudited candidates.',{phase:'theme-decision-expansion-no-progress',auditedCount:auditedCodes.size,remainingCount:remaining.length,expansionRound});
+    for(const code of newCodes)auditedCodes.add(code);
+    const newAudits=await runThemeDecisionAudits(env,model,behavior,evidenceLedger,newCodes);
+    candidateCodes=[...candidateCodes,...newCodes];audits=[...audits,...newAudits];survivors=audits.filter(row=>row.status!=='REJECT');
+    expansionRounds.push({round:expansionRound,candidateCodes:[...newCodes],survivorCodes:newAudits.filter(row=>row.status!=='REJECT').map(row=>row.code),auditedCount:auditedCodes.size,remainingCount:allThemeCodes.length-auditedCodes.size});
+  }
+  const exhausted=survivors.length<3&&auditedCodes.size===allThemeCodes.length,syntheticAudits=audits.filter(row=>row.synthetic);
+  if(exhausted&&syntheticAudits.length)throw diagnosticError(`Theme audit integrity failed for ${syntheticAudits.length} candidates; refusing to convert malformed audit output into a SLOP Warning.`,{phase:'theme-decision-audit-integrity',invalidAuditCodes:syntheticAudits.map(row=>row.code),survivorCodes:survivors.map(row=>row.code),auditedThemeCount:auditedCodes.size});
+  const selections=exhausted?await runThemeDecisionPartialRank(env,model,behavior,evidenceLedger,audits):await runThemeDecisionFinalRank(env,model,behavior,evidenceLedger,audits);
+  const warning=exhausted?themeExhaustionSlopWarning({survivorCount:survivors.length,auditedCount:auditedCodes.size,candidateCount:candidateCodes.length}):null;
+  return{selections,warning,diagnostics:{schemaVersion:2,protocol:'literal-evidence-candidates-adversarial-audit-final-rank-v2-exhaustive-recovery',imageAccess:{evidence:true,candidates:false,audit:false,final:false},evidenceLedger,candidateCodes,audits,survivorCodes:survivors.map(row=>row.code),expansionRounds,exhaustedThemeVocabulary:exhausted,auditedThemeCount:auditedCodes.size,themeVocabularyCount:allThemeCodes.length,slopWarning:warning?{assessmentId:warning.assessmentId,trigger:warning.trigger,themeSurvivorCount:warning.themeSurvivorCount}:null}};
 }
 
 function themeSchema(){
@@ -3076,6 +3123,8 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.84 — Exhaustive fresh-candidate Theme recovery; full-vocabulary exhaustion becomes puce SLOP? Warning instead of fabricated third Theme or terminal audit failure.
+// v0.9.6.83 — Behavior-neutral AMA metadata iteration cleanup to eliminate Cloudflare editor TS2345 type-check warning.
 // v0.9.6.82 — AMA-derived Theme contextual gating + confidence calibration; AMA Prim/ownership/integrity repair; Theme Rerun evidence-source repair; provider readiness probe.
 // v0.9.6.79 — Theme adversarial decision pipeline: literal evidence -> broad candidates -> adversarial audit -> final rank.
 // v0.9.6.78 — Theme human-fit calibration: no emotional-salience ranking bonus; neutral closer fits win; generic descriptive praise excluded from rerun evidence.
@@ -3140,7 +3189,14 @@ async function runAmaStructured(env,model,image,prompt,schema,maxTokens,response
   throw lastError||new Error('AMA provider call failed');
 }
 function amaSnapshotThemes(snapshot,key){return(Array.isArray(snapshot?.[key])?snapshot[key]:[]).filter(Boolean)}
-function amaUniqueThemeMetas(snapshot,candidateCodes=[]){const rows=[],seen=new Set(),sources=[[amaSnapshotThemes(snapshot,'aiThemes'),'ai'],[amaSnapshotThemes(snapshot,'directorThemes'),'director'],[(candidateCodes||[]).map(code=>({code})),'candidate']];for(const [refs,source] of sources)for(const ref of refs){const meta=amaThemeMeta(ref,source),key=`${meta.kind}:${String(meta.code||meta.name).toLowerCase()}`;if(seen.has(key))continue;seen.add(key);rows.push(meta)}return rows}
+function amaUniqueThemeMetas(snapshot,candidateCodes=[]){
+  const rows=[],seen=new Set();
+  const pushUnique=meta=>{const key=`${meta.kind}:${String(meta.code||meta.name).toLowerCase()}`;if(seen.has(key))return;seen.add(key);rows.push(meta)};
+  for(const ref of amaSnapshotThemes(snapshot,'aiThemes'))pushUnique(amaThemeMeta(ref,'ai'));
+  for(const ref of amaSnapshotThemes(snapshot,'directorThemes'))pushUnique(amaThemeMeta(ref,'director'));
+  for(const code of candidateCodes||[])pushUnique(amaThemeMeta({code},'candidate'));
+  return rows;
+}
 function amaVisualPrompt(snapshot){return`Describe this image as a perceptive human would describe it to another person so it can support a later Theme-comparison interview. Include subject, composition, color, lighting, texture, style, setting, visible action, and any reasonably supported atmosphere, energy, aesthetic, or emotional impression. A little theatricality is welcome when the visible image earns it. Do not invent narrative, intent, symbolism, personality, unseen events, or Theme-specific justifications.\n\nExisting AI Description for context only (correct it if the image disagrees):\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None stored.'}\n\nReturn one concise but substantial paragraph.`}
 function amaAllThemeCatalog(){return PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>`${row.code} — ${row.name} — ${String(row.aiMeaning||'').replace(/\s+/g,' ')}`).join('\n')}
 async function amaCandidateAudit(env,model,visualRead,snapshot){
@@ -3519,7 +3575,8 @@ async function analyze(env,body){
       const decision=await runThemeAdversarialDecisionPipeline(env,model,image,behavior,themeAnalysisContext);
       resolvedThemes=resolveThemes(decision.selections);
       components.themeDecisionDiagnostics=decision.diagnostics;
-      promptVersions.themes=themeAnalysisContext?'genreactrix-themes-pfm-v20-adversarial-audit-analysis-failsafe':'genreactrix-themes-pfm-v19-adversarial-audit';
+      if(decision.warning){components.slopAssessment=decision.warning;promptVersions.slopAssessment='genreactrix-slop-warning-theme-exhaustion-v1';}
+      promptVersions.themes=themeAnalysisContext?'genreactrix-themes-pfm-v21-adversarial-audit-exhaustive-recovery-analysis-failsafe':'genreactrix-themes-pfm-v21-adversarial-audit-exhaustive-recovery';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
@@ -3539,7 +3596,7 @@ async function analyze(env,body){
     promptVersions.description = descriptionRerun ? `genreactrix-freeform-v3-rerun-workspace-${descriptionRerun.operation}` : (String(body.directorGuidance||'').trim() ? 'genreactrix-freeform-v2-director-guidance' : 'genreactrix-freeform-v1');
   }
 
-  if (requested.includes('themes') && resolvedThemesForSlop){
+  if (requested.includes('themes') && resolvedThemesForSlop && !components.slopAssessment){
     const basis=body.themeRerun?'theme-rerun':'origin-or-analysis';
     const descriptionForSlop=String(components.description||body.themeAnalysisContext||'').trim();
     components.slopAssessment=await runSlopAssessment(env,model,image,resolvedThemesForSlop,descriptionForSlop,basis);
