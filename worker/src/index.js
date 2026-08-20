@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.80-capacity-fallback-cooldown
+/* Genreactrix AI Worker v0.9.6.81-theme-evidence-source-contract
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.80-capacity-fallback-cooldown';
+const API_VERSION = '0.9.6.81-theme-evidence-source-contract';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -787,7 +787,13 @@ const THEME_DECISION_AUDIT_BATCH_SIZE = 4;
 function themeDecisionEvidencePrompt(analysisContext=""){
   const context=String(analysisContext||'').trim().slice(0,6000);
   const contextBlock=context?`\n\nSECONDARY AI DESCRIPTION CONTEXT:\n${context}\n\nThe secondary context may contribute only concrete facts that are actually consistent with the image. Omit generic praise, mood inflation, and semantic conclusions.`:'';
-  return `GENREACTRIX THEME DECISION — STAGE 1: LITERAL EVIDENCE.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Do NOT infer an emotional response merely because an image is interesting, aesthetically pleasing, evocative, dramatic, simple, minimal, irregular, quiet, or visually appealing.\n\nProduce a compact ledger of concrete evidence that exists BEFORE Theme selection. Record atomic observable facts: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other directly visible details. If secondary AI Description context is supplied, it can contribute only concrete facts that agree with the image.\n\nExclude moods, metaphors, analogies, intentions, personalities, emotional qualities, generic evaluative praise, and thematic interpretations. Specifically omit language such as visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, beautiful, well-balanced, cozy, playful, silly, sweet, nostalgic, poignant, romantic, eerie, or dramatic unless the word itself is literally visible text in the image.\n\nThe image is authoritative. Keep each ledger item to one fact. Aim for 6–12 useful facts.${contextBlock}\n\nOUTPUT FORMAT — REQUIRED:\nE1|image|one concrete fact\nE2|image|one concrete fact\nE3|analysis|one concrete fact explicitly supplied by the secondary context\n\nUse sequential E-numbers. Source must be image or analysis. If there is no secondary context, use image only. Return only ledger lines.`;
+  const outputExample=context
+    ?'E1|image|one concrete fact\nE2|image|one concrete fact\nE3|analysis|one concrete fact explicitly supplied by the secondary context'
+    :'E1|image|one concrete fact\nE2|image|one concrete fact\nE3|image|one concrete fact';
+  const sourceRule=context
+    ?'Source must be image or analysis.'
+    :'Source must be image only; do not emit analysis-sourced lines because no secondary context was supplied.';
+  return `GENREACTRIX THEME DECISION — STAGE 1: LITERAL EVIDENCE.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Do NOT infer an emotional response merely because an image is interesting, aesthetically pleasing, evocative, dramatic, simple, minimal, irregular, quiet, or visually appealing.\n\nProduce a compact ledger of concrete evidence that exists BEFORE Theme selection. Record atomic observable facts: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other directly visible details. If secondary AI Description context is supplied, it can contribute only concrete facts that agree with the image.\n\nExclude moods, metaphors, analogies, intentions, personalities, emotional qualities, generic evaluative praise, and thematic interpretations. Specifically omit language such as visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, beautiful, well-balanced, cozy, playful, silly, sweet, nostalgic, poignant, romantic, eerie, or dramatic unless the word itself is literally visible text in the image.\n\nThe image is authoritative. Keep each ledger item to one fact. Aim for 6–12 useful facts.${contextBlock}\n\nOUTPUT FORMAT — REQUIRED:\n${outputExample}\n\nUse sequential E-numbers. ${sourceRule} Return only ledger lines.`;
 }
 
 function parseThemeDecisionEvidence(raw,{allowAnalysis=false}={}){
@@ -813,11 +819,15 @@ function themeDecisionEvidenceText(ledger){return (ledger||[]).map(row=>`${row.i
 
 async function runThemeDecisionEvidencePass(env,model,image,behavior,analysisContext=""){
   let lastError=null;
+  const allowAnalysis=Boolean(String(analysisContext||'').trim());
   for(let attempt=1;attempt<=2;attempt++){
     try{
-      const prompt=themeDecisionEvidencePrompt(analysisContext)+(attempt===2?'\n\nRECOVERY: Return only sequential E#|image|fact or E#|analysis|fact lines. No classification.':'');
+      const recovery=attempt===2
+        ?(allowAnalysis?'\n\nRECOVERY: Return only sequential E#|image|fact or E#|analysis|fact lines. No classification.':'\n\nRECOVERY: Return only sequential E#|image|fact lines. No classification. Do not emit analysis-sourced lines because no secondary context was supplied.')
+        :'';
+      const prompt=themeDecisionEvidencePrompt(analysisContext)+recovery;
       const raw=await runStructured(env,model,image,prompt,null,1400,'text',{behavior,themeDecisionEvidencePass:true,temperature:0});
-      return parseThemeDecisionEvidence(raw,{allowAnalysis:Boolean(String(analysisContext||'').trim())});
+      return parseThemeDecisionEvidence(raw,{allowAnalysis});
     }catch(error){lastError=error;}
   }
   throw diagnosticError(lastError?.message||'Theme evidence pass failed.',{phase:'theme-decision-literal-evidence'});
