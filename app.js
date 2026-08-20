@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.135";
-// v0.9.40.135 — AMA-derived Theme calibration + AMA integrity/Print repair + provider readiness; kill-switch UI deliberately deferred.
+const GENREACTRIX_BUILD="v0.9.40.137";
+// v0.9.40.137 — Exhaustive Theme recovery + puce SLOP? Warning state and filtering; .136 AMA cleanup retained.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -240,16 +240,16 @@ const state = {
 };
 
 // Queue owns AI-complete images as Staged until the Bundle Engine moves them into Inbox.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v5";
-const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v4","genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v6";
+const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v5","genreactrix-landscape-filter-v4","genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
 const LEGACY_SIDELINE_FILTER_KEY=["par","ked"].join("");
-const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen","tuned","slop"];
+const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen","tuned","slop","slopWarning","slopDetected"];
 const SORT_MODES=new Set(["bundle","newest","oldest","filename","random"]);
 const defaultLandscapeFilter=()=>({
   all:false,
   feed:true,
-  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false},
-  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false},
+  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false,slopWarning:false,slopDetected:false},
+  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false,slopWarning:false,slopDetected:false},
   bundleId:null,
   sort:"bundle",
   randomSeed:0
@@ -311,7 +311,8 @@ function recordIsTuned(record){
   const refs=Object.values(record?.analysis?.ai?.artifactHistory?.currentArtifacts||{});return refs.some(ref=>(Number(ref?.version)||0)>1);
 }
 function recordSlopAssessment(record){return record?.metadata?.extended?.aiSlopAssessment||record?.analysis?.ai?.components?.slopAssessment||null}
-function recordHasSlopSuggestion(record){const assessment=recordSlopAssessment(record);if(!assessment?.detected)return false;const review=record?.metadata?.extended?.slopDirectorReview||null;if(review?.decision==='not-slop'&&String(review.assessmentId||'')===String(assessment.assessmentId||''))return false;return true}
+function slopAssessmentKind(assessment){if(assessment?.detected)return'detected';if(assessment?.warning===true||String(assessment?.status||'').toLowerCase()==='warning'||String(assessment?.kind||'').toLowerCase()==='warning')return'warning';return'none'}
+function recordHasSlopSuggestion(record,kind=null){const assessment=recordSlopAssessment(record),actual=slopAssessmentKind(assessment);if(actual==='none'||(kind&&actual!==kind))return false;const review=record?.metadata?.extended?.slopDirectorReview||null;if(review?.decision==='not-slop'&&String(review.assessmentId||'')===String(assessment.assessmentId||''))return false;return true}
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
@@ -321,6 +322,8 @@ function recordMatchesFilterCategory(record,key){
   if(key==="seen")return Boolean(record.attributes?.seen);
   if(key==="tuned")return recordIsTuned(record);
   if(key==="slop")return recordHasSlopSuggestion(record);
+  if(key==="slopWarning")return recordHasSlopSuggestion(record,'warning');
+  if(key==="slopDetected")return recordHasSlopSuggestion(record,'detected');
   return false;
 }
 function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage==="inbox-working";}
@@ -1465,9 +1468,9 @@ async function amaPreparedImageInput(record){
   }catch{return{imageDataUrl:await amaBlobDataUrl(blob)}}
 }
 function renderAiStatusTags(){
-  const record=currentImageRecord(),tuned=$('landscapeTunedBtn'),slop=$('landscapeSlopBtn'),has=Boolean(record)&&!state.feedEmpty;
+  const record=currentImageRecord(),tuned=$('landscapeTunedBtn'),slop=$('landscapeSlopBtn'),has=Boolean(record)&&!state.feedEmpty,assessment=recordSlopAssessment(record),kind=slopAssessmentKind(assessment),showSlop=has&&recordHasSlopSuggestion(record);
   if(tuned)tuned.hidden=!has||!recordIsTuned(record);
-  if(slop)slop.hidden=!has||!recordHasSlopSuggestion(record);
+  if(slop){slop.hidden=!showSlop;slop.textContent='SLOP?';slop.classList.toggle('slop-warning-status',showSlop&&kind==='warning');slop.classList.toggle('slop-detected-status',showSlop&&kind==='detected');slop.title=showSlop?(kind==='warning'?'SLOP? · Slop Warning':'SLOP? · Slop Detected'):'';slop.setAttribute('aria-label',showSlop?(kind==='warning'?'SLOP? Slop Warning':'SLOP? Slop Detected'):'SLOP?');}
 }
 async function openTunedHistory(){
   const record=currentImageRecord();if(!record)return;const body=$('tunedHistoryBody');if(!body)return;body.innerHTML='<p>Loading AI history…</p>';$('tunedHistoryDialog')?.showModal();
@@ -1480,7 +1483,7 @@ async function openTunedHistory(){
     const h=document.createElement('details');h.innerHTML=`<summary>Full image history timeline · ${timeline.length} events</summary><pre>${amaEsc(JSON.stringify(timeline,null,2))}</pre>`;body.append(h);
   }catch(error){body.innerHTML=`<p>AI history could not be loaded: ${amaEsc(error?.message||error)}</p>`}
 }
-function openSlopDecision(){const assessment=currentSlopAssessment();if(!assessment?.detected)return;const reason=$('slopReason'),confidence=$('slopConfidence');if(reason)reason.textContent=assessment.reason||'AI marked this image as possible SLOP.';if(confidence)confidence.textContent=`AI SLOP advisory confidence: ${Number(assessment.confidence)||0}%`;safelyShowDialog($('slopDialog'))}
+function openSlopDecision(){const assessment=currentSlopAssessment(),kind=slopAssessmentKind(assessment);if(kind==='none')return;const reason=$('slopReason'),confidence=$('slopConfidence');if(reason)reason.textContent=assessment.reason||(kind==='warning'?'Theme analysis could not establish three defensible Themes; Director review is recommended.':'AI marked this image as possible SLOP.');if(confidence)confidence.textContent=kind==='warning'?`Slop Warning · ${Number(assessment.themeSurvivorCount)||0} defensible Theme${Number(assessment.themeSurvivorCount)===1?'':'s'} after ${Number(assessment.themeAuditedCount)||91} audited.`:`Slop Detected · AI advisory confidence: ${Number(assessment.confidence)||0}%`;safelyShowDialog($('slopDialog'))}
 async function applySlopDecision(decision){
   const record=currentImageRecord(),assessment=currentSlopAssessment();if(!record||!assessment)return;const at=new Date().toISOString();
   if(decision==='not-slop')window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{slopDirectorReview:{decision:'not-slop',assessmentId:assessment.assessmentId||null,at}}}},'slop-director-not-slop');

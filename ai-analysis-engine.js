@@ -8,6 +8,8 @@
   ['reactionReasons','Reactions Info','aiReactionReasons'],['genreReasons','Themes Info','aiGenreReasons']
  ];
  const clone=v=>v==null?v:structuredClone(v),now=()=>new Date().toISOString(),id=p=>`${p}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`;
+ function slopKind(a){if(a?.detected)return'detected';if(a?.warning===true||String(a?.status||'').toLowerCase()==='warning'||String(a?.kind||'').toLowerCase()==='warning')return'warning';return'none'}
+ function effectiveSlopAssessment(previous,incoming,review){if(!incoming)return previous||null;const priorDismissed=review?.decision==='not-slop'&&String(review?.assessmentId||'')===String(previous?.assessmentId||'');if(slopKind(incoming)==='warning'&&slopKind(previous)==='detected'&&!priorDismissed)return clone(previous);return clone(incoming)}
  const REACTION_PRIM_IDS=Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`);
  const reactionNumber=value=>{const n=typeof value==='number'?value:Number(value?.percentage??value?.confidence??value?.score??value?.weight??value?.value??value);return Number.isFinite(n)?Math.max(0,n):0};
  function reactionMap(raw){const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};return Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,reactionNumber(source[pid])]));}
@@ -255,7 +257,7 @@
       if(result.components?.slopAssessment) returned.slopAssessment=clone(result.components.slopAssessment);
 
       record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
-      const latest=record.analysis?.ai||previous;
+      const latest=record.analysis?.ai||previous,latestExtended=record?.metadata?.extended||{},effectiveSlop=effectiveSlopAssessment(latest.components?.slopAssessment||latestExtended.aiSlopAssessment||null,returned.slopAssessment||null,latestExtended.slopDirectorReview||null);
       const componentUpdates={};
       for(const c of group){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];componentUpdates[field]='current'}
       const mergedComponents=applyHybridReactions({...(latest.components||{}),...returned});
@@ -267,7 +269,7 @@
       const extAfterAi=liveAfterAi?.metadata?.extended||{};
       const metadataPatch={};
       if(rerunCompleted){metadataPatch.aiTuned=true;metadataPatch.aiTunedAt=now();metadataPatch.aiTunedCount=(Number(extAfterAi.aiTunedCount)||0)+1;metadataPatch.aiTunedAttemptId=artifactAttempt.id;metadataPatch.aiTunedJobId=job.id;}
-      if(result.components?.slopAssessment){metadataPatch.aiSlopAssessment=clone(result.components.slopAssessment);metadataPatch.aiSlopAssessmentAttemptId=artifactAttempt.id;metadataPatch.aiSlopAssessmentJobId=job.id;}
+      if(result.components?.slopAssessment&&String(effectiveSlop?.assessmentId||'')===String(result.components.slopAssessment?.assessmentId||'')){metadataPatch.aiSlopAssessment=clone(result.components.slopAssessment);metadataPatch.aiSlopAssessmentAttemptId=artifactAttempt.id;metadataPatch.aiSlopAssessmentJobId=job.id;}
       if(Object.keys(metadataPatch).length)window.genreactrixImageRecordEngine.update(record.id,{metadata:{extended:metadataPatch}},rerunCompleted?'ai-tuned-metadata':'ai-slop-advisory-metadata');
       await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{attemptId:artifactAttempt.id,artifactRefs:stored.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:{...returned,...(descriptionEdit!==null?{descriptionEdit}:{}),...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id,artifactHistory:stored.artifactHistory},componentUpdates,directorGuidance:guidance,reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),partial:false}});
     }catch(error){

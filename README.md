@@ -1,3 +1,25 @@
+# Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
+
+- Pairs with Worker v0.9.6.84-theme-exhaustion-slop-warning. Upload the Worker first, then this site build.
+- Normal Theme analysis now expands only into previously unaudited Themes and keeps expanding until three adversarial-audit survivors exist or the full current 91-Theme vocabulary has genuinely been exhausted. Rejected Themes are never resurrected and the audit is not weakened.
+- If full-vocabulary exhaustion still leaves fewer than three defensible Themes, the Worker returns only the legitimate survivors and records a puce **SLOP?** Slop Warning instead of fabricating a third Theme or failing the image.
+- Existing puke-green **SLOP?** remains Slop Detected and overrides the puce warning when an undismissed detected assessment already exists. Both open the same Director SLOP decision menu.
+- Filter adds SLOP? (either state), Slop Warning, and Slop Detected. Warning color is sampled from the approved reference image at #6F4A45.
+- Provider/infrastructure/parser failures do not create Slop Warning. Theme Rerun Director-constrained failure behavior is unchanged.
+- No PrimFusion definitions, Matrix version, fallback models/cooldown, AMA behavior, or kill-switch UI changed.
+
+---
+
+# Genreactrix v0.9.40.136 — AMA metadata type-check cleanup
+
+- Pairs with Worker v0.9.6.83-ama-meta-typecheck-cleanup. Upload the Worker first, then this site build.
+- Behavior-neutral cleanup only: rewrites `amaUniqueThemeMetas()` iteration so AI, Director, and candidate sources are passed as explicit string literals instead of being inferred from a mixed nested array.
+- Eliminates the Cloudflare editor TypeScript warning `TS2345: string | any[] is not assignable to string` seen in Worker v0.9.6.82.
+- All v0.9.40.135 / Worker v0.9.6.82 Theme calibration, AMA integrity, Print/PDF, provider readiness, fallback, and cooldown behavior is otherwise unchanged.
+- AI kill-switch UI/behavior remains deferred.
+
+---
+
 # Genreactrix v0.9.40.135 — AMA calibration + integrity bundle
 
 - Pairs with Worker v0.9.6.82-ama-calibration-integrity. Upload the Worker first, then this site build.

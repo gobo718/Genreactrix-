@@ -8432,7 +8432,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media(max-width:520px){.theme-change-reasoning-comparison{grid-template-columns:1fr}.theme-change-reasoning-arrow{transform:rotate(90deg);justify-self:center}}
 
 /* v0.9.40.124 — resumable AI AMA + SLOP?/Tuned status controls. */
-:root{--ama-accent:#EF806C;--tuned-accent:#9A85BB;--slop-accent:#808000}
+:root{--ama-accent:#EF806C;--tuned-accent:#9A85BB;--slop-accent:#808000;--slop-warning-accent:#6F4A45}
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .landscape-judgment-header{position:relative!important}
   .landscape-ai-status-stack{
@@ -8447,7 +8447,8 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
   }
   .landscape-ai-status-tag[hidden]{display:none!important}
   .tuned-status-tag{border:1px solid var(--tuned-accent)!important;background:color-mix(in srgb,var(--tuned-accent) 72%,#17141e)!important}
-  .slop-status-tag{border:1px solid #a7a72a!important;background:var(--slop-accent)!important}
+  .slop-status-tag,.slop-status-tag.slop-detected-status{border:1px solid #a7a72a!important;background:var(--slop-accent)!important}
+  .slop-status-tag.slop-warning-status{border-color:#91665f!important;background:var(--slop-warning-accent)!important}
   .theme-rerun-ama-button{
     position:absolute!important;right:6px!important;top:calc(var(--ai-theme-panel-top,0px) + 50px)!important;z-index:8!important;
     min-width:72px!important;min-height:22px!important;padding:2px 7px!important;margin:0!important;
