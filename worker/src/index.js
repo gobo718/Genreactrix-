@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.78-theme-human-fit-calibration
+/* Genreactrix AI Worker v0.9.6.79-theme-adversarial-audit
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.78-theme-human-fit-calibration';
+const API_VERSION = '0.9.6.79-theme-adversarial-audit';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -716,6 +716,165 @@ Field 5 is a concise image-grounded rationale explaining why the Theme was selec
 Do not repeat the same Theme, code, or semantic label under another rank.`;
 }
 
+
+
+const THEME_DECISION_CANDIDATE_LIMIT = 12;
+const THEME_DECISION_AUDIT_BATCH_SIZE = 4;
+
+function themeDecisionEvidencePrompt(analysisContext=""){
+  const context=String(analysisContext||'').trim().slice(0,6000);
+  const contextBlock=context?`\n\nSECONDARY AI DESCRIPTION CONTEXT:\n${context}\n\nThe secondary context may contribute only concrete facts that are actually consistent with the image. Omit generic praise, mood inflation, and semantic conclusions.`:'';
+  return `GENREACTRIX THEME DECISION — STAGE 1: LITERAL EVIDENCE.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Do NOT infer an emotional response merely because an image is interesting, aesthetically pleasing, evocative, dramatic, simple, minimal, irregular, quiet, or visually appealing.\n\nProduce a compact ledger of concrete evidence that exists BEFORE Theme selection. Record atomic observable facts: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other directly visible details. If secondary AI Description context is supplied, it can contribute only concrete facts that agree with the image.\n\nExclude moods, metaphors, analogies, intentions, personalities, emotional qualities, generic evaluative praise, and thematic interpretations. Specifically omit language such as visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, beautiful, well-balanced, cozy, playful, silly, sweet, nostalgic, poignant, romantic, eerie, or dramatic unless the word itself is literally visible text in the image.\n\nThe image is authoritative. Keep each ledger item to one fact. Aim for 6–12 useful facts.${contextBlock}\n\nOUTPUT FORMAT — REQUIRED:\nE1|image|one concrete fact\nE2|image|one concrete fact\nE3|analysis|one concrete fact explicitly supplied by the secondary context\n\nUse sequential E-numbers. Source must be image or analysis. If there is no secondary context, use image only. Return only ledger lines.`;
+}
+
+function parseThemeDecisionEvidence(raw,{allowAnalysis=false}={}){
+  const text=String(raw||'').replace(/\r/g,'').trim();
+  if(!text)throw new Error('Theme evidence pass returned an empty response.');
+  const rows=[];
+  for(const line of text.split('\n')){
+    const cleaned=line.replace(/^\s*[-*•]+\s*/,'').trim().replace(/^\|\s*/,'').replace(/\s*\|$/,'');
+    const m=cleaned.match(/^E(\d{1,2})\s*\|\s*(image|analysis)\s*\|\s*(.+)$/i);
+    if(!m)continue;
+    const source=m[2].toLowerCase();
+    if(source==='analysis'&&!allowAnalysis)continue;
+    let fact=String(m[3]||'').replace(/\*{1,2}/g,'').trim().replace(/\s+/g,' ');
+    if(!fact||/\bPFM\d{4}\b/i.test(fact))continue;
+    rows.push({source,fact:fact.slice(0,420)});
+    if(rows.length>=16)break;
+  }
+  if(rows.length<3)throw new Error(`Theme evidence pass produced only ${rows.length} usable facts; at least 3 are required.`);
+  return rows.map((row,index)=>({id:`E${index+1}`,source:row.source,fact:row.fact}));
+}
+
+function themeDecisionEvidenceText(ledger){return (ledger||[]).map(row=>`${row.id}|${row.source}|${row.fact}`).join('\n')}
+
+async function runThemeDecisionEvidencePass(env,model,image,behavior,analysisContext=""){
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const prompt=themeDecisionEvidencePrompt(analysisContext)+(attempt===2?'\n\nRECOVERY: Return only sequential E#|image|fact or E#|analysis|fact lines. No classification.':'');
+      const raw=await runStructured(env,model,image,prompt,null,1400,'text',{behavior,themeDecisionEvidencePass:true,temperature:0});
+      return parseThemeDecisionEvidence(raw,{allowAnalysis:Boolean(String(analysisContext||'').trim())});
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Theme evidence pass failed.',{phase:'theme-decision-literal-evidence'});
+}
+
+function themeDecisionCatalog(codes=null){
+  const allow=codes?new Set(codes):null;
+  return PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>!allow||allow.has(row.code)).map(row=>`${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
+}
+
+function themeDecisionCandidatePrompt(ledger,{excludeCodes=[]}={}){
+  const excluded=new Set((excludeCodes||[]).map(code=>String(code||'').toUpperCase()));
+  const catalog=PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>!excluded.has(row.code)).map(row=>`${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
+  return `GENREACTRIX THEME DECISION — STAGE 2: BROAD CANDIDATE DISCOVERY.\n\nThis is NOT the final ranking. Using ONLY the literal evidence ledger, create a broad shortlist of up to ${THEME_DECISION_CANDIDATE_LIMIT} materially plausible PrimFusion Themes. The shortlist must be diverse enough to include literal, neutral, boring, ordinary, low-emotion, and low-stimulation interpretations whenever the evidence permits them. Do not prefer emotional, evocative, dramatic, expressive, funny, warm, sweet, nostalgic, beautiful, or interesting Themes merely because they make a richer answer.\n\nDo not turn simplicity/minimalism into playfulness; irregularity/random arrangement into silliness; neutral stillness into coziness; generic pleasantness into sweetness; visual appeal into emotional significance; or reflective language into nostalgia/poignancy. Include competitors that require LESS inference when they fit the same evidence.\n\nA candidate only needs to be plausible enough to deserve an audit. Do not assign final confidence and do not defend a candidate. Return ${THEME_DECISION_CANDIDATE_LIMIT} unique PFM codes when possible.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCURRENT 91 THEMES\n${catalog}\n\nOUTPUT FORMAT — one code per line and nothing else:\nCANDIDATE|PFM####`;
+}
+
+function parseThemeDecisionCandidates(raw,{max=THEME_DECISION_CANDIDATE_LIMIT}={}){
+  const valid=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code)),out=[];
+  const seen=new Set();
+  for(const m of String(raw||'').matchAll(/\bPFM\d{4}\b/gi)){
+    const code=m[0].toUpperCase();
+    if(!valid.has(code)||seen.has(code))continue;
+    seen.add(code);out.push(code);
+    if(out.length>=max)break;
+  }
+  if(out.length<3)throw new Error(`Theme candidate discovery produced only ${out.length} valid candidates.`);
+  return out;
+}
+
+async function runThemeDecisionCandidatePass(env,model,behavior,ledger,{excludeCodes=[]}={}){
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const prompt=themeDecisionCandidatePrompt(ledger,{excludeCodes})+(attempt===2?'\n\nRECOVERY: Return only CANDIDATE|PFM#### lines. Include neutral/literal competitors; do not return explanations.':'');
+      const raw=await runStructured(env,model,null,prompt,null,900,'text',{behavior,themeDecisionCandidatePass:true,temperature:attempt===1?0.08:0});
+      return parseThemeDecisionCandidates(raw);
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Theme candidate discovery failed.',{phase:'theme-decision-candidates'});
+}
+
+function themeDecisionAuditPrompt(ledger,codes){
+  const defs=themeDecisionCatalog(codes);
+  return `GENREACTRIX THEME DECISION — STAGE 3: ADVERSARIAL FIT AUDIT.\n\nAudit each listed candidate independently. Your role is to attack the candidate, not defend the earlier shortlist. A Theme cannot survive merely because you can write a plausible rationale for it. It survives only if the literal evidence contains positive semantic evidence that actually distinguishes that Theme from a neutral or less inferential interpretation.\n\nSTATUS RULES:\nSUPPORTED = clear positive evidence earns the Theme's semantic meaning.\nWEAK = it is a plausible closest-available interpretation, but evidence is partial; confidence later must remain low/modest.\nREJECT = the rationale depends on emotional-salience substitution, generic aesthetic praise, unsupported inference, missing gate/required meaning, or a materially closer less-inferential interpretation.\n\nReject these substitutions unless independent evidence specifically earns the Theme meaning: simplicity/minimalism→playfulness; irregularity/randomness→silliness; visual interest→Goofy; neutral stillness→Cozy; generic pleasantness→sweetness; aesthetic appeal→emotional significance; reflective prose→Nostalgia/Poignant. The same principle applies to every Theme, not just those examples.\n\nFor SUPPORTED or WEAK, cite one or more E# facts that positively support the semantic route. For REJECT, refs may be NONE. BETTER may name one materially closer PFM code from the full vocabulary, or NONE. Do not choose final top three here.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCANDIDATES TO AUDIT\n${defs}\n\nOUTPUT FORMAT — exactly one line per candidate:\nAUDIT|PFM####|SUPPORTED_or_WEAK_or_REJECT|E1,E2_or_NONE|BETTER_PFM####_or_NONE|brief reason`;
+}
+
+function parseThemeDecisionAudits(raw,codes,ledger){
+  const wanted=new Set(codes),validCodes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code)),validRefs=new Set((ledger||[]).map(row=>row.id)),map=new Map();
+  for(const line of String(raw||'').replace(/\r/g,'').split('\n')){
+    const parts=line.trim().replace(/^[-*•]\s*/,'').split('|').map(x=>x.trim());
+    if(parts.length<6||String(parts[0]).toUpperCase()!=='AUDIT')continue;
+    const code=String(parts[1]||'').toUpperCase();if(!wanted.has(code)||map.has(code))continue;
+    const status=String(parts[2]||'').toUpperCase();if(!['SUPPORTED','WEAK','REJECT'].includes(status))continue;
+    const refs=[...new Set((String(parts[3]||'').match(/\bE\d{1,2}\b/gi)||[]).map(id=>id.toUpperCase()).filter(id=>validRefs.has(id)))];
+    const betterRaw=String(parts[4]||'').toUpperCase(),better=validCodes.has(betterRaw)&&betterRaw!==code?betterRaw:null;
+    const reason=parts.slice(5).join('|').replace(/\s+/g,' ').trim().slice(0,900);
+    if(status!=='REJECT'&&!refs.length)continue;
+    map.set(code,{code,status,supportEvidenceIds:refs,betterCode:better,reason});
+  }
+  return map;
+}
+
+async function runThemeDecisionAuditBatch(env,model,behavior,ledger,codes){
+  let best=new Map(),lastRaw='';
+  for(let attempt=1;attempt<=2;attempt++){
+    const prompt=themeDecisionAuditPrompt(ledger,codes)+(attempt===2?'\n\nRECOVERY: Audit every listed candidate exactly once. Return only AUDIT lines.':'');
+    const raw=await runStructured(env,model,null,prompt,null,1600,'text',{behavior,themeDecisionAuditPass:true,temperature:0});
+    lastRaw=raw;const parsed=parseThemeDecisionAudits(raw,codes,ledger);for(const [code,row] of parsed)best.set(code,row);
+    if(best.size===codes.length)break;
+  }
+  for(const code of codes)if(!best.has(code))best.set(code,{code,status:'REJECT',supportEvidenceIds:[],betterCode:null,reason:'Audit did not return a valid attributable assessment for this candidate.'});
+  return{audits:[...best.values()],rawPreview:String(lastRaw||'').slice(0,1200)};
+}
+
+async function runThemeDecisionAudits(env,model,behavior,ledger,codes){
+  const all=[];
+  for(let i=0;i<codes.length;i+=THEME_DECISION_AUDIT_BATCH_SIZE){
+    const batch=codes.slice(i,i+THEME_DECISION_AUDIT_BATCH_SIZE),result=await runThemeDecisionAuditBatch(env,model,behavior,ledger,batch);
+    all.push(...result.audits);
+  }
+  return all;
+}
+
+function themeDecisionFinalPrompt(ledger,audits){
+  const survivors=audits.filter(row=>row.status!=='REJECT'),codes=survivors.map(row=>row.code),defs=themeDecisionCatalog(codes);
+  const auditText=survivors.map(row=>`${row.code}|${row.status}|${row.supportEvidenceIds.join(',')||'NONE'}|${row.reason}`).join('\n');
+  return `GENREACTRIX THEME DECISION — STAGE 4: FINAL RANK.\n\nChoose exactly three DIFFERENT Themes from the AUDIT-SURVIVING candidates only. Candidates marked REJECT have already failed adversarial review and are not eligible. Rank by closest ordinary-human semantic fit to the literal evidence, not emotional richness, drama, novelty, aesthetic appeal, or how satisfying a Theme is to discuss. A boring/neutral Theme wins whenever it is closer.\n\nSUPPORTED normally outranks WEAK when fit is otherwise comparable, but status does not replace semantic comparison. Confidence measures absolute strength of fit, NOT rank. A third-best WEAK Theme may deserve low confidence. 100 means exceptionally complete and unmistakable.\n\nEvery final rationale must cite at least one E# support fact and must state the actual semantic route. Do not create new image facts. Do not resurrect a rejected Theme.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nAUDIT SURVIVORS\n${auditText}\n\nSURVIVOR DEFINITIONS\n${defs}\n\nReturn exactly three lines and nothing else:\n1|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason\n2|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason\n3|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason`;
+}
+
+async function runThemeDecisionFinalRank(env,model,behavior,ledger,audits){
+  const allowed=new Set(audits.filter(row=>row.status!=='REJECT').map(row=>row.code));
+  if(allowed.size<3)throw diagnosticError(`Theme adversarial audit left only ${allowed.size} surviving candidates; refusing to fabricate a three-Theme result.`,{phase:'theme-decision-audit-survivors',survivors:[...allowed]});
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const prompt=themeDecisionFinalPrompt(ledger,audits)+(attempt===2?'\n\nRECOVERY: Use only the survivor PFM codes. Return exactly three unique pipe-delimited lines.':'');
+      const raw=await runStructured(env,model,null,prompt,null,1100,'text',{behavior,themeDecisionFinalRank:true,temperature:0});
+      const parsed=parseThemeText(raw);
+      if(parsed.some(row=>row.source!=='matrix'||!allowed.has(row.code)))throw new Error('Theme final rank attempted to select a candidate that did not survive adversarial audit.');
+      return parsed;
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Theme final rank failed.',{phase:'theme-decision-final-rank'});
+}
+
+async function runThemeAdversarialDecisionPipeline(env,model,image,behavior='analyze',analysisContext=""){
+  const evidenceLedger=await runThemeDecisionEvidencePass(env,model,image,behavior,analysisContext);
+  let candidateCodes=await runThemeDecisionCandidatePass(env,model,behavior,evidenceLedger),audits=await runThemeDecisionAudits(env,model,behavior,evidenceLedger,candidateCodes);
+  let survivors=audits.filter(row=>row.status!=='REJECT');
+  if(survivors.length<3){
+    const excluded=[...new Set(audits.filter(row=>row.status==='REJECT').map(row=>row.code))];
+    const expansion=await runThemeDecisionCandidatePass(env,model,behavior,evidenceLedger,{excludeCodes:excluded});
+    const newCodes=expansion.filter(code=>!candidateCodes.includes(code));
+    if(newCodes.length){candidateCodes=[...candidateCodes,...newCodes];audits=[...audits,...await runThemeDecisionAudits(env,model,behavior,evidenceLedger,newCodes)];}
+    survivors=audits.filter(row=>row.status!=='REJECT');
+  }
+  const selections=await runThemeDecisionFinalRank(env,model,behavior,evidenceLedger,audits);
+  return{selections,diagnostics:{schemaVersion:1,protocol:'literal-evidence-candidates-adversarial-audit-final-rank-v1',imageAccess:{evidence:true,candidates:false,audit:false,final:false},evidenceLedger,candidateCodes,audits,survivorCodes:audits.filter(row=>row.status!=='REJECT').map(row=>row.code)}};
+}
+
 function themeSchema(){
   const validCodes = PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code);
   const matrixChoice = {
@@ -1132,22 +1291,22 @@ function extractThemeRerunAcceptedPartial(raw,rerun,sets){
   return accepted;
 }
 
-function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots,evidenceLedger){
-  const acceptedCodes=new Set([...accepted.values()].map(row=>row.code));
+function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots,evidenceLedger,forbiddenCodes=[]){
+  const acceptedCodes=new Set([...accepted.values()].map(row=>row.code)),forbidden=new Set((forbiddenCodes||[]).map(code=>String(code||'').toUpperCase()));
   const fixed=[...accepted.entries()].sort((a,b)=>a[0]-b[0]).map(([slot,row])=>`Theme ${slot}=${row.code}`).join(', ')||'none';
   const blocks=missingSlots.map(slot=>{
-    const candidates=sets[slot].candidates.filter(row=>!acceptedCodes.has(row.code));
+    const candidates=sets[slot].candidates.filter(row=>!acceptedCodes.has(row.code)&&!forbidden.has(row.code));
     const defs=candidates.map(row=>`${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
     return `Theme ${slot} eligible=${candidates.map(row=>`${row.code}:${row.pairWeight}`).join(', ')}\n${defs}`;
   }).join('\n\n');
   return `Fill only the missing Theme slots using the frozen evidence. Existing selections stay fixed. For each missing slot, evaluate ALL remaining eligible candidates and choose the Theme an ordinary person would most naturally pick; do not settle for a merely defensible broad/easy Theme when a materially closer or more specific Theme is available. Do not reward emotional, evocative, dramatic, expressive, aesthetically appealing, attention-grabbing, or interesting Themes merely for being richer answers. A boring/neutral Theme wins whenever it is materially closer. Do not infer playfulness from simplicity/minimalism, silliness from irregularity, coziness from neutral stillness, sweetness from pleasantness, or emotional significance from generic praise. Confidence measures strength of fit, not rank, so a closest-available weak Theme should stay low-confidence. Before returning, check that no unselected eligible Theme is materially closer than the choice. Cite supporting E# facts.\n\nReturn only one compact line per missing slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nFIXED\n${fixed}\n\nMISSING\n${blocks}`;
 }
-async function repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger){
+async function repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger,forbiddenCodes=[]){
   let working=new Map(accepted),lastError=null;
   for(let attempt=1;attempt<=2;attempt++){
     const missing=rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).map(row=>row.slot);if(!missing.length)return working;
     try{
-      const raw=await runStructured(env,model,null,themeRerunMissingRepairPrompt(rerun,sets,working,missing,evidenceLedger),null,650,'text',{behavior,themeRerun:true,themeRerunRepair:true,temperature:0});
+      const raw=await runStructured(env,model,null,themeRerunMissingRepairPrompt(rerun,sets,working,missing,evidenceLedger,forbiddenCodes),null,650,'text',{behavior,themeRerun:true,themeRerunRepair:true,temperature:0});
       const newly=parseThemeRerunSelectionCompactPartial(raw,rerun,sets,evidenceLedger);
       for(const [slot,row] of newly)if(missing.includes(slot)&&!working.has(slot)&&![...working.values()].some(x=>x.code===row.code))working.set(slot,row);
       if(rerun.themeSlots.filter(row=>row.state!=='preserve'&&!working.has(row.slot)).length===0)return working;
@@ -1210,32 +1369,51 @@ async function runThemeRerun(env,model,image,behavior,input){
   const sets=themeRerunCandidateSets(rerun),openSlots=rerun.themeSlots.filter(row=>row.state!=='preserve');
   if(!openSlots.length){
     const local={};for(const row of rerun.themeSlots)local[`theme${row.slot}`]={code:row.currentThemeCode};
-    return{rerun,sets,evidenceLedger:[],selections:parseThemeRerunStructured(local,rerun,sets)};
+    return{rerun,sets,evidenceLedger:[],selections:parseThemeRerunStructured(local,rerun,sets),auditRounds:[]};
   }
-  // v0.9.6.69 Theme Rerun pipeline:
+  // v0.9.6.79 Theme Rerun decision pipeline:
   // 1) image/Description -> frozen factual evidence ledger
-  // 2) NO IMAGE -> compact plain-text selection: PFM code + confidence + supporting E# IDs
-  // 3) lock the exactly-three result
-  // 4) NO IMAGE -> separate Theme Edit Log explanation from the locked choice + cited E# facts
-  const evidenceLedger=await runThemeRerunEvidencePass(env,model,image,behavior,rerun),basePrompt=themeRerunPrompt(rerun,sets,evidenceLedger);
+  // 2) NO IMAGE -> candidate selection under Director constraints
+  // 3) NO IMAGE -> adversarial audit of every proposed open-slot Theme
+  // 4) rejected candidates are forbidden and replaced; only audit survivors can lock
+  // 5) NO IMAGE -> separate Theme Edit Log explanation from locked choice + cited E# facts
+  const evidenceLedger=await runThemeRerunEvidencePass(env,model,image,behavior,rerun),basePrompt=themeRerunPrompt(rerun,sets,evidenceLedger),rejectedCodes=new Set(),auditRounds=[];
   let lastError=null;
-  for(let attempt=1;attempt<=2;attempt++){
-    try{
-      const raw=await runStructured(env,model,null,basePrompt,null,700,'text',{behavior,themeRerun:true,themeRerunSelectionFromFrozenEvidence:true,temperature:attempt===1?0.08:0});
+  for(let round=1;round<=3;round++){
+    const rejectBlock=rejectedCodes.size?`
+
+ADVERSARIAL AUDIT REJECTIONS — THESE CODES ARE NOW INELIGIBLE FOR OPEN SLOTS:
+${[...rejectedCodes].join(', ')}
+Do not return any rejected code. Select the closest remaining eligible Theme for each open slot, even if confidence is low.`:'';
+    let proposed=null;
+    for(let attempt=1;attempt<=2&&!proposed;attempt++){
       try{
-        const selections=parseThemeRerunSelectionCompact(raw,rerun,sets,evidenceLedger),locked=await ensureThemeRerunComparativeReasons(env,model,behavior,rerun,selections,evidenceLedger);
-        return{rerun,sets,evidenceLedger,selections:locked};
-      }catch(error){
-        const accepted=parseThemeRerunSelectionCompactPartial(raw,rerun,sets,evidenceLedger),missing=openSlots.filter(row=>!accepted.has(row.slot));
-        if(accepted.size&&missing.length){
-          const repaired=await repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger),selections=finalizeThemeRerunPartial(rerun,sets,repaired),locked=await ensureThemeRerunComparativeReasons(env,model,behavior,rerun,selections,evidenceLedger);
-          return{rerun,sets,evidenceLedger,selections:locked};
+        const raw=await runStructured(env,model,null,basePrompt+rejectBlock,null,700,'text',{behavior,themeRerun:true,themeRerunSelectionFromFrozenEvidence:true,temperature:attempt===1?0.08:0});
+        try{
+          const selections=parseThemeRerunSelectionCompact(raw,rerun,sets,evidenceLedger);
+          if(selections.some(row=>openSlots.some(slot=>slot.slot===row.rank)&&rejectedCodes.has(row.code)))throw new Error('Theme Rerun proposal reused an adversarially rejected code.');
+          proposed=selections;
+        }catch(error){
+          const accepted=parseThemeRerunSelectionCompactPartial(raw,rerun,sets,evidenceLedger),missing=openSlots.filter(row=>!accepted.has(row.slot));
+          if(accepted.size&&missing.length){
+            for(const [slot,row] of [...accepted])if(rejectedCodes.has(row.code))accepted.delete(slot);
+            const repaired=await repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger,[...rejectedCodes]),selections=finalizeThemeRerunPartial(rerun,sets,repaired);
+            if(selections.some(row=>openSlots.some(slot=>slot.slot===row.rank)&&rejectedCodes.has(row.code)))throw new Error('Theme Rerun repair reused an adversarially rejected code.');
+            proposed=selections;
+          }else lastError=error;
         }
-        lastError=diagnosticError(error?.message||'Theme Rerun structured selection response could not be validated.',{phase:'theme-rerun-structured-selection-parse',attempt,responsePreview:JSON.stringify(raw||{}).slice(0,1200)});
-      }
-    }catch(error){lastError=error;}
+      }catch(error){lastError=error;}
+    }
+    if(!proposed)continue;
+    const openCodes=proposed.filter(row=>openSlots.some(slot=>slot.slot===row.rank)).map(row=>row.code),audits=await runThemeDecisionAudits(env,model,behavior,evidenceLedger,openCodes),rejected=audits.filter(row=>row.status==='REJECT');
+    auditRounds.push({round,proposedCodes:[...openCodes],audits:audits.map(row=>({...row}))});
+    if(!rejected.length){
+      const locked=await ensureThemeRerunComparativeReasons(env,model,behavior,rerun,proposed,evidenceLedger);
+      return{rerun,sets,evidenceLedger,selections:locked,auditRounds};
+    }
+    for(const row of rejected)rejectedCodes.add(row.code);
   }
-  throw lastError||new Error('Theme Rerun did not produce a valid structured selection result.');
+  throw diagnosticError(lastError?.message||'Theme Rerun adversarial audit could not produce three surviving Themes.',{phase:'theme-rerun-adversarial-audit',rejectedCodes:[...rejectedCodes],auditRounds});
 }
 function normalizeDescriptionRerun(input){
   if(!input||typeof input!=='object')return null;
@@ -2730,6 +2908,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.79 — Theme adversarial decision pipeline: literal evidence -> broad candidates -> adversarial audit -> final rank.
 // v0.9.6.78 — Theme human-fit calibration: no emotional-salience ranking bonus; neutral closer fits win; generic descriptive praise excluded from rerun evidence.
 // v0.9.6.71 — AMA-specific 90s provider timeout + one transient retry.
 // v0.9.6.70 — advisory SLOP assessment + immutable AI AMA interview service.
@@ -3114,47 +3293,17 @@ async function analyze(env,body){
         excludedThemeCodes:[...rerunResult.rerun.excludedThemeCodes],
         includedDescriptionCount:rerunResult.rerun.includedDescriptions.length,
         explainChanges:rerunResult.rerun.explainChanges!==false,
-        candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
+        candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length])),
+        adversarialAuditProtocol:'candidate-audit-replace-v1',
+        auditRounds:Array.isArray(rerunResult.auditRounds)?rerunResult.auditRounds:[]
       };
-      promptVersions.themes='genreactrix-themes-pfm-v18-human-fit-no-emotional-salience';
+      promptVersions.themes='genreactrix-themes-pfm-v19-rerun-adversarial-audit';
     }else{
       const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
-      const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
-      let parsedThemes;
-      let firstError = null;
-      let retryRaw = null;
-      try{
-        parsedThemes = parseThemeText(rawThemes);
-      }catch(error){
-        if (!/unique valid selections instead of 3/i.test(String(error?.message||''))) throw error;
-        firstError = error;
-        const recoveryPrompt = `${themePrompt(themeAnalysisContext)}
-
-RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid Theme selections. Re-evaluate the image independently and return exactly three DIFFERENT valid ranked matrix Theme selections. Do not repeat a Theme code or Theme name. Custom Theme output is disabled for this research phase. Return only the required three-line format.`;
-        retryRaw = await runStructured(env,model,image,recoveryPrompt,themeSchema(),2200,'text',{behavior});
-        try{
-          parsedThemes = parseThemeText(retryRaw);
-        }catch(retryError){
-          if (!/unique valid selections instead of 3/i.test(String(retryError?.message||''))) throw retryError;
-          const structured = await runStructured(
-            env,model,image,themeStructuredRecoveryPrompt(themeAnalysisContext),themeRecoverySchema(),2200,'json_schema',
-            {behavior,temperature:0}
-          );
-          parsedThemes = parseThemeStructured(structured);
-          components.themeRecovery = {
-            recovered:true,mode:'structured-json-fallback',reason:String(firstError?.message||firstError||''),
-            firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
-          };
-        }
-      }
-      if (firstError && !components.themeRecovery) {
-        components.themeRecovery = {
-          recovered:true,mode:'text-retry',reason:String(firstError.message||firstError),
-          firstRawResponse:String(rawThemes).slice(0,4000),retryRawResponse:String(retryRaw).slice(0,4000)
-        };
-      }
-      resolvedThemes = resolveThemes(parsedThemes);
-      promptVersions.themes = themeAnalysisContext ? 'genreactrix-themes-pfm-v8-analysis-failsafe-human-fit' : 'genreactrix-themes-pfm-v7-matrix-only-human-fit';
+      const decision=await runThemeAdversarialDecisionPipeline(env,model,image,behavior,themeAnalysisContext);
+      resolvedThemes=resolveThemes(decision.selections);
+      components.themeDecisionDiagnostics=decision.diagnostics;
+      promptVersions.themes=themeAnalysisContext?'genreactrix-themes-pfm-v20-adversarial-audit-analysis-failsafe':'genreactrix-themes-pfm-v19-adversarial-audit';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
