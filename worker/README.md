@@ -1,6 +1,22 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.75-ai-ama-parser-tolerance.
+Current bundled Worker: v0.9.6.76-ai-ama-answer-integrity.
+
+## Worker 0.9.6.76 — AI AMA answer-integrity validation
+
+- Keeps the 23-step 3-question AMA plan and 3→1 recovery architecture unchanged.
+- Uses all recognized question-ID markers as hard answer boundaries, including unrequested IDs, so one answer cannot swallow later provider-generated questions.
+- Three-question calls require explicit attributable IDs; unlabeled multi-question output is not accepted.
+- Single-question recovery accepts unlabeled prose only after validation. Generated questions, question-bank continuations, wrong Q-ID markers, and obvious prompt continuation are rejected instead of checkpointed.
+- Rejected answers return a reason plus a bounded raw provider preview for live diagnostics.
+- Single-question output is capped more tightly to reduce runaway question-bank generation without changing the 90-second provider timeout.
+- No canonical AMA question wording, Theme logic, definitions, confidence, lifecycle, Tuned, SLOP?, report/history semantics, or Matrix behavior changed. Matrix remains 0.0.0.0.
+
+---
+
+# Genreactrix AI Worker
+
+Current bundled Worker at that release: v0.9.6.75-ai-ama-parser-tolerance.
 
 ## Worker 0.9.6.75 — Tolerant AI AMA answer parsing
 
