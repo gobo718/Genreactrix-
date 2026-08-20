@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.74-ai-ama-3q-resumable
+/* Genreactrix AI Worker v0.9.6.75-ai-ama-parser-tolerance
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.74-ai-ama-3q-resumable';
+const API_VERSION = '0.9.6.75-ai-ama-parser-tolerance';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -2848,9 +2848,35 @@ function amaQuestions(snapshot){
 ['Q68','Bottom line: if this exact image were evaluated again under the same current 91 Themes, what three Themes should a human-like Genreactrix AI most naturally choose, with realistic confidence levels?']
   ].map(([id,question],index)=>({id,question,section:index<6?'Orientation':index<16?'AI Choice Interrogation':index<25?'Director Choice Interrogation':index<35?'Evidence and Theme Fit':index<41?'Confidence and Ranking Calibration':index<50?'Failure Diagnosis':index<54?'SLOP / Image Value':index<63?'Future Improvement Interview':'Overall Diagnosis'}));
 }
+function cleanAmaBareAnswer(text){
+  let value=String(text||'').replace(/\r/g,'').trim();
+  value=value.replace(/^```(?:text|markdown|md)?\s*/i,'').replace(/\s*```$/,'').trim();
+  return value;
+}
 function parseAmaAnswers(raw,questions){
-  const text=String(raw||'').replace(/\r/g,'').trim(),out=new Map();
-  const ids=questions.map(q=>q.id);for(let i=0;i<ids.length;i++){const id=ids[i],next=ids[i+1],start=new RegExp(`(?:^|\\n)${id}\\s*:\\s*`,'i').exec(text);if(!start)continue;const from=start.index+start[0].length;let to=text.length;if(next){const m=new RegExp(`(?:^|\\n)${next}\\s*:\\s*`,'i').exec(text.slice(from));if(m)to=from+m.index}const answer=text.slice(from,to).trim();if(answer)out.set(id,answer.slice(0,7000));}
+  const text=cleanAmaBareAnswer(raw),out=new Map(),wanted=new Set(questions.map(q=>String(q.id||'').toUpperCase()));
+  if(!text)return out;
+
+  // Accept common wrappers Workers AI may emit instead of only literal `Q10:`.
+  // Examples: Q10:, Q10 —, Q10., **Q10:**, Question 10:, bullets, extra whitespace.
+  const marker=/(?:^|\n)[ \t]*(?:[-*+•]\s*)?(?:\*\*|__)?(?:Q\s*0*(\d{1,2})|Question\s*0*(\d{1,2}))\s*(?:(?::|[-–—.]|\)|\])\s*)?(?:\*\*|__)?[ \t]*/gim;
+  const matches=[];let m;
+  while((m=marker.exec(text))){
+    const id=`Q${Number(m[1]||m[2])}`.toUpperCase();
+    if(!wanted.has(id))continue;
+    matches.push({id,start:m.index,contentStart:marker.lastIndex});
+  }
+  for(let i=0;i<matches.length;i++){
+    const current=matches[i],next=matches[i+1],answer=cleanAmaBareAnswer(text.slice(current.contentStart,next?next.start:text.length));
+    if(answer&&!out.has(current.id))out.set(current.id,answer.slice(0,7000));
+  }
+
+  // A one-question recovery call has no attribution ambiguity. If the provider returned
+  // nonempty text without a recognized wrapper, the whole response is that answer.
+  if(questions.length===1&&!out.size){
+    const id=String(questions[0]?.id||'').toUpperCase(),answer=cleanAmaBareAnswer(text);
+    if(id&&answer)out.set(id,answer.slice(0,7000));
+  }
   return out;
 }
 function amaContext(snapshot,visualRead,candidateCodes){
@@ -2904,7 +2930,8 @@ async function runAmaQuestionChunk(env,model,context,questions){
   // There is no same-size interview repair/retry at this layer.
   const raw=await runStructured(env,model,null,prompt,null,2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true,amaThreeQuestionChunk:true,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
   const answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
-  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id)};
+  const rawResponsePreview=missing.length?cleanAmaBareAnswer(raw).replace(/\s+/g,' ').slice(0,1600):'';
+  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id),rawResponsePreview};
 }
 async function runAmaQuestionStep(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
@@ -2919,7 +2946,7 @@ async function runAmaQuestionStep(env,body){
   const requestedIds=supplied.length?supplied:fullBlock.map(q=>q.id),requestedSet=new Set(requestedIds),block=fullBlock.filter(q=>requestedSet.has(q.id));
   if(!block.length)throw new Error('AI AMA question request contains no canonical questions.');
   const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'tolerant-v2',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
