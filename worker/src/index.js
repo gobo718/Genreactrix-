@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.76-ai-ama-answer-integrity
+/* Genreactrix AI Worker v0.9.6.77-ai-ama-slot-prompts
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.76-ai-ama-answer-integrity';
+const API_VERSION = '0.9.6.77-ai-ama-slot-prompts';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -2948,16 +2948,53 @@ async function runAmaCandidateStep(env,body){
   const candidateThemeCodes=await amaCandidateAudit(env,model,visualRead,snapshot),plan=amaQuestionPlan(snapshot);
   return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'candidates',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,candidateThemeCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateThemeCodes),...plan};
 }
+function amaSlotMarkers(text){
+  const source=String(text||''),marker=/(?:^|\n)[ \t]*(?:[-*+•]\s*)?(?:\*\*|__)?(?:ANSWER\s+)?([ABC])\s*(?:(?::|[-–—.]|\)|\])\s*)?(?:\*\*|__)?[ \t]*/gim,matches=[];let m;
+  while((m=marker.exec(source)))matches.push({slot:String(m[1]||'').toUpperCase(),start:m.index,contentStart:marker.lastIndex});
+  return matches;
+}
+function amaCleanDirectAnswer(text){
+  return cleanAmaBareAnswer(text).replace(/^(?:DIRECT\s+ANSWER|ANSWER|RESPONSE)\s*(?::|[-–—.]|\)|\])\s*/i,'').trim();
+}
+function parseAmaSlotAnswersDetailed(raw,questions){
+  const text=cleanAmaBareAnswer(raw),out=new Map(),rejected=[],slots=['A','B','C'],slotToQuestion=new Map();
+  questions.forEach((q,index)=>{if(slots[index])slotToQuestion.set(slots[index],q)});
+  if(!text)return{answers:out,rejected,slotMarkers:[],questionMarkers:[]};
+  const questionMarkers=amaQuestionMarkers(text);
+  if(questions.length===1){
+    const q=questions[0],answer=amaCleanDirectAnswer(text).slice(0,7000),validation=amaValidateAnswerText(answer);
+    if(validation.valid)out.set(q.id,answer);
+    else rejected.push({id:q.id,reason:validation.reason||'unusable direct answer',preview:answer.replace(/\s+/g,' ').slice(0,500)});
+    return{answers:out,rejected,slotMarkers:[],questionMarkers:questionMarkers.map(row=>row.id)};
+  }
+  const matches=amaSlotMarkers(text);
+  for(let i=0;i<matches.length;i++){
+    const current=matches[i],next=matches[i+1],q=slotToQuestion.get(current.slot);
+    if(!q||out.has(q.id))continue;
+    const answer=amaCleanDirectAnswer(text.slice(current.contentStart,next?next.start:text.length)).slice(0,7000),validation=amaValidateAnswerText(answer);
+    if(validation.valid)out.set(q.id,answer);
+    else rejected.push({id:q.id,slot:current.slot,reason:validation.reason,preview:answer.replace(/\s+/g,' ').slice(0,500)});
+  }
+  for(const [slot,q] of slotToQuestion){if(!out.has(q.id)&&!rejected.some(row=>row.id===q.id))rejected.push({id:q.id,slot,reason:matches.length?'no validated answer for requested slot':'provider did not return ANSWER A/B/C slots',preview:text.replace(/\s+/g,' ').slice(0,500)})}
+  return{answers:out,rejected,slotMarkers:matches.map(row=>row.slot),questionMarkers:questionMarkers.map(row=>row.id)};
+}
 async function runAmaQuestionChunk(env,model,context,questions){
-  const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n'),single=questions.length===1;
-  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nANSWER the listed question${single?'':'s'}. Do NOT generate, rewrite, repeat, extend, or propose questions. The QUESTIONS section below is input, not a pattern to continue. Do not output any Q-number other than the ID${single?'':'s'} explicitly listed below.\n\nReturn only ${single?'the requested answer, preferably as `'+questions[0].id+': answer`':'lines/paragraphs keyed by the requested question IDs in this form: `Q1: answer`'}. You may use multiple sentences per answer. Do not add unrequested IDs.\n\n${context}\n\nQUESTIONS TO ANSWER:\n${list}`;
+  const single=questions.length===1;
+  let prompt;
+  if(single){
+    prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer ONE direct question. Do not write or propose any question, questionnaire, question number, heading, label, or follow-up. Do not repeat the question. Return only the prose answer.\n\n${context}\n\nDIRECT QUESTION:\n${questions[0].question}\n\nDIRECT ANSWER:`;
+  }else{
+    const slots=['A','B','C'],list=questions.map((q,index)=>`ITEM ${slots[index]}: ${q.question}`).join('\n');
+    const answerShape=questions.map((q,index)=>`ANSWER ${slots[index]}: <answer to ITEM ${slots[index]}>`).join('\n');
+    prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer ONLY the listed ITEMS. The letters A/B/C are response slots, not a sequence to extend. Do not generate, rewrite, repeat, extend, or propose questions. Do not output Q-numbers, Question numbers, ITEM D, ANSWER D, or any other unrequested slot.\n\nReturn exactly one answer for each requested slot using these labels. Multiple prose sentences are allowed inside each answer:\n${answerShape}\n\n${context}\n\nITEMS TO ANSWER:\n${list}`;
+  }
   // Interview recovery deliberately uses ONE provider attempt at the current granularity.
   // The site owns fallback (3 -> 1) and checkpoints only validated answers.
-  // There is no same-size interview repair/retry at this layer.
+  // Canonical Q IDs stay internal; the provider sees DIRECT QUESTION or A/B/C slots only.
   const raw=await runStructured(env,model,null,prompt,null,single?1200:2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true,amaThreeQuestionChunk:!single,amaSingleQuestionRecovery:single,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
-  const parsed=parseAmaAnswersDetailed(raw,questions),answers=parsed.answers,missing=questions.filter(q=>!answers.has(q.id));
+  const parsed=parseAmaSlotAnswersDetailed(raw,questions),answers=parsed.answers,missing=questions.filter(q=>!answers.has(q.id));
   const rawResponsePreview=missing.length?cleanAmaBareAnswer(raw).replace(/\s+/g,' ').slice(0,1600):'';
-  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id),rejectedAnswers:parsed.rejected,providerQuestionMarkers:parsed.markerIds,rawResponsePreview};
+  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id),rejectedAnswers:parsed.rejected,providerQuestionMarkers:parsed.questionMarkers,providerAnswerSlots:parsed.slotMarkers,rawResponsePreview};
 }
 async function runAmaQuestionStep(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
@@ -2972,7 +3009,7 @@ async function runAmaQuestionStep(env,body){
   const requestedIds=supplied.length?supplied:fullBlock.map(q=>q.id),requestedSet=new Set(requestedIds),block=fullBlock.filter(q=>requestedSet.has(q.id));
   if(!block.length)throw new Error('AI AMA question request contains no canonical questions.');
   const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'strict-boundary-validator-v3',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'slot-mapped-integrity-v4',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
