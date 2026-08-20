@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.75-ai-ama-parser-tolerance
+/* Genreactrix AI Worker v0.9.6.76-ai-ama-answer-integrity
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.75-ai-ama-parser-tolerance';
+const API_VERSION = '0.9.6.76-ai-ama-answer-integrity';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -2853,32 +2853,58 @@ function cleanAmaBareAnswer(text){
   value=value.replace(/^```(?:text|markdown|md)?\s*/i,'').replace(/\s*```$/,'').trim();
   return value;
 }
-function parseAmaAnswers(raw,questions){
-  const text=cleanAmaBareAnswer(raw),out=new Map(),wanted=new Set(questions.map(q=>String(q.id||'').toUpperCase()));
-  if(!text)return out;
-
-  // Accept common wrappers Workers AI may emit instead of only literal `Q10:`.
-  // Examples: Q10:, Q10 —, Q10., **Q10:**, Question 10:, bullets, extra whitespace.
-  const marker=/(?:^|\n)[ \t]*(?:[-*+•]\s*)?(?:\*\*|__)?(?:Q\s*0*(\d{1,2})|Question\s*0*(\d{1,2}))\s*(?:(?::|[-–—.]|\)|\])\s*)?(?:\*\*|__)?[ \t]*/gim;
-  const matches=[];let m;
-  while((m=marker.exec(text))){
-    const id=`Q${Number(m[1]||m[2])}`.toUpperCase();
-    if(!wanted.has(id))continue;
-    matches.push({id,start:m.index,contentStart:marker.lastIndex});
+function amaQuestionMarkers(text){
+  const source=String(text||''),marker=/(?:^|\n)[ \t]*(?:[-*+•]\s*)?(?:\*\*|__)?(?:Q\s*0*(\d{1,4})|Question\s*0*(\d{1,4}))\s*(?:(?::|[-–—.]|\)|\])\s*)?(?:\*\*|__)?[ \t]*/gim,matches=[];let m;
+  while((m=marker.exec(source))){
+    const number=Number(m[1]||m[2]);
+    if(!Number.isInteger(number)||number<1)continue;
+    matches.push({id:`Q${number}`,start:m.index,contentStart:marker.lastIndex});
   }
-  for(let i=0;i<matches.length;i++){
-    const current=matches[i],next=matches[i+1],answer=cleanAmaBareAnswer(text.slice(current.contentStart,next?next.start:text.length));
-    if(answer&&!out.has(current.id))out.set(current.id,answer.slice(0,7000));
-  }
-
-  // A one-question recovery call has no attribution ambiguity. If the provider returned
-  // nonempty text without a recognized wrapper, the whole response is that answer.
-  if(questions.length===1&&!out.size){
-    const id=String(questions[0]?.id||'').toUpperCase(),answer=cleanAmaBareAnswer(text);
-    if(id&&answer)out.set(id,answer.slice(0,7000));
-  }
-  return out;
+  return matches;
 }
+function amaInlineQuestionMarkerCount(text){
+  return (String(text||'').match(/(?:^|\s)(?:\*\*|__)?(?:Q\s*0*\d{1,4}|Question\s*0*\d{1,4})\s*(?::|[-–—.]|\)|\])/gim)||[]).length;
+}
+function amaValidateAnswerText(text,{allowQuestionIds=false}={}){
+  const value=cleanAmaBareAnswer(text);
+  if(!value)return{valid:false,reason:'empty answer'};
+  if(!/[A-Za-z0-9]/.test(value))return{valid:false,reason:'answer contains no substantive text'};
+  if(!allowQuestionIds&&amaInlineQuestionMarkerCount(value)>0)return{valid:false,reason:'answer contains another question-ID marker'};
+  const compact=value.replace(/\s+/g,' ').trim(),questionMarks=(compact.match(/\?/g)||[]).length;
+  const lead=compact.replace(/^[\s"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim();
+  const interrogative=/^(?:what|which|why|how|when|where|who|whom|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|has|have|had|may|might)\b/i;
+  if(questionMarks>=3)return{valid:false,reason:'answer appears to generate questions instead of answering'};
+  if(questionMarks>=1&&/[?]\s*$/.test(compact)&&interrogative.test(lead))return{valid:false,reason:'response is a question rather than an answer'};
+  if(/^\d+\s*:\s*(?:what|which|why|how|is|are|was|were|do|does|did|can|could|would|should|has|have|had)\b/i.test(compact)&&/[?]\s*$/.test(compact))return{valid:false,reason:'response is a generated question'};
+  return{valid:true,reason:''};
+}
+function parseAmaAnswersDetailed(raw,questions){
+  const text=cleanAmaBareAnswer(raw),out=new Map(),rejected=[],wanted=new Set(questions.map(q=>String(q.id||'').toUpperCase()));
+  if(!text)return{answers:out,rejected,markerIds:[]};
+
+  // All recognized Q-markers are boundaries, including unrequested IDs. This prevents
+  // an answer such as Q9 from swallowing a provider continuation beginning with Q10.
+  const matches=amaQuestionMarkers(text);
+  for(let i=0;i<matches.length;i++){
+    const current=matches[i],next=matches[i+1];
+    if(!wanted.has(current.id)||out.has(current.id))continue;
+    const answer=cleanAmaBareAnswer(text.slice(current.contentStart,next?next.start:text.length)).slice(0,7000);
+    const validation=amaValidateAnswerText(answer);
+    if(validation.valid)out.set(current.id,answer);
+    else rejected.push({id:current.id,reason:validation.reason,preview:answer.replace(/\s+/g,' ').slice(0,500)});
+  }
+
+  // For a single-question recovery call, unlabeled prose can be accepted only when
+  // it actually looks like an answer. If the provider emitted any Q-marker at all,
+  // attribution is no longer unambiguous and the unlabeled fallback is disabled.
+  if(questions.length===1&&!out.size&&matches.length===0){
+    const id=String(questions[0]?.id||'').toUpperCase(),answer=cleanAmaBareAnswer(text).slice(0,7000),validation=amaValidateAnswerText(answer);
+    if(id&&validation.valid)out.set(id,answer);
+    else if(id)rejected.push({id,reason:validation.reason||'unusable single-question response',preview:answer.replace(/\s+/g,' ').slice(0,500)});
+  }
+  return{answers:out,rejected,markerIds:matches.map(row=>row.id)};
+}
+function parseAmaAnswers(raw,questions){return parseAmaAnswersDetailed(raw,questions).answers}
 function amaContext(snapshot,visualRead,candidateCodes){
   const ai=amaSnapshotThemes(snapshot,'aiThemes').map(amaThemeLine).join('\n')||'None';
   const director=amaSnapshotThemes(snapshot,'directorThemes').map(amaThemeLine).join('\n')||'None';
@@ -2923,15 +2949,15 @@ async function runAmaCandidateStep(env,body){
   return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'candidates',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,candidateThemeCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateThemeCodes),...plan};
 }
 async function runAmaQuestionChunk(env,model,context,questions){
-  const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
-  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
+  const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n'),single=questions.length===1;
+  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nANSWER the listed question${single?'':'s'}. Do NOT generate, rewrite, repeat, extend, or propose questions. The QUESTIONS section below is input, not a pattern to continue. Do not output any Q-number other than the ID${single?'':'s'} explicitly listed below.\n\nReturn only ${single?'the requested answer, preferably as `'+questions[0].id+': answer`':'lines/paragraphs keyed by the requested question IDs in this form: `Q1: answer`'}. You may use multiple sentences per answer. Do not add unrequested IDs.\n\n${context}\n\nQUESTIONS TO ANSWER:\n${list}`;
   // Interview recovery deliberately uses ONE provider attempt at the current granularity.
-  // The site owns fallback (3 -> 1) and checkpoints every usable answer.
+  // The site owns fallback (3 -> 1) and checkpoints only validated answers.
   // There is no same-size interview repair/retry at this layer.
-  const raw=await runStructured(env,model,null,prompt,null,2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true,amaThreeQuestionChunk:true,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
-  const answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
+  const raw=await runStructured(env,model,null,prompt,null,single?1200:2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true,amaThreeQuestionChunk:!single,amaSingleQuestionRecovery:single,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
+  const parsed=parseAmaAnswersDetailed(raw,questions),answers=parsed.answers,missing=questions.filter(q=>!answers.has(q.id));
   const rawResponsePreview=missing.length?cleanAmaBareAnswer(raw).replace(/\s+/g,' ').slice(0,1600):'';
-  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id),rawResponsePreview};
+  return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id),rejectedAnswers:parsed.rejected,providerQuestionMarkers:parsed.markerIds,rawResponsePreview};
 }
 async function runAmaQuestionStep(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
@@ -2946,7 +2972,7 @@ async function runAmaQuestionStep(env,body){
   const requestedIds=supplied.length?supplied:fullBlock.map(q=>q.id),requestedSet=new Set(requestedIds),block=fullBlock.filter(q=>requestedSet.has(q.id));
   if(!block.length)throw new Error('AI AMA question request contains no canonical questions.');
   const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'tolerant-v2',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'strict-boundary-validator-v3',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
