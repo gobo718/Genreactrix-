@@ -1,15 +1,17 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.78-theme-human-fit-calibration.
+Current bundled Worker: v0.9.6.79-theme-adversarial-audit.
 
-## Worker 0.9.6.78 — Theme human-fit calibration
+## Worker 0.9.6.79 — Theme adversarial decision pipeline
 
-- Keeps the 23-step 3-question AMA plan, 3→1 recovery, strict answer validation, all 68 canonical questions, and 90-second provider timeout unchanged.
-- Canonical Q IDs are now internal only during resumable interview calls. Three-question prompts use `ITEM A/B/C` and expect `ANSWER A/B/C`; responses are mapped back to the correct canonical IDs after validation.
-- Single-question recovery uses one plain `DIRECT QUESTION` with no Q-number and expects only a direct prose answer.
-- This removes the sequential Q-number pattern that caused Llama to continue generating Q2, Q3, Q4… instead of answering Q1.
-- Generated questions, question-bank continuations, unrequested Q-markers, wrong slots, and structurally invalid responses remain rejected.
-- No Theme logic, definitions, confidence, lifecycle, Tuned, SLOP?, report/history semantics, or Matrix behavior changed. Matrix remains 0.0.0.0.
+- Replaces normal direct Theme finalization with four stages: literal evidence → broad candidate discovery → adversarial fit audit → final rank.
+- The literal evidence stage has image access but no Theme vocabulary and records only concrete facts. Candidate, audit, and final-rank stages have no image access and operate from the frozen evidence ledger.
+- Candidate discovery deliberately keeps neutral, boring, ordinary, and less-inferential alternatives in play instead of favoring emotionally richer answers.
+- The adversarial audit marks candidates SUPPORTED, WEAK, or REJECT. SUPPORTED/WEAK require positive E# evidence; a plausible post-hoc rationale is not enough.
+- REJECTed candidates are structurally excluded from final ranking. If fewer than three candidates survive, one expansion pass searches for additional candidates excluding rejected codes and audits the additions.
+- Theme Rerun retains Director constraints and the frozen evidence ledger but now audits every proposed open-slot Theme before lock. Rejected rerun candidates are forbidden and must be replaced; up to three audit/replacement rounds are allowed.
+- The Worker returns Theme decision diagnostics containing evidence, candidate shortlist, audits, and survivor codes; rerun diagnostics include audit rounds.
+- No PrimFusion definitions changed. Matrix remains 0.0.0.0. Reaction Analysis, AMA, Tuned, SLOP?, lifecycle, history, and storage semantics are unchanged.
 
 ---
 
