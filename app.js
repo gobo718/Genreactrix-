@@ -1,4 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.132";
+const GENREACTRIX_BUILD="v0.9.40.133";
+// v0.9.40.133 — 3040 circuit breaker: OpenAI GPT-4.1 mini fallback for 15 minutes, then primary probe; no prompt/Theme calibration changes.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){

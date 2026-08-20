@@ -1,9 +1,12 @@
 /* Genreactrix Cloud API v1 — adapted from Billy Labs' proven cloud boundary. */
 (()=>{'use strict';
- const BASE_KEY='genreactrix-ai-worker-base',KEY_KEY='genreactrix-ai-analysis-key';
+ const BASE_KEY='genreactrix-ai-worker-base',KEY_KEY='genreactrix-ai-analysis-key',FALLBACK_UNTIL_KEY='genreactrix-ai-fallback-until-v1';
  const normalize=v=>String(v||'').trim().replace(/\/+$/,'');
  let base=normalize(window.genreactrixSettingsEngine?.get?.('ai.worker.base','')||localStorage.getItem(BASE_KEY)||window.GENREACTRIX_AI_WORKER_BASE||'');
- const request=async(path,init={})=>{if(!base)throw new Error('AI Worker URL is not configured');const response=await fetch(`${base}${path}`,{...init,headers:{'content-type':'application/json',...(init.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(payload.error||`AI request failed (${response.status})`);error.httpStatus=response.status;error.providerDiagnostic=payload.providerDiagnostic||null;error.responsePayload=payload;throw error}return payload;};
+ const currentProviderRouting=()=>{const until=Number(localStorage.getItem(FALLBACK_UNTIL_KEY)||0);if(until>Date.now())return{mode:'fallback',fallbackUntil:until,reason:'3040'};if(until)localStorage.removeItem(FALLBACK_UNTIL_KEY);return null;};
+ const withProviderRouting=specimen=>{const route=currentProviderRouting();return route?{...(specimen||{}),providerRouting:route}:{...(specimen||{})};};
+ const absorbProviderRouting=payload=>{const route=payload?.providerRouting||payload?.result?.provider?.routing||payload?.providerDiagnostic||null;const until=Number(route?.fallbackUntil)||0;if(until>Date.now())localStorage.setItem(FALLBACK_UNTIL_KEY,String(until));else if(route?.mode==='primary'&&localStorage.getItem(FALLBACK_UNTIL_KEY))localStorage.removeItem(FALLBACK_UNTIL_KEY);};
+ const request=async(path,init={})=>{if(!base)throw new Error('AI Worker URL is not configured');const response=await fetch(`${base}${path}`,{...init,headers:{'content-type':'application/json',...(init.headers||{})}});const payload=await response.json().catch(()=>({}));absorbProviderRouting(payload);if(!response.ok){const error=new Error(payload.error||`AI request failed (${response.status})`);error.httpStatus=response.status;error.providerDiagnostic=payload.providerDiagnostic||null;error.responsePayload=payload;throw error}return payload;};
  const storedKey=()=>String(window.genreactrixSettingsEngine?.get?.('ai.worker.accessKey','')||localStorage.getItem(KEY_KEY)||'');
  const verifyConnection=async()=>{
   if(!base)throw new Error('AI Worker URL is not configured');
@@ -28,9 +31,9 @@
     if(!response.ok){const payload=await response.json().catch(()=>({}));throw new Error(payload.error||`Image proxy failed (${response.status})`)}
     const blob=await response.blob();if(!blob.type?.startsWith('image/'))throw new Error('Image proxy did not return an image');return blob;
   },
-  analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)}),
-  ama:(specimen,key)=>request('/api/genreactrix/ama',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)}),
-  promptDiagnostics:(specimen,key)=>request('/api/genreactrix/prompt-diagnostics',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(specimen)})
+  analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
+  ama:(specimen,key)=>request('/api/genreactrix/ama',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
+  promptDiagnostics:(specimen,key)=>request('/api/genreactrix/prompt-diagnostics',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))})
  });
  window.addEventListener('genreactrix:settings-ready',()=>window.GenreactrixCloudApi.reload(),{once:true});
 })();

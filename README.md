@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.133 — Capacity fallback cooldown
+
+- Pairs with Worker v0.9.6.80-capacity-fallback-cooldown. Upload the Worker first, then this site build.
+- Adds a 15-minute provider circuit breaker for Workers AI error `3040` (out of capacity).
+- The first `3040` falls through immediately to `openai/gpt-4.1-mini` through Cloudflare AI Gateway. Subsequent AI requests during the cooldown bypass the unavailable Workers AI model instead of paying a failed-attempt delay on every image.
+- The browser persists the cooldown timestamp. When 15 minutes expires, the next AI request probes the original Workers AI model; success restores normal routing, while another `3040` starts another 15-minute fallback window.
+- Fallback routing applies to the centralized Worker inference path used by Analysis, reruns, AMA, and Prompt Diagnostics.
+- Provider/model routing telemetry is preserved so research output can identify whether Workers AI, OpenAI fallback, or a mixed request produced the result.
+- No Theme-selection, Reaction, Description, AMA-question, Prim, PrimFusion, or Matrix semantics changed in this build. The v0.9.40.132 adversarial Theme calibration is preserved exactly.
+- Cloudflare AI Gateway Unified Billing credits are required for the OpenAI fallback; no OpenAI API key is required.
+
+---
+
 # Genreactrix v0.9.40.132 — Theme adversarial decision pipeline
 
 - Pairs with Worker v0.9.6.79-theme-adversarial-audit. Upload the Worker first, then this site build.
