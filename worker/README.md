@@ -1,6 +1,16 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.80-capacity-fallback-cooldown.
+Current bundled Worker: v0.9.6.81-theme-evidence-source-contract.
+
+## Worker 0.9.6.81 — Theme evidence source-contract repair
+
+- Fixes the Stage-1 Theme literal-evidence output example for requests with no secondary AI Description context: E3 is now an `image` fact instead of an invalid `analysis` fact.
+- The recovery instruction is source-aware as well: image-only without secondary context; image-or-analysis when secondary context is present.
+- The parser still requires at least 3 usable facts; no evidentiary gate was weakened.
+- No Theme definitions, Theme ranking, Prim/PrimFusion definitions, Matrix data, Reaction/Description/AMA semantics, or 15-minute capacity-fallback routing changed.
+
+---
+
 
 ## Worker 0.9.6.80 — 3040 capacity fallback circuit breaker
 
