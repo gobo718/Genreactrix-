@@ -17,7 +17,11 @@
   const authResponse=await fetch(`${base}/api/genreactrix/analyze`,{method:'POST',headers:{'content-type':'application/json','x-analysis-key':key},body:'{}'}),auth=await authResponse.json().catch(()=>({}));
   if(authResponse.status===401)throw new Error('Worker connected · Analysis key rejected');
   if(authResponse.status===503)throw new Error(auth.error||'Worker connected · analysis access not configured');
-  if(authResponse.ok||/imageId and components are required/i.test(String(auth.error||'')))return{...health,auth:'verified'};
+  if(authResponse.ok||/imageId and components are required/i.test(String(auth.error||''))){
+    const readinessResponse=await fetch(`${base}/api/genreactrix/provider-readiness`,{method:'POST',headers:{'content-type':'application/json','x-analysis-key':key},body:'{}'}),readinessPayload=await readinessResponse.json().catch(()=>({}));
+    if(!readinessResponse.ok)throw new Error(readinessPayload.error||`Worker connected · provider readiness probe failed (${readinessResponse.status})`);
+    return{...health,auth:'verified',providers:readinessPayload.result||readinessPayload};
+  }
   throw new Error(auth.error||`Worker connected · authentication probe failed (${authResponse.status})`);
  };
  window.GenreactrixCloudApi=Object.freeze({
@@ -25,6 +29,7 @@
   getBaseUrl:()=>base,isConfigured:()=>Boolean(base),getKey:()=>storedKey(),setKey:value=>{const key=String(value||'');window.genreactrixSettingsEngine?.set?.('ai.worker.accessKey',key);if(key)localStorage.setItem(KEY_KEY,key);else localStorage.removeItem(KEY_KEY);return key;},
   reload(){base=normalize(window.genreactrixSettingsEngine?.get?.('ai.worker.base','')||localStorage.getItem(BASE_KEY)||window.GENREACTRIX_AI_WORKER_BASE||base||'');return base;},
   health:()=>request('/api/health',{method:'GET'}),verifyConnection,
+  providerReadiness:()=>request('/api/genreactrix/provider-readiness',{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'}),
   fetchImage:async(imageUrl,key=storedKey())=>{
     if(!base)throw new Error('AI Worker URL is not configured');
     const response=await fetch(`${base}/api/genreactrix/image`,{method:'POST',headers:{'content-type':'application/json','x-analysis-key':String(key||'')},body:JSON.stringify({imageUrl:String(imageUrl||'')})});

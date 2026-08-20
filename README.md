@@ -1,3 +1,15 @@
+# Genreactrix v0.9.40.135 — AMA calibration + integrity bundle
+
+- Pairs with Worker v0.9.6.82-ama-calibration-integrity. Upload the Worker first, then this site build.
+- Applies the current AMA-derived Theme-selection correction: ordinary visible context outranks forced emotional/semantic association; high confidence requires strong direct support.
+- Preserves all 91 PrimFusion definitions and Matrix v0.0.0.0.
+- Repairs Theme Rerun evidence source examples/recovery when no Description is included.
+- Gives AI AMA canonical Prim definitions for Director primitive selections, explicit AI/Director ownership, repetition/placeholder/snapshot-integrity rejection, and targeted single-question recovery through the existing resumable flow.
+- Repairs AI AMA Print / Save PDF on mobile by opening the print window synchronously from the tap.
+- Test connection now probes Primary and Fallback independently without changing the 15-minute runtime fallback cooldown.
+- Master AI kill-switch UI/behavior is intentionally NOT included in this build; it remains deferred for a separate UI design pass.
+- Existing GPT-4.1 mini fallback, 3040 trigger, and 15-minute circuit breaker are unchanged.
+
 # Genreactrix v0.9.40.134 — Theme evidence source-contract repair
 
 - Pairs with Worker v0.9.6.81-theme-evidence-source-contract. Upload the Worker first, then this site build.

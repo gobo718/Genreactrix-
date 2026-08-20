@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.134";
-// v0.9.40.134 — Theme evidence source-contract repair for fallback compatibility; 15-minute capacity circuit breaker unchanged.
+const GENREACTRIX_BUILD="v0.9.40.135";
+// v0.9.40.135 — AMA-derived Theme calibration + AMA integrity/Print repair + provider readiness; kill-switch UI deliberately deferred.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1432,8 +1432,10 @@ function amaCompactError(error){return String(error?.message||error||'Unknown AM
 function amaClientAnswerValidation(answer){
   const value=String(answer||'').replace(/\r/g,'').trim();if(!value)return{valid:false,reason:'empty answer'};
   if(!/[A-Za-z0-9]/.test(value))return{valid:false,reason:'answer contains no substantive text'};
+  const compact=value.replace(/\s+/g,' ').trim();if(/^(?:nswer|answer|response|n\/?a|unknown|unavailable)$/i.test(compact))return{valid:false,reason:'answer is a placeholder/corrupted fragment'};
+  const sentences=compact.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(x=>x.length>=36);if(sentences.length>=3){const counts=new Map();for(const sentence of sentences){const key=sentence.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();counts.set(key,(counts.get(key)||0)+1)}if([...counts.values()].some(count=>count>=3))return{valid:false,reason:'answer contains a repeated sentence loop'};if(sentences.length>=8&&counts.size/sentences.length<0.62)return{valid:false,reason:'answer is dominated by repeated prose'}}
   if(/(?:^|\s)(?:\*\*|__)?(?:Q\s*0*\d{1,4}|Question\s*0*\d{1,4})\s*(?::|[-–—.]|\)|\])/im.test(value))return{valid:false,reason:'answer contains another question-ID marker'};
-  const compact=value.replace(/\s+/g,' ').trim(),questionMarks=(compact.match(/\?/g)||[]).length,lead=compact.replace(/^[\s"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim(),interrogative=/^(?:what|which|why|how|when|where|who|whom|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|has|have|had|may|might)\b/i;
+  const questionMarks=(compact.match(/\?/g)||[]).length,lead=compact.replace(/^[\s"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim(),interrogative=/^(?:what|which|why|how|when|where|who|whom|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|has|have|had|may|might)\b/i;
   if(questionMarks>=3)return{valid:false,reason:'response appears to generate questions instead of answering'};
   if(questionMarks>=1&&/[?]\s*$/.test(compact)&&interrogative.test(lead))return{valid:false,reason:'response is a question rather than an answer'};
   if(/^\d+\s*:\s*(?:what|which|why|how|is|are|was|were|do|does|did|can|could|would|should|has|have|had)\b/i.test(compact)&&/[?]\s*$/.test(compact))return{valid:false,reason:'response is a generated question'};
@@ -3429,7 +3431,7 @@ $("amaHistoryBtn")?.addEventListener("click",()=>{renderAmaHistory().then(()=>{$
 $("amaHistoryClose")?.addEventListener("click",()=>$("amaHistoryDialog")?.close());
 $("amaReportClose")?.addEventListener("click",()=>$("amaReportDialog")?.close());
 $("amaFollowupAskBtn")?.addEventListener("click",()=>askAmaFollowup());
-$("amaPrintBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;const html=await amaReportHtml(bundle,{standalone:true}),win=window.open("","_blank","noopener,noreferrer");if(!win){alert("Print window could not be opened.");return}win.document.open();win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`);win.document.close();win.focus();setTimeout(()=>win.print(),120);});
+$("amaPrintBtn")?.addEventListener("click",async()=>{const win=window.open("","_blank");if(!win){alert("Print window could not be opened.");return}try{win.opener=null;win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Genreactrix AI AMA</title></head><body><p>Preparing AI AMA for print…</p></body></html>');win.document.close();const bundle=await currentAmaBundle();if(!bundle){win.close();return}const html=await amaReportHtml(bundle,{standalone:true});win.document.open();win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`);win.document.close();win.focus();const printNow=()=>{try{win.focus();win.print()}catch(error){console.warn("AI AMA print failed",error)}};if(win.document.fonts?.ready)win.document.fonts.ready.catch(()=>{}).finally(()=>setTimeout(printNow,120));else setTimeout(printNow,180)}catch(error){try{win.close()}catch{}alert(`Print/Save PDF could not be prepared: ${error?.message||error}`)}});
 $("amaSaveHtmlBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;const html=await amaReportHtml(bundle,{standalone:true}),doc=`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`;amaDownloadText(doc,`Genreactrix_AI_AMA_${bundle.report.sequence}_${bundle.report.imageId}.html`,"text/html;charset=utf-8");});
 $("amaExportJsonBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;amaDownloadText(JSON.stringify(bundle,null,2),`Genreactrix_AI_AMA_${bundle.report.sequence}_${bundle.report.imageId}.json`,"application/json;charset=utf-8");});
 const themeDescriptionsButton=$("themeRerunDescriptionsBtn");
