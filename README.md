@@ -1,21 +1,15 @@
-# Genreactrix v0.9.40.131 — Theme human-fit calibration
+# Genreactrix v0.9.40.132 — Theme adversarial decision pipeline
 
-- Pairs with Worker v0.9.6.78-theme-human-fit-calibration. Upload the Worker first, then this site build.
-- Theme Analysis and Theme Rerun now rank by closest ordinary-human semantic fit rather than emotional salience, evocative quality, drama, expressiveness, aesthetic appeal, or interestingness.
-- A boring/neutral Theme must outrank a richer affective Theme when it is materially closer.
-- Generic descriptive praise such as “striking,” “evocative,” “thought-provoking,” and “visually appealing” is not Theme evidence by itself and is excluded from the rerun evidence ledger.
-- Explicit guards block unsupported conversions including simplicity/minimalism -> playfulness, irregularity -> silliness, neutral stillness -> Cozy, and generic pleasantness -> sweetness.
-- Genuine mood/theatricality remains eligible when concrete image evidence actually earns it.
-- No PrimFusion definitions changed. Matrix remains 0.0.0.0.
-- AI AMA 3-to-1 resumability, slot prompts, answer-integrity validation, Tuned, SLOP?, lifecycle behavior, and storage semantics are unchanged from .130/.77.
-
-- Keeps the fixed 3-question AMA plan, single-question recovery, all 68 canonical questions, strict answer-integrity validation, provider timeout, Theme logic, Matrix, lifecycle, Tuned, SLOP?, history, and report semantics unchanged.
-- Removes canonical `Q##` labels from resumable provider prompts. The provider never sees the interview as a `Q1 → Q2 → Q3` sequence to continue.
-- Three-question calls present only `ITEM A / ITEM B / ITEM C` and require `ANSWER A / ANSWER B / ANSWER C`; the Worker maps those slots back to the canonical Q IDs internally.
-- Single-question recovery presents one unlabeled `DIRECT QUESTION` and requests plain prose only: no Q-number, heading, label, questionnaire, or follow-up.
-- Strict validation remains in force. Generated question banks, Q-ID continuation, wrong slots, and question-as-answer output are rejected rather than checkpointed.
-- Existing incomplete resumable runs can continue; saved answers remain untouched. Existing completed immutable AMA reports are not rewritten.
-- Matrix remains 0.0.0.0.
+- Pairs with Worker v0.9.6.79-theme-adversarial-audit. Upload the Worker first, then this site build.
+- Replaces direct image→final-Theme selection with a staged decision pipeline: literal evidence → broad candidate discovery → adversarial fit audit → final ranking.
+- Stage 1 sees the image but no Theme names/codes and records only concrete evidence. Generic praise, mood inflation, and semantic conclusions are excluded.
+- Stage 2 sees only the frozen evidence and the 91 Theme definitions and produces a broad candidate shortlist, explicitly including neutral/boring/literal competitors.
+- Stage 3 adversarially attacks each candidate. A Theme cannot survive merely because the model can write a plausible rationale; SUPPORTED/WEAK candidates must cite positive evidence that distinguishes the Theme from a neutral/less-inferential reading. Unsupported emotional-salience substitutions are rejected.
+- Stage 4 can choose only audit survivors. Rejected Themes are structurally ineligible for that final ranking; exactly-three remains mandatory only among surviving candidates.
+- If the first candidate pool leaves fewer than three survivors, the Worker performs one broader candidate-expansion pass excluding rejected codes, audits those additions, and only then ranks.
+- Theme Rerun keeps its frozen evidence/Director-constraint architecture but now adds an adversarial audit between each proposed open-slot selection and lock. Rejected proposals are forbidden and replaced before the rerun can finalize.
+- New diagnostics preserve the literal evidence ledger, candidate codes, audit outcomes, and survivor codes for normal Theme Analysis; Theme Rerun diagnostics preserve adversarial audit rounds.
+- No PrimFusion definitions changed. Matrix remains 0.0.0.0. Reaction Analysis, AMA, Tuned, SLOP?, lifecycle, history, and storage semantics are unchanged.
 
 ---
 
