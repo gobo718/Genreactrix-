@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.127";
+const GENREACTRIX_BUILD="v0.9.40.128";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1408,7 +1408,7 @@ function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveTh
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
 
 
-// v0.9.40.127 — AI AMA fixed 3-question steps with 1-question recovery and persistent checkpointing; Tuned/SLOP retained.
+// v0.9.40.128 — AI AMA tolerant answer parser + raw provider preview on parse failure; 3-to-1 execution retained.
 const AMA_UI_COLOR='#EF806C';
 const amaUiState={reportId:null,runId:null,running:false,statusTimer:null,statusStartedAt:0,statusBase:''};
 function amaEsc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1517,7 +1517,7 @@ async function runAmaCurrent(){
         try{await callChunk(missing,'normal')}catch(error){const progress=engine.runProgress(run);setAmaRunProgress(`${amaQuestionIdsLabel(missing)} failed as a 3-question step · ${progress.answered}/${progress.expected} saved · switching only this step to single-question recovery. ${amaCompactError(error)}`);setDirectorStatus(`AI AMA · ${range.label} failed · switching to single questions.`)}
       }else if(missing.length<blockIds.length||priorSingleRecovery){const progress=engine.runProgress(run);setAmaRunProgress(`${range.label} is already in recovery · ${progress.answered}/${progress.expected} saved · continuing only the missing question(s) one at a time.`)}
       missing=amaMissingQuestionIds(run,blockIndex);
-      for(const id of missing){const single=await callChunk([id],'single-question recovery');if(single.missing.length){const progress=engine.runProgress(run);throw new Error(`AI AMA ${id} returned no usable answer. ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}}
+      for(const id of missing){const single=await callChunk([id],'single-question recovery');if(single.missing.length){const progress=engine.runProgress(run),preview=String(single.result?.rawResponsePreview||'').trim(),detail=preview?` Provider response preview: ${preview}`:'';throw new Error(`AI AMA ${id} returned no usable answer.${detail} ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}}
       missing=amaMissingQuestionIds(run,blockIndex);if(missing.length){const progress=engine.runProgress(run);throw new Error(`AI AMA step ${blockIndex+1}/${blockCount} (${range.label}) is still incomplete. Missing ${missing.join(', ')}. ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}
       run=await engine.saveQuestionBlock(run.id,{questions:[],blockIndex,complete:true,meta:{lastError:null,executionStrategy:'3-to-1'}});const progress=engine.runProgress(run);setAmaRunProgress(`Step ${blockIndex+1}/${blockCount} complete · ${progress.answered}/${progress.expected} core Q&A saved.`);
     }
@@ -3398,7 +3398,7 @@ $("themeChangeReasoningClose")?.addEventListener("click",()=>$("themeChangeReaso
 $("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 $("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.current.explainChanges=Boolean(event.target.checked);saveThemeRerunCurrent();renderThemeRerunChrome();});
-// v0.9.40.127 — fixed 3-question resumable AI AMA / Tuned / SLOP Director diagnostics.
+// v0.9.40.128 — tolerant AI AMA answer parsing / 3-question resumable execution / Tuned / SLOP Director diagnostics.
 $("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
 $("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
 $("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());

@@ -1,3 +1,14 @@
+# Genreactrix v0.9.40.128 — AI AMA tolerant answer parsing
+
+- Pairs with Worker v0.9.6.75-ai-ama-parser-tolerance. Upload the Worker first, then this site build.
+- Keeps the fixed 3-question AMA plan with one-question recovery and all 68 canonical questions unchanged.
+- Fixes the Q10-style parser defect: AMA answers no longer require the exact literal `Q10:` wrapper. The parser accepts `Q10:`, `Q10 —`, `Q10.`, `**Q10:**`, `Question 10:`, bullets, and surrounding whitespace.
+- For a one-question recovery call, any nonempty provider text is accepted as that question's answer when no recognizable question wrapper is present; attribution is unambiguous because only one question was asked.
+- If a multi-question response is still unparseable, the Worker returns a short raw provider-response preview so diagnostics can show what was actually received.
+- No Theme ranking, AMA question wording, timeout, definitions, confidence, Matrix, lifecycle, Tuned, SLOP?, history, or report semantics changed. Matrix remains 0.0.0.0.
+
+---
+
 # Genreactrix v0.9.40.127 — AI AMA 3-question execution
 
 - Pairs with Worker v0.9.6.74-ai-ama-3q-resumable. Upload the Worker first, then this site build.
