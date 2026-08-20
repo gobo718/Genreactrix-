@@ -1,5 +1,17 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.82-ama-calibration-integrity.
+
+## Worker 0.9.6.82 — AMA calibration + integrity
+
+- AMA-derived Theme candidate/audit/final ranking contextual gating and confidence calibration.
+- Theme Rerun no-Description evidence-source contract repair.
+- AI AMA Prim-definition resolution, source ownership, answer-integrity and repetition checks.
+- Provider readiness endpoint probes Primary and GPT-4.1 mini fallback independently without touching cooldown state.
+- PrimFusion definitions, Matrix v0.0.0.0, and 15-minute 3040 fallback behavior remain unchanged.
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.81-theme-evidence-source-contract.
 
 ## Worker 0.9.6.81 — Theme evidence source-contract repair
