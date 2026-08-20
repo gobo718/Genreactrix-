@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.81-theme-evidence-source-contract
+/* Genreactrix AI Worker v0.9.6.82-ama-calibration-integrity
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.81-theme-evidence-source-contract';
+const API_VERSION = '0.9.6.82-ama-calibration-integrity';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -110,6 +110,21 @@ const providerRoutingSnapshot = (env,primaryModel=null) => {
     successfulProviders,
     calls:trace.map(row=>({...row}))
   };
+};
+
+const providerReadinessProbe = async (env,{timeoutMs=12000}={}) => {
+  if(!env.AI?.run)return{primary:{ready:false,status:'not-configured',provider:'cloudflare-workers-ai',model:env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,error:'Workers AI binding AI is not configured'},fallback:{ready:false,status:'not-configured',provider:'openai-via-cloudflare-ai-gateway',model:fallbackModelFor(env),gatewayId:aiGatewayIdFor(env),error:'Workers AI binding AI is not configured'}};
+  const run=async({provider,model,request,options=null})=>{
+    try{
+      await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error(`Provider readiness probe timed out after ${Math.round(timeoutMs/1000)}s`)),timeoutMs);const invocation=options?env.AI.run(model,request,options):env.AI.run(model,request);Promise.resolve(invocation).then(value=>{clearTimeout(timer);resolve(value)},error=>{clearTimeout(timer);reject(error)})});
+      return{ready:true,status:'ready',provider,model};
+    }catch(error){return{ready:false,status:capacity3040(error)?'capacity-unavailable':'failed',provider,model,error:String(error?.message||error).replace(/\s+/g,' ').trim().slice(0,500),errorCode:capacity3040(error)?'3040':null};}
+  };
+  const primaryModel=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,fallbackModel=fallbackModelFor(env),gatewayId=aiGatewayIdFor(env);
+  const primary=await run({provider:'cloudflare-workers-ai',model:primaryModel,request:{prompt:'Reply with READY only.',max_tokens:8,temperature:0}});
+  const fallback=await run({provider:'openai-via-cloudflare-ai-gateway',model:fallbackModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0},options:{gateway:{id:gatewayId}}});
+  fallback.gatewayId=gatewayId;
+  return{primary,fallback,probedAt:new Date().toISOString(),cooldownStateChanged:false};
 };
 
 const safeProviderDiagnostic = payload => {
@@ -841,7 +856,7 @@ function themeDecisionCatalog(codes=null){
 function themeDecisionCandidatePrompt(ledger,{excludeCodes=[]}={}){
   const excluded=new Set((excludeCodes||[]).map(code=>String(code||'').toUpperCase()));
   const catalog=PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>!excluded.has(row.code)).map(row=>`${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
-  return `GENREACTRIX THEME DECISION — STAGE 2: BROAD CANDIDATE DISCOVERY.\n\nThis is NOT the final ranking. Using ONLY the literal evidence ledger, create a broad shortlist of up to ${THEME_DECISION_CANDIDATE_LIMIT} materially plausible PrimFusion Themes. The shortlist must be diverse enough to include literal, neutral, boring, ordinary, low-emotion, and low-stimulation interpretations whenever the evidence permits them. Do not prefer emotional, evocative, dramatic, expressive, funny, warm, sweet, nostalgic, beautiful, or interesting Themes merely because they make a richer answer.\n\nDo not turn simplicity/minimalism into playfulness; irregularity/random arrangement into silliness; neutral stillness into coziness; generic pleasantness into sweetness; visual appeal into emotional significance; or reflective language into nostalgia/poignancy. Include competitors that require LESS inference when they fit the same evidence.\n\nA candidate only needs to be plausible enough to deserve an audit. Do not assign final confidence and do not defend a candidate. Return ${THEME_DECISION_CANDIDATE_LIMIT} unique PFM codes when possible.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCURRENT 91 THEMES\n${catalog}\n\nOUTPUT FORMAT — one code per line and nothing else:\nCANDIDATE|PFM####`;
+  return `GENREACTRIX THEME DECISION — STAGE 2: BROAD CANDIDATE DISCOVERY.\n\nThis is NOT the final ranking. Using ONLY the literal evidence ledger, create a broad shortlist of up to ${THEME_DECISION_CANDIDATE_LIMIT} materially plausible PrimFusion Themes. The shortlist must be diverse enough to include literal, neutral, boring, ordinary, low-emotion, and low-stimulation interpretations whenever the evidence permits them. Do not prefer emotional, evocative, dramatic, expressive, funny, warm, sweet, nostalgic, beautiful, or interesting Themes merely because they make a richer answer.\n\nUse ordinary human context as a first-class constraint. Read the visible setting, attire/presentation, activity, action, expression, and composition together before proposing an emotionally or atmospherically loaded Theme. Neutral, formal, professional, calm, focused, deliberate, or composed evidence is not itself evidence of comfort, intimacy, sexual desire, craving, disorder, nostalgia, obsession, grandeur, cuteness, intelligence, or any other richer semantic conclusion. A loaded Theme may still be a candidate when separate concrete evidence actually earns its defining meaning.\n\nDo not turn simplicity/minimalism into playfulness; irregularity/random arrangement into silliness; neutral stillness into coziness; generic pleasantness into sweetness; visual appeal into emotional significance; reflective language into nostalgia/poignancy; concentration/focus into intimacy, desire, obsession, intelligence, grandeur, or chaos; or deliberate composition into emotional significance. Include competitors that require LESS inference when they fit the same evidence.\n\nA candidate only needs to be plausible enough to deserve an audit. Do not assign final confidence and do not defend a candidate. Return ${THEME_DECISION_CANDIDATE_LIMIT} unique PFM codes when possible.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCURRENT 91 THEMES\n${catalog}\n\nOUTPUT FORMAT — one code per line and nothing else:\nCANDIDATE|PFM####`;
 }
 
 function parseThemeDecisionCandidates(raw,{max=THEME_DECISION_CANDIDATE_LIMIT}={}){
@@ -871,7 +886,7 @@ async function runThemeDecisionCandidatePass(env,model,behavior,ledger,{excludeC
 
 function themeDecisionAuditPrompt(ledger,codes){
   const defs=themeDecisionCatalog(codes);
-  return `GENREACTRIX THEME DECISION — STAGE 3: ADVERSARIAL FIT AUDIT.\n\nAudit each listed candidate independently. Your role is to attack the candidate, not defend the earlier shortlist. A Theme cannot survive merely because you can write a plausible rationale for it. It survives only if the literal evidence contains positive semantic evidence that actually distinguishes that Theme from a neutral or less inferential interpretation.\n\nSTATUS RULES:\nSUPPORTED = clear positive evidence earns the Theme's semantic meaning.\nWEAK = it is a plausible closest-available interpretation, but evidence is partial; confidence later must remain low/modest.\nREJECT = the rationale depends on emotional-salience substitution, generic aesthetic praise, unsupported inference, missing gate/required meaning, or a materially closer less-inferential interpretation.\n\nReject these substitutions unless independent evidence specifically earns the Theme meaning: simplicity/minimalism→playfulness; irregularity/randomness→silliness; visual interest→Goofy; neutral stillness→Cozy; generic pleasantness→sweetness; aesthetic appeal→emotional significance; reflective prose→Nostalgia/Poignant. The same principle applies to every Theme, not just those examples.\n\nFor SUPPORTED or WEAK, cite one or more E# facts that positively support the semantic route. For REJECT, refs may be NONE. BETTER may name one materially closer PFM code from the full vocabulary, or NONE. Do not choose final top three here.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCANDIDATES TO AUDIT\n${defs}\n\nOUTPUT FORMAT — exactly one line per candidate:\nAUDIT|PFM####|SUPPORTED_or_WEAK_or_REJECT|E1,E2_or_NONE|BETTER_PFM####_or_NONE|brief reason`;
+  return `GENREACTRIX THEME DECISION — STAGE 3: ADVERSARIAL FIT AUDIT.\n\nAudit each listed candidate independently. Your role is to attack the candidate, not defend the earlier shortlist. A Theme cannot survive merely because you can write a plausible rationale for it. It survives only if the literal evidence contains positive semantic evidence that actually distinguishes that Theme from a neutral or less inferential interpretation.\n\nSTATUS RULES:\nSUPPORTED = clear positive evidence earns the Theme's semantic meaning.\nWEAK = it is a plausible closest-available interpretation, but evidence is partial; confidence later must remain low/modest.\nREJECT = the rationale depends on emotional-salience substitution, generic aesthetic praise, unsupported inference, missing gate/required meaning, contextual contradiction, or a materially closer less-inferential interpretation.\n\nCONTEXT CROSS-CHECK — REQUIRED: Before allowing SUPPORTED or WEAK, compare the candidate against the ordinary human reading of the ledger's setting, presentation/attire, activity, action, expression, and composition. If the candidate needs a semantic quality that those facts do not actually show—or the ordinary context points away from it—reject it unless separate concrete evidence positively supplies that quality. Do not convert neutral/professional/formal/calm/focused/deliberate/composed facts into emotionally or sensorily loaded evidence merely because a verbal bridge can be written.\n\nReject these substitutions unless independent evidence specifically earns the Theme meaning: simplicity/minimalism→playfulness; irregularity/randomness→silliness; visual interest→Goofy; neutral stillness→Cozy; generic pleasantness→sweetness; aesthetic appeal→emotional significance; reflective prose→Nostalgia/Poignant; concentration/focus→intimacy, Lust, Obsessive, intelligence, Majestic, or Chaotic; deliberate composition→warmth, nostalgia, grandeur, or emotional significance. The same principle applies to every Theme, not just those examples.\n\nFor SUPPORTED or WEAK, cite one or more E# facts that positively support the semantic route. For REJECT, refs may be NONE. BETTER may name one materially closer PFM code from the full vocabulary, or NONE. Do not choose final top three here.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nCANDIDATES TO AUDIT\n${defs}\n\nOUTPUT FORMAT — exactly one line per candidate:\nAUDIT|PFM####|SUPPORTED_or_WEAK_or_REJECT|E1,E2_or_NONE|BETTER_PFM####_or_NONE|brief reason`;
 }
 
 function parseThemeDecisionAudits(raw,codes,ledger){
@@ -914,7 +929,7 @@ async function runThemeDecisionAudits(env,model,behavior,ledger,codes){
 function themeDecisionFinalPrompt(ledger,audits){
   const survivors=audits.filter(row=>row.status!=='REJECT'),codes=survivors.map(row=>row.code),defs=themeDecisionCatalog(codes);
   const auditText=survivors.map(row=>`${row.code}|${row.status}|${row.supportEvidenceIds.join(',')||'NONE'}|${row.reason}`).join('\n');
-  return `GENREACTRIX THEME DECISION — STAGE 4: FINAL RANK.\n\nChoose exactly three DIFFERENT Themes from the AUDIT-SURVIVING candidates only. Candidates marked REJECT have already failed adversarial review and are not eligible. Rank by closest ordinary-human semantic fit to the literal evidence, not emotional richness, drama, novelty, aesthetic appeal, or how satisfying a Theme is to discuss. A boring/neutral Theme wins whenever it is closer.\n\nSUPPORTED normally outranks WEAK when fit is otherwise comparable, but status does not replace semantic comparison. Confidence measures absolute strength of fit, NOT rank. A third-best WEAK Theme may deserve low confidence. 100 means exceptionally complete and unmistakable.\n\nEvery final rationale must cite at least one E# support fact and must state the actual semantic route. Do not create new image facts. Do not resurrect a rejected Theme.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nAUDIT SURVIVORS\n${auditText}\n\nSURVIVOR DEFINITIONS\n${defs}\n\nReturn exactly three lines and nothing else:\n1|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason\n2|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason\n3|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason`;
+  return `GENREACTRIX THEME DECISION — STAGE 4: FINAL RANK.\n\nChoose exactly three DIFFERENT Themes from the AUDIT-SURVIVING candidates only. Candidates marked REJECT have already failed adversarial review and are not eligible. Rank by closest ordinary-human semantic fit to the literal evidence and its ordinary situational context—not emotional richness, drama, novelty, aesthetic appeal, or how satisfying a Theme is to discuss. Clear observable cues and the visible setting/activity/presentation outrank abstract or forced association. A boring/neutral Theme wins whenever it is closer.\n\nSUPPORTED normally outranks WEAK when fit is otherwise comparable, but status does not replace semantic comparison. Confidence measures absolute strength of fit, NOT rank. A third-best WEAK Theme may deserve low confidence. Do not assign high confidence merely because a Theme is the best remaining option. High confidence requires strong direct visual/contextual support for the Theme's defining meaning and little meaningful contradiction; 100 means exceptionally complete and unmistakable.\n\nEvery final rationale must cite at least one E# support fact and must state the actual semantic route. Do not create new image facts. Do not resurrect a rejected Theme.\n\nLITERAL EVIDENCE\n${themeDecisionEvidenceText(ledger)}\n\nAUDIT SURVIVORS\n${auditText}\n\nSURVIVOR DEFINITIONS\n${defs}\n\nReturn exactly three lines and nothing else:\n1|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason\n2|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason\n3|matrix|PFM####|CONFIDENCE|E#[,E#] concise image-grounded reason`;
 }
 
 async function runThemeDecisionFinalRank(env,model,behavior,ledger,audits){
@@ -1065,8 +1080,15 @@ function themeRerunCandidateSets(rerun){
   return sets;
 }
 function themeRerunEvidencePrompt(rerun){
-  const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
-  return `THEME RERUN — FROZEN EVIDENCE PASS.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Your only job is to make a compact ledger of evidence that exists BEFORE Theme selection.\n\nRecord concrete, atomic facts from the image and, when present, facts explicitly supplied by the included AI Description. Prefer directly visible properties: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other observable details. Do not add moods, metaphors, analogies, intentions, personalities, emotional qualities, or thematic interpretations. Description text may supply concrete facts, but generic evaluative praise or engagement language — such as visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, beautiful, well-balanced, or inviting the viewer to contemplate — is NOT a factual evidence item and must be omitted from the ledger. Do not convert an ordinary visual fact into a semantic conclusion.\n\nThe image is authoritative. Description-derived evidence may supplement it but may not contradict what is visible. Keep each ledger item to one fact. Aim for 5–12 useful facts.\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nOUTPUT FORMAT — REQUIRED:\nE1|image|one concrete fact\nE2|image|one concrete fact\nE3|description|one explicitly supplied description fact\n\nUse sequential E-numbers. Use source image or description only. If no Description is included, every item must use image. Return only ledger lines and nothing else.`;
+  const allowDescription=rerun.includedDescriptions.length>0;
+  const descriptionBlock=allowDescription?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
+  const outputExample=allowDescription
+    ?'E1|image|one concrete fact\nE2|image|one concrete fact\nE3|description|one explicitly supplied description fact'
+    :'E1|image|one concrete fact\nE2|image|one concrete fact\nE3|image|one concrete fact';
+  const sourceRule=allowDescription
+    ?'Use source image or description only.'
+    :'Use source image only; do not emit description-sourced lines because no Description was included.';
+  return `THEME RERUN — FROZEN EVIDENCE PASS.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Your only job is to make a compact ledger of evidence that exists BEFORE Theme selection.\n\nRecord concrete, atomic facts from the image and, when present, facts explicitly supplied by the included AI Description. Prefer directly visible properties: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other observable details. Do not add moods, metaphors, analogies, intentions, personalities, emotional qualities, or thematic interpretations. Description text may supply concrete facts, but generic evaluative praise or engagement language — such as visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, beautiful, well-balanced, or inviting the viewer to contemplate — is NOT a factual evidence item and must be omitted from the ledger. Do not convert an ordinary visual fact into a semantic conclusion.\n\nThe image is authoritative. Description-derived evidence may supplement it but may not contradict what is visible. Keep each ledger item to one fact. Aim for 5–12 useful facts.\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nOUTPUT FORMAT — REQUIRED:\n${outputExample}\n\nUse sequential E-numbers. ${sourceRule} Return only ledger lines and nothing else.`;
 }
 function parseThemeRerunEvidenceLedger(raw,rerun){
   const text=String(raw||'').replace(/\r/g,'').trim();if(!text)throw new Error('Theme Rerun evidence pass returned an empty response.');
@@ -1084,9 +1106,13 @@ function parseThemeRerunEvidenceLedger(raw,rerun){
 function themeRerunEvidenceText(evidenceLedger){return evidenceLedger.map(row=>`${row.id}|${row.source}|${row.fact}`).join('\n')}
 async function runThemeRerunEvidencePass(env,model,image,behavior,rerun){
   let lastError=null;
+  const allowDescription=rerun.includedDescriptions.length>0;
   for(let attempt=1;attempt<=2;attempt++){
     try{
-      const prompt=themeRerunEvidencePrompt(rerun)+(attempt===2?'\n\nRECOVERY: Return only sequential E#|image|fact or E#|description|fact lines. Do not classify the image.':'');
+      const recovery=attempt===2
+        ?(allowDescription?'\n\nRECOVERY: Return only sequential E#|image|fact or E#|description|fact lines. Do not classify the image.':'\n\nRECOVERY: Return only sequential E#|image|fact lines. Do not classify the image. Do not emit description-sourced lines because no Description was included.')
+        :'';
+      const prompt=themeRerunEvidencePrompt(rerun)+recovery;
       const raw=await runStructured(env,model,image,prompt,null,1200,'text',{behavior,themeRerun:true,themeRerunEvidencePass:true,temperature:0});
       return parseThemeRerunEvidenceLedger(raw,rerun);
     }catch(error){lastError=error;}
@@ -1125,7 +1151,7 @@ function themeRerunPrompt(rerun,sets,evidenceLedger){
     const candidates=sets[row.slot].candidates.map(item=>`${item.code}:${item.pairWeight}`).join(', ');
     return `Theme ${row.slot} (${mode}${current}) eligible=${candidates}`;
   }).join('\n');
-  return `Choose the best eligible PrimFusion Themes for the open slots using ONLY the frozen evidence facts below. Simulate what an ordinary person would most naturally pick from the available Theme vocabulary. Emotional intensity, drama, evocative quality, attention-grabbing quality, expressiveness, aesthetic appeal, novelty, or how interesting a Theme is to discuss MUST NOT give it a ranking advantage. A boring/neutral/Mundane-type Theme must beat a richer or more emotional Theme whenever it is the closer semantic fit. Do not infer playfulness from simplicity/minimalism, silliness from irregularity/random arrangement, coziness from neutral stillness, sweetness from generic pleasantness, or emotional meaning from words like striking/compelling/evocative/thought-provoking. Genuine mood or theatricality still counts when the frozen evidence actually earns it. Evaluate ALL eligible candidates before deciding; do not stop at the first Theme that can be defended. A merely plausible or broad/easy Theme must not outrank a materially closer or more specific Theme. Treat the open slots jointly as one exactly-three ranking subject to their slot-specific eligibility and Director constraints. Confidence measures strength of fit, NOT rank: a second- or third-best Theme may legitimately have low confidence when it is only the closest available choice. Before finalizing, compare every selected Theme against the unselected eligible Themes and replace any selection if an unselected Theme is materially closer to the image evidence. The image is not available in this step. Pair-weight numbers are Director preferences, not confidence scores. 100 is for an exceptionally complete, unmistakable match. Each chosen Theme must cite one or more E# facts that actually support it. Final PFM codes must be different.\n\nReturn only one compact line per open slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nOPEN SLOTS\n${slots}\n\nELIGIBLE DEFINITIONS\n${vocabulary}`;
+  return `Choose the best eligible PrimFusion Themes for the open slots using ONLY the frozen evidence facts below. Simulate what an ordinary person would most naturally pick from the available Theme vocabulary. Emotional intensity, drama, evocative quality, attention-grabbing quality, expressiveness, aesthetic appeal, novelty, or how interesting a Theme is to discuss MUST NOT give it a ranking advantage. A boring/neutral/Mundane-type Theme must beat a richer or more emotional Theme whenever it is the closer semantic fit. Do not infer playfulness from simplicity/minimalism, silliness from irregularity/random arrangement, coziness from neutral stillness, sweetness from generic pleasantness, or emotional meaning from words like striking/compelling/evocative/thought-provoking. Genuine mood or theatricality still counts when the frozen evidence actually earns it. Evaluate ALL eligible candidates before deciding; do not stop at the first Theme that can be defended. A merely plausible or broad/easy Theme must not outrank a materially closer or more specific Theme. Apply the same ordinary-context cross-check used by the main Theme pipeline: neutral, formal, professional, calm, focused, deliberate, or composed evidence does not itself support comfort, intimacy, desire, obsession, intelligence, grandeur, nostalgia, chaos, or another loaded meaning. The loaded Theme needs separate concrete evidence that earns its semantics. Treat the open slots jointly as one exactly-three ranking subject to their slot-specific eligibility and Director constraints. Confidence measures strength of fit, NOT rank: a second- or third-best Theme may legitimately have low confidence when it is only the closest available choice. Before finalizing, compare every selected Theme against the unselected eligible Themes and replace any selection if an unselected Theme is materially closer to the image evidence. The image is not available in this step. Pair-weight numbers are Director preferences, not confidence scores. 100 is for an exceptionally complete, unmistakable match. Each chosen Theme must cite one or more E# facts that actually support it. Final PFM codes must be different.\n\nReturn only one compact line per open slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nOPEN SLOTS\n${slots}\n\nELIGIBLE DEFINITIONS\n${vocabulary}`;
 }
 function parseThemeRerunStructured(raw,rerun,sets){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
@@ -3050,6 +3076,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.82 — AMA-derived Theme contextual gating + confidence calibration; AMA Prim/ownership/integrity repair; Theme Rerun evidence-source repair; provider readiness probe.
 // v0.9.6.79 — Theme adversarial decision pipeline: literal evidence -> broad candidates -> adversarial audit -> final rank.
 // v0.9.6.78 — Theme human-fit calibration: no emotional-salience ranking bonus; neutral closer fits win; generic descriptive praise excluded from rerun evidence.
 // v0.9.6.71 — AMA-specific 90s provider timeout + one transient retry.
@@ -3076,15 +3103,29 @@ async function runSlopAssessment(env,model,image,resolvedThemes=[],description='
     return{schemaVersion:1,assessmentId:`slop_error_${Date.now().toString(36)}`,assessedAt:new Date().toISOString(),detected:false,confidence:0,reason:`SLOP advisory could not be completed: ${cleanSingleLine(error?.message||error,500)}`,basis,status:'unavailable'};
   }
 }
-function amaThemeMeta(ref={}){
-  const code=String(ref.code||ref.id||'').toUpperCase();
-  const byCode=code?PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>row.code===code):null;
+function amaThemeMeta(ref={},source='candidate'){
+  const rawCode=String(ref.code||ref.id||'').toUpperCase();
   const label=String(ref.label||ref.name||'').trim().toLowerCase();
-  const byName=!byCode&&label?PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>String(row.name||'').trim().toLowerCase()===label):null;
-  const row=byCode||byName;
-  return row?{code:row.code,name:row.name,aiMeaning:row.aiMeaning||''}:{code:code||null,name:String(ref.label||ref.name||ref.code||'Unknown'),aiMeaning:String(ref.aiMeaning||'')};
+  const declaredKind=String(ref.kind||'').toLowerCase();
+  const fusionByCode=rawCode?PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>row.code===rawCode):null;
+  const fusionByName=!fusionByCode&&label?PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>String(row.name||'').trim().toLowerCase()===label):null;
+  const primByCode=rawCode?PRIMFUSION_REGISTRY.primitives.find(row=>row.id===rawCode):null;
+  const primByName=!primByCode&&label?PRIMFUSION_REGISTRY.primitives.find(row=>String(row.name||'').trim().toLowerCase()===label):null;
+  let row=null,kind='unknown';
+  if(declaredKind==='primitive'||declaredKind==='prim'||primByCode){row=primByCode||primByName;kind='primitive'}
+  else if(fusionByCode){row=fusionByCode;kind='primFusion'}
+  else if(source==='director'&&primByName&&!fusionByName){row=primByName;kind='primitive'}
+  else if(fusionByName){row=fusionByName;kind='primFusion'}
+  else if(primByName){row=primByName;kind='primitive'}
+  if(row&&kind==='primitive')return{code:row.id,name:row.name,aiMeaning:row.aiMeaning||'',kind:'primitive',source};
+  if(row)return{code:row.code,name:row.name,aiMeaning:row.aiMeaning||'',kind:'primFusion',source};
+  return{code:rawCode||null,name:String(ref.label||ref.name||ref.code||'Unknown'),aiMeaning:String(ref.aiMeaning||''),kind:declaredKind||'unknown',source};
 }
-function amaThemeLine(ref={}){const meta=amaThemeMeta(ref);const confidence=Number.isFinite(Number(ref.confidence??ref.weight))?Number(ref.confidence??ref.weight):null;return`${meta.code||'NO-CODE'} — ${meta.name}${confidence==null?'':` — ${confidence}%`} — ${meta.aiMeaning||'No stored definition available.'}`}
+function amaThemeLine(ref={},source='candidate'){
+  const meta=amaThemeMeta(ref,source),confidence=Number.isFinite(Number(ref.confidence??ref.weight))?Number(ref.confidence??ref.weight):null;
+  const sourceLabel=source==='ai'?'AI':source==='director'?'DIRECTOR':'CANDIDATE',kindLabel=meta.kind==='primitive'?'PRIM':meta.kind==='primFusion'?'PRIMFUSION':'UNKNOWN';
+  return`[SOURCE=${sourceLabel}] [KIND=${kindLabel}] ${meta.code||'NO-CODE'} — ${meta.name}${confidence==null?'':` — ${confidence}%`} — ${meta.aiMeaning||'No stored definition available.'}`;
+}
 async function runAmaStructured(env,model,image,prompt,schema,maxTokens,responseMode='text',options={}){
   let lastError=null;
   for(let attempt=1;attempt<=2;attempt++){
@@ -3099,7 +3140,7 @@ async function runAmaStructured(env,model,image,prompt,schema,maxTokens,response
   throw lastError||new Error('AMA provider call failed');
 }
 function amaSnapshotThemes(snapshot,key){return(Array.isArray(snapshot?.[key])?snapshot[key]:[]).filter(Boolean)}
-function amaUniqueThemeMetas(snapshot,candidateCodes=[]){const rows=[],seen=new Set();for(const ref of [...amaSnapshotThemes(snapshot,'aiThemes'),...amaSnapshotThemes(snapshot,'directorThemes'),...(candidateCodes||[]).map(code=>({code}))]){const meta=amaThemeMeta(ref);const key=String(meta.code||meta.name).toLowerCase();if(seen.has(key))continue;seen.add(key);rows.push(meta)}return rows}
+function amaUniqueThemeMetas(snapshot,candidateCodes=[]){const rows=[],seen=new Set(),sources=[[amaSnapshotThemes(snapshot,'aiThemes'),'ai'],[amaSnapshotThemes(snapshot,'directorThemes'),'director'],[(candidateCodes||[]).map(code=>({code})),'candidate']];for(const [refs,source] of sources)for(const ref of refs){const meta=amaThemeMeta(ref,source),key=`${meta.kind}:${String(meta.code||meta.name).toLowerCase()}`;if(seen.has(key))continue;seen.add(key);rows.push(meta)}return rows}
 function amaVisualPrompt(snapshot){return`Describe this image as a perceptive human would describe it to another person so it can support a later Theme-comparison interview. Include subject, composition, color, lighting, texture, style, setting, visible action, and any reasonably supported atmosphere, energy, aesthetic, or emotional impression. A little theatricality is welcome when the visible image earns it. Do not invent narrative, intent, symbolism, personality, unseen events, or Theme-specific justifications.\n\nExisting AI Description for context only (correct it if the image disagrees):\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None stored.'}\n\nReturn one concise but substantial paragraph.`}
 function amaAllThemeCatalog(){return PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>`${row.code} — ${row.name} — ${String(row.aiMeaning||'').replace(/\s+/g,' ')}`).join('\n')}
 async function amaCandidateAudit(env,model,visualRead,snapshot){
@@ -3200,20 +3241,42 @@ function amaQuestionMarkers(text){
 function amaInlineQuestionMarkerCount(text){
   return (String(text||'').match(/(?:^|\s)(?:\*\*|__)?(?:Q\s*0*\d{1,4}|Question\s*0*\d{1,4})\s*(?::|[-–—.]|\)|\])/gim)||[]).length;
 }
-function amaValidateAnswerText(text,{allowQuestionIds=false}={}){
+function amaRepeatedAnswerReason(value){
+  const compact=String(value||'').replace(/\s+/g,' ').trim();
+  const sentences=compact.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(x=>x.length>=36);
+  if(sentences.length<3)return'';
+  const counts=new Map();for(const sentence of sentences){const key=sentence.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();counts.set(key,(counts.get(key)||0)+1)}
+  if([...counts.values()].some(count=>count>=3))return'answer contains a repeated sentence loop';
+  if(sentences.length>=8&&counts.size/sentences.length<0.62)return'answer is dominated by repeated prose';
+  return'';
+}
+function amaOwnershipContradictionReason(value,snapshot){
+  if(!snapshot)return'';
+  const r=amaRepresentative(snapshot),text=String(value||''),esc=label=>String(label||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  for(const label of r.aiOnly){const L=esc(label);if(new RegExp(`\\bDirector(?:'s)?\\s+(?:choice|theme|selection)(?:\\s+of)?\\s+[\\"“”']?${L}\\b|\\bDirector\\s+(?:selected|chose|picked|overrated|ranked)\\s+[\\"“”']?${L}\\b`,'i').test(text))return`answer assigns AI-only Theme ${label} to Director`;}
+  for(const label of r.directorOnly){const L=esc(label);if(new RegExp(`\\bAI(?:'s)?\\s+(?:choice|theme|selection)(?:\\s+of)?\\s+[\\"“”']?${L}\\b|\\bAI\\s+(?:selected|chose|picked)\\s+[\\"“”']?${L}\\b`,'i').test(text))return`answer assigns Director-only Theme ${label} to AI`;}
+  return'';
+}
+function amaValidateAnswerText(text,{allowQuestionIds=false,question=null,snapshot=null}={}){
   const value=cleanAmaBareAnswer(text);
   if(!value)return{valid:false,reason:'empty answer'};
   if(!/[A-Za-z0-9]/.test(value))return{valid:false,reason:'answer contains no substantive text'};
+  const compact=value.replace(/\s+/g,' ').trim();
+  if(/^(?:nswer|answer|response|n\/?a|unknown|unavailable)$/i.test(compact))return{valid:false,reason:'answer is a placeholder/corrupted fragment'};
+  const repeated=amaRepeatedAnswerReason(value);if(repeated)return{valid:false,reason:repeated};
   if(!allowQuestionIds&&amaInlineQuestionMarkerCount(value)>0)return{valid:false,reason:'answer contains another question-ID marker'};
-  const compact=value.replace(/\s+/g,' ').trim(),questionMarks=(compact.match(/\?/g)||[]).length;
-  const lead=compact.replace(/^[\s"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim();
+  const questionMarks=(compact.match(/\?/g)||[]).length;
+  const lead=compact.replace(/^[\s\"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim();
   const interrogative=/^(?:what|which|why|how|when|where|who|whom|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|has|have|had|may|might)\b/i;
   if(questionMarks>=3)return{valid:false,reason:'answer appears to generate questions instead of answering'};
   if(questionMarks>=1&&/[?]\s*$/.test(compact)&&interrogative.test(lead))return{valid:false,reason:'response is a question rather than an answer'};
   if(/^\d+\s*:\s*(?:what|which|why|how|is|are|was|were|do|does|did|can|could|would|should|has|have|had)\b/i.test(compact)&&/[?]\s*$/.test(compact))return{valid:false,reason:'response is a generated question'};
+  const qid=String(question?.id||'').toUpperCase();
+  if((qid==='Q1'||qid==='Q2')&&amaSnapshotThemes(snapshot,'aiThemes').length&&amaSnapshotThemes(snapshot,'directorThemes').length&&/not visible in (?:the )?snapshot|not (?:shown|provided|available)|cannot determine (?:whether |if )?(?:there is )?(?:any )?overlap/i.test(compact))return{valid:false,reason:'answer falsely claims supplied AI/Director snapshot data is unavailable'};
+  const ownership=amaOwnershipContradictionReason(value,snapshot);if(ownership)return{valid:false,reason:ownership};
   return{valid:true,reason:''};
 }
-function parseAmaAnswersDetailed(raw,questions){
+function parseAmaAnswersDetailed(raw,questions,snapshot=null){
   const text=cleanAmaBareAnswer(raw),out=new Map(),rejected=[],wanted=new Set(questions.map(q=>String(q.id||'').toUpperCase()));
   if(!text)return{answers:out,rejected,markerIds:[]};
 
@@ -3224,7 +3287,7 @@ function parseAmaAnswersDetailed(raw,questions){
     const current=matches[i],next=matches[i+1];
     if(!wanted.has(current.id)||out.has(current.id))continue;
     const answer=cleanAmaBareAnswer(text.slice(current.contentStart,next?next.start:text.length)).slice(0,7000);
-    const validation=amaValidateAnswerText(answer);
+    const validation=amaValidateAnswerText(answer,{question:questions.find(q=>String(q.id||'').toUpperCase()===current.id)||null,snapshot});
     if(validation.valid)out.set(current.id,answer);
     else rejected.push({id:current.id,reason:validation.reason,preview:answer.replace(/\s+/g,' ').slice(0,500)});
   }
@@ -3233,24 +3296,24 @@ function parseAmaAnswersDetailed(raw,questions){
   // it actually looks like an answer. If the provider emitted any Q-marker at all,
   // attribution is no longer unambiguous and the unlabeled fallback is disabled.
   if(questions.length===1&&!out.size&&matches.length===0){
-    const id=String(questions[0]?.id||'').toUpperCase(),answer=cleanAmaBareAnswer(text).slice(0,7000),validation=amaValidateAnswerText(answer);
+    const id=String(questions[0]?.id||'').toUpperCase(),answer=cleanAmaBareAnswer(text).slice(0,7000),validation=amaValidateAnswerText(answer,{question:questions[0]||null,snapshot});
     if(id&&validation.valid)out.set(id,answer);
     else if(id)rejected.push({id,reason:validation.reason||'unusable single-question response',preview:answer.replace(/\s+/g,' ').slice(0,500)});
   }
   return{answers:out,rejected,markerIds:matches.map(row=>row.id)};
 }
-function parseAmaAnswers(raw,questions){return parseAmaAnswersDetailed(raw,questions).answers}
+function parseAmaAnswers(raw,questions,snapshot=null){return parseAmaAnswersDetailed(raw,questions,snapshot).answers}
 function amaContext(snapshot,visualRead,candidateCodes){
-  const ai=amaSnapshotThemes(snapshot,'aiThemes').map(amaThemeLine).join('\n')||'None';
-  const director=amaSnapshotThemes(snapshot,'directorThemes').map(amaThemeLine).join('\n')||'None';
-  const themeContext=amaUniqueThemeMetas(snapshot,candidateCodes).map(row=>`${row.code||'NO-CODE'} — ${row.name} — ${String(row.aiMeaning||'').replace(/\s+/g,' ')}`).join('\n');
-  return`IMAGE / VISUAL READ:\n${visualRead}\n\nAI THEMES (historical current snapshot):\n${ai}\n\nDIRECTOR THEMES (current snapshot; Director may have 1, 2, or 3):\n${director}\n\nCURRENT AI DESCRIPTION:\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None'}\n\nCURRENT SLOP ADVISORY:\n${snapshot?.slopAssessment?JSON.stringify(snapshot.slopAssessment):'None'}\n\nRELEVANT CURRENT/CANDIDATE THEME DEFINITIONS:\n${themeContext}\n\nRERUN / CURRENT SNAPSHOT CONTEXT:\n${cleanSingleLine(JSON.stringify(snapshot?.rerunContext||{}),5000)||'None'}`;
+  const ai=amaSnapshotThemes(snapshot,'aiThemes').map(ref=>amaThemeLine(ref,'ai')).join('\n')||'None';
+  const director=amaSnapshotThemes(snapshot,'directorThemes').map(ref=>amaThemeLine(ref,'director')).join('\n')||'None';
+  const themeContext=amaUniqueThemeMetas(snapshot,candidateCodes).map(row=>`[KIND=${row.kind==='primitive'?'PRIM':row.kind==='primFusion'?'PRIMFUSION':'UNKNOWN'}] ${row.code||'NO-CODE'} — ${row.name} — ${String(row.aiMeaning||'').replace(/\s+/g,' ')}`).join('\n');
+  return`IMAGE / VISUAL READ:\n${visualRead}\n\nSOURCE OWNERSHIP — AUTHORITATIVE:\nItems under AI THEMES were selected by AI. Items under DIRECTOR THEMES were selected by Director. Never swap, blur, or infer ownership. A Director primitive remains a PRIM and is not a PrimFusion.\n\nAI THEMES (historical current snapshot):\n${ai}\n\nDIRECTOR THEMES (current snapshot; Director may have 1, 2, or 3):\n${director}\n\nCURRENT AI DESCRIPTION:\n${cleanSingleLine(snapshot?.aiDescription||'',5000)||'None'}\n\nCURRENT SLOP ADVISORY:\n${snapshot?.slopAssessment?JSON.stringify(snapshot.slopAssessment):'None'}\n\nRELEVANT CURRENT/CANDIDATE THEME DEFINITIONS:\n${themeContext}\n\nRERUN / CURRENT SNAPSHOT CONTEXT:\n${cleanSingleLine(JSON.stringify(snapshot?.rerunContext||{}),5000)||'None'}`;
 }
-async function runAmaQuestionBlock(env,model,context,questions){
+async function runAmaQuestionBlock(env,model,context,questions,snapshot=null){
   const list=questions.map(q=>`${q.id}: ${q.question}`).join('\n');
-  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
+  const prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability. Source ownership in the supplied context is authoritative: never attribute an AI-selected Theme to Director or a Director-selected Theme to AI. Treat every supplied Theme/Prim definition and gate as authoritative; ordinary focus, concentration, calmness, formality, professionalism, or deliberate composition is not by itself evidence for a richer Theme meaning. Do not claim supplied snapshot information is missing when it is present. Avoid repetition; answer once, directly, and stop.\n\nAnswer EVERY listed question. Return only lines/paragraphs keyed by question ID in this form:\nQ1: answer\nQ2: answer\n...\nYou may use multiple sentences per answer, but do not omit an ID and do not add unrequested IDs.\n\n${context}\n\nQUESTIONS:\n${list}`;
   const raw=await runAmaStructured(env,model,null,prompt,null,4200,'text',{temperature:0.15,amaInterview:true});
-  const answers=parseAmaAnswers(raw,questions),missing=questions.filter(q=>!answers.has(q.id));
+  const answers=parseAmaAnswers(raw,questions,snapshot),missing=questions.filter(q=>!answers.has(q.id));
   if(missing.length)throw new Error(`Legacy AI AMA call returned incomplete answers: missing ${missing.map(q=>q.id).join(', ')}.`);
   return questions.map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section}));
 }
@@ -3291,13 +3354,13 @@ function amaSlotMarkers(text){
 function amaCleanDirectAnswer(text){
   return cleanAmaBareAnswer(text).replace(/^(?:DIRECT\s+ANSWER|ANSWER|RESPONSE)\s*(?::|[-–—.]|\)|\])\s*/i,'').trim();
 }
-function parseAmaSlotAnswersDetailed(raw,questions){
+function parseAmaSlotAnswersDetailed(raw,questions,snapshot=null){
   const text=cleanAmaBareAnswer(raw),out=new Map(),rejected=[],slots=['A','B','C'],slotToQuestion=new Map();
   questions.forEach((q,index)=>{if(slots[index])slotToQuestion.set(slots[index],q)});
   if(!text)return{answers:out,rejected,slotMarkers:[],questionMarkers:[]};
   const questionMarkers=amaQuestionMarkers(text);
   if(questions.length===1){
-    const q=questions[0],answer=amaCleanDirectAnswer(text).slice(0,7000),validation=amaValidateAnswerText(answer);
+    const q=questions[0],answer=amaCleanDirectAnswer(text).slice(0,7000),validation=amaValidateAnswerText(answer,{question:q,snapshot});
     if(validation.valid)out.set(q.id,answer);
     else rejected.push({id:q.id,reason:validation.reason||'unusable direct answer',preview:answer.replace(/\s+/g,' ').slice(0,500)});
     return{answers:out,rejected,slotMarkers:[],questionMarkers:questionMarkers.map(row=>row.id)};
@@ -3306,28 +3369,28 @@ function parseAmaSlotAnswersDetailed(raw,questions){
   for(let i=0;i<matches.length;i++){
     const current=matches[i],next=matches[i+1],q=slotToQuestion.get(current.slot);
     if(!q||out.has(q.id))continue;
-    const answer=amaCleanDirectAnswer(text.slice(current.contentStart,next?next.start:text.length)).slice(0,7000),validation=amaValidateAnswerText(answer);
+    const answer=amaCleanDirectAnswer(text.slice(current.contentStart,next?next.start:text.length)).slice(0,7000),validation=amaValidateAnswerText(answer,{question:q,snapshot});
     if(validation.valid)out.set(q.id,answer);
     else rejected.push({id:q.id,slot:current.slot,reason:validation.reason,preview:answer.replace(/\s+/g,' ').slice(0,500)});
   }
   for(const [slot,q] of slotToQuestion){if(!out.has(q.id)&&!rejected.some(row=>row.id===q.id))rejected.push({id:q.id,slot,reason:matches.length?'no validated answer for requested slot':'provider did not return ANSWER A/B/C slots',preview:text.replace(/\s+/g,' ').slice(0,500)})}
   return{answers:out,rejected,slotMarkers:matches.map(row=>row.slot),questionMarkers:questionMarkers.map(row=>row.id)};
 }
-async function runAmaQuestionChunk(env,model,context,questions){
+async function runAmaQuestionChunk(env,model,context,questions,snapshot=null){
   const single=questions.length===1;
   let prompt;
   if(single){
-    prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer ONE direct question. Do not write or propose any question, questionnaire, question number, heading, label, or follow-up. Do not repeat the question. Return only the prose answer.\n\n${context}\n\nDIRECT QUESTION:\n${questions[0].question}\n\nDIRECT ANSWER:`;
+    prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability. Source ownership in the supplied context is authoritative: never attribute an AI-selected Theme to Director or a Director-selected Theme to AI. Treat every supplied Theme/Prim definition and gate as authoritative; ordinary focus, concentration, calmness, formality, professionalism, or deliberate composition is not by itself evidence for a richer Theme meaning. Do not claim supplied snapshot information is missing when it is present. Avoid repetition; answer once, directly, and stop.\n\nAnswer ONE direct question. Do not write or propose any question, questionnaire, question number, heading, label, or follow-up. Do not repeat the question. Return only the prose answer.\n\n${context}\n\nDIRECT QUESTION:\n${questions[0].question}\n\nDIRECT ANSWER:`;
   }else{
     const slots=['A','B','C'],list=questions.map((q,index)=>`ITEM ${slots[index]}: ${q.question}`).join('\n');
     const answerShape=questions.map((q,index)=>`ANSWER ${slots[index]}: <answer to ITEM ${slots[index]}>`).join('\n');
-    prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability.\n\nAnswer ONLY the listed ITEMS. The letters A/B/C are response slots, not a sequence to extend. Do not generate, rewrite, repeat, extend, or propose questions. Do not output Q-numbers, Question numbers, ITEM D, ANSWER D, or any other unrequested slot.\n\nReturn exactly one answer for each requested slot using these labels. Multiple prose sentences are allowed inside each answer:\n${answerShape}\n\n${context}\n\nITEMS TO ANSWER:\n${list}`;
+    prompt=`You are conducting a saved Genreactrix AI AMA interview. This is diagnostic only. You are NOT allowed to alter the historical AI Theme choices, Director choices, confidence values, definitions, image status, or code. Be candid when AI was wrong. Do not defend a Theme just because AI selected it. Do not assume Director is automatically right. Distinguish strong fit from merely defensible fit. Prefer ordinary human applicability. Source ownership in the supplied context is authoritative: never attribute an AI-selected Theme to Director or a Director-selected Theme to AI. Treat every supplied Theme/Prim definition and gate as authoritative; ordinary focus, concentration, calmness, formality, professionalism, or deliberate composition is not by itself evidence for a richer Theme meaning. Do not claim supplied snapshot information is missing when it is present. Avoid repetition; answer once, directly, and stop.\n\nAnswer ONLY the listed ITEMS. The letters A/B/C are response slots, not a sequence to extend. Do not generate, rewrite, repeat, extend, or propose questions. Do not output Q-numbers, Question numbers, ITEM D, ANSWER D, or any other unrequested slot.\n\nReturn exactly one answer for each requested slot using these labels. Multiple prose sentences are allowed inside each answer:\n${answerShape}\n\n${context}\n\nITEMS TO ANSWER:\n${list}`;
   }
   // Interview recovery deliberately uses ONE provider attempt at the current granularity.
   // The site owns fallback (3 -> 1) and checkpoints only validated answers.
   // Canonical Q IDs stay internal; the provider sees DIRECT QUESTION or A/B/C slots only.
   const raw=await runStructured(env,model,null,prompt,null,single?1200:2600,'text',{temperature:0.15,amaInterview:true,amaResumableChunk:true,amaThreeQuestionChunk:!single,amaSingleQuestionRecovery:single,providerCallTimeoutMs:AMA_PROVIDER_CALL_TIMEOUT_MS});
-  const parsed=parseAmaSlotAnswersDetailed(raw,questions),answers=parsed.answers,missing=questions.filter(q=>!answers.has(q.id));
+  const parsed=parseAmaSlotAnswersDetailed(raw,questions,snapshot),answers=parsed.answers,missing=questions.filter(q=>!answers.has(q.id));
   const rawResponsePreview=missing.length?cleanAmaBareAnswer(raw).replace(/\s+/g,' ').slice(0,1600):'';
   return{questions:questions.filter(q=>answers.has(q.id)).map(q=>({id:q.id,question:q.question,answer:answers.get(q.id),section:q.section})),missingQuestionIds:missing.map(q=>q.id),rejectedAnswers:parsed.rejected,providerQuestionMarkers:parsed.questionMarkers,providerAnswerSlots:parsed.slotMarkers,rawResponsePreview};
 }
@@ -3343,8 +3406,8 @@ async function runAmaQuestionStep(env,body){
   if(supplied.some(id=>!allowedIds.has(id)))throw new Error('AI AMA question IDs must belong to the requested canonical 3-question block.');
   const requestedIds=supplied.length?supplied:fullBlock.map(q=>q.id),requestedSet=new Set(requestedIds),block=fullBlock.filter(q=>requestedSet.has(q.id));
   if(!block.length)throw new Error('AI AMA question request contains no canonical questions.');
-  const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'slot-mapped-integrity-v4',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
+  const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block,snapshot);
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'slot-mapped-integrity-v5',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
@@ -3356,7 +3419,7 @@ async function runAma(env,body){
   if(!image&&!String(snapshot.aiDescription||'').trim())throw new Error('AI AMA requires the current image or an AI Description.');
   const visualRead=image?String(await runAmaStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
   const candidateCodes=await amaCandidateAudit(env,model,visualRead,snapshot),context=amaContext(snapshot,visualRead,candidateCodes),questions=amaQuestions(snapshot),blocks=[questions.slice(0,17),questions.slice(17,35),questions.slice(35,54),questions.slice(54)];
-  const answered=[];for(const block of blocks)answered.push(...await runAmaQuestionBlock(env,model,context,block));
+  const answered=[];for(const block of blocks)answered.push(...await runAmaQuestionBlock(env,model,context,block,snapshot));
   return{schemaVersion:1,amaVersion:'AMA-1',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),visualRead,candidateThemeCodes:candidateCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateCodes),questionCount:answered.length,questions:answered};
 }
 async function runAmaFollowup(env,body){
@@ -3553,6 +3616,16 @@ export default {
         if (!bytes.length) return json({ok:false,error:'Image was empty'},{status:422});
         if (bytes.length > 6_000_000) return json({ok:false,error:'Image exceeds 6 MB'},{status:413});
         return new Response(bytes,{status:200,headers:{...cors,'content-type':contentType,'cache-control':'no-store','content-length':String(bytes.length)}});
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/provider-readiness'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+        return json({ok:true,result:await providerReadinessProbe(env)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/prompt-diagnostics'){
