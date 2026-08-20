@@ -1,8 +1,8 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.77-ai-ama-slot-prompts.
+Current bundled Worker: v0.9.6.78-theme-human-fit-calibration.
 
-## Worker 0.9.6.77 — AI AMA provider slot prompts
+## Worker 0.9.6.78 — Theme human-fit calibration
 
 - Keeps the 23-step 3-question AMA plan, 3→1 recovery, strict answer validation, all 68 canonical questions, and 90-second provider timeout unchanged.
 - Canonical Q IDs are now internal only during resumable interview calls. Three-question prompts use `ITEM A/B/C` and expect `ANSWER A/B/C`; responses are mapped back to the correct canonical IDs after validation.
@@ -305,3 +305,11 @@ Prompt Diagnostics provider calls use a 90-second timeout while ordinary AI call
 ## Worker 0.9.6.40 — Prompt Diagnostics 3 × 5 + adaptive definition repair
 
 Adds 3-concept waves (five waves per 15-concept batch). The existing 5-concept and 15-concept paths remain available. If a concept cannot enumerate its complete numbered definition after one focused repair, the Worker falls back only for that concept to five-definition-component chunks, then derives a fresh final confidence score from the completed component findings. Score parsing also accepts trailing explanatory text after the numeric score.
+
+
+### Worker 0.9.6.78 — Theme human-fit calibration
+- Removes emotional/evocative/interestingness as a Theme-ranking advantage.
+- Requires boring/neutral closer fits to outrank richer affective Themes.
+- Blocks unsupported substitutions such as simplicity/minimalism -> playfulness and generic visual praise -> affective Theme evidence.
+- Filters generic evaluative praise from Theme Rerun frozen evidence.
+- Leaves PrimFusion definitions and Matrix version 0.0.0.0 unchanged.
