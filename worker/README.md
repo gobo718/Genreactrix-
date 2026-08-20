@@ -1,5 +1,19 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.75-ai-ama-parser-tolerance.
+
+## Worker 0.9.6.75 — Tolerant AI AMA answer parsing
+
+- Keeps the 23-step fixed 3-question AMA plan and 3→1 recovery architecture unchanged.
+- Makes AMA answer parsing tolerant of common model formatting variants instead of requiring only a literal line-start `Q##:` marker.
+- Single-question recovery treats any nonempty provider text as the requested answer if no explicit Q-number wrapper is present.
+- Multi-question parse failures expose a bounded raw-response preview for diagnostics rather than discarding provider text invisibly.
+- No prompt/question wording, provider timeout, Theme logic, lifecycle, Tuned, SLOP?, definitions, report/history, or Matrix behavior changed. Matrix remains 0.0.0.0.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.74-ai-ama-3q-resumable.
 
 ## Worker 0.9.6.74 — Fixed 3-question resumable AI AMA
