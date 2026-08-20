@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.130 — AI AMA provider slot prompts
+
+- Pairs with Worker v0.9.6.77-ai-ama-slot-prompts. Upload the Worker first, then this site build.
+- Keeps the fixed 3-question AMA plan, single-question recovery, all 68 canonical questions, strict answer-integrity validation, provider timeout, Theme logic, Matrix, lifecycle, Tuned, SLOP?, history, and report semantics unchanged.
+- Removes canonical `Q##` labels from resumable provider prompts. The provider never sees the interview as a `Q1 → Q2 → Q3` sequence to continue.
+- Three-question calls present only `ITEM A / ITEM B / ITEM C` and require `ANSWER A / ANSWER B / ANSWER C`; the Worker maps those slots back to the canonical Q IDs internally.
+- Single-question recovery presents one unlabeled `DIRECT QUESTION` and requests plain prose only: no Q-number, heading, label, questionnaire, or follow-up.
+- Strict validation remains in force. Generated question banks, Q-ID continuation, wrong slots, and question-as-answer output are rejected rather than checkpointed.
+- Existing incomplete resumable runs can continue; saved answers remain untouched. Existing completed immutable AMA reports are not rewritten.
+- Matrix remains 0.0.0.0.
+
+---
+
 # Genreactrix v0.9.40.129 — AI AMA answer-integrity validation
 
 - Pairs with Worker v0.9.6.76-ai-ama-answer-integrity. Upload the Worker first, then this site build.
