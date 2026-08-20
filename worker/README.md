@@ -1,6 +1,17 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.79-theme-adversarial-audit.
+Current bundled Worker: v0.9.6.80-capacity-fallback-cooldown.
+
+## Worker 0.9.6.80 — 3040 capacity fallback circuit breaker
+
+- Primary Workers AI models remain unchanged. No Reaction, Theme, Description, AMA, Prompt Diagnostics, Prim, or PrimFusion prompt/definition changes are included.
+- A Workers AI `3040` / out-of-capacity failure immediately activates `openai/gpt-4.1-mini` through Cloudflare AI Gateway; the failed primary call is not repeatedly retried first.
+- The fallback stays active for 15 minutes. The Genreactrix browser stores the cooldown timestamp and sends it with subsequent AI requests, so those requests go directly to the fallback even if Cloudflare creates a fresh Worker isolate.
+- After 15 minutes, the next AI request probes the original Workers AI model. Success restores primary routing; another `3040` starts a fresh 15-minute fallback window.
+- Provider/model routing telemetry is returned with analyses and diagnostic/AMA calls so fallback-produced work is distinguishable from primary-model work.
+- Third-party fallback calls use the existing `AI` binding with AI Gateway `default`. They require AI Gateway Unified Billing credits but do not require an OpenAI API key.
+
+---
 
 ## Worker 0.9.6.79 — Theme adversarial decision pipeline
 
@@ -247,8 +258,9 @@ Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
 1. Install dependencies: `npm install`
 2. Set the analysis secret: `npx wrangler secret put ANALYSIS_KEY`
 3. Accept the configured Workers AI model license in Cloudflare if prompted.
-4. Deploy: `npm run deploy`
-5. Enter the deployed Worker URL and the same analysis key in Genreactrix → AI.
+4. In Cloudflare AI Gateway, enable Unified Billing and load credits for the fallback provider. The default fallback is `openai/gpt-4.1-mini`; no OpenAI API key is required.
+5. Deploy: `npm run deploy`
+6. Enter the deployed Worker URL and the same analysis key in Genreactrix → AI.
 
 The browser never receives provider credentials. The Worker accepts authenticated `POST /api/genreactrix/analyze` for AI results and `POST /api/genreactrix/image` as a bounded image-fetch proxy used when browser CORS would otherwise prevent Import from creating its required 64×64 thumbnail.
 
