@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.79-theme-adversarial-audit
+/* Genreactrix AI Worker v0.9.6.80-capacity-fallback-cooldown
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.79-theme-adversarial-audit';
+const API_VERSION = '0.9.6.80-capacity-fallback-cooldown';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -11,6 +11,9 @@ const CUSTOM_THEME_GENERATION_ENABLED = false;
 const PROVIDER_CALL_TIMEOUT_MS = 45000;
 const PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS = 90000;
 const AMA_PROVIDER_CALL_TIMEOUT_MS = 90000;
+const DEFAULT_FALLBACK_MODEL = 'openai/gpt-4.1-mini';
+const DEFAULT_AI_GATEWAY_ID = 'default';
+const FALLBACK_COOLDOWN_MS = 15 * 60 * 1000;
 
 const cors = {
   'access-control-allow-origin':'*',
@@ -44,10 +47,70 @@ const parse = text => {
   }
 };
 
-const responseValue = payload =>
-  typeof payload === 'string'
-    ? payload
-    : (payload?.response ?? payload?.result?.response ?? payload?.output_text ?? '');
+const responseValue = payload => {
+  if (typeof payload === 'string') return payload;
+  const direct = payload?.response ?? payload?.result?.response ?? payload?.output_text;
+  if (direct !== undefined && direct !== null) return direct;
+  const chat = payload?.choices?.[0]?.message?.content ?? payload?.choices?.[0]?.text;
+  if (chat !== undefined && chat !== null) return chat;
+  const responseOutput = Array.isArray(payload?.output)
+    ? payload.output.flatMap(item=>Array.isArray(item?.content)?item.content:[]).map(item=>item?.text||item?.value||'').filter(Boolean).join('\n')
+    : '';
+  return responseOutput || '';
+};
+
+const capacity3040 = error => {
+  const diagnostic=providerDiagnosticOf(error)||{};
+  const values=[error?.code,error?.status,error?.cause?.code,error?.cause?.status,diagnostic.errorCode,diagnostic.errorStatus,diagnostic.status];
+  if(values.some(value=>String(value)==='3040'))return true;
+  const text=`${error?.message||''} ${error?.cause?.message||''} ${diagnostic.errorMessage||''}`.toLowerCase();
+  return /(^|\D)3040(\D|$)|capacity temporarily exceeded|out of capacity|no more data centers to forward/.test(text);
+};
+
+const providerRoutingEnv = (env,body={}) => {
+  const routed=Object.create(env||null);
+  const incoming=body?.providerRouting&&typeof body.providerRouting==='object'?body.providerRouting:{};
+  const incomingUntil=Number(incoming.fallbackUntil)||0;
+  const useIncomingFallback=String(incoming.mode||'')==='fallback'&&incomingUntil>Date.now();
+  Object.defineProperty(routed,'__GENREACTRIX_PROVIDER_ROUTE',{value:{
+    mode:useIncomingFallback?'fallback':'primary',
+    fallbackUntil:useIncomingFallback?incomingUntil:0,
+    fallbackReason:useIncomingFallback?String(incoming.reason||'3040'):null,
+    activatedThisRequest:false
+  },enumerable:false,configurable:true});
+  Object.defineProperty(routed,'__GENREACTRIX_PROVIDER_TRACE',{value:[],enumerable:false,configurable:true});
+  return routed;
+};
+
+const providerTrace = env => Array.isArray(env?.__GENREACTRIX_PROVIDER_TRACE)?env.__GENREACTRIX_PROVIDER_TRACE:null;
+const providerRoute = env => env?.__GENREACTRIX_PROVIDER_ROUTE&&typeof env.__GENREACTRIX_PROVIDER_ROUTE==='object'?env.__GENREACTRIX_PROVIDER_ROUTE:null;
+const providerTraceEvent = (env,event) => { const trace=providerTrace(env); if(trace)trace.push({at:new Date().toISOString(),...event}); };
+const fallbackModelFor = env => String(env?.GENREACTRIX_FALLBACK_MODEL||DEFAULT_FALLBACK_MODEL).trim()||DEFAULT_FALLBACK_MODEL;
+const aiGatewayIdFor = env => String(env?.GENREACTRIX_AI_GATEWAY_ID||DEFAULT_AI_GATEWAY_ID).trim()||DEFAULT_AI_GATEWAY_ID;
+const effectiveProviderModel = (env,primaryModel) => {
+  const models=[...new Set((providerTrace(env)||[]).filter(row=>row.outcome==='success').map(row=>row.model).filter(Boolean))];
+  return models.length===1?models[0]:(models.length>1?'mixed':primaryModel);
+};
+
+const providerRoutingSnapshot = (env,primaryModel=null) => {
+  const route=providerRoute(env)||{mode:'primary',fallbackUntil:0,fallbackReason:null,activatedThisRequest:false};
+  const trace=providerTrace(env)||[];
+  const successes=trace.filter(row=>row.outcome==='success');
+  const successfulModels=[...new Set(successes.map(row=>row.model).filter(Boolean))];
+  const successfulProviders=[...new Set(successes.map(row=>row.provider).filter(Boolean))];
+  return {
+    mode:route.mode==='fallback'&&Number(route.fallbackUntil)>Date.now()?'fallback':'primary',
+    primaryModel:primaryModel||null,
+    fallbackModel:fallbackModelFor(env),
+    fallbackUntil:Number(route.fallbackUntil)||0,
+    fallbackReason:route.fallbackReason||null,
+    activatedThisRequest:Boolean(route.activatedThisRequest),
+    cooldownMinutes:15,
+    successfulModels,
+    successfulProviders,
+    calls:trace.map(row=>({...row}))
+  };
+};
 
 const safeProviderDiagnostic = payload => {
   const value = responseValue(payload);
@@ -623,7 +686,7 @@ async function runReactionAssessment(env,model,image,behavior='analyze',evidence
     }catch(error){
       lastError = error;
       const message = String(error?.message||error);
-      const providerFailure = /Workers AI vision failed|timed out after/i.test(message);
+      const providerFailure = /Workers AI vision failed|Fallback AI failed|timed out after/i.test(message);
       if (attempt>=2 || providerFailure) break;
     }
   }
@@ -1488,9 +1551,9 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   const providerCallTimeoutMs = Number.isFinite(options.providerCallTimeoutMs)
     ? Math.max(1000, options.providerCallTimeoutMs)
     : PROVIDER_CALL_TIMEOUT_MS;
+  const fullPrompt=prompt + freshRerun;
 
-  try{
-    const fullPrompt=prompt + freshRerun;
+  const primaryRequest=()=>{
     const multimodalMessages=options.multimodalMessages===true;
     const request = multimodalMessages
       ? {
@@ -1511,26 +1574,94 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
         };
     if (!multimodalMessages && image && (image.byteLength || image.length)) request.image = image;
     if (responseMode === 'guided_json') {
-      // Cloudflare Workers AI binding parameter: schema-guided JSON generation.
       request.guided_json = schema;
     } else if (responseMode === 'json_schema') {
       request.response_format = {type:'json_schema',json_schema:schema};
     } else if (responseMode === 'json_object') {
       request.response_format = {type:'json_object'};
     }
+    return request;
+  };
 
-    payload = await new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error(`Provider call timed out after ${Math.round(providerCallTimeoutMs/1000)}s`)),providerCallTimeoutMs);
-      Promise.resolve(env.AI.run(model,request)).then(
-        value=>{clearTimeout(timer);resolve(value)},
-        error=>{clearTimeout(timer);reject(error)}
-      );
-    });
+  const fallbackRequest=()=>{
+    const content=image&&((image.byteLength||image.length)>0)
+      ? [{type:'text',text:fullPrompt},{type:'image_url',image_url:{url:imageBytesDataUrl(image)}}]
+      : fullPrompt;
+    const request={messages:[{role:'user',content}],max_tokens:maxTokens,temperature};
+    if((responseMode==='json_schema'||responseMode==='guided_json')&&schema){
+      request.response_format={type:'json_schema',json_schema:{name:'genreactrix_response',strict:true,schema}};
+    }else if(responseMode==='json_object'){
+      request.response_format={type:'json_object'};
+    }
+    return request;
+  };
+
+  const timedRun=async(runModel,request,provider,gatewayId=null)=>{
+    try{
+      const value=await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error(`Provider call timed out after ${Math.round(providerCallTimeoutMs/1000)}s`)),providerCallTimeoutMs);
+        const invocation=gatewayId
+          ? env.AI.run(runModel,request,{gateway:{id:gatewayId}})
+          : env.AI.run(runModel,request);
+        Promise.resolve(invocation).then(
+          result=>{clearTimeout(timer);resolve(result)},
+          error=>{clearTimeout(timer);reject(error)}
+        );
+      });
+      providerTraceEvent(env,{provider,model:runModel,outcome:'success'});
+      return value;
+    }catch(error){
+      providerTraceEvent(env,{provider,model:runModel,outcome:'failure',errorCode:capacity3040(error)?'3040':null,errorMessage:String(error?.message||error).slice(0,500)});
+      throw error;
+    }
+  };
+
+  const route=providerRoute(env);
+  const fallbackModel=fallbackModelFor(env);
+  const gatewayId=aiGatewayIdFor(env);
+  const shouldUseFallback=route?.mode==='fallback'&&Number(route.fallbackUntil)>Date.now();
+
+  try{
+    if(shouldUseFallback){
+      payload=await timedRun(fallbackModel,fallbackRequest(),'openai-via-cloudflare-ai-gateway',gatewayId);
+    }else{
+      try{
+        payload=await timedRun(model,primaryRequest(),'cloudflare-workers-ai');
+        if(route){route.mode='primary';route.fallbackUntil=0;route.fallbackReason=null;}
+      }catch(primaryError){
+        if(!capacity3040(primaryError))throw primaryError;
+        const fallbackUntil=Date.now()+FALLBACK_COOLDOWN_MS;
+        if(route){
+          route.mode='fallback';
+          route.fallbackUntil=fallbackUntil;
+          route.fallbackReason='3040';
+          route.activatedThisRequest=true;
+        }
+        providerTraceEvent(env,{provider:'router',model:null,outcome:'fallback-activated',errorCode:'3040',fallbackUntil});
+        try{
+          payload=await timedRun(fallbackModel,fallbackRequest(),'openai-via-cloudflare-ai-gateway',gatewayId);
+        }catch(fallbackError){
+          throw diagnosticError(
+            `Fallback AI failed after Workers AI capacity error 3040: ${fallbackError?.message||fallbackError}`,
+            {
+              phase:'provider-call',provider:'openai-via-cloudflare-ai-gateway',model:fallbackModel,
+              primaryErrorCode:'3040',fallbackUntil,fallbackReason:'3040',
+              errorName:fallbackError?.name||null,errorMessage:String(fallbackError?.message||fallbackError).slice(0,1200)
+            }
+          );
+        }
+      }
+    }
   }catch(error){
+    if(providerDiagnosticOf(error))throw error;
     throw diagnosticError(
-      `Workers AI vision failed: ${error?.message||error}`,
+      `${shouldUseFallback?'Fallback AI':'Workers AI vision'} failed: ${error?.message||error}`,
       {
         phase:'provider-call',
+        provider:shouldUseFallback?'openai-via-cloudflare-ai-gateway':'cloudflare-workers-ai',
+        model:shouldUseFallback?fallbackModel:model,
+        fallbackUntil:Number(route?.fallbackUntil)||0,
+        fallbackReason:route?.fallbackReason||null,
         errorName:error?.name || null,
         errorMessage:String(error?.message || error).slice(0,1200)
       }
@@ -1540,8 +1671,8 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
   const value = responseValue(payload);
   if (value === '' || value == null) {
     throw diagnosticError(
-      'Workers AI returned no analysis response',
-      safeProviderDiagnostic(payload)
+      'AI provider returned no analysis response',
+      {...safeProviderDiagnostic(payload),...providerRoutingSnapshot(env,model)}
     );
   }
 
@@ -2673,7 +2804,8 @@ async function runPromptDiagnosticBatch(env,body){
     waveCount,
     sourceCombination:promptDiagnosticSourceLabel(sources),
     sources,
-    model,
+    model:effectiveProviderModel(env,model),
+    providerRouting:providerRoutingSnapshot(env,model),
     evaluatedAt:new Date().toISOString(),
     responseProtocol:'numbered-flex-v4',
     focusedRepairCount:focusedRepairs.length,
@@ -3132,14 +3264,14 @@ async function runAmaVisualStep(env,body){
   const visualRead=image?String(await runAmaStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
   if(!visualRead)throw new Error('AI AMA visual read returned no usable description.');
   const plan=amaQuestionPlan(snapshot);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'visual',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,visualRead,...plan};
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'visual',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),visualRead,...plan};
 }
 async function runAmaCandidateStep(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
   const snapshot=validateAmaSnapshot(body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{}),model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,visualRead=String(body?.visualRead||'').trim();
   if(!visualRead)throw new Error('AI AMA candidate audit requires the saved visual read.');
   const candidateThemeCodes=await amaCandidateAudit(env,model,visualRead,snapshot),plan=amaQuestionPlan(snapshot);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'candidates',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,candidateThemeCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateThemeCodes),...plan};
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'candidates',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),candidateThemeCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateThemeCodes),...plan};
 }
 function amaSlotMarkers(text){
   const source=String(text||''),marker=/(?:^|\n)[ \t]*(?:[-*+•]\s*)?(?:\*\*|__)?(?:ANSWER\s+)?([ABC])\s*(?:(?::|[-–—.]|\)|\])\s*)?(?:\*\*|__)?[ \t]*/gim,matches=[];let m;
@@ -3202,7 +3334,7 @@ async function runAmaQuestionStep(env,body){
   const requestedIds=supplied.length?supplied:fullBlock.map(q=>q.id),requestedSet=new Set(requestedIds),block=fullBlock.filter(q=>requestedSet.has(q.id));
   if(!block.length)throw new Error('AI AMA question request contains no canonical questions.');
   const context=amaContext(snapshot,visualRead,candidateThemeCodes),chunk=await runAmaQuestionChunk(env,model,context,block);
-  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'slot-mapped-integrity-v4',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
+  return{schemaVersion:2,amaVersion:'AMA-2-resumable',stage:'questions',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),blockIndex,questionIds:block.map(q=>q.id),requestedQuestionCount:block.length,adaptiveChunkSize:block.length,answerParser:'slot-mapped-integrity-v4',complete:chunk.missingQuestionIds.length===0,...plan,...chunk};
 }
 async function runAma(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
@@ -3215,15 +3347,26 @@ async function runAma(env,body){
   const visualRead=image?String(await runAmaStructured(env,model,image,amaVisualPrompt(snapshot),null,1000,'text',{temperature:0.12,amaVisualRead:true})).trim():String(snapshot.aiDescription||'').trim();
   const candidateCodes=await amaCandidateAudit(env,model,visualRead,snapshot),context=amaContext(snapshot,visualRead,candidateCodes),questions=amaQuestions(snapshot),blocks=[questions.slice(0,17),questions.slice(17,35),questions.slice(35,54),questions.slice(54)];
   const answered=[];for(const block of blocks)answered.push(...await runAmaQuestionBlock(env,model,context,block));
-  return{schemaVersion:1,amaVersion:'AMA-1',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model,visualRead,candidateThemeCodes:candidateCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateCodes),questionCount:answered.length,questions:answered};
+  return{schemaVersion:1,amaVersion:'AMA-1',createdAt:new Date().toISOString(),workerVersion:API_VERSION,matrixVersion:matrixVersion(),model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),visualRead,candidateThemeCodes:candidateCodes,themeDefinitions:amaUniqueThemeMetas(snapshot,candidateCodes),questionCount:answered.length,questions:answered};
 }
 async function runAmaFollowup(env,body){
   if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
   const snapshot=body?.snapshot&&typeof body.snapshot==='object'?body.snapshot:{},question=String(body?.question||'').trim().slice(0,3000);if(!question)throw new Error('AMA follow-up question is required');
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,visualRead=String(body?.visualRead||snapshot.aiDescription||'').trim(),prior=String(body?.priorTranscript||'').slice(0,18000),candidateCodes=Array.isArray(body?.candidateThemeCodes)?body.candidateThemeCodes:[],context=amaContext(snapshot,visualRead,candidateCodes);
   const prompt=`You are answering a Director follow-up question in an existing saved Genreactrix AI AMA. The historical report is immutable; your answer is a new linked Q/A record and must not alter prior answers, Themes, confidence, definitions, image status, or code. Be candid and diagnostic.\n\n${context}\n\nPRIOR AMA TRANSCRIPT (reference only):\n${prior||'Unavailable'}\n\nDIRECTOR QUESTION:\n${question}\n\nReturn only the answer.`;
-  const answer=String(await runAmaStructured(env,model,null,prompt,null,1400,'text',{temperature:0.12,amaFollowup:true})).trim();if(!answer)throw new Error('AMA follow-up returned no answer');return{schemaVersion:1,createdAt:new Date().toISOString(),workerVersion:API_VERSION,model,answer};
+  const answer=String(await runAmaStructured(env,model,null,prompt,null,1400,'text',{temperature:0.12,amaFollowup:true})).trim();if(!answer)throw new Error('AMA follow-up returned no answer');return{schemaVersion:1,createdAt:new Date().toISOString(),workerVersion:API_VERSION,model:effectiveProviderModel(env,model),providerRouting:providerRoutingSnapshot(env,model),answer};
 }
+
+const analysisProviderSummary = (env,primaryModel) => {
+  const routing=providerRoutingSnapshot(env,primaryModel);
+  const successCalls=routing.calls.filter(row=>row.outcome==='success');
+  const providers=[...new Set(successCalls.map(row=>row.provider).filter(Boolean))];
+  const models=[...new Set(successCalls.map(row=>row.model).filter(Boolean))];
+  const id=providers.length>1?'mixed-ai-providers':(providers[0]||'cloudflare-workers-ai');
+  const displayName=id==='mixed-ai-providers'?'Genreactrix Vision · Mixed provider route':id==='openai-via-cloudflare-ai-gateway'?'Genreactrix Vision · OpenAI via Cloudflare AI Gateway':'Genreactrix Vision · Cloudflare Workers AI';
+  const effectiveModel=models.length===1?models[0]:(models.length>1?'mixed':primaryModel);
+  return {provider:{id,displayName,model:effectiveModel,routing},model:effectiveModel};
+};
 
 async function analyze(env,body){
   if (!env.AI?.run) throw new Error('Workers AI binding AI is not configured');
@@ -3330,12 +3473,13 @@ async function analyze(env,body){
     promptVersions.slopAssessment='genreactrix-slop-advisory-v1';
   }
 
+  const providerSummary=analysisProviderSummary(env,model);
   return {
     schemaVersion:3,
     imageId:body.imageId,
     analyzedAt:new Date().toISOString(),
-    provider:{id:'cloudflare-workers-ai',displayName:'Genreactrix Vision · Cloudflare Workers AI',model},
-    model,
+    provider:providerSummary.provider,
+    model:providerSummary.model,
     primFusionMatrixVersion:matrixVersion(),
     promptVersions,
     researchConfiguration:{customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,...(requested.includes('reactions')?{reactionEvidenceSources:{image:reactionSources.image,description:reactionSources.description}}:{})},
@@ -3373,6 +3517,7 @@ export default {
         totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
+        providerRouting:{primaryProvider:'cloudflare-workers-ai',fallbackProvider:'openai-via-cloudflare-ai-gateway',fallbackModel:fallbackModelFor(env),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
         promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
       });
     }
@@ -3409,7 +3554,8 @@ export default {
         }
         const body = await request.json().catch(()=>null);
         if (!body) return json({ok:false,error:'JSON body required'},{status:400});
-        return json({ok:true,result:await runPromptDiagnosticBatch(env,body)});
+        const routedEnv=providerRoutingEnv(env,body);
+        return json({ok:true,result:await runPromptDiagnosticBatch(routedEnv,body),providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/ama'){
@@ -3423,12 +3569,13 @@ export default {
         if (!body) return json({ok:false,error:'JSON body required'},{status:400});
         const mode=String(body.mode||'run');
         let result;
-        if(mode==='followup')result=await runAmaFollowup(env,body);
-        else if(mode==='visual')result=await runAmaVisualStep(env,body);
-        else if(mode==='candidates')result=await runAmaCandidateStep(env,body);
-        else if(mode==='question-block')result=await runAmaQuestionStep(env,body);
-        else result=await runAma(env,body);
-        return json({ok:true,result});
+        const routedEnv=providerRoutingEnv(env,body);
+        if(mode==='followup')result=await runAmaFollowup(routedEnv,body);
+        else if(mode==='visual')result=await runAmaVisualStep(routedEnv,body);
+        else if(mode==='candidates')result=await runAmaCandidateStep(routedEnv,body);
+        else if(mode==='question-block')result=await runAmaQuestionStep(routedEnv,body);
+        else result=await runAma(routedEnv,body);
+        return json({ok:true,result,providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
@@ -3442,7 +3589,8 @@ export default {
         const body = await request.json().catch(()=>null);
         if (!body) return json({ok:false,error:'JSON body required'},{status:400});
 
-        return json({ok:true,result:await analyze(env,body)});
+        const routedEnv=providerRoutingEnv(env,body);
+        return json({ok:true,result:await analyze(routedEnv,body),providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
       }
     }catch(error){
       const body = {ok:false,error:error?.message || String(error)};
