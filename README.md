@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.134 — Theme evidence source-contract repair
+
+- Pairs with Worker v0.9.6.81-theme-evidence-source-contract. Upload the Worker first, then this site build.
+- Fixes the Stage-1 Theme literal-evidence transport contract exposed by the GPT-4.1 mini fallback: when no secondary AI Description context exists, the required output example now shows E1/E2/E3 as `image` facts instead of showing an invalid `analysis`-sourced E3.
+- The second-attempt recovery instruction now follows the same source rule: image-only when no secondary context exists; image-or-analysis when context exists.
+- The minimum evidence gate remains unchanged at 3 usable facts. No Theme definitions, Theme ranking, evidence semantics, Prim/PrimFusion definitions, Matrix data, or calibration rules changed.
+- The 15-minute Workers AI `3040` circuit breaker and GPT-4.1 mini fallback from v0.9.40.133 / Worker v0.9.6.80 are preserved unchanged.
+
+---
+
 # Genreactrix v0.9.40.133 — Capacity fallback cooldown
 
 - Pairs with Worker v0.9.6.80-capacity-fallback-cooldown. Upload the Worker first, then this site build.
