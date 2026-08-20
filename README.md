@@ -1,6 +1,14 @@
-# Genreactrix v0.9.40.130 — AI AMA provider slot prompts
+# Genreactrix v0.9.40.131 — Theme human-fit calibration
 
-- Pairs with Worker v0.9.6.77-ai-ama-slot-prompts. Upload the Worker first, then this site build.
+- Pairs with Worker v0.9.6.78-theme-human-fit-calibration. Upload the Worker first, then this site build.
+- Theme Analysis and Theme Rerun now rank by closest ordinary-human semantic fit rather than emotional salience, evocative quality, drama, expressiveness, aesthetic appeal, or interestingness.
+- A boring/neutral Theme must outrank a richer affective Theme when it is materially closer.
+- Generic descriptive praise such as “striking,” “evocative,” “thought-provoking,” and “visually appealing” is not Theme evidence by itself and is excluded from the rerun evidence ledger.
+- Explicit guards block unsupported conversions including simplicity/minimalism -> playfulness, irregularity -> silliness, neutral stillness -> Cozy, and generic pleasantness -> sweetness.
+- Genuine mood/theatricality remains eligible when concrete image evidence actually earns it.
+- No PrimFusion definitions changed. Matrix remains 0.0.0.0.
+- AI AMA 3-to-1 resumability, slot prompts, answer-integrity validation, Tuned, SLOP?, lifecycle behavior, and storage semantics are unchanged from .130/.77.
+
 - Keeps the fixed 3-question AMA plan, single-question recovery, all 68 canonical questions, strict answer-integrity validation, provider timeout, Theme logic, Matrix, lifecycle, Tuned, SLOP?, history, and report semantics unchanged.
 - Removes canonical `Q##` labels from resumable provider prompts. The provider never sees the interview as a `Q1 → Q2 → Q3` sequence to continue.
 - Three-question calls present only `ITEM A / ITEM B / ITEM C` and require `ANSWER A / ANSWER B / ANSWER C`; the Worker maps those slots back to the canonical Q IDs internally.

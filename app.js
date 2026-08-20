@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.130";
+const GENREACTRIX_BUILD="v0.9.40.131";
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -1408,6 +1408,7 @@ function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveTh
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
 
 
+// v0.9.40.131 — Theme human-fit calibration; no emotional-salience ranking bonus; PrimFusion definitions unchanged.
 // v0.9.40.130 — AI AMA provider slot prompts; canonical Q IDs hidden from provider; 3-to-1 execution retained.
 const AMA_UI_COLOR='#EF806C';
 const amaUiState={reportId:null,runId:null,running:false,statusTimer:null,statusStartedAt:0,statusBase:''};
@@ -3414,7 +3415,7 @@ $("themeChangeReasoningClose")?.addEventListener("click",()=>$("themeChangeReaso
 $("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
 $("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.current.explainChanges=Boolean(event.target.checked);saveThemeRerunCurrent();renderThemeRerunChrome();});
-// v0.9.40.130 — slot-mapped AI AMA prompting / validated answer attribution / 3-question resumable execution / Tuned / SLOP Director diagnostics.
+// v0.9.40.131 — Theme human-fit calibration / .130 AMA stack retained / Tuned / SLOP Director diagnostics.
 $("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
 $("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
 $("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());
