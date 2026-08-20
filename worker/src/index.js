@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.77-ai-ama-slot-prompts
+/* Genreactrix AI Worker v0.9.6.78-theme-human-fit-calibration
    Registry-driven replacement Worker.
    Source vocabulary is generated from primfusion-registry.json.
 */
-const API_VERSION = '0.9.6.77-ai-ama-slot-prompts';
+const API_VERSION = '0.9.6.78-theme-human-fit-calibration';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -653,6 +653,17 @@ const THEME_SEMANTIC_EVIDENCE_RULES = `SEMANTIC EVIDENCE DISCIPLINE:
 - Identify the actual semantic route that earns a match. If a broad definition has several routes, name the route supported by the image instead of inventing a different one.
 - Confidence must track demonstrated evidence. 100 means exceptionally complete and essentially unmistakable, not merely plausible. A forced top-three choice may legitimately have modest confidence if it is only the closest available Theme.`;
 
+
+const THEME_HUMAN_FIT_SELECTION_RULES = `HUMAN-FIT RANKING — NO EMOTIONAL-SALIENCE BONUS:
+- Your job is to choose the three Themes an ordinary reasonably engaged human would most naturally select for THIS image from the available vocabulary. The goal is closest human-perceived semantic fit, not the most interesting answer.
+- Emotional intensity, theatricality, evocative quality, attention-grabbing quality, drama, expressiveness, aesthetic appeal, novelty, or how interesting a Theme is to discuss MUST NOT give that Theme any ranking advantage by itself.
+- A boring, neutral, mundane, ordinary, low-emotion, or visually unremarkable Theme MUST outrank a richer or more emotional Theme whenever the boring Theme is the closer fit. Neutral Themes are first-class answers, not fallbacks.
+- Mood, humor, beauty, tension, nostalgia, warmth, silliness, sweetness, fear, romance, and other affective meanings are valid only when the image contains evidence that actually earns that response. Preserve genuine human theatricality when it is present; do not manufacture it to make the result more engaging.
+- Do not convert generic positive/evaluative language into Theme evidence. “Visually appealing,” “interesting,” “striking,” “compelling,” “evocative,” “thought-provoking,” “well-balanced,” “elegant,” or “beautifully composed” do not by themselves imply Goofy, Cozy, Saccharine, Dreamy, Nostalgia, Poignant, Romance, or any other affective Theme.
+- Do not make these substitutions without independent semantic evidence: simplicity/minimalism → playfulness; irregularity/random arrangement → silliness; visual interest → Goofy; neutral stillness → Cozy; generic pleasantness → sweetness; reflective prose → Nostalgia/Poignant; aesthetic polish → emotional significance.
+- Before finalizing, ask: “Would I still choose this Theme if it were less emotional, less vivid, and less interesting to talk about?” If the answer is no and a closer neutral Theme exists, choose the closer Theme.
+- A merely defensible Theme loses to a materially closer Theme. Ranking and confidence are separate: the second- or third-closest Theme may be weak and should remain low-confidence.`;
+
 function themePrompt(analysisContext=""){
   // Deliberately expose code + semantic label only.
   // Do NOT expose the P01/P02 provenance of PFM codes to the model:
@@ -669,7 +680,7 @@ function themePrompt(analysisContext=""){
     ? `1|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n2|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n3|custom|<PROPOSED_THEME_NAME>|<CONFIDENCE>|Brief image-grounded reason this Theme is needed`
     : `1|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n2|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits\n3|matrix|<PFM_CODE>|<CONFIDENCE>|Brief image-grounded reason this Theme fits`;
   const context=String(analysisContext||'').trim().slice(0,6000);
-  const failsafe=context ? `\n\nTHEME FAILSAFE CONTEXT:\nUse the existing AI freeform analysis below as additional guidance together with the image. It is a steering input for this rerun; continue judging the Themes from the image as well.\n\n${context}` : '';
+  const failsafe=context ? `\n\nTHEME FAILSAFE CONTEXT:\nUse the existing AI freeform analysis below only as secondary guidance together with the image. The image remains authoritative. Do not treat generic evaluative prose (for example: visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, or well-balanced) as semantic evidence for an affective Theme. Verify every Theme meaning against what the image actually earns.\n\n${context}` : '';
 
   return `You are performing Genreactrix Theme Analysis.
 
@@ -684,6 +695,8 @@ The codes are identifiers only.
 A Theme is a semantic/thematic classification. Do not use a visual medium, production format, or art technique as a Theme merely because it is visible. Those observations belong in the freeform AI Description.
 
 ${THEME_SEMANTIC_EVIDENCE_RULES}
+
+${THEME_HUMAN_FIT_SELECTION_RULES}
 
 The exactly-three rule is mandatory. If fewer than three Themes are strong matches, still return the three closest valid PrimFusion Themes, but lower confidence instead of fabricating evidence or inflating a weak fit.
 
@@ -821,7 +834,7 @@ function themeRerunCandidateSets(rerun){
 }
 function themeRerunEvidencePrompt(rerun){
   const descriptionBlock=rerun.includedDescriptions.length?rerun.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n'):'No AI Description context was included.';
-  return `THEME RERUN — FROZEN EVIDENCE PASS.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Your only job is to make a compact ledger of evidence that exists BEFORE Theme selection.\n\nRecord concrete, atomic facts from the image and, when present, facts explicitly supplied by the included AI Description. Prefer directly visible properties: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other observable details. Do not add moods, metaphors, analogies, intentions, personalities, emotional qualities, or thematic interpretations unless the included Description explicitly states them; if it does, mark that item as description rather than image. Do not convert an ordinary visual fact into a semantic conclusion.\n\nThe image is authoritative. Description-derived evidence may supplement it but may not contradict what is visible. Keep each ledger item to one fact. Aim for 5–12 useful facts.\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nOUTPUT FORMAT — REQUIRED:\nE1|image|one concrete fact\nE2|image|one concrete fact\nE3|description|one explicitly supplied description fact\n\nUse sequential E-numbers. Use source image or description only. If no Description is included, every item must use image. Return only ledger lines and nothing else.`;
+  return `THEME RERUN — FROZEN EVIDENCE PASS.\n\nDo NOT choose, score, rank, name, or discuss any Genreactrix Theme. Do NOT mention PFM codes. Your only job is to make a compact ledger of evidence that exists BEFORE Theme selection.\n\nRecord concrete, atomic facts from the image and, when present, facts explicitly supplied by the included AI Description. Prefer directly visible properties: subjects, objects, materials, colors, shapes, count, arrangement, actions, expressions, setting, damage, text, spatial relationships, and other observable details. Do not add moods, metaphors, analogies, intentions, personalities, emotional qualities, or thematic interpretations. Description text may supply concrete facts, but generic evaluative praise or engagement language — such as visually appealing, striking, compelling, evocative, thought-provoking, elegant, interesting, beautiful, well-balanced, or inviting the viewer to contemplate — is NOT a factual evidence item and must be omitted from the ledger. Do not convert an ordinary visual fact into a semantic conclusion.\n\nThe image is authoritative. Description-derived evidence may supplement it but may not contradict what is visible. Keep each ledger item to one fact. Aim for 5–12 useful facts.\n\nINCLUDED AI DESCRIPTION CONTEXT:\n${descriptionBlock}\n\nOUTPUT FORMAT — REQUIRED:\nE1|image|one concrete fact\nE2|image|one concrete fact\nE3|description|one explicitly supplied description fact\n\nUse sequential E-numbers. Use source image or description only. If no Description is included, every item must use image. Return only ledger lines and nothing else.`;
 }
 function parseThemeRerunEvidenceLedger(raw,rerun){
   const text=String(raw||'').replace(/\r/g,'').trim();if(!text)throw new Error('Theme Rerun evidence pass returned an empty response.');
@@ -880,7 +893,7 @@ function themeRerunPrompt(rerun,sets,evidenceLedger){
     const candidates=sets[row.slot].candidates.map(item=>`${item.code}:${item.pairWeight}`).join(', ');
     return `Theme ${row.slot} (${mode}${current}) eligible=${candidates}`;
   }).join('\n');
-  return `Choose the best eligible PrimFusion Themes for the open slots using ONLY the frozen evidence facts below. Simulate what an ordinary person would most naturally pick from the available Theme vocabulary. Evaluate ALL eligible candidates before deciding; do not stop at the first Theme that can be defended. A merely plausible or broad/easy Theme must not outrank a materially closer or more specific Theme. Treat the open slots jointly as one exactly-three ranking subject to their slot-specific eligibility and Director constraints. Confidence measures strength of fit, NOT rank: a second- or third-best Theme may legitimately have low confidence when it is only the closest available choice. Before finalizing, compare every selected Theme against the unselected eligible Themes and replace any selection if an unselected Theme is materially closer to the image evidence. The image is not available in this step. Pair-weight numbers are Director preferences, not confidence scores. 100 is for an exceptionally complete, unmistakable match. Each chosen Theme must cite one or more E# facts that actually support it. Final PFM codes must be different.\n\nReturn only one compact line per open slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nOPEN SLOTS\n${slots}\n\nELIGIBLE DEFINITIONS\n${vocabulary}`;
+  return `Choose the best eligible PrimFusion Themes for the open slots using ONLY the frozen evidence facts below. Simulate what an ordinary person would most naturally pick from the available Theme vocabulary. Emotional intensity, drama, evocative quality, attention-grabbing quality, expressiveness, aesthetic appeal, novelty, or how interesting a Theme is to discuss MUST NOT give it a ranking advantage. A boring/neutral/Mundane-type Theme must beat a richer or more emotional Theme whenever it is the closer semantic fit. Do not infer playfulness from simplicity/minimalism, silliness from irregularity/random arrangement, coziness from neutral stillness, sweetness from generic pleasantness, or emotional meaning from words like striking/compelling/evocative/thought-provoking. Genuine mood or theatricality still counts when the frozen evidence actually earns it. Evaluate ALL eligible candidates before deciding; do not stop at the first Theme that can be defended. A merely plausible or broad/easy Theme must not outrank a materially closer or more specific Theme. Treat the open slots jointly as one exactly-three ranking subject to their slot-specific eligibility and Director constraints. Confidence measures strength of fit, NOT rank: a second- or third-best Theme may legitimately have low confidence when it is only the closest available choice. Before finalizing, compare every selected Theme against the unselected eligible Themes and replace any selection if an unselected Theme is materially closer to the image evidence. The image is not available in this step. Pair-weight numbers are Director preferences, not confidence scores. 100 is for an exceptionally complete, unmistakable match. Each chosen Theme must cite one or more E# facts that actually support it. Final PFM codes must be different.\n\nReturn only one compact line per open slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nOPEN SLOTS\n${slots}\n\nELIGIBLE DEFINITIONS\n${vocabulary}`;
 }
 function parseThemeRerunStructured(raw,rerun,sets){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Theme Rerun provider response was not an object.');
@@ -1127,7 +1140,7 @@ function themeRerunMissingRepairPrompt(rerun,sets,accepted,missingSlots,evidence
     const defs=candidates.map(row=>`${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
     return `Theme ${slot} eligible=${candidates.map(row=>`${row.code}:${row.pairWeight}`).join(', ')}\n${defs}`;
   }).join('\n\n');
-  return `Fill only the missing Theme slots using the frozen evidence. Existing selections stay fixed. For each missing slot, evaluate ALL remaining eligible candidates and choose the Theme an ordinary person would most naturally pick; do not settle for a merely defensible broad/easy Theme when a materially closer or more specific Theme is available. Confidence measures strength of fit, not rank, so a closest-available weak Theme should stay low-confidence. Before returning, check that no unselected eligible Theme is materially closer than the choice. Cite supporting E# facts.\n\nReturn only one compact line per missing slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nFIXED\n${fixed}\n\nMISSING\n${blocks}`;
+  return `Fill only the missing Theme slots using the frozen evidence. Existing selections stay fixed. For each missing slot, evaluate ALL remaining eligible candidates and choose the Theme an ordinary person would most naturally pick; do not settle for a merely defensible broad/easy Theme when a materially closer or more specific Theme is available. Do not reward emotional, evocative, dramatic, expressive, aesthetically appealing, attention-grabbing, or interesting Themes merely for being richer answers. A boring/neutral Theme wins whenever it is materially closer. Do not infer playfulness from simplicity/minimalism, silliness from irregularity, coziness from neutral stillness, sweetness from pleasantness, or emotional significance from generic praise. Confidence measures strength of fit, not rank, so a closest-available weak Theme should stay low-confidence. Before returning, check that no unselected eligible Theme is materially closer than the choice. Cite supporting E# facts.\n\nReturn only one compact line per missing slot:\nSLOT|PFM####|CONFIDENCE|E#[,E#]\nExample: 2|PFM0104|23|E2,E5\n\nFROZEN EVIDENCE\n${themeRerunEvidenceText(evidenceLedger)}\n\nFIXED\n${fixed}\n\nMISSING\n${blocks}`;
 }
 async function repairMissingThemeRerunSlots(env,model,behavior,rerun,sets,accepted,evidenceLedger){
   let working=new Map(accepted),lastError=null;
@@ -2717,6 +2730,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.78 — Theme human-fit calibration: no emotional-salience ranking bonus; neutral closer fits win; generic descriptive praise excluded from rerun evidence.
 // v0.9.6.71 — AMA-specific 90s provider timeout + one transient retry.
 // v0.9.6.70 — advisory SLOP assessment + immutable AI AMA interview service.
 function cleanSingleLine(value,max=800){return String(value||'').replace(/\s+/g,' ').trim().slice(0,max)}
@@ -3102,7 +3116,7 @@ async function analyze(env,body){
         explainChanges:rerunResult.rerun.explainChanges!==false,
         candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length]))
       };
-      promptVersions.themes='genreactrix-themes-pfm-v17-frozen-evidence-structured-selection';
+      promptVersions.themes='genreactrix-themes-pfm-v18-human-fit-no-emotional-salience';
     }else{
       const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
       const rawThemes = await runStructured(env,model,image,themePrompt(themeAnalysisContext),themeSchema(),2200,'text',{behavior});
@@ -3140,7 +3154,7 @@ RECOVERY REQUIREMENT: Your previous attempt did not produce three unique valid T
         };
       }
       resolvedThemes = resolveThemes(parsedThemes);
-      promptVersions.themes = themeAnalysisContext ? 'genreactrix-themes-pfm-v6-analysis-failsafe' : 'genreactrix-themes-pfm-v5-matrix-only-research';
+      promptVersions.themes = themeAnalysisContext ? 'genreactrix-themes-pfm-v8-analysis-failsafe-human-fit' : 'genreactrix-themes-pfm-v7-matrix-only-human-fit';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
