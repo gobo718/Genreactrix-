@@ -1,3 +1,17 @@
+# Genreactrix v0.9.40.129 — AI AMA answer-integrity validation
+
+- Pairs with Worker v0.9.6.76-ai-ama-answer-integrity. Upload the Worker first, then this site build.
+- Keeps the fixed 3-question AMA plan, one-question recovery, all 68 canonical questions, provider timeout, Theme logic, Matrix, lifecycle, Tuned, SLOP?, history, and report semantics unchanged.
+- Fixes cross-question answer bleed: every recognized `Q##` / `Question ##` marker is now a hard parsing boundary even when that ID was not requested. An answer to Q9 therefore cannot absorb a provider continuation beginning with Q10.
+- Three-question responses are strict: only explicitly attributable, validated answers are checkpointed.
+- Single-question recovery still accepts unlabeled prose, but only when it looks like an actual answer. It rejects generated questions, question-bank continuations, wrong/unrequested Q-markers, and other obvious prompt-continuation output.
+- The Worker returns rejection reasons and a bounded provider-response preview for any missing/invalid answer. The site independently validates returned answers before persistence as a second integrity gate.
+- AMA run persistence also filters obviously malformed core answers before counting them toward 68/68, preventing a structurally complete but corrupted incomplete run from being finalized.
+- Existing immutable completed AMA reports are not rewritten. The previously exported .75 gravel AMA remains diagnostic/invalid evidence and should not be used for calibration.
+- Matrix remains 0.0.0.0.
+
+---
+
 # Genreactrix v0.9.40.128 — AI AMA tolerant answer parsing
 
 - Pairs with Worker v0.9.6.75-ai-ama-parser-tolerance. Upload the Worker first, then this site build.

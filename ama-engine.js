@@ -13,7 +13,16 @@ function reportTitle(sequence,createdAt,aiThemes,directorThemes){const stamp=new
 async function reportsForImage(imageId){return(await byIndex(REPORTS,'imageId',String(imageId))).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))}
 async function createReport(input={}){if(!input.imageId)throw new Error('AMA report requires imageId');const existing=await reportsForImage(input.imageId),sequence=existing.length+1,createdAt=input.createdAt||now(),report={id:String(input.id||uid('ama_report')),schemaVersion:2,projectId:String(input.projectId||window.genreactrixProjectRuntimeEngine?.projectId?.()||''),runtimeId:input.runtimeId??window.genreactrixProjectRuntimeEngine?.runtimeId?.()??null,imageId:String(input.imageId),sequence,createdAt,title:reportTitle(sequence,createdAt,input.snapshot?.aiThemes,input.snapshot?.directorThemes),snapshot:clone(input.snapshot||{}),interview:clone(input.interview||{}),worker:clone(input.worker||{}),siteVersion:String(input.siteVersion||window.GENREACTRIX_BUILD||''),matrixVersion:String(input.matrixVersion||input.interview?.matrixVersion||'0.0.0.0'),immutable:true};await put(REPORTS,report);return clone(report)}
 function questionNumber(id){const m=String(id||'').match(/^Q(\d+)$/i);return m?Number(m[1]):Number.MAX_SAFE_INTEGER}
-function mergeQuestions(existing=[],incoming=[]){const rows=new Map();for(const q of [...existing,...incoming]){const id=String(q?.id||'').toUpperCase();if(!/^Q\d+$/.test(id)||!String(q?.answer||'').trim())continue;rows.set(id,{...clone(q),id})}return[...rows.values()].sort((a,b)=>questionNumber(a.id)-questionNumber(b.id))}
+function coreAnswerLooksSafe(answer){
+  const value=String(answer||'').replace(/\r/g,'').trim();if(!value||!/[A-Za-z0-9]/.test(value))return false;
+  if(/(?:^|\s)(?:\*\*|__)?(?:Q\s*0*\d{1,4}|Question\s*0*\d{1,4})\s*(?::|[-–—.]|\)|\])/im.test(value))return false;
+  const compact=value.replace(/\s+/g,' ').trim(),questionMarks=(compact.match(/\?/g)||[]).length,lead=compact.replace(/^[\s"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim(),interrogative=/^(?:what|which|why|how|when|where|who|whom|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|has|have|had|may|might)\b/i;
+  if(questionMarks>=3)return false;
+  if(questionMarks>=1&&/[?]\s*$/.test(compact)&&interrogative.test(lead))return false;
+  if(/^\d+\s*:\s*(?:what|which|why|how|is|are|was|were|do|does|did|can|could|would|should|has|have|had)\b/i.test(compact)&&/[?]\s*$/.test(compact))return false;
+  return true;
+}
+function mergeQuestions(existing=[],incoming=[]){const rows=new Map();for(const q of [...existing,...incoming]){const id=String(q?.id||'').toUpperCase();if(!/^Q\d+$/.test(id)||!coreAnswerLooksSafe(q?.answer))continue;rows.set(id,{...clone(q),id})}return[...rows.values()].sort((a,b)=>questionNumber(a.id)-questionNumber(b.id))}
 function runProgress(run){const questions=mergeQuestions([],run?.questions||[]),expected=Math.max(0,Number(run?.questionCount)||68),blocks=[...new Set((run?.completedBlockIndexes||[]).map(Number).filter(Number.isInteger))].sort((a,b)=>a-b);return{answered:questions.length,expected,completedBlockIndexes:blocks,blockCount:Math.max(0,Number(run?.blockCount)||0)}}
 async function runsForImage(imageId){return(await byIndex(RUNS,'imageId',String(imageId))).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))}
 async function incompleteRunsForImage(imageId){return(await runsForImage(imageId)).filter(run=>run.status!=='complete')}
