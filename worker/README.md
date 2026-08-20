@@ -1,6 +1,24 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.82-ama-calibration-integrity.
+Current bundled Worker: v0.9.6.84-theme-exhaustion-slop-warning.
+
+## Worker 0.9.6.84 — Exhaustive Theme recovery + SLOP? Warning
+
+- When the normal adversarial Theme audit has fewer than three survivors, every expansion pass excludes all previously audited candidates, not merely prior rejects.
+- Recovery continues until three legitimate survivors exist or all 91 current PrimFusion Themes have been audited.
+- Full-vocabulary exhaustion with fewer than three survivors returns only the legitimate survivors plus a structured Slop Warning; it does not fabricate a third Theme.
+- Slop Warning is distinct from the existing AI Slop Detected advisory. Provider, parser, schema, and infrastructure failures remain ordinary failures and never become Slop Warning.
+- Theme Rerun constraints/behavior, Theme definitions, Matrix v0.0.0.0, provider fallback, and 15-minute cooldown are unchanged.
+
+---
+
+# Genreactrix AI Worker
+
+Current bundled Worker: v0.9.6.83-ama-meta-typecheck-cleanup.
+
+## Worker 0.9.6.83 — AMA metadata type-check cleanup
+
+Behavior-neutral cleanup of `amaUniqueThemeMetas()` to remove Cloudflare editor TS2345 inference from the previous mixed nested source array. AI, Director, and candidate metadata are now iterated explicitly; output ordering and de-duplication semantics are preserved.
 
 ## Worker 0.9.6.82 — AMA calibration + integrity
 
