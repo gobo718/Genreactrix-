@@ -1,6 +1,18 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.76-ai-ama-answer-integrity.
+Current bundled Worker: v0.9.6.77-ai-ama-slot-prompts.
+
+## Worker 0.9.6.77 — AI AMA provider slot prompts
+
+- Keeps the 23-step 3-question AMA plan, 3→1 recovery, strict answer validation, all 68 canonical questions, and 90-second provider timeout unchanged.
+- Canonical Q IDs are now internal only during resumable interview calls. Three-question prompts use `ITEM A/B/C` and expect `ANSWER A/B/C`; responses are mapped back to the correct canonical IDs after validation.
+- Single-question recovery uses one plain `DIRECT QUESTION` with no Q-number and expects only a direct prose answer.
+- This removes the sequential Q-number pattern that caused Llama to continue generating Q2, Q3, Q4… instead of answering Q1.
+- Generated questions, question-bank continuations, unrequested Q-markers, wrong slots, and structurally invalid responses remain rejected.
+- No Theme logic, definitions, confidence, lifecycle, Tuned, SLOP?, report/history semantics, or Matrix behavior changed. Matrix remains 0.0.0.0.
+
+---
+
 
 ## Worker 0.9.6.76 — AI AMA answer-integrity validation
 
