@@ -62,6 +62,18 @@
   if(Number(pass)>=3||!result.holdIds.length){patch.state=result.holdIds.length?'complete-with-failures':'complete';patch.completedAt=now();}
   return updateSweep(sweepId,patch);
  }
+ function forceFinishPass(sweepId,pass,result){
+  const sweep=get(sweepId);if(!sweep)return null;const failedIds=[...new Set((result?.failedIds||[]).map(String))],failedSet=new Set(failedIds),recoveryIds=[...new Set((result?.holdIds||[]).map(String))].filter(id=>!failedSet.has(id)),releaseIds=[...new Set((result?.releaseIds||[]).map(String))].filter(id=>!failedSet.has(id));
+  const passes=clone(sweep.passes||{}),key=String(pass),summary={...clone(result),holdIds:recoveryIds,releaseIds,abandonedFailedIds:failedIds,forcedContinue:true,completedAt:now()};
+  passes[key]={...(passes[key]||{}),...summary,state:'complete'};
+  releaseMany(releaseIds,sweepId,pass);
+  if(recoveryIds.length)holdMany(recoveryIds,sweepId,pass,Number(pass)>=3?'theme-sweep-unresolved':'theme-sweep-next-pass');
+  if(failedIds.length)holdMany(failedIds,sweepId,pass,'theme-sweep-catastrophic-failure-excluded');
+  const patch={passes,currentPass:Number(pass),updatedAt:now()};
+  if(Number(pass)>=3||!recoveryIds.length){patch.state=failedIds.length?'complete-with-failures':'complete';patch.completedAt=now();}
+  else patch.state='running';
+  return updateSweep(sweepId,patch);
+ }
  function prepareNext(sweepId,nextPass,imageIds){const sweep=get(sweepId);if(!sweep)return null;const ids=[...new Set((imageIds||[]).map(String))],seed=makeSeed(sweepId,nextPass),passes=clone(sweep.passes||{}),key=String(nextPass);passes[key]={...(passes[key]||{}),pass:Number(nextPass),state:'queued',orderMode:'shuffled',orderSeed:seed,imageIds:ids,queuedAt:now()};holdMany(ids,sweepId,nextPass,`theme-sweep-pass-${nextPass}`);updateSweep(sweepId,{passes,currentPass:Number(nextPass),state:'running'});return{pass:Number(nextPass),imageIds:ids,orderMode:'shuffled',orderSeed:seed};}
  function formatPass(sweep,pass){const p=sweep?.passes?.[String(pass)]||sweep?.passes?.[pass];if(!p)return'Not started';if(p.state==='waiting')return String(sweep?.state||'').startsWith('complete')?'Not needed':'Not needed yet';if(p.state==='queued')return`${p.imageIds?.length||0} queued`;
   if(p.state==='running')return`${p.imageIds?.length||0} analyzing${p.retryCount?` · retry ${p.retryCount}`:''}…`;
@@ -75,8 +87,8 @@
   return String(p.state||'');
  }
  function render(){const sweep=latest();for(const pass of [1,2,3]){const el=document.getElementById(`aiThemeSweepPass${pass}`);if(el)el.textContent=sweep?formatPass(sweep,pass):'Idle';}const wrap=document.getElementById('aiThemeSweepStatus');if(wrap)wrap.dataset.state=sweep?.state||'idle';}
- function clearCompletedHolds(){const activeIds=new Set(read().filter(row=>row.state==='running').map(row=>row.id));for(const r of window.genreactrixImageRecordEngine?.all?.()||[]){const ext=r.metadata?.extended||{};if(ext.themeSweepHold&&ext.themeSweepId&&!activeIds.has(String(ext.themeSweepId))&&String(r.components?.aiThemes||'')==='current')setHold(r.id,false,ext.themeSweepId,ext.themeSweepPass||3);}}
- const api={begin,get,latest,evaluate,attachPassJob,blockPassForFailures,markPassRetrying,finishPass,prepareNext,render,clearCompletedHolds};
+ function clearCompletedHolds(){const activeIds=new Set(read().filter(row=>['running','blocked'].includes(String(row.state||''))).map(row=>row.id));for(const r of window.genreactrixImageRecordEngine?.all?.()||[]){const ext=r.metadata?.extended||{};if(ext.themeSweepHold&&ext.themeSweepId&&!activeIds.has(String(ext.themeSweepId))&&String(r.components?.aiThemes||'')==='current')setHold(r.id,false,ext.themeSweepId,ext.themeSweepPass||3);}}
+ const api={begin,get,latest,evaluate,attachPassJob,blockPassForFailures,markPassRetrying,finishPass,forceFinishPass,prepareNext,render,clearCompletedHolds};
  window.genreactrixThemeSweepEngine=Object.freeze(api);
  window.addEventListener('DOMContentLoaded',()=>{try{clearCompletedHolds();render();}catch(error){console.warn('Theme Sweep initialization failed',error)}});
  window.addEventListener('genreactrix:theme-sweep',render);

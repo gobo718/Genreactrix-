@@ -8490,4 +8490,5 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .ai-theme-sweep-field{min-width:0;border:1px solid currentColor;border-radius:8px;padding:7px 9px;display:grid;gap:3px}
 .ai-theme-sweep-field span{font-size:11px;font-weight:800;opacity:.72;text-transform:uppercase;letter-spacing:.04em}
 .ai-theme-sweep-field strong{font-size:12px;line-height:1.25;overflow-wrap:anywhere}
+.ai-theme-sweep-override{margin-top:8px;display:flex;justify-content:flex-end}.ai-theme-sweep-override button[hidden]{display:none}
 @media (max-width:720px){.ai-theme-sweep-status{grid-template-columns:1fr}.ai-theme-sweep-field{grid-template-columns:52px 1fr;align-items:start}}

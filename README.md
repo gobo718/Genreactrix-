@@ -1,8 +1,10 @@
-# Genreactrix v0.9.40.140 — Theme Sweep pass-completion gate
+# Genreactrix v0.9.40.141 — Theme Sweep catastrophic-failure override
 
-## v0.9.40.140 change
+## v0.9.40.141 change
 
-Theme Sweep passes are now atomic. If any image in Pass 1, Pass 2, or Pass 3 lacks a valid three-Theme result, the pass stays blocked and nothing from that pass is released or advanced. Use the existing **Retry Failed** control to rerun only the failed images under the same Theme order for that pass. The next pass is created only after the entire current pass population has valid Theme triplets.
+Theme Sweep keeps the atomic pass-completion gate from v0.9.40.140, but a blocked pass now exposes a **Continue with N** escape hatch. After confirmation, the valid population is processed normally, unrecoverable failed images remain held and excluded from Bundling, and only the valid most-repeated triplet (if any) advances to the next shuffled pass. The override is available on Pass 1, Pass 2, and Pass 3 and appears only while a pass is blocked by failures. Retry Failed remains the preferred path when recovery is possible.
+
+Blocked sweeps also remain recognized as active across page reloads so their provisional valid images cannot be accidentally released before the user retries or explicitly continues.
 
 
 Experimental Theme-selection release paired with Worker v0.9.6.88-theme-sweep-pack-recovery.
@@ -27,7 +29,7 @@ The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exh
 ---
 
 ## Historical release notes
-The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.140 + Worker v0.9.6.88.
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.141 + Worker v0.9.6.88.
 
 # Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
 

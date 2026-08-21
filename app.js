@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.140";
-// v0.9.40.140 — Theme Sweep pass-completion gate: failures must be corrected inside the same pass before the next pass can start. Queue hold retained; Home layout unchanged.
+const GENREACTRIX_BUILD="v0.9.40.141";
+// v0.9.40.141 — Theme Sweep catastrophic-failure override: blocked passes may explicitly continue with valid results while unrecoverable failures remain held. Queue hold and atomic completion gate retained; Home layout unchanged.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
