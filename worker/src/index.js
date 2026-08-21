@@ -1,8 +1,12 @@
-/* Genreactrix AI Worker v0.9.6.84-theme-exhaustion-slop-warning
-   Registry-driven replacement Worker.
-   Source vocabulary is generated from primfusion-registry.json.
+/* Genreactrix AI Worker v0.9.6.88-theme-sweep-pack-recovery
+   Experimental pack-level Theme Sweep support layered onto v0.9.6.87.
+   The human-vote scoring prompt and all 91 Theme definitions are unchanged.
+   Pack Pass 1 may request canonical Theme order; recovery Passes 2-3 may request
+   one seeded shuffled Theme order that remains fixed for every image in that pass.
+   Ordinary unconstrained Theme Rerun retains v0.9.6.87 behavior; Director-constrained
+   reruns retain the frozen v0.9.6.84 machinery. Reactions and Description are unchanged.
 */
-const API_VERSION = '0.9.6.84-theme-exhaustion-slop-warning';
+const API_VERSION = '0.9.6.88-theme-sweep-pack-recovery';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1008,6 +1012,151 @@ async function runThemeAdversarialDecisionPipeline(env,model,image,behavior='ana
   const selections=exhausted?await runThemeDecisionPartialRank(env,model,behavior,evidenceLedger,audits):await runThemeDecisionFinalRank(env,model,behavior,evidenceLedger,audits);
   const warning=exhausted?themeExhaustionSlopWarning({survivorCount:survivors.length,auditedCount:auditedCodes.size,candidateCount:candidateCodes.length}):null;
   return{selections,warning,diagnostics:{schemaVersion:2,protocol:'literal-evidence-candidates-adversarial-audit-final-rank-v2-exhaustive-recovery',imageAccess:{evidence:true,candidates:false,audit:false,final:false},evidenceLedger,candidateCodes,audits,survivorCodes:survivors.map(row=>row.code),expansionRounds,exhaustedThemeVocabulary:exhausted,auditedThemeCount:auditedCodes.size,themeVocabularyCount:allThemeCodes.length,slopWarning:warning?{assessmentId:warning.assessmentId,trigger:warning.trigger,themeSurvivorCount:warning.themeSurvivorCount}:null}};
+}
+
+// v0.9.6.86 EXPERIMENT — one-variable continuation of v0.9.6.85.
+// Fresh normal Theme selection still uses the exact same raw human-vote prompt and
+// scoring objective. The only decision-input change is presentation order: the 91
+// unchanged Theme definitions are supplied in this fixed shuffled order.
+const HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER = ["PFM0511","PFM0210","PFM0107","PFM0912","PFM0508","PFM0109","PFM0506","PFM0102","PFM0914","PFM0214","PFM0712","PFM0313","PFM1113","PFM0207","PFM1013","PFM0112","PFM0507","PFM0910","PFM1011","PFM0414","PFM0413","PFM0512","PFM0411","PFM0304","PFM0306","PFM0410","PFM0711","PFM0110","PFM0305","PFM0205","PFM1014","PFM0612","PFM0814","PFM0104","PFM0114","PFM0514","PFM0211","PFM0513","PFM0113","PFM0311","PFM1214","PFM0714","PFM0713","PFM0913","PFM0209","PFM0204","PFM1114","PFM0405","PFM0710","PFM0509","PFM0314","PFM0206","PFM1112","PFM0213","PFM0307","PFM1012","PFM0613","PFM1213","PFM0203","PFM0510","PFM1314","PFM0812","PFM0709","PFM0111","PFM0309","PFM0407","PFM0412","PFM0406","PFM0208","PFM0911","PFM0408","PFM0810","PFM0608","PFM0212","PFM0614","PFM0611","PFM0811","PFM0609","PFM0312","PFM0813","PFM0809","PFM0308","PFM0103","PFM0106","PFM0708","PFM0310","PFM0607","PFM0409","PFM0108","PFM0610","PFM0105"];
+function themeSweepSeedHash(value){let h=2166136261>>>0;for(const ch of String(value||'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
+function themeSweepRandom(seed){let a=themeSweepSeedHash(seed)||0x9e3779b9;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+function shuffledThemeOrder(seed){const out=PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code),rand=themeSweepRandom(seed);for(let i=out.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
+function resolveHumanVoteThemeOrder(themeSweep=null){
+  const mode=String(themeSweep?.orderMode||'').toLowerCase();
+  if(mode==='canonical')return{mode:'canonical',seed:null,codes:PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code)};
+  if(mode==='shuffled'&&String(themeSweep?.orderSeed||'').trim())return{mode:'shuffled',seed:String(themeSweep.orderSeed),codes:shuffledThemeOrder(themeSweep.orderSeed)};
+  return{mode:'fixed-shuffled-v1',seed:null,codes:[...HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER]};
+}
+function themeHumanVoteExperimentPrompt(themeSweep=null){
+  const byCode=new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
+  const order=resolveHumanVoteThemeOrder(themeSweep);
+  const choices=order.codes
+    .map(code=>byCode.get(code))
+    .filter(Boolean)
+    .map(t=>`${t.code} — ${t.name}${t.aiMeaning?` — Meaning: ${t.aiMeaning}`:''}`)
+    .join('\n');
+  return `GENREACTRIX HUMAN-VOTE THEME EXPERIMENT.\n\nImagine a large group of independent human judges viewing this image. Each human may choose up to 3 Themes from the 91 definitions below. Predict the resulting human Theme leaderboard.\n\nSubmit up to 3 ranked Themes to maximize your expected score under this scoring system:\n- Human rank #1: +10,000 points.\n- Human ranks #2-4: +2,000 points each.\n- Human ranks #5-8: +500 points each.\n- Human ranks #9-12: +125 points each.\n- Each blank submitted slot: -500 points.\n- A submitted Theme outside the human top 12 but selected by at least one human: -1,000 points.\n- A submitted Theme selected by no humans at all: -10,000 points.\n\nMaximize expected score.\n\nCURRENT 91 THEME DEFINITIONS:\n${choices}\n\nOUTPUT ONLY these three ranked rows, one per line:\n1|PFM#### or 1|BLANK\n2|PFM#### or 2|BLANK\n3|PFM#### or 3|BLANK\n\nDo not output percentages, confidence scores, rationales, explanations, or any other text.`;
+}
+
+function parseThemeHumanVoteExperiment(raw){
+  const validCodes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code));
+  const rows=new Map(),used=new Set();
+  for(const line of String(raw||'').replace(/\r/g,'').split('\n')){
+    const parts=line.trim().replace(/^[-*•]\s*/,'').split('|').map(x=>x.trim());
+    if(parts.length<2)continue;
+    const rank=Number(String(parts[0]||'').replace(/[^0-9]/g,''));
+    if(![1,2,3].includes(rank)||rows.has(rank))continue;
+    const value=String(parts[1]||'').toUpperCase();
+    if(value==='BLANK'){
+      rows.set(rank,{rank,blank:true});
+      continue;
+    }
+    if(!validCodes.has(value)||used.has(value))continue;
+    used.add(value);
+    rows.set(rank,{rank,blank:false,code:value});
+  }
+  if(rows.size!==3)throw new Error(`Human-vote Theme experiment returned ${rows.size} valid ranked rows instead of 3.`);
+  const ordered=[1,2,3].map(rank=>rows.get(rank));
+  return {
+    selections:ordered.filter(row=>!row.blank).map((row,index)=>({rank:index+1,source:'matrix',code:row.code,confidence:null,rationale:''})),
+    submittedRows:ordered.map(row=>row.blank?{rank:row.rank,blank:true}:{rank:row.rank,blank:false,code:row.code}),
+    blankCount:ordered.filter(row=>row.blank).length
+  };
+}
+
+async function runThemeHumanVoteExperiment(env,model,image,behavior='analyze',themeSweep=null){
+  let lastError=null,lastRaw='';
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const recovery=attempt===1?'':'\n\nFORMAT RECOVERY: Return only ranks 1, 2, and 3 using PFM#### or BLANK exactly as specified. Do not add any other text.';
+      lastRaw=await runStructured(env,model,image,themeHumanVoteExperimentPrompt(themeSweep)+recovery,null,500,'text',{behavior,themeHumanVoteRawExperiment:true,themeSweepPass:Number(themeSweep?.pass)||null,temperature:0});
+      const parsed=parseThemeHumanVoteExperiment(lastRaw);
+      return {
+        selections:parsed.selections,
+        diagnostics:{
+          schemaVersion:1,
+          protocol:'human-vote-expected-score-raw-v1-theme-sweep-order-aware',
+          experimental:true,
+          frozenControlWorker:'0.9.6.84-theme-exhaustion-slop-warning',
+          priorExperimentWorker:'0.9.6.87-human-vote-shuffled-rerun-experiment',
+          themeDefinitionOrder:resolveHumanVoteThemeOrder(themeSweep).mode,
+          themeDefinitionOrderSeed:resolveHumanVoteThemeOrder(themeSweep).seed,
+          themeSweepId:themeSweep?.sweepId||null,
+          themeSweepPass:Number(themeSweep?.pass)||null,
+          imageAccess:true,
+          descriptionContextUsed:false,
+          reactionScoresUsed:false,
+          selectionCallCount:1,
+          scoreBands:{humanRank1:10000,humanRanks2to4:2000,humanRanks5to8:500,humanRanks9to12:125,blank:-500,outsideTop12SelectedByHuman:-1000,selectedByNoHumans:-10000},
+          submittedRows:parsed.submittedRows,
+          selectedCodes:parsed.selections.map(row=>row.code),
+          blankCount:parsed.blankCount,
+          confidenceGenerated:false,
+          rationaleGenerated:false
+        }
+      };
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Human-vote Theme experiment failed.',{phase:'theme-human-vote-raw-experiment',responsePreview:String(lastRaw||'').slice(0,1200)});
+}
+
+
+// v0.9.6.87 EXPERIMENT — preserve the already-flagged image records by allowing
+// an ordinary all-three Theme Rerun to exercise the exact v0.9.6.86 selector.
+// Specialized Director constraints remain on the frozen rerun pipeline so this
+// comparison does not silently discard Preserve/Replace/PrimPicker/Exclusions.
+function themeHumanVoteRerunExperimentEligible(rerun){
+  const normalized=normalizeThemeRerun(rerun);if(!normalized)return false;
+  if(normalized.themeSlots.some(row=>row.state!=='neutral'))return false;
+  if(normalized.excludedThemeCodes.length)return false;
+  if(normalized.primPicker.some(row=>Array.isArray(row.assignments)&&row.assignments.length))return false;
+  return true;
+}
+function themeHumanVoteRerunExperimentPrompt(rerun){
+  const normalized=normalizeThemeRerun(rerun),base=themeHumanVoteExperimentPrompt(null);
+  if(!normalized?.includedDescriptions?.length)return base;
+  const descriptionContext=normalized.includedDescriptions.map((row,index)=>`REFERENCE DESCRIPTION ${index+1}${row.createdAt?` — ${row.createdAt}`:''}${row.version?` — v${row.version}`:''}:\n${row.text}`).join('\n\n');
+  const marker='\n\nOUTPUT ONLY these three ranked rows, one per line:';
+  const block=`\n\nOPTIONAL REFERENCE DESCRIPTION CONTEXT — explicitly included by the Director:\n${descriptionContext}\n\nUse this context only as additional information about the same image. The image remains authoritative.`;
+  return base.includes(marker)?base.replace(marker,block+marker):base+block;
+}
+async function runThemeHumanVoteRerunExperiment(env,model,image,behavior,rerunInput){
+  const rerun=normalizeThemeRerun(rerunInput);if(!rerun)throw new Error('Theme Rerun request was missing.');
+  if(!themeHumanVoteRerunExperimentEligible(rerun))throw new Error('Theme human-vote rerun experiment received Director constraints and must use the frozen constrained rerun pipeline.');
+  let lastError=null,lastRaw='';
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const recovery=attempt===1?'':'\n\nFORMAT RECOVERY: Return only ranks 1, 2, and 3 using PFM#### or BLANK exactly as specified. Do not add any other text.';
+      lastRaw=await runStructured(env,model,image,themeHumanVoteRerunExperimentPrompt(rerun)+recovery,null,500,'text',{behavior,themeRerun:true,themeHumanVoteRawExperiment:true,themeHumanVoteRerunExperiment:true,temperature:0});
+      const parsed=parseThemeHumanVoteExperiment(lastRaw);
+      return{
+        rerun,
+        selections:parsed.selections,
+        diagnostics:{
+          schemaVersion:1,
+          protocol:'human-vote-expected-score-raw-v1-fixed-shuffled-order-rerun',
+          experimental:true,
+          sourceExperimentWorker:'0.9.6.86-human-vote-shuffled-order-experiment',
+          frozenControlWorker:'0.9.6.84-theme-exhaustion-slop-warning',
+          themeDefinitionOrder:'fixed-shuffled-91-v1',
+          imageAccess:true,
+          descriptionContextUsed:rerun.includedDescriptions.length>0,
+          includedDescriptionCount:rerun.includedDescriptions.length,
+          reactionScoresUsed:false,
+          selectionCallCount:1,
+          scoreBands:{humanRank1:10000,humanRanks2to4:2000,humanRanks5to8:500,humanRanks9to12:125,blank:-500,outsideTop12SelectedByHuman:-1000,selectedByNoHumans:-10000},
+          submittedRows:parsed.submittedRows,
+          selectedCodes:parsed.selections.map(row=>row.code),
+          blankCount:parsed.blankCount,
+          confidenceGenerated:false,
+          rationaleGenerated:false,
+          recordFlagsTouched:false
+        }
+      };
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||'Human-vote Theme rerun experiment failed.',{phase:'theme-human-vote-rerun-experiment',responsePreview:String(lastRaw||'').slice(0,1200)});
 }
 
 function themeSchema(){
@@ -3123,6 +3272,10 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.88 — EXPERIMENT: Theme Sweep order control: canonical pack Pass 1; one fixed seeded shuffle per recovery Pass 2/3; human-vote scoring and 91 definitions unchanged.
+// v0.9.6.87 — EXPERIMENT: ordinary unconstrained Theme Rerun uses the .86 shuffled raw human-vote selector so the exact flagged sample can be rerolled; constrained reruns retain .84 logic.
+// v0.9.6.86 — EXPERIMENT: same raw human-vote selection as .85, with only the 91-definition presentation order fixed-shuffled; .84 remains frozen control and powers Theme Rerun.
+// v0.9.6.85 — EXPERIMENT: fresh normal Themes use raw human-vote expected-score prediction; v0.9.6.84 remains the frozen control and powers Theme Rerun.
 // v0.9.6.84 — Exhaustive fresh-candidate Theme recovery; full-vocabulary exhaustion becomes puce SLOP? Warning instead of fabricated third Theme or terminal audit failure.
 // v0.9.6.83 — Behavior-neutral AMA metadata iteration cleanup to eliminate Cloudflare editor TS2345 type-check warning.
 // v0.9.6.82 — AMA-derived Theme contextual gating + confidence calibration; AMA Prim/ownership/integrity repair; Theme Rerun evidence-source repair; provider readiness probe.
@@ -3548,35 +3701,51 @@ async function analyze(env,body){
     const behavior = behaviorFor(['themes','genreReasons']),themeRerun=body.themeRerun&&requested.includes('themes')?normalizeThemeRerun(body.themeRerun):null;
     let resolvedThemes;
     if(themeRerun){
-      const rerunResult=await runThemeRerun(env,model,image,behavior,themeRerun);
-      resolvedThemes=resolveThemes(rerunResult.selections).map((row,index)=>({...row,supportEvidenceIds:[...(rerunResult.selections[index]?.supportEvidenceIds||[])]}));
-      if(!rerunResult.rerun.explainChanges)resolvedThemes=resolvedThemes.map(row=>({...row,rationale:''}));
-      components.themeRerunDiagnostics={
-        schemaVersion:3,applied:true,
-        evidenceProtocol:'frozen-ledger-support-refs-v2',
-        selectionImageAccess:false,
-        editLogReasonImageAccess:false,
-        selectionOutputProtocol:'slot-pfm-score-evidence-ids-v1',
-        evidenceLedger:rerunResult.evidenceLedger.map(row=>({...row})),
-        selectionSupportBySlot:Object.fromEntries(rerunResult.selections.filter(row=>Array.isArray(row.supportEvidenceIds)&&row.supportEvidenceIds.length).map(row=>[row.rank,[...row.supportEvidenceIds]])),
-        protectedSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.slot),
-        replaceSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='replace').map(row=>row.slot),
-        neutralSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='neutral').map(row=>row.slot),
-        excludedThemeCodes:[...rerunResult.rerun.excludedThemeCodes],
-        includedDescriptionCount:rerunResult.rerun.includedDescriptions.length,
-        explainChanges:rerunResult.rerun.explainChanges!==false,
-        candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length])),
-        adversarialAuditProtocol:'candidate-audit-replace-v1',
-        auditRounds:Array.isArray(rerunResult.auditRounds)?rerunResult.auditRounds:[]
-      };
-      promptVersions.themes='genreactrix-themes-pfm-v19-rerun-adversarial-audit';
+      if(themeHumanVoteRerunExperimentEligible(themeRerun)){
+        const rerunResult=await runThemeHumanVoteRerunExperiment(env,model,image,behavior,themeRerun);
+        resolvedThemes=resolveThemes(rerunResult.selections);
+        components.themeRerunDiagnostics={
+          ...rerunResult.diagnostics,
+          applied:true,
+          protectedSlots:[],replaceSlots:[],neutralSlots:[1,2,3],excludedThemeCodes:[],
+          explainChanges:false,
+          evidenceLedger:[],selectionSupportBySlot:{},auditRounds:[],
+          constrainedRerunFallbackUsed:false
+        };
+        promptVersions.themes='genreactrix-themes-pfm-v24-rerun-human-vote-raw-fixed-shuffled-order-experiment';
+      }else{
+        const rerunResult=await runThemeRerun(env,model,image,behavior,themeRerun);
+        resolvedThemes=resolveThemes(rerunResult.selections).map((row,index)=>({...row,supportEvidenceIds:[...(rerunResult.selections[index]?.supportEvidenceIds||[])]}));
+        if(!rerunResult.rerun.explainChanges)resolvedThemes=resolvedThemes.map(row=>({...row,rationale:''}));
+        components.themeRerunDiagnostics={
+          schemaVersion:3,applied:true,
+          evidenceProtocol:'frozen-ledger-support-refs-v2',
+          selectionImageAccess:false,
+          editLogReasonImageAccess:false,
+          selectionOutputProtocol:'slot-pfm-score-evidence-ids-v1',
+          evidenceLedger:rerunResult.evidenceLedger.map(row=>({...row})),
+          selectionSupportBySlot:Object.fromEntries(rerunResult.selections.filter(row=>Array.isArray(row.supportEvidenceIds)&&row.supportEvidenceIds.length).map(row=>[row.rank,[...row.supportEvidenceIds]])),
+          protectedSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='preserve').map(row=>row.slot),
+          replaceSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='replace').map(row=>row.slot),
+          neutralSlots:rerunResult.rerun.themeSlots.filter(row=>row.state==='neutral').map(row=>row.slot),
+          excludedThemeCodes:[...rerunResult.rerun.excludedThemeCodes],
+          includedDescriptionCount:rerunResult.rerun.includedDescriptions.length,
+          explainChanges:rerunResult.rerun.explainChanges!==false,
+          candidateCounts:Object.fromEntries([1,2,3].map(slot=>[slot,rerunResult.sets[slot].candidates.length])),
+          adversarialAuditProtocol:'candidate-audit-replace-v1',
+          auditRounds:Array.isArray(rerunResult.auditRounds)?rerunResult.auditRounds:[],
+          constrainedRerunFallbackUsed:true
+        };
+        promptVersions.themes='genreactrix-themes-pfm-v19-rerun-adversarial-audit';
+      }
     }else{
-      const themeAnalysisContext = body.themeUseAnalysis ? String(body.themeAnalysisContext||'').trim().slice(0,6000) : '';
-      const decision=await runThemeAdversarialDecisionPipeline(env,model,image,behavior,themeAnalysisContext);
+      // v0.9.6.85 experiment: fresh Theme selection deliberately ignores secondary
+      // Description context and the v0.9.6.84 adversarial decision machinery.
+      // The image + unchanged 91 Theme definitions + human-vote scoring objective are the test.
+      const decision=await runThemeHumanVoteExperiment(env,model,image,behavior,body.themeSweep||null);
       resolvedThemes=resolveThemes(decision.selections);
       components.themeDecisionDiagnostics=decision.diagnostics;
-      if(decision.warning){components.slopAssessment=decision.warning;promptVersions.slopAssessment='genreactrix-slop-warning-theme-exhaustion-v1';}
-      promptVersions.themes=themeAnalysisContext?'genreactrix-themes-pfm-v21-adversarial-audit-exhaustive-recovery-analysis-failsafe':'genreactrix-themes-pfm-v21-adversarial-audit-exhaustive-recovery';
+      promptVersions.themes=body.themeSweep?.orderMode==='canonical'?'genreactrix-themes-pfm-v25-human-vote-pack-sweep-canonical':body.themeSweep?.orderMode==='shuffled'?'genreactrix-themes-pfm-v25-human-vote-pack-sweep-shuffled-recovery':'genreactrix-themes-pfm-v23-human-vote-raw-fixed-shuffled-order-experiment';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
