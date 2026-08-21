@@ -1,3 +1,11 @@
+# Genreactrix v0.9.40.143 — Temporary Staged Queue → Pass 2 Recovery
+
+- Adds an AI Console button that sends the entire current **Staged Queue** population directly into Theme Sweep Pass 2.
+- The button uses one newly shuffled 91-Theme order and keeps that order fixed for the whole Pass 2 run.
+- It reruns **Themes only**; existing Reactions and Descriptions are untouched.
+- This is a pragmatic recovery path for the stranded 60-image test and does not depend on reconstructing the broken 2-image residual sweep history.
+- Home layout unchanged. Worker remains v0.9.6.88.
+
 # Genreactrix v0.9.40.142 — Theme Sweep interrupted-pass recovery
 
 ## v0.9.40.142 change

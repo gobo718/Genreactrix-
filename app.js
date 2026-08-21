@@ -1,5 +1,5 @@
 const GENREACTRIX_BUILD="v0.9.40.142";
-// v0.9.40.142 — Theme Sweep interrupted-pass recovery: reconstructs an original blocked pass from a stranded residual-failure sweep, preserving valid results and catastrophic-failure override. Home layout unchanged.
+// v0.9.40.143 — Temporary Theme Sweep recovery: AI Console can send the entire current Staged Queue population directly into Pass 2 under one fixed shuffled Theme order. Home layout unchanged.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
