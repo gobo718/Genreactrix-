@@ -13,6 +13,7 @@
   ['ai.buffer.refillThreshold','Buffer refill threshold','number',10,{min:0,max:100000,section:'ai'}],
   ['ai.lookAhead.enabled','Buffer enabled','boolean',true,{section:'ai'}],
   ['ai.lookAhead.priority','Queue Priority','string','low',{section:'ai',allowed:['low','normal','high']}],
+  ['ai.queue.holdUntilManualStart','Hold Queue until manual AI start','boolean',false,{section:'ai'}],
   ['queue.flow.enabled','Automatic flow-through','boolean',true,{section:'queue'}],
   ['queue.bundle.size','Automatic Bundle size','number',50,{min:1,max:100000,section:'queue'}],
   ['queue.bundle.completeAvailable','Complete whatever is available','boolean',false,{section:'queue'}],

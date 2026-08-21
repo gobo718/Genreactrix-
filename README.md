@@ -1,6 +1,10 @@
-# Genreactrix v0.9.40.138 — Theme Sweep pack recovery
+# Genreactrix v0.9.40.139 — Queue hold before AI
 
 Experimental Theme-selection release paired with Worker v0.9.6.88-theme-sweep-pack-recovery.
+
+## Queue hold before AI
+
+AI Console adds **Hold Queue until Start analysis**. When enabled, automatic flow and AI buffer intake are suspended so a full pack can accumulate in Queue. Pressing **Start analysis** remains an explicit manual send to AI and works while the hold is enabled. Worker v0.9.6.88 is unchanged.
 
 ## Theme Sweep
 - The AI Console now shows exactly three Theme Sweep status fields: Pass 1, Pass 2, Pass 3.
@@ -18,7 +22,7 @@ The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exh
 ---
 
 ## Historical release notes
-The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.138 + Worker v0.9.6.88.
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.139 + Worker v0.9.6.88.
 
 # Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
 
