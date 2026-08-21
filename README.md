@@ -1,3 +1,22 @@
+# Genreactrix v0.9.40.146 — Selected completed-job Theme Sweep recovery
+
+- Replaces the broken recovery dependency on the global `staged` lifecycle count. Recovery now uses the exact image population from the **selected completed AI job**.
+- Existing Theme results from that job are scanned as Pass 1; **no Pass 1 AI calls run**.
+- Clean images that are already in an Inbox Bundle remain in that Bundle.
+- Only the most-repeated exact Theme triplet (plus any invalid Theme records) is held. If those images were already Bundled, only those image memberships are retracted back to Staged and made Bundle-ineligible under the Theme Sweep hold.
+- Pass 2 is created only for the repeated-triplet subset, with the existing single shuffled Theme order for that pass.
+- The newly recovered sweep becomes the current Pass 1/2/3 status source, replacing the stale prior sweep display.
+- Adds a one-time recovery marker to the source AI job so the same completed job cannot be accidentally converted twice.
+- Preserves v0.9.40.145 cache corrections and all existing Worker/Theme/Reaction/Description behavior. Worker remains v0.9.6.89-theme-definition-gates.
+
+# Genreactrix v0.9.40.145 — Theme Sweep deployment/cache correction
+
+- No Theme Sweep behavior changes from v0.9.40.144.
+- Corrects the site-visible and JavaScript build identity to v0.9.40.145.
+- Changes the `app.js` cache-buster so browsers must load the Pass 1 recovery/automation code instead of reusing a cached v0.9.40.142 asset.
+- Refreshes the Theme Sweep engine cache-buster as well.
+- Current already-completed 60-image Staged Pass 1 remains recoverable in place; no Pass 1 AI rerun is required.
+
 # Genreactrix v0.9.40.144 — Theme Sweep Pass 1 Recovery + Automation
 
 - Fixes the current already-completed pack without rerunning Pass 1: **Process N Staged Pass 1** scans the existing Theme results on the current Staged Queue population.

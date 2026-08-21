@@ -39,10 +39,30 @@
  async function maybeAutoBundle(){if(!autoFlowEnabled())return[];const made=[];const size=bundleSize();while(stagedRecords().length>=size){const bundle=await bundleStaged({limit:size,automatic:true});if(!bundle)break;made.push(bundle);}return made;}
  function contains(imageId){return activeBundles().some(b=>b.imageIds.includes(String(imageId)));}
  function bundleIdsForImage(imageId){return cache.filter(b=>b.imageIds.includes(String(imageId))).map(b=>b.id);}
+ async function retractImagesToStaged(imageIds,{reason='theme-sweep-recovery',sweepId=null,pass=null}={}){
+  const ids=[...new Set((imageIds||[]).map(String))],wanted=new Set(ids);if(!ids.length)return{retracted:0,affectedBundles:[]};
+  const removedByImage=new Map(ids.map(id=>[id,new Set()])),affectedBundles=[];let cacheChanged=false;
+  for(const bundle of cache){
+   const before=[...(bundle.imageIds||[])],removed=before.filter(id=>wanted.has(String(id)));if(!removed.length)continue;
+   bundle.imageIds=before.filter(id=>!wanted.has(String(id)));cacheChanged=true;affectedBundles.push({id:String(bundle.id),removedImageIds:removed.map(String),remaining:bundle.imageIds.length});
+   for(const id of removed)removedByImage.get(String(id))?.add(String(bundle.id));
+  }
+  if(cacheChanged)persist();
+  let retracted=0;
+  for(const id of ids){
+   const r=record(id),removed=removedByImage.get(id);if(!r||!removed?.size)continue;
+   const ext=r.metadata?.extended||{},current=Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds.map(String):[],remaining=current.filter(bundleId=>!removed.has(bundleId));
+   const metadata={extended:{inboxBundleIds:remaining,lastInboxBundleId:remaining.at(-1)||null,themeSweepRetractedAt:now(),themeSweepRetractionReason:String(reason||'theme-sweep-recovery'),themeSweepRetractionSweepId:sweepId||null,themeSweepRetractionPass:Number(pass)||null}};
+   const patch={metadata};if(String(r.workflow?.stage||'')==='inbox-working'&&!remaining.length)patch.workflow={stage:'staged'};
+   window.genreactrixImageRecordEngine?.update?.(id,patch,'bundle-theme-sweep-retracted');retracted++;
+  }
+  emit('retracted',null,{imageIds:ids,affectedBundles:clone(affectedBundles),reason:String(reason||'theme-sweep-recovery'),sweepId:sweepId||null,pass:Number(pass)||null});
+  return{retracted,affectedBundles};
+ }
  async function finalizeBatchImages(imageIds,{batchId=null,submittedAt=null}={}){const when=submittedAt||now();let changed=0;for(const id of [...new Set((imageIds||[]).map(String))]){const r=record(id);if(!r)continue;const current=Array.isArray(r.metadata?.extended?.inboxBundleIds)?r.metadata.extended.inboxBundleIds:bundleIdsForImage(id);const history=Array.isArray(r.metadata?.extended?.inboxHistoryBundleIds)?r.metadata.extended.inboxHistoryBundleIds:[];window.genreactrixImageRecordEngine.update(id,{metadata:{extended:{inboxBundleIds:[],inboxHistoryBundleIds:[...new Set([...history,...current])],inboxBatchedAt:when,lastInboxBatchId:batchId||r.metadata?.extended?.lastInboxBatchId||null}}},'inbox-batch-finalized');changed++;}emit('batch-finalized',null,{imageIds:[...new Set((imageIds||[]).map(String))],batchId});return{removedImages:changed,remainingBundles:activeBundles().length};}
  function snapshot(){return{bundleSize:bundleSize(),autoFlow:autoFlowEnabled(),staged:stagedRecords().length,activeBundles:activeBundles().length,totalBundles:cache.length};}
  function verify(){const issues=[],rows=records(),recordIds=new Set(rows.map(r=>String(r.id))),bundleIds=new Set(cache.map(b=>String(b.id)));for(const b of cache){if(!b.projectId)issues.push({type:'bundle-missing-project',severity:'attention',recordId:b.id,bundleId:b.id});for(const id of b.imageIds||[])if(!recordIds.has(String(id)))issues.push({type:'bundle-missing-image',severity:'attention',bundleId:b.id,imageId:id})}for(const r of rows){const ext=r.metadata?.extended||{},current=Array.isArray(ext.inboxBundleIds)?ext.inboxBundleIds.map(String):[];for(const id of current)if(!bundleIds.has(id))issues.push({type:'image-missing-bundle-record',severity:'attention',imageId:r.id,bundleId:id});if(current.length&&!['inbox-working','post-processing','purgatory'].includes(String(r.workflow?.stage||'')))issues.push({type:'bundle-owner-stage-mismatch',severity:'attention',imageId:r.id,bundleIds:current,stage:r.workflow?.stage||''});if(r.workflow?.stage==='inbox-working'&&!current.length)issues.push({type:'inbox-image-missing-active-bundle',severity:'warning',imageId:r.id})}return{checkedAt:now(),bundleCount:cache.length,issueCount:issues.length,issues}}
- const api={all,byId,activeBundles,stagedRecords,bundleSize,autoFlowEnabled,create,bundleStaged,bundleWhateverAvailable,maybeAutoBundle,contains,bundleIdsForImage,finalizeBatchImages,migrateRecordMemberships,snapshot,verify};
+ const api={all,byId,activeBundles,stagedRecords,bundleSize,autoFlowEnabled,create,bundleStaged,bundleWhateverAvailable,maybeAutoBundle,contains,bundleIdsForImage,retractImagesToStaged,finalizeBatchImages,migrateRecordMemberships,snapshot,verify};
  window.genreactrixBundleEngine=api;
  window.addEventListener('DOMContentLoaded',()=>{try{migrateRecordMemberships();window.genreactrixMaintenanceEngine?.registerChecker?.('bundles',verify,{quick:true,label:'Bundles'});emit('ready',null,{snapshot:snapshot()});}catch(error){console.error('Bundle engine initialization failed',error)}});
 })();

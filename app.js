@@ -1,4 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.142";
+const GENREACTRIX_BUILD="v0.9.40.146";
+// v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
  // AI Console manual Theme analysis now registers as Pass 1 even when target=selected.
  // Current Staged results can be processed in place as completed Pass 1 with no rerun:

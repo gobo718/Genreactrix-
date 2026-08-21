@@ -377,37 +377,50 @@
   if(pass<3&&recoveryIds.length){const nextPass=pass+1,next=sweepEngine.prepareNext(sweep.id,nextPass,recoveryIds),components=componentMap();components.themes={enabled:true,behavior:'reanalyze'};if(job.config?.components?.genreReasons?.enabled)components.genreReasons={enabled:true,behavior:'reanalyze'};const nextConfig={target:'selected',imageIds:[...next.imageIds],quantityMode:'all',quantity:next.imageIds.length,order:'queue',components,promptRefs:clone(job.config.promptRefs||{}),themeSweep:{managed:true,sweepId:sweep.id,pass:nextPass,orderMode:'shuffled',orderSeed:next.orderSeed,rootJobId:sweep.rootJobId||job.id}};const nextJob=await createJob(nextConfig);if(nextJob?.id){sweepEngine.attachPassJob(sweep.id,nextPass,nextJob.id,next.imageIds,next.orderSeed);await run(nextJob.id);}else console.warn('Theme Sweep override recovery pass could not be queued',nextJob);}
   else setTimeout(()=>maintainActiveMode().catch(console.warn),0);
  }
- async function processStagedQueueAsCompletedPass1(){
-  const rows=(window.genreactrixImageRecordEngine?.all?.()||[]).filter(r=>String(r?.workflow?.stage||'')==='staged'&&!r?.attributes?.inRecycleBin&&!r?.attributes?.archived&&!r?.attributes?.rejected);
-  const ids=[...new Set(rows.map(r=>String(r.id)))];
-  if(!ids.length){const el=document.getElementById('aiJobSummary');if(el)el.textContent='No Staged Queue images are available to process as Pass 1.';return;}
+ async function recoverSelectedCompletedJobAsPass1(jobId){
+  const jobs=await all(JOBS),sourceJob=jobs.find(row=>String(row.id)===String(jobId||''));if(!sourceJob)throw new Error('Select the completed AI job that produced this Pass 1 population.');
+  if(!['completed','completed-with-failures'].includes(String(sourceJob.state||'')))throw new Error('Selected AI job is not complete.');
+  if(!sourceJob.config?.components?.themes?.enabled)throw new Error('Selected AI job did not analyze Themes.');
+  if(sourceJob.config?.themeRerun)throw new Error('Director Theme Rerun jobs cannot be recovered as Theme Sweep Pass 1.');
+  if(sourceJob.config?.themeSweep?.managed)throw new Error('Selected AI job is already a managed Theme Sweep pass.');
+  if(sourceJob.config?.themeSweepRecovery?.sweepId)throw new Error('This AI job has already been recovered into Theme Sweep.');
+  const items=(await byIndex(ITEMS,'jobId',sourceJob.id)).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)),ids=[...new Set(items.map(item=>String(item.imageId||'')).filter(Boolean))];
+  if(!ids.length)throw new Error('Selected AI job has no image population to recover.');
+  const records=ids.map(id=>window.genreactrixImageRecordEngine?.get?.(id,{touch:false})).filter(Boolean),allowed=new Set(['staged','inbox-working']),unsafe=records.filter(record=>!allowed.has(String(record.workflow?.stage||'')));
+  if(records.length!==ids.length)throw new Error(`Selected AI job has ${ids.length-records.length} missing image record${ids.length-records.length===1?'':'s'}; recovery stopped without changing anything.`);
+  if(unsafe.length)throw new Error(`Selected AI job includes ${unsafe.length} image${unsafe.length===1?'':'s'} outside Staged/Inbox; recovery stopped to avoid moving already-processed images.`);
   const engine=window.genreactrixThemeSweepEngine;if(!engine?.begin)throw new Error('Theme Sweep engine is unavailable');
   const outcome=engine.evaluate(ids,1),failed=[...outcome.failedIds],valid=Math.max(0,outcome.analyzed-failed.length);
-  if(!valid)throw new Error(`Current Staged population has 0/${outcome.analyzed} valid Theme triplets.`);
+  if(!valid)throw new Error(`Selected ${ids.length}-image job has 0/${outcome.analyzed} valid Theme triplets.`);
   let recoveryIds=[...outcome.holdIds],ok=false;
   if(failed.length){
    const failedSet=new Set(failed.map(String));recoveryIds=recoveryIds.filter(id=>!failedSet.has(String(id)));
-   ok=window.confirm(`Process ${valid}/${outcome.analyzed} valid Staged Pass 1 results now? ${failed.length} failed image${failed.length===1?'':'s'} will remain held and excluded from Theme Sweep and Bundling.`);
+   ok=window.confirm(`Recover the selected ${ids.length}-image completed job as Theme Sweep Pass 1 using its existing Theme results? ${failed.length} invalid image${failed.length===1?'':'s'} will remain held. No Pass 1 AI calls will run.`);
   }else{
-   ok=window.confirm(`Process all ${ids.length} current Staged images as completed Theme Sweep Pass 1? Existing Theme results will be scanned; nothing in Pass 1 will rerun.`);
+   ok=window.confirm(`Recover the selected ${ids.length}-image completed job as Theme Sweep Pass 1 using its existing Theme results? No Pass 1 AI calls will run.`);
   }
   if(!ok)return;
-  const sweep=engine.begin({jobId:'',imageIds:ids});if(!sweep?.id)throw new Error('Could not create Theme Sweep state for the current Staged population');
+  const sweep=engine.begin({jobId:sourceJob.id,imageIds:ids});if(!sweep?.id)throw new Error('Could not create Theme Sweep state for the selected completed job');
   if(failed.length)engine.forceFinishPass?.(sweep.id,1,{...outcome,holdIds:recoveryIds,abandonedFailedIds:failed,forcedContinue:true});
   else engine.finishPass?.(sweep.id,1,outcome);
+  const retractIds=[...new Set([...recoveryIds,...failed].map(String))];
+  if(retractIds.length){
+   const retract=window.genreactrixBundleEngine?.retractImagesToStaged;if(typeof retract!=='function')throw new Error('Bundle recovery support is unavailable; refresh this build before retrying.');
+   await retract(retractIds,{reason:'theme-sweep-pass1-selected-job-recovery',sweepId:sweep.id,pass:1});
+  }
   try{await window.genreactrixBundleEngine?.maybeAutoBundle?.();}catch(error){console.error('Recovered Pass 1 Bundle check failed',error)}
-  const tripletLabel=outcome.triplet?.labels?.join(' / ')||outcome.triplet?.codes?.join(' / ')||'';
-  const el=document.getElementById('aiJobSummary');
+  const tripletLabel=outcome.triplet?.labels?.join(' / ')||outcome.triplet?.codes?.join(' / ')||'',el=document.getElementById('aiJobSummary');
+  const markSourceRecovered=async nextJobId=>{sourceJob.config={...(sourceJob.config||{}),themeSweepRecovery:{sweepId:sweep.id,recoveredAt:now(),sourceImageCount:ids.length,pass2JobId:nextJobId||null}};await put(JOBS,sourceJob);};
   if(!recoveryIds.length){
-   if(el)el.textContent=`Processed ${valid} valid Pass 1 result${valid===1?'':'s'} · no repeated triplet · all valid results released${failed.length?` · ${failed.length} failed held`:''}.`;
+   await markSourceRecovered(null);if(el)el.textContent=`Recovered ${valid} valid Pass 1 result${valid===1?'':'s'} from selected job · no repeated triplet · all valid results released${failed.length?` · ${failed.length} invalid held`:''}.`;
    engine.render?.();setTimeout(()=>maintainActiveMode().catch(console.warn),0);return;
   }
   const next=engine.prepareNext?.(sweep.id,2,recoveryIds);if(!next?.imageIds?.length)throw new Error('Could not prepare the repeated Pass 1 triplet subset for Pass 2');
   const components=componentMap();components.themes={enabled:true,behavior:'reanalyze'};
-  const cfg={target:'selected',imageIds:[...next.imageIds],quantityMode:'all',quantity:next.imageIds.length,order:'queue',components,promptRefs:{},themeSweep:{managed:true,sweepId:sweep.id,pass:2,orderMode:'shuffled',orderSeed:next.orderSeed,rootJobId:''}};
+  const cfg={target:'selected',imageIds:[...next.imageIds],quantityMode:'all',quantity:next.imageIds.length,order:'queue',components,promptRefs:{},themeSweep:{managed:true,sweepId:sweep.id,pass:2,orderMode:'shuffled',orderSeed:next.orderSeed,rootJobId:sourceJob.id}};
   const job=await createJob(cfg);if(!job?.id)throw new Error('Could not queue the repeated Pass 1 triplet subset for Pass 2');
-  engine.attachPassJob?.(sweep.id,2,job.id,next.imageIds,next.orderSeed);engine.render?.();
-  if(el){el.dataset.jobId=job.id;el.textContent=`Pass 1 processed: ${valid} valid · ${outcome.releaseIds.length} released · ${next.imageIds.length} rerunning in Pass 2${tripletLabel?` for ${tripletLabel}`:''}${failed.length?` · ${failed.length} failed held`:''}.`;}
+  engine.attachPassJob?.(sweep.id,2,job.id,next.imageIds,next.orderSeed);await markSourceRecovered(job.id);engine.render?.();
+  if(el){el.dataset.jobId=job.id;el.textContent=`Recovered Pass 1 from selected ${ids.length}-image job: ${valid} valid · ${outcome.releaseIds.length} clean released/left Bundled · ${next.imageIds.length} rerunning in Pass 2${tripletLabel?` for ${tripletLabel}`:''}${failed.length?` · ${failed.length} invalid held`:''}.`;}
   await run(job.id);
  }
  async function retryFailed(id){const items=await byIndex(ITEMS,'jobId',id);let queued=0;for(const item of items.filter(i=>i.state==='failed')){const record=window.genreactrixImageRecordEngine?.get?.(item.imageId,{touch:false});if(['quarantine','defective'].includes(String(record?.workflow?.stage||'')))continue;item.state='queued';item.error='';item.components.forEach(c=>{if(c.state==='failed')c.state='queued'});await put(ITEMS,item);queued++}const j=(await all(JOBS)).find(x=>x.id===id);if(j&&queued){j.state='queued';j.failed=items.filter(i=>i.state==='failed').length;j.completed=items.filter(i=>i.state==='complete').length;j.message='Retry queued';await put(JOBS,j);const sweep=j.config?.themeSweep;if(sweep?.managed&&sweep?.sweepId)window.genreactrixThemeSweepEngine?.markPassRetrying?.(sweep.sweepId,Math.max(1,Math.min(3,Number(sweep.pass)||1)));run(id)}else if(j){j.message='No retryable failures · Quarantine requires manual investigation';await put(JOBS,j);render()}}
@@ -517,7 +530,12 @@
   const latest=ordered[0], selectedId=document.getElementById('aiJobSummary')?.dataset.jobId||latest?.id||'';
   const selected=ordered.find(j=>j.id===selectedId)||latest;
   const sweepOverride=document.getElementById('aiThemeSweepContinueValid');if(sweepOverride){const sc=selected?.config?.themeSweep,engine=window.genreactrixThemeSweepEngine;let sweep=sc?.managed&&sc?.sweepId?engine?.get?.(sc.sweepId):null;if(sweep&&engine?.recoverResidualPass)sweep=engine.recoverResidualPass(sc.sweepId)||sweep;const pass=Math.max(1,Math.min(3,Number(sc?.pass)||1)),ps=sweep?.passes?.[String(pass)]||sweep?.passes?.[pass],failed=Array.isArray(ps?.failedIds)?ps.failedIds.length:0,total=Number(ps?.imageIds?.length)||Number(ps?.analyzed)||0,valid=Math.max(0,total-failed),show=Boolean(selected&&ps?.state==='blocked'&&failed>0&&valid>0);sweepOverride.hidden=!show;sweepOverride.textContent=show?`Continue with ${valid}`:'Continue with valid';sweepOverride.title=show?`Leave ${failed} failed image${failed===1?'':'s'} held and continue Theme Sweep with ${valid} valid result${valid===1?'':'s'}.`:'';}
-  const forcePass2=document.getElementById('aiThemeSweepForceStagedPass2');if(forcePass2){const staged=Number(window.genreactrixLifecycleEngine?.snapshot?.().staged)||0;forcePass2.disabled=staged<1;forcePass2.textContent=staged?`Process ${staged} Staged Pass 1`:'Process Staged Pass 1';forcePass2.title=staged?`Use the existing Theme results on all ${staged} currently Staged Queue images as completed Pass 1, release non-common triplets, and rerun only the most-common repeated triplet in shuffled Pass 2.`:'No Staged Queue images are available.';}
+  const forcePass2=document.getElementById('aiThemeSweepForceStagedPass2');if(forcePass2){
+   const completed=selected&&['completed','completed-with-failures'].includes(String(selected.state||'')),themeJob=Boolean(selected?.config?.components?.themes?.enabled),managed=Boolean(selected?.config?.themeSweep?.managed),rerun=Boolean(selected?.config?.themeRerun),recovered=Boolean(selected?.config?.themeSweepRecovery?.sweepId);
+   const sourceItems=completed&&themeJob&&!managed&&!rerun&&!recovered?await byIndex(ITEMS,'jobId',selected.id):[],count=new Set(sourceItems.map(item=>String(item.imageId||'')).filter(Boolean)).size,eligible=count>0;
+   forcePass2.disabled=!eligible;forcePass2.textContent=recovered?'Pass 1 already recovered':(eligible?`Recover ${count}-image Pass 1`:'Recover selected Pass 1');
+   forcePass2.title=recovered?'This completed job has already been converted into a managed Theme Sweep.':(eligible?`Use the exact ${count}-image population from the selected completed AI job and its existing Theme results as Pass 1. Clean images already Bundled stay Bundled; only the repeated-triplet subset is retracted and rerun in shuffled Pass 2. No Pass 1 AI calls.`:'Select a completed non-sweep AI job that analyzed Themes.');
+  }
   const progress=document.getElementById('aiJobProgress');if(progress)progress.value=selected?.total?Math.round(((selected.completed+selected.failed)/selected.total)*100):0;
   const summary=document.getElementById('aiJobSummary');if(summary){summary.dataset.jobId=selected?.id||'';summary.textContent=selected?`${selected.message} · ${selected.completed}/${selected.total} complete · ${selected.failed} failed`:'No AI job selected.'}
   const list=document.getElementById('aiJobList');if(list)list.innerHTML=ordered.slice(0,20).map(j=>`<button type="button" class="ai-job-row ${j.id===selected?.id?'is-selected':''}" data-ai-job-id="${j.id}"><span>${j.state}<small>${new Date(j.createdAt).toLocaleString()} · ${j.message}</small></span><strong>${j.completed}/${j.total}</strong></button>`).join('')||'<div class="ai-job-detail">No AI jobs.</div>';
@@ -562,7 +580,7 @@
   document.getElementById('aiStartJob')?.addEventListener('click',async()=>{try{const cfg=configFromForm(), enabled=Object.values(cfg.components).some(v=>v.enabled);if(!enabled)throw new Error('Choose at least one AI component');if(!window.GenreactrixCloudApi.isConfigured())throw new Error('Save a Worker URL before starting');if(cfg.components?.themes?.enabled&&cfg.components?.themes?.behavior==='analyze')cfg.themeSweepRequested=true;const j=await createJob(cfg);if(!j.total)throw new Error('No matching images need the selected analysis');await run(j.id)}catch(e){document.getElementById('aiJobSummary').textContent=e.message}});
   document.getElementById('aiCycleBtn')?.addEventListener('click',()=>cycleMissing());
   document.getElementById('aiThemeSweepContinueValid')?.addEventListener('click',()=>{const selectedId=document.getElementById('aiJobSummary')?.dataset.jobId||'';if(selectedId)continueThemeSweepWithValid(selectedId);});
-  document.getElementById('aiThemeSweepForceStagedPass2')?.addEventListener('click',()=>processStagedQueueAsCompletedPass1().catch(e=>{const el=document.getElementById('aiJobSummary');if(el)el.textContent=String(e?.message||e);console.error(e);}));
+  document.getElementById('aiThemeSweepForceStagedPass2')?.addEventListener('click',()=>{const selectedId=document.getElementById('aiJobSummary')?.dataset.jobId||'';if(!selectedId)return;recoverSelectedCompletedJobAsPass1(selectedId).catch(e=>{const el=document.getElementById('aiJobSummary');if(el)el.textContent=String(e?.message||e);console.error(e);});});
   document.querySelectorAll('#aiAnalysisDialog input,#aiAnalysisDialog select').forEach(el=>{if(!['aiWorkerUrl','aiAnalysisKey','aiModelName','aiPromptVersion'].includes(el.id))el.addEventListener('change',()=>{if(el.closest?.('[data-ai-component]'))saveComponentDefaultsFromGrid();render()})});
   document.getElementById('aiJobList')?.addEventListener('click',e=>{const b=e.target.closest('[data-ai-job-id]');if(!b)return;document.getElementById('aiJobSummary').dataset.jobId=b.dataset.aiJobId;render()});
   const current=()=>document.getElementById('aiJobSummary').dataset.jobId||null;
