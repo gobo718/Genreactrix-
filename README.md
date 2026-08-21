@@ -1,3 +1,25 @@
+# Genreactrix v0.9.40.138 — Theme Sweep pack recovery
+
+Experimental Theme-selection release paired with Worker v0.9.6.88-theme-sweep-pack-recovery.
+
+## Theme Sweep
+- The AI Console now shows exactly three Theme Sweep status fields: Pass 1, Pass 2, Pass 3.
+- Pass 1 runs the selected AI population using the fixed canonical 91-Theme order and holds those images from Bundle creation until the pass finishes.
+- After Pass 1, the single most-repeated exact three-Theme result (only when repeated at least twice) remains held; all other valid Theme results are released for normal bundling.
+- Pass 2 reruns only the held set. The Worker shuffles the 91 Themes once for that pass and keeps that exact order for every image in the pass. The most-repeated exact triplet is held again; the rest are released.
+- Pass 3 shuffles once more and reruns the remaining held set as verification. Valid results are released after Pass 3 rather than applying another low-population frequency guess.
+- Theme failures with no valid three-Theme result stay held for the next pass; unresolved Pass 3 failures remain held for attention rather than entering a Bundle.
+- Theme definitions, human-vote scoring, Reaction generation, Description generation, and the specialized Director Theme Rerun machinery are unchanged.
+- Home portrait layout is unchanged.
+
+## Baseline
+The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exhaustion-slop-warning.
+
+---
+
+## Historical release notes
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.138 + Worker v0.9.6.88.
+
 # Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
 
 - Pairs with Worker v0.9.6.84-theme-exhaustion-slop-warning. Upload the Worker first, then this site build.

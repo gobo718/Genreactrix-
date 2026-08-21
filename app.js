@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.137";
-// v0.9.40.137 — Exhaustive Theme recovery + puce SLOP? Warning state and filtering; .136 AMA cleanup retained.
+const GENREACTRIX_BUILD="v0.9.40.138";
+// v0.9.40.138 — Theme Sweep pack recovery layer in AI Console; Home layout unchanged. .137 SLOP behavior retained.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){

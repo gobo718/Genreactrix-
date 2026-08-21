@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.137</title>
-<link href="styles.css?v=0.9.40.137" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.138</title>
+<link href="styles.css?v=0.9.40.138" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.137</span>
+<span>v0.9.40.138</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.137</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.138</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -470,6 +470,11 @@
 </div>
 <div class="ai-preflight" id="aiPreflight">Choose components and a population.</div>
 <div class="ai-run-actions"><button class="primary-action" id="aiStartJob" type="button">Start analysis</button><button class="ai-cycle-button" id="aiCycleBtn" type="button" title="Repeat Missing analysis for the frozen selection, up to three total passes">Cycle</button><span class="ai-cycle-status" id="aiCycleStatus" aria-live="polite"></span></div>
+<div class="ai-theme-sweep-status" id="aiThemeSweepStatus" aria-label="Theme Sweep passes">
+<div class="ai-theme-sweep-field"><span>Pass 1</span><strong id="aiThemeSweepPass1">Idle</strong></div>
+<div class="ai-theme-sweep-field"><span>Pass 2</span><strong id="aiThemeSweepPass2">Idle</strong></div>
+<div class="ai-theme-sweep-field"><span>Pass 3</span><strong id="aiThemeSweepPass3">Idle</strong></div>
+</div>
 </section>
 <section class="ai-console-section">
 <h3>Buffer</h3>
@@ -1354,9 +1359,9 @@ window.grxOpenCustomDialog=function(dialogId){
 </script>
 <script src="event-log.js?v=0.9.39.90"></script>
 <script src="lifecycle-engine.js?v=0.9.40.37"></script>
-<script src="bundle-engine.js?v=0.9.40.43"></script>
+<script src="bundle-engine.js?v=0.9.40.138"></script>
 <script src="ama-engine.js?v=0.9.40.131"></script>
-<script src="app.js?v=0.9.40.137"></script>
+<script src="app.js?v=0.9.40.138"></script>
 <script src="danger-zone-engine.js?v=0.9.40.131"></script>
 <script src="images-console.js?v=0.9.40.43"></script>
 
@@ -1394,7 +1399,8 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="prompt-library-engine.js?v=0.9.26.0"></script>
 <script src="prompt-evaluation-engine.js?v=0.9.26.0"></script>
 <script src="ai-artifact-engine.js?v=0.9.40.65"></script>
-<script src="ai-analysis-engine.js?v=0.9.40.137"></script>
+<script src="theme-sweep-engine.js?v=0.9.40.138"></script>
+<script src="ai-analysis-engine.js?v=0.9.40.138"></script>
 <script src="home-count-engine.js?v=0.9.40.31"></script>
 
 <dialog class="research-session-dialog" id="researchSessionDialog">
