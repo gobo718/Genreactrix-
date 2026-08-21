@@ -1,4 +1,9 @@
-# Genreactrix v0.9.40.139 — Queue hold before AI
+# Genreactrix v0.9.40.140 — Theme Sweep pass-completion gate
+
+## v0.9.40.140 change
+
+Theme Sweep passes are now atomic. If any image in Pass 1, Pass 2, or Pass 3 lacks a valid three-Theme result, the pass stays blocked and nothing from that pass is released or advanced. Use the existing **Retry Failed** control to rerun only the failed images under the same Theme order for that pass. The next pass is created only after the entire current pass population has valid Theme triplets.
+
 
 Experimental Theme-selection release paired with Worker v0.9.6.88-theme-sweep-pack-recovery.
 
@@ -22,7 +27,7 @@ The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exh
 ---
 
 ## Historical release notes
-The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.139 + Worker v0.9.6.88.
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.140 + Worker v0.9.6.88.
 
 # Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
 

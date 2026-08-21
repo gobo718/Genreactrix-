@@ -41,6 +41,19 @@
   const rows=read();rows.push(sweep);write(rows);holdMany(ids,sweep.id,1,'theme-sweep-pass-1');return clone(sweep);
  }
  function attachPassJob(sweepId,pass,jobId,imageIds,orderSeed=null){const sweep=get(sweepId);if(!sweep)return null;const passes=clone(sweep.passes||{}),key=String(pass);passes[key]={...(passes[key]||{}),pass:Number(pass),state:'running',jobId:String(jobId||''),imageIds:[...new Set((imageIds||[]).map(String))],orderMode:Number(pass)===1?'canonical':'shuffled',orderSeed:orderSeed||passes[key]?.orderSeed||null,startedAt:passes[key]?.startedAt||now()};return updateSweep(sweepId,{currentPass:Number(pass),passes,state:'running'});}
+ function blockPassForFailures(sweepId,pass,result){
+  const sweep=get(sweepId);if(!sweep)return null;const passes=clone(sweep.passes||{}),key=String(pass),failedIds=[...(result?.failedIds||[])];
+  // Atomic pass rule: keep the entire pass population held. No release and no next pass
+  // until every assigned image has a valid three-Theme result.
+  holdMany(result?.imageIds||passes[key]?.imageIds||[],sweepId,pass,`theme-sweep-pass-${pass}-incomplete`);
+  passes[key]={...(passes[key]||{}),...clone(result),state:'blocked',blockedAt:now(),failedIds};
+  return updateSweep(sweepId,{passes,currentPass:Number(pass),state:'blocked'});
+ }
+ function markPassRetrying(sweepId,pass){
+  const sweep=get(sweepId);if(!sweep)return null;const passes=clone(sweep.passes||{}),key=String(pass),p=passes[key]||{};
+  passes[key]={...p,state:'running',retryCount:(Number(p.retryCount)||0)+1,lastRetryAt:now()};
+  return updateSweep(sweepId,{passes,currentPass:Number(pass),state:'running'});
+ }
  function finishPass(sweepId,pass,result){
   const sweep=get(sweepId);if(!sweep)return null;const passes=clone(sweep.passes||{}),key=String(pass),summary={...clone(result),completedAt:now()};passes[key]={...(passes[key]||{}),...summary,state:'complete'};
   releaseMany(result.releaseIds,sweepId,pass);
@@ -51,7 +64,8 @@
  }
  function prepareNext(sweepId,nextPass,imageIds){const sweep=get(sweepId);if(!sweep)return null;const ids=[...new Set((imageIds||[]).map(String))],seed=makeSeed(sweepId,nextPass),passes=clone(sweep.passes||{}),key=String(nextPass);passes[key]={...(passes[key]||{}),pass:Number(nextPass),state:'queued',orderMode:'shuffled',orderSeed:seed,imageIds:ids,queuedAt:now()};holdMany(ids,sweepId,nextPass,`theme-sweep-pass-${nextPass}`);updateSweep(sweepId,{passes,currentPass:Number(nextPass),state:'running'});return{pass:Number(nextPass),imageIds:ids,orderMode:'shuffled',orderSeed:seed};}
  function formatPass(sweep,pass){const p=sweep?.passes?.[String(pass)]||sweep?.passes?.[pass];if(!p)return'Not started';if(p.state==='waiting')return String(sweep?.state||'').startsWith('complete')?'Not needed':'Not needed yet';if(p.state==='queued')return`${p.imageIds?.length||0} queued`;
-  if(p.state==='running')return`${p.imageIds?.length||0} analyzing…`;
+  if(p.state==='running')return`${p.imageIds?.length||0} analyzing${p.retryCount?` · retry ${p.retryCount}`:''}…`;
+  if(p.state==='blocked'){const total=Number(p.imageIds?.length)||Number(p.analyzed)||0,failed=Array.isArray(p.failedIds)?p.failedIds.length:0,valid=Math.max(0,total-failed);return`${valid}/${total} valid · ${failed} failed · Retry Failed before Pass ${Number(pass)+1}`;}
   if(p.state==='complete'){
    const analyzed=Number(p.analyzed)||Number(p.imageIds?.length)||0,failed=Array.isArray(p.failedIds)?p.failedIds.length:0;
    if(Number(pass)===3)return`${analyzed} verification rerun${analyzed===1?'':'s'} · ${Number(p.releaseIds?.length)||0} released${failed?` · ${failed} unresolved`:''}`;
@@ -62,7 +76,7 @@
  }
  function render(){const sweep=latest();for(const pass of [1,2,3]){const el=document.getElementById(`aiThemeSweepPass${pass}`);if(el)el.textContent=sweep?formatPass(sweep,pass):'Idle';}const wrap=document.getElementById('aiThemeSweepStatus');if(wrap)wrap.dataset.state=sweep?.state||'idle';}
  function clearCompletedHolds(){const activeIds=new Set(read().filter(row=>row.state==='running').map(row=>row.id));for(const r of window.genreactrixImageRecordEngine?.all?.()||[]){const ext=r.metadata?.extended||{};if(ext.themeSweepHold&&ext.themeSweepId&&!activeIds.has(String(ext.themeSweepId))&&String(r.components?.aiThemes||'')==='current')setHold(r.id,false,ext.themeSweepId,ext.themeSweepPass||3);}}
- const api={begin,get,latest,evaluate,attachPassJob,finishPass,prepareNext,render,clearCompletedHolds};
+ const api={begin,get,latest,evaluate,attachPassJob,blockPassForFailures,markPassRetrying,finishPass,prepareNext,render,clearCompletedHolds};
  window.genreactrixThemeSweepEngine=Object.freeze(api);
  window.addEventListener('DOMContentLoaded',()=>{try{clearCompletedHolds();render();}catch(error){console.warn('Theme Sweep initialization failed',error)}});
  window.addEventListener('genreactrix:theme-sweep',render);
