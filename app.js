@@ -1,4 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.146";
+const GENREACTRIX_BUILD="v0.9.40.147";
+// v0.9.40.147 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
  // AI Console manual Theme analysis now registers as Pass 1 even when target=selected.

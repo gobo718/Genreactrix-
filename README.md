@@ -1,3 +1,11 @@
+# Genreactrix v0.9.40.147 — Theme reasoning diagnostic capture
+
+- Diagnostic site build paired with Worker v0.9.6.90-theme-reasoning-diagnostic.
+- Whenever Themes are requested, Themes Info is automatically requested in the same AI family call, including managed Theme Sweep recovery passes.
+- Themes Info is a saved diagnostic artifact for later report analysis; it does not replace or alter the three Theme outputs after the Worker locks them.
+- Existing selected-job Theme Sweep recovery behavior from v0.9.40.146 is preserved.
+- No layout/geometry changes.
+
 # Genreactrix v0.9.40.146 — Selected completed-job Theme Sweep recovery
 
 - Replaces the broken recovery dependency on the global `staged` lifecycle count. Recovery now uses the exact image population from the **selected completed AI job**.
