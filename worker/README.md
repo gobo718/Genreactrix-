@@ -1,6 +1,24 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.84-theme-exhaustion-slop-warning.
+Current bundled Worker: v0.9.6.88-theme-sweep-pack-recovery.
+
+## Worker 0.9.6.88 — Theme Sweep pack recovery
+
+- Adds Theme-order control for the AI Console pack-level Theme Sweep.
+- Pass 1 can use the canonical 91-Theme order.
+- Recovery Passes 2 and 3 use a seeded shuffled order that stays identical for every image in that pass.
+- The raw human-vote scoring prompt and all 91 Theme definitions are unchanged from the experiment.
+- Ordinary unconstrained Theme Rerun retains v0.9.6.87 behavior; Director-constrained reruns retain the frozen v0.9.6.84 logic.
+- Reactions and Description are unchanged.
+
+---
+
+## Historical Worker release notes
+The older sections below are provenance only; the current bundled Worker is v0.9.6.88.
+
+# Genreactrix AI Worker
+
+Historical bundled Worker: v0.9.6.84-theme-exhaustion-slop-warning.
 
 ## Worker 0.9.6.84 — Exhaustive Theme recovery + SLOP? Warning
 
