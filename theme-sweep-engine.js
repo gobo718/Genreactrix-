@@ -34,6 +34,30 @@
   const cursedSet=new Set(cursedIds),releaseIds=successful.filter(row=>!cursedSet.has(row.imageId)).map(row=>row.imageId),holdIds=[...cursedIds,...failed];
   return{pass:Number(pass),analyzed:(imageIds||[]).length,successful:successful.length,failedIds:failed,releaseIds,holdIds,triplet:winner};
  }
+ function recoverResidualPass(sweepId){
+  const current=get(sweepId);if(!current)return null;
+  const pass=Math.max(1,Math.min(3,Number(current.currentPass)||1)),key=String(pass),currentPass=current.passes?.[key]||current.passes?.[pass];
+  if(currentPass?.state!=='blocked'||currentPass?.residualRecoveryApplied)return current;
+  const residualIds=[...new Set((currentPass.imageIds||[]).map(String))];if(!residualIds.length)return current;
+  const residualOutcome=evaluate(residualIds,pass);
+  // This migration is only for a stranded residual job: all images in the new, smaller
+  // sweep still fail, while an earlier sweep contains those same failed images plus
+  // valid siblings from the original pass.
+  if(residualOutcome.successful>0||residualOutcome.failedIds.length!==residualIds.length)return current;
+  const residualSet=new Set(residualIds),projectId=String(current.projectId||''),createdAt=String(current.createdAt||'');
+  const candidates=read().filter(row=>row.id!==current.id&&(!projectId||!row.projectId||String(row.projectId)===projectId)&&String(row.createdAt||'')<=createdAt).map(row=>{
+    const candidatePass=row.passes?.[key]||row.passes?.[pass],ids=[...new Set((candidatePass?.imageIds||row.imageIds||[]).map(String))];
+    if(ids.length<=residualIds.length||!residualIds.every(id=>ids.includes(id)))return null;
+    const outcome=evaluate(ids,pass),failedSet=new Set(outcome.failedIds.map(String));
+    if(outcome.successful<=0||outcome.failedIds.length!==residualIds.length||!residualIds.every(id=>failedSet.has(id)))return null;
+    return{row,candidatePass,ids,outcome};
+  }).filter(Boolean).sort((a,b)=>String(b.row.createdAt||'').localeCompare(String(a.row.createdAt||''))||b.ids.length-a.ids.length);
+  const match=candidates[0];if(!match)return current;
+  const passes=clone(current.passes||{}),prior=clone(match.candidatePass||{});
+  passes[key]={...prior,...clone(match.outcome),pass,state:'blocked',jobId:currentPass.jobId||prior.jobId||null,imageIds:[...match.ids],blockedAt:currentPass.blockedAt||prior.blockedAt||now(),residualRecoveryApplied:true,residualRecoveryAt:now(),recoveredFromSweepId:match.row.id,recoveredResidualImageIds:[...residualIds]};
+  holdMany(match.ids,current.id,pass,`theme-sweep-pass-${pass}-recovered-incomplete`);
+  return updateSweep(current.id,{imageIds:[...match.ids],rootJobId:match.row.rootJobId||current.rootJobId,passes,currentPass:pass,state:'blocked',residualRecoveryApplied:true,residualRecoveryAt:now(),recoveredFromSweepId:match.row.id});
+ }
  function makeSeed(sweepId,pass){const rnd=crypto.getRandomValues?.(new Uint32Array(2));return `${sweepId}:pass${pass}:${rnd?`${rnd[0].toString(16)}${rnd[1].toString(16)}`:`${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`}`}
  function begin({jobId,imageIds}){
   const ids=[...new Set((imageIds||[]).map(String))];if(!ids.length)return null;
@@ -88,7 +112,7 @@
  }
  function render(){const sweep=latest();for(const pass of [1,2,3]){const el=document.getElementById(`aiThemeSweepPass${pass}`);if(el)el.textContent=sweep?formatPass(sweep,pass):'Idle';}const wrap=document.getElementById('aiThemeSweepStatus');if(wrap)wrap.dataset.state=sweep?.state||'idle';}
  function clearCompletedHolds(){const activeIds=new Set(read().filter(row=>['running','blocked'].includes(String(row.state||''))).map(row=>row.id));for(const r of window.genreactrixImageRecordEngine?.all?.()||[]){const ext=r.metadata?.extended||{};if(ext.themeSweepHold&&ext.themeSweepId&&!activeIds.has(String(ext.themeSweepId))&&String(r.components?.aiThemes||'')==='current')setHold(r.id,false,ext.themeSweepId,ext.themeSweepPass||3);}}
- const api={begin,get,latest,evaluate,attachPassJob,blockPassForFailures,markPassRetrying,finishPass,forceFinishPass,prepareNext,render,clearCompletedHolds};
+ const api={begin,get,latest,evaluate,recoverResidualPass,attachPassJob,blockPassForFailures,markPassRetrying,finishPass,forceFinishPass,prepareNext,render,clearCompletedHolds};
  window.genreactrixThemeSweepEngine=Object.freeze(api);
  window.addEventListener('DOMContentLoaded',()=>{try{clearCompletedHolds();render();}catch(error){console.warn('Theme Sweep initialization failed',error)}});
  window.addEventListener('genreactrix:theme-sweep',render);

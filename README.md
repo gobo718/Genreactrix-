@@ -1,6 +1,10 @@
-# Genreactrix v0.9.40.141 — Theme Sweep catastrophic-failure override
+# Genreactrix v0.9.40.142 — Theme Sweep interrupted-pass recovery
 
-## v0.9.40.141 change
+## v0.9.40.142 change
+
+- Interrupted-pass recovery: if a newer residual sweep contains only the catastrophic failures from an earlier larger blocked pass, Genreactrix reconstructs the original population from sweep history and current Theme records.
+- Example: a stranded 0/2 residual job whose two images are the failed subset of an earlier 58/60 pass is restored to 58/60, allowing **Continue with 58** without rerunning the valid 58.
+- No Theme prompt, scoring, definition, Worker, Home, or Bundle eligibility logic changed.
 
 Theme Sweep keeps the atomic pass-completion gate from v0.9.40.140, but a blocked pass now exposes a **Continue with N** escape hatch. After confirmation, the valid population is processed normally, unrecoverable failed images remain held and excluded from Bundling, and only the valid most-repeated triplet (if any) advances to the next shuffled pass. The override is available on Pass 1, Pass 2, and Pass 3 and appears only while a pass is blocked by failures. Retry Failed remains the preferred path when recovery is possible.
 
@@ -19,7 +23,7 @@ AI Console adds **Hold Queue until Start analysis**. When enabled, automatic flo
 - After Pass 1, the single most-repeated exact three-Theme result (only when repeated at least twice) remains held; all other valid Theme results are released for normal bundling.
 - Pass 2 reruns only the held set. The Worker shuffles the 91 Themes once for that pass and keeps that exact order for every image in the pass. The most-repeated exact triplet is held again; the rest are released.
 - Pass 3 shuffles once more and reruns the remaining held set as verification. Valid results are released after Pass 3 rather than applying another low-population frequency guess.
-- Theme failures with no valid three-Theme result stay held for the next pass; unresolved Pass 3 failures remain held for attention rather than entering a Bundle.
+- Theme failures with no valid three-Theme result block their current pass and retry under that same pass order. If a failure is catastrophic, **Continue with N** excludes that failed image from the sweep and Bundling while the valid population proceeds. Unresolved Pass 3 failures remain held for attention.
 - Theme definitions, human-vote scoring, Reaction generation, Description generation, and the specialized Director Theme Rerun machinery are unchanged.
 - Home portrait layout is unchanged.
 
@@ -29,7 +33,7 @@ The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exh
 ---
 
 ## Historical release notes
-The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.141 + Worker v0.9.6.88.
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.142 + Worker v0.9.6.88.
 
 # Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
 
