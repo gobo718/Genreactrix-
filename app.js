@@ -1,5 +1,9 @@
 const GENREACTRIX_BUILD="v0.9.40.142";
-// v0.9.40.143 — Temporary Theme Sweep recovery: AI Console can send the entire current Staged Queue population directly into Pass 2 under one fixed shuffled Theme order. Home layout unchanged.
+// v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
+ // AI Console manual Theme analysis now registers as Pass 1 even when target=selected.
+ // Current Staged results can be processed in place as completed Pass 1 with no rerun:
+ // non-common triplets release to Bundling and only the most-common repeated triplet enters shuffled Pass 2.
+ // Home layout unchanged.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){

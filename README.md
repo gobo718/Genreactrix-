@@ -1,10 +1,13 @@
-# Genreactrix v0.9.40.143 — Temporary Staged Queue → Pass 2 Recovery
+# Genreactrix v0.9.40.144 — Theme Sweep Pass 1 Recovery + Automation
 
-- Adds an AI Console button that sends the entire current **Staged Queue** population directly into Theme Sweep Pass 2.
-- The button uses one newly shuffled 91-Theme order and keeps that order fixed for the whole Pass 2 run.
-- It reruns **Themes only**; existing Reactions and Descriptions are untouched.
-- This is a pragmatic recovery path for the stranded 60-image test and does not depend on reconstructing the broken 2-image residual sweep history.
-- Home layout unchanged. Worker remains v0.9.6.88.
+- Fixes the current already-completed pack without rerunning Pass 1: **Process N Staged Pass 1** scans the existing Theme results on the current Staged Queue population.
+- The most-common exact repeated three-Theme triplet remains held; every other valid Pass 1 result is released to the normal Bundle path.
+- Only that repeated-triplet subset is queued into Pass 2, using one newly shuffled 91-Theme order fixed for the entire pass.
+- If the recovered Pass 1 population contains catastrophic invalid Theme results, they remain held and Bundle-ineligible while the valid population can proceed after confirmation.
+- Future manual AI Console Theme analysis explicitly registers as a managed Pass 1 even when the created AI job uses a selected target, so the three pass-status fields reset to the new pack instead of showing the prior pack.
+- Pass 2 retains the existing automated split: release non-common valid results, hold only its most-common repeated triplet, then run that subset through shuffled Pass 3 verification.
+- No Pass 1 AI work is repeated by the recovery action. Reactions and Descriptions are untouched.
+- Home layout unchanged. Current bundled Worker source is v0.9.6.89-theme-definition-gates.
 
 # Genreactrix v0.9.40.142 — Theme Sweep interrupted-pass recovery
 
@@ -41,7 +44,7 @@ The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exh
 ---
 
 ## Historical release notes
-The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.142 + Worker v0.9.6.88.
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.144 + Worker v0.9.6.89.
 
 # Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
 
