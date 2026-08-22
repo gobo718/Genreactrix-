@@ -1,433 +1,345 @@
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.155 — Theme mismatch auto-recovery
 
-Current bundled Worker: v0.9.6.97-targeted-theme-definition-calibration.
+- Pairs with Worker v0.9.6.99-theme-mismatch-auto-recovery. Upload the Worker first, then this site build.
+- Restores and verifies the pre-live PrimFusion Matrix identity as **0.0.0.0**; the definitions file is again named `PRIMFUSION_THEME_DEFINITIONS-v0.0.0.0.txt`.
+- Pride uses the approved three-sentence definition, including: “Nudity, underwear, scanty clothing, and body display are not Pride.”
+- PartyTime now includes candid, goofy, spontaneous, high-energy group enjoyment even without visible party props or decorations.
+- Obsessive uses the approved narrow wording: ordinary focus, concentration, or training alone are insufficient.
+- Preserves the already-approved Exposure, Brutal, and Grotesque calibration from v0.9.40.153; Aggressive and Mundane are unchanged.
+- Adds one-shot automatic Theme mismatch recovery. A hard Theme/evidence contradiction triggers a rescan with that Theme code blocked. A `GATE_FAIL` that is not a hard contradiction triggers one unblocked confirmation rescan so a bad audit cannot automatically erase a valid Theme.
+- Preliminary Theme rationales that contradict their selected Theme’s defining requirements get one blocked rescan before Description generation.
+- Theme/Prompt diagnostic provider timeout increases from 90s to 120s. Malformed/incomplete Theme reasoning gets one immediate repair retry; provider timeout requests a fresh outer HTTP retry instead of stacking another 120s provider call inside the timed-out request.
+- Correction note: v0.9.40.153 / Worker 0.9.6.97 accidentally carried Matrix-version metadata/file naming associated with 0.0.0.1 during pre-live calibration. Canonical Matrix version remains **0.0.0.0** and is restored/verified in this build.
 
-## Worker 0.9.6.97 — Targeted Theme-definition calibration
+# Genreactrix v0.9.40.152 — final Theme second-shuffle experiment
 
-- Matrix advances to v0.0.0.1.
-- Changes only PFM0512 Obsessive, PFM0210 Grotesque, PFM0510 Brutal, PFM0209 Exposure, and PFM0513 Pride wording.
-- PFM0514 Aggressive and PFM1214 Mundane are unchanged.
-- Inherits the v0.9.6.96 final Description-only fixed second shuffle unchanged; no additional AI calls or unrelated selection machinery changes.
+- Controlled one-variable continuation of v0.9.40.151 + Worker v0.9.6.95.
+- The preliminary image-based Theme pass keeps the exact existing fixed shuffled 91-Theme order.
+- The final Description-only Theme pass uses a second fixed deterministic 91-Theme shuffle.
+- Theme definitions, prompts/questions, Description generation, Zazzly handling, provider routing, fallback behavior, Theme reasoning sidecar, Reaction synthesis, storage, lifecycle, and UI behavior are unchanged.
+- Final-pass diagnostics record `themeDefinitionOrder: fixed-shuffled-final-v1` and seed `description-final-v1` for reproducible comparison.
+- Bundled Worker is v0.9.6.96-final-theme-second-shuffle.
 
-
-## Worker 0.9.6.96 — Final Theme second shuffle
-
-- One-variable continuation of v0.9.6.95.
-- Preliminary Theme selection keeps the existing fixed shuffled order.
-- Only the final Description-only Theme catalog presentation order changes, using a second fixed deterministic shuffle.
-- No extra AI calls and no changes to prompts, definitions, Description/Zazzly behavior, providers, fallback routing, Theme reasoning, Reactions, or storage.
-
-## Worker 0.9.6.95 — Preserve Theme machinery + Description refinement
+# Genreactrix v0.9.40.151 — coherent Description-led Theme experiment
 
 - Preserves the existing image-based human-vote Theme selector as the preliminary Theme source.
-- Adds the Theme-aware Description and description-only final Theme refinement.
-- Any preliminary Zazzly-associated Theme triggers the exhaustive all-14 Zazzly Description procedure.
-- Description refusal/limitation gets one alternate-provider retry.
-- Existing Theme reasoning sidecar and ordinary Primary/Fallback routing remain in place.
+- Fresh Themes + Description are now sent in one Worker request so the persisted Description is exactly the Description used for final Theme selection.
+- Theme Sweep recovery passes preserve that same Description/Theme coherence when the root run included Description.
+- Danger Zone cleanup now clears completed Theme Sweep / Blind Prim experiment state for a fully selected test population, removes Theme Sweep hold metadata during derived cleanup, and includes both stores in Full Product Reset.
+- Worker remains v0.9.6.95; no Worker code change was required by this integration correction.
+
+# Genreactrix v0.9.40.150 — Blind Prim transport-contract repair
+
+- Pairs the site with Worker v0.9.6.92-blind-prim-text-contract.
+- Fixes the isolated Blind Prim diagnostic failure while leaving established Primary/Fallback routing unchanged.
+- Blind Prim now requests a minimal text contract (`PICK|P##|reason`, or `NONE`) and validates it locally instead of requiring provider-side JSON Schema compliance.
+- Zero through four Prims remain valid; no semantic selections are fabricated or repaired.
+- No Theme, Reaction, Description, Theme Sweep, Bundle, lifecycle, or layout behavior changed.
 
 ---
 
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.149 — Blind Prim diagnostic
 
-Current bundled Worker: v0.9.6.92-blind-prim-text-contract.
+- Adds an isolated **Blind Prim Test** for the frozen 60-image Theme Sweep population.
+- Each request contains only the image plus the 14 canonical Prim definitions; it sends no Themes, descriptions, prior AI results, Reaction scores, Director data, PrimPicker state, or Theme Sweep results.
+- AI may return zero through four ranked Prims with one short concrete reason each. Blank is valid and is never repaired into a forced selection.
+- Diagnostic results are stored separately from Image Records and do not mutate lifecycle state, Queue/Bundle membership, AI components, history, Director work, Theme Sweep state, or 60/40 Reaction synthesis.
+- The runner checkpoints after every image, resumes after interruption, retries transient transport failure, records provider/model per image, exposes failed-image retry, and exports raw per-image results plus pack-wide Prim/model/provider counts as JSON.
+- New Worker endpoint: `/api/genreactrix/blind-prims`.
 
-## Worker 0.9.6.92 — Blind Prim text-contract repair
+# Genreactrix v0.9.40.148 — Theme diagnostic report export wiring
 
-- Fixes the new Blind Prim diagnostic without changing Primary/Fallback routing.
-- Replaces provider-enforced JSON Schema for this diagnostic only with a minimal `PICK|P##|reason` / `NONE` text contract.
-- Genreactrix parses and validates the response locally: zero picks remains valid; maximum four; unknown and duplicate Prim codes still fail.
-- No Prim definitions, Theme behavior, Reaction behavior, provider circuit-breaker behavior, or ordinary AI analysis contracts changed.
+- Site-only correction to v0.9.40.147. Worker remains v0.9.6.90-theme-reasoning-diagnostic.
+- Persists fresh Theme decision diagnostics into the image AI record/artifact history.
+- Reports → Themes Info now exports both Theme reasons and the saved Theme decision/rerun diagnostic payload.
+- No Theme-selection behavior, definitions, sweep behavior, layout, or Worker logic changed.
 
----
+# Genreactrix v0.9.40.148 — Theme reasoning diagnostic capture
 
-## Worker 0.9.6.91 — Blind Prim diagnostic
+- Diagnostic site build paired with Worker v0.9.6.90-theme-reasoning-diagnostic.
+- Whenever Themes are requested, Themes Info is automatically requested in the same AI family call, including managed Theme Sweep recovery passes.
+- Themes Info is a saved diagnostic artifact for later report analysis; it does not replace or alter the three Theme outputs after the Worker locks them.
+- Existing selected-job Theme Sweep recovery behavior from v0.9.40.146 is preserved.
+- No layout/geometry changes.
 
-- Preserves the v0.9.6.90 Theme reasoning diagnostic and all v0.9.6.89 Theme gates.
-- Adds authenticated `/api/genreactrix/blind-prims` for the isolated 60-image Blind Prim experiment.
-- Each call receives only the image plus the 14 canonical Prim definitions. It receives no Theme list, descriptions, prior AI results, Reaction scores, Director data, or PrimPicker state.
-- Valid output is zero through four ranked Prim codes with one short concrete image-grounded reason each. Blank is valid; the Worker does not fill or repair missing Prim selections.
-- Per-call provider/model routing is returned so mixed-provider runs are visible in the exported test data.
+# Genreactrix v0.9.40.146 — Selected completed-job Theme Sweep recovery
 
----
+- Replaces the broken recovery dependency on the global `staged` lifecycle count. Recovery now uses the exact image population from the **selected completed AI job**.
+- Existing Theme results from that job are scanned as Pass 1; **no Pass 1 AI calls run**.
+- Clean images that are already in an Inbox Bundle remain in that Bundle.
+- Only the most-repeated exact Theme triplet (plus any invalid Theme records) is held. If those images were already Bundled, only those image memberships are retracted back to Staged and made Bundle-ineligible under the Theme Sweep hold.
+- Pass 2 is created only for the repeated-triplet subset, with the existing single shuffled Theme order for that pass.
+- The newly recovered sweep becomes the current Pass 1/2/3 status source, replacing the stale prior sweep display.
+- Adds a one-time recovery marker to the source AI job so the same completed job cannot be accidentally converted twice.
+- Preserves v0.9.40.145 cache corrections and all existing Worker/Theme/Reaction/Description behavior. Worker remains v0.9.6.89-theme-definition-gates.
 
-## Worker 0.9.6.89 — Theme definition gates
+# Genreactrix v0.9.40.145 — Theme Sweep deployment/cache correction
 
-- Retains Worker 0.9.6.88 Theme Sweep order control and human-vote scoring behavior.
-- Tightens only four Theme definitions with explicit negative gates: Satirical (PFM0407), Aggressive (PFM0514), Monstrous (PFM0614), and Repulsive (PFM1014).
-- Pass 1 remains canonical; recovery Passes 2 and 3 retain one seeded shuffled order fixed across each pass.
-- Reactions, Description, Theme scoring, Theme output contract, and sweep protocol are unchanged.
+- No Theme Sweep behavior changes from v0.9.40.144.
+- Corrects the site-visible and JavaScript build identity to v0.9.40.145.
+- Changes the `app.js` cache-buster so browsers must load the Pass 1 recovery/automation code instead of reusing a cached v0.9.40.142 asset.
+- Refreshes the Theme Sweep engine cache-buster as well.
+- Current already-completed 60-image Staged Pass 1 remains recoverable in place; no Pass 1 AI rerun is required.
 
----
+# Genreactrix v0.9.40.144 — Theme Sweep Pass 1 Recovery + Automation
 
-## Historical Worker release notes
-The older sections below are provenance only; the current bundled Worker is v0.9.6.89.
+- Fixes the current already-completed pack without rerunning Pass 1: **Process N Staged Pass 1** scans the existing Theme results on the current Staged Queue population.
+- The most-common exact repeated three-Theme triplet remains held; every other valid Pass 1 result is released to the normal Bundle path.
+- Only that repeated-triplet subset is queued into Pass 2, using one newly shuffled 91-Theme order fixed for the entire pass.
+- If the recovered Pass 1 population contains catastrophic invalid Theme results, they remain held and Bundle-ineligible while the valid population can proceed after confirmation.
+- Future manual AI Console Theme analysis explicitly registers as a managed Pass 1 even when the created AI job uses a selected target, so the three pass-status fields reset to the new pack instead of showing the prior pack.
+- Pass 2 retains the existing automated split: release non-common valid results, hold only its most-common repeated triplet, then run that subset through shuffled Pass 3 verification.
+- No Pass 1 AI work is repeated by the recovery action. Reactions and Descriptions are untouched.
+- Home layout unchanged. Current bundled Worker source is v0.9.6.89-theme-definition-gates.
 
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.142 — Theme Sweep interrupted-pass recovery
 
-Historical bundled Worker: v0.9.6.84-theme-exhaustion-slop-warning.
+## v0.9.40.142 change
 
-## Worker 0.9.6.84 — Exhaustive Theme recovery + SLOP? Warning
+- Interrupted-pass recovery: if a newer residual sweep contains only the catastrophic failures from an earlier larger blocked pass, Genreactrix reconstructs the original population from sweep history and current Theme records.
+- Example: a stranded 0/2 residual job whose two images are the failed subset of an earlier 58/60 pass is restored to 58/60, allowing **Continue with 58** without rerunning the valid 58.
+- No Theme prompt, scoring, definition, Worker, Home, or Bundle eligibility logic changed.
 
-- When the normal adversarial Theme audit has fewer than three survivors, every expansion pass excludes all previously audited candidates, not merely prior rejects.
-- Recovery continues until three legitimate survivors exist or all 91 current PrimFusion Themes have been audited.
-- Full-vocabulary exhaustion with fewer than three survivors returns only the legitimate survivors plus a structured Slop Warning; it does not fabricate a third Theme.
-- Slop Warning is distinct from the existing AI Slop Detected advisory. Provider, parser, schema, and infrastructure failures remain ordinary failures and never become Slop Warning.
-- Theme Rerun constraints/behavior, Theme definitions, Matrix v0.0.0.0, provider fallback, and 15-minute cooldown are unchanged.
+Theme Sweep keeps the atomic pass-completion gate from v0.9.40.140, but a blocked pass now exposes a **Continue with N** escape hatch. After confirmation, the valid population is processed normally, unrecoverable failed images remain held and excluded from Bundling, and only the valid most-repeated triplet (if any) advances to the next shuffled pass. The override is available on Pass 1, Pass 2, and Pass 3 and appears only while a pass is blocked by failures. Retry Failed remains the preferred path when recovery is possible.
 
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.83-ama-meta-typecheck-cleanup.
-
-## Worker 0.9.6.83 — AMA metadata type-check cleanup
-
-Behavior-neutral cleanup of `amaUniqueThemeMetas()` to remove Cloudflare editor TS2345 inference from the previous mixed nested source array. AI, Director, and candidate metadata are now iterated explicitly; output ordering and de-duplication semantics are preserved.
-
-## Worker 0.9.6.82 — AMA calibration + integrity
-
-- AMA-derived Theme candidate/audit/final ranking contextual gating and confidence calibration.
-- Theme Rerun no-Description evidence-source contract repair.
-- AI AMA Prim-definition resolution, source ownership, answer-integrity and repetition checks.
-- Provider readiness endpoint probes Primary and GPT-4.1 mini fallback independently without touching cooldown state.
-- PrimFusion definitions, Matrix v0.0.0.0, and 15-minute 3040 fallback behavior remain unchanged.
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.81-theme-evidence-source-contract.
-
-## Worker 0.9.6.81 — Theme evidence source-contract repair
-
-- Fixes the Stage-1 Theme literal-evidence output example for requests with no secondary AI Description context: E3 is now an `image` fact instead of an invalid `analysis` fact.
-- The recovery instruction is source-aware as well: image-only without secondary context; image-or-analysis when secondary context is present.
-- The parser still requires at least 3 usable facts; no evidentiary gate was weakened.
-- No Theme definitions, Theme ranking, Prim/PrimFusion definitions, Matrix data, Reaction/Description/AMA semantics, or 15-minute capacity-fallback routing changed.
-
----
+Blocked sweeps also remain recognized as active across page reloads so their provisional valid images cannot be accidentally released before the user retries or explicitly continues.
 
 
-## Worker 0.9.6.80 — 3040 capacity fallback circuit breaker
+Experimental Theme-selection release paired with Worker v0.9.6.88-theme-sweep-pack-recovery.
 
-- Primary Workers AI models remain unchanged. No Reaction, Theme, Description, AMA, Prompt Diagnostics, Prim, or PrimFusion prompt/definition changes are included.
-- A Workers AI `3040` / out-of-capacity failure immediately activates `openai/gpt-4.1-mini` through Cloudflare AI Gateway; the failed primary call is not repeatedly retried first.
-- The fallback stays active for 15 minutes. The Genreactrix browser stores the cooldown timestamp and sends it with subsequent AI requests, so those requests go directly to the fallback even if Cloudflare creates a fresh Worker isolate.
-- After 15 minutes, the next AI request probes the original Workers AI model. Success restores primary routing; another `3040` starts a fresh 15-minute fallback window.
-- Provider/model routing telemetry is returned with analyses and diagnostic/AMA calls so fallback-produced work is distinguishable from primary-model work.
-- Third-party fallback calls use the existing `AI` binding with AI Gateway `default`. They require AI Gateway Unified Billing credits but do not require an OpenAI API key.
+## Queue hold before AI
+
+AI Console adds **Hold Queue until Start analysis**. When enabled, automatic flow and AI buffer intake are suspended so a full pack can accumulate in Queue. Pressing **Start analysis** remains an explicit manual send to AI and works while the hold is enabled. Worker v0.9.6.88 is unchanged.
+
+## Theme Sweep
+- The AI Console now shows exactly three Theme Sweep status fields: Pass 1, Pass 2, Pass 3.
+- Pass 1 runs the selected AI population using the fixed canonical 91-Theme order and holds those images from Bundle creation until the pass finishes.
+- After Pass 1, the single most-repeated exact three-Theme result (only when repeated at least twice) remains held; all other valid Theme results are released for normal bundling.
+- Pass 2 reruns only the held set. The Worker shuffles the 91 Themes once for that pass and keeps that exact order for every image in the pass. The most-repeated exact triplet is held again; the rest are released.
+- Pass 3 shuffles once more and reruns the remaining held set as verification. Valid results are released after Pass 3 rather than applying another low-population frequency guess.
+- Theme failures with no valid three-Theme result block their current pass and retry under that same pass order. If a failure is catastrophic, **Continue with N** excludes that failed image from the sweep and Bundling while the valid population proceeds. Unresolved Pass 3 failures remain held for attention.
+- Theme definitions, human-vote scoring, Reaction generation, Description generation, and the specialized Director Theme Rerun machinery are unchanged.
+- Home portrait layout is unchanged.
+
+## Baseline
+The frozen return baseline remains site v0.9.40.137 + Worker v0.9.6.84-theme-exhaustion-slop-warning.
 
 ---
 
-## Worker 0.9.6.79 — Theme adversarial decision pipeline
+## Historical release notes
+The older sections below are retained only for provenance. Their upload/version instructions are superseded by v0.9.40.144 + Worker v0.9.6.89.
 
-- Replaces normal direct Theme finalization with four stages: literal evidence → broad candidate discovery → adversarial fit audit → final rank.
-- The literal evidence stage has image access but no Theme vocabulary and records only concrete facts. Candidate, audit, and final-rank stages have no image access and operate from the frozen evidence ledger.
-- Candidate discovery deliberately keeps neutral, boring, ordinary, and less-inferential alternatives in play instead of favoring emotionally richer answers.
-- The adversarial audit marks candidates SUPPORTED, WEAK, or REJECT. SUPPORTED/WEAK require positive E# evidence; a plausible post-hoc rationale is not enough.
-- REJECTed candidates are structurally excluded from final ranking. If fewer than three candidates survive, one expansion pass searches for additional candidates excluding rejected codes and audits the additions.
-- Theme Rerun retains Director constraints and the frozen evidence ledger but now audits every proposed open-slot Theme before lock. Rejected rerun candidates are forbidden and must be replaced; up to three audit/replacement rounds are allowed.
-- The Worker returns Theme decision diagnostics containing evidence, candidate shortlist, audits, and survivor codes; rerun diagnostics include audit rounds.
+# Genreactrix v0.9.40.137 — Exhaustive Theme recovery + SLOP? Warning
+
+- Pairs with Worker v0.9.6.84-theme-exhaustion-slop-warning. Upload the Worker first, then this site build.
+- Normal Theme analysis now expands only into previously unaudited Themes and keeps expanding until three adversarial-audit survivors exist or the full current 91-Theme vocabulary has genuinely been exhausted. Rejected Themes are never resurrected and the audit is not weakened.
+- If full-vocabulary exhaustion still leaves fewer than three defensible Themes, the Worker returns only the legitimate survivors and records a puce **SLOP?** Slop Warning instead of fabricating a third Theme or failing the image.
+- Existing puke-green **SLOP?** remains Slop Detected and overrides the puce warning when an undismissed detected assessment already exists. Both open the same Director SLOP decision menu.
+- Filter adds SLOP? (either state), Slop Warning, and Slop Detected. Warning color is sampled from the approved reference image at #6F4A45.
+- Provider/infrastructure/parser failures do not create Slop Warning. Theme Rerun Director-constrained failure behavior is unchanged.
+- No PrimFusion definitions, Matrix version, fallback models/cooldown, AMA behavior, or kill-switch UI changed.
+
+---
+
+# Genreactrix v0.9.40.136 — AMA metadata type-check cleanup
+
+- Pairs with Worker v0.9.6.83-ama-meta-typecheck-cleanup. Upload the Worker first, then this site build.
+- Behavior-neutral cleanup only: rewrites `amaUniqueThemeMetas()` iteration so AI, Director, and candidate sources are passed as explicit string literals instead of being inferred from a mixed nested array.
+- Eliminates the Cloudflare editor TypeScript warning `TS2345: string | any[] is not assignable to string` seen in Worker v0.9.6.82.
+- All v0.9.40.135 / Worker v0.9.6.82 Theme calibration, AMA integrity, Print/PDF, provider readiness, fallback, and cooldown behavior is otherwise unchanged.
+- AI kill-switch UI/behavior remains deferred.
+
+---
+
+# Genreactrix v0.9.40.135 — AMA calibration + integrity bundle
+
+- Pairs with Worker v0.9.6.82-ama-calibration-integrity. Upload the Worker first, then this site build.
+- Applies the current AMA-derived Theme-selection correction: ordinary visible context outranks forced emotional/semantic association; high confidence requires strong direct support.
+- Preserves all 91 PrimFusion definitions and Matrix v0.0.0.0.
+- Repairs Theme Rerun evidence source examples/recovery when no Description is included.
+- Gives AI AMA canonical Prim definitions for Director primitive selections, explicit AI/Director ownership, repetition/placeholder/snapshot-integrity rejection, and targeted single-question recovery through the existing resumable flow.
+- Repairs AI AMA Print / Save PDF on mobile by opening the print window synchronously from the tap.
+- Test connection now probes Primary and Fallback independently without changing the 15-minute runtime fallback cooldown.
+- Master AI kill-switch UI/behavior is intentionally NOT included in this build; it remains deferred for a separate UI design pass.
+- Existing GPT-4.1 mini fallback, 3040 trigger, and 15-minute circuit breaker are unchanged.
+
+# Genreactrix v0.9.40.134 — Theme evidence source-contract repair
+
+- Pairs with Worker v0.9.6.81-theme-evidence-source-contract. Upload the Worker first, then this site build.
+- Fixes the Stage-1 Theme literal-evidence transport contract exposed by the GPT-4.1 mini fallback: when no secondary AI Description context exists, the required output example now shows E1/E2/E3 as `image` facts instead of showing an invalid `analysis`-sourced E3.
+- The second-attempt recovery instruction now follows the same source rule: image-only when no secondary context exists; image-or-analysis when context exists.
+- The minimum evidence gate remains unchanged at 3 usable facts. No Theme definitions, Theme ranking, evidence semantics, Prim/PrimFusion definitions, Matrix data, or calibration rules changed.
+- The 15-minute Workers AI `3040` circuit breaker and GPT-4.1 mini fallback from v0.9.40.133 / Worker v0.9.6.80 are preserved unchanged.
+
+---
+
+# Genreactrix v0.9.40.133 — Capacity fallback cooldown
+
+- Pairs with Worker v0.9.6.80-capacity-fallback-cooldown. Upload the Worker first, then this site build.
+- Adds a 15-minute provider circuit breaker for Workers AI error `3040` (out of capacity).
+- The first `3040` falls through immediately to `openai/gpt-4.1-mini` through Cloudflare AI Gateway. Subsequent AI requests during the cooldown bypass the unavailable Workers AI model instead of paying a failed-attempt delay on every image.
+- The browser persists the cooldown timestamp. When 15 minutes expires, the next AI request probes the original Workers AI model; success restores normal routing, while another `3040` starts another 15-minute fallback window.
+- Fallback routing applies to the centralized Worker inference path used by Analysis, reruns, AMA, and Prompt Diagnostics.
+- Provider/model routing telemetry is preserved so research output can identify whether Workers AI, OpenAI fallback, or a mixed request produced the result.
+- No Theme-selection, Reaction, Description, AMA-question, Prim, PrimFusion, or Matrix semantics changed in this build. The v0.9.40.132 adversarial Theme calibration is preserved exactly.
+- Cloudflare AI Gateway Unified Billing credits are required for the OpenAI fallback; no OpenAI API key is required.
+
+---
+
+# Genreactrix v0.9.40.132 — Theme adversarial decision pipeline
+
+- Pairs with Worker v0.9.6.79-theme-adversarial-audit. Upload the Worker first, then this site build.
+- Replaces direct image→final-Theme selection with a staged decision pipeline: literal evidence → broad candidate discovery → adversarial fit audit → final ranking.
+- Stage 1 sees the image but no Theme names/codes and records only concrete evidence. Generic praise, mood inflation, and semantic conclusions are excluded.
+- Stage 2 sees only the frozen evidence and the 91 Theme definitions and produces a broad candidate shortlist, explicitly including neutral/boring/literal competitors.
+- Stage 3 adversarially attacks each candidate. A Theme cannot survive merely because the model can write a plausible rationale; SUPPORTED/WEAK candidates must cite positive evidence that distinguishes the Theme from a neutral/less-inferential reading. Unsupported emotional-salience substitutions are rejected.
+- Stage 4 can choose only audit survivors. Rejected Themes are structurally ineligible for that final ranking; exactly-three remains mandatory only among surviving candidates.
+- If the first candidate pool leaves fewer than three survivors, the Worker performs one broader candidate-expansion pass excluding rejected codes, audits those additions, and only then ranks.
+- Theme Rerun keeps its frozen evidence/Director-constraint architecture but now adds an adversarial audit between each proposed open-slot selection and lock. Rejected proposals are forbidden and replaced before the rerun can finalize.
+- New diagnostics preserve the literal evidence ledger, candidate codes, audit outcomes, and survivor codes for normal Theme Analysis; Theme Rerun diagnostics preserve adversarial audit rounds.
 - No PrimFusion definitions changed. Matrix remains 0.0.0.0. Reaction Analysis, AMA, Tuned, SLOP?, lifecycle, history, and storage semantics are unchanged.
 
 ---
 
+# Genreactrix v0.9.40.129 — AI AMA answer-integrity validation
 
-## Worker 0.9.6.76 — AI AMA answer-integrity validation
-
-- Keeps the 23-step 3-question AMA plan and 3→1 recovery architecture unchanged.
-- Uses all recognized question-ID markers as hard answer boundaries, including unrequested IDs, so one answer cannot swallow later provider-generated questions.
-- Three-question calls require explicit attributable IDs; unlabeled multi-question output is not accepted.
-- Single-question recovery accepts unlabeled prose only after validation. Generated questions, question-bank continuations, wrong Q-ID markers, and obvious prompt continuation are rejected instead of checkpointed.
-- Rejected answers return a reason plus a bounded raw provider preview for live diagnostics.
-- Single-question output is capped more tightly to reduce runaway question-bank generation without changing the 90-second provider timeout.
-- No canonical AMA question wording, Theme logic, definitions, confidence, lifecycle, Tuned, SLOP?, report/history semantics, or Matrix behavior changed. Matrix remains 0.0.0.0.
-
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker at that release: v0.9.6.75-ai-ama-parser-tolerance.
-
-## Worker 0.9.6.75 — Tolerant AI AMA answer parsing
-
-- Keeps the 23-step fixed 3-question AMA plan and 3→1 recovery architecture unchanged.
-- Makes AMA answer parsing tolerant of common model formatting variants instead of requiring only a literal line-start `Q##:` marker.
-- Single-question recovery treats any nonempty provider text as the requested answer if no explicit Q-number wrapper is present.
-- Multi-question parse failures expose a bounded raw-response preview for diagnostics rather than discarding provider text invisibly.
-- No prompt/question wording, provider timeout, Theme logic, lifecycle, Tuned, SLOP?, definitions, report/history, or Matrix behavior changed. Matrix remains 0.0.0.0.
+- Pairs with Worker v0.9.6.76-ai-ama-answer-integrity. Upload the Worker first, then this site build.
+- Keeps the fixed 3-question AMA plan, one-question recovery, all 68 canonical questions, provider timeout, Theme logic, Matrix, lifecycle, Tuned, SLOP?, history, and report semantics unchanged.
+- Fixes cross-question answer bleed: every recognized `Q##` / `Question ##` marker is now a hard parsing boundary even when that ID was not requested. An answer to Q9 therefore cannot absorb a provider continuation beginning with Q10.
+- Three-question responses are strict: only explicitly attributable, validated answers are checkpointed.
+- Single-question recovery still accepts unlabeled prose, but only when it looks like an actual answer. It rejects generated questions, question-bank continuations, wrong/unrequested Q-markers, and other obvious prompt-continuation output.
+- The Worker returns rejection reasons and a bounded provider-response preview for any missing/invalid answer. The site independently validates returned answers before persistence as a second integrity gate.
+- AMA run persistence also filters obviously malformed core answers before counting them toward 68/68, preventing a structurally complete but corrupted incomplete run from being finalized.
+- Existing immutable completed AMA reports are not rewritten. The previously exported .75 gravel AMA remains diagnostic/invalid evidence and should not be used for calibration.
+- Matrix remains 0.0.0.0.
 
 ---
 
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.128 — AI AMA tolerant answer parsing
 
-Current bundled Worker: v0.9.6.74-ai-ama-3q-resumable.
-
-## Worker 0.9.6.74 — Fixed 3-question resumable AI AMA
-
-- Changes the canonical resumable AMA question plan from 9-question blocks to 3-question steps, producing 23 steps for the 68-question interview (22 groups of 3 plus Q67–Q68).
-- A resumable question request accepts at most the three canonical IDs belonging to that step.
-- Each current-granularity interview call makes one provider attempt and returns every usable answer plus explicit missing IDs. It performs no missing-answer repair pass.
-- The site owns the only interview fallback: a failed or partial 3-question step is reduced to one-question calls for the missing IDs.
-- Visual read and candidate-audit reliability behavior is unchanged. AMA history/report semantics, Theme logic, lifecycle isolation, Tuned, SLOP?, definitions, and Matrix behavior remain unchanged. Matrix remains 0.0.0.0.
+- Pairs with Worker v0.9.6.75-ai-ama-parser-tolerance. Upload the Worker first, then this site build.
+- Keeps the fixed 3-question AMA plan with one-question recovery and all 68 canonical questions unchanged.
+- Fixes the Q10-style parser defect: AMA answers no longer require the exact literal `Q10:` wrapper. The parser accepts `Q10:`, `Q10 —`, `Q10.`, `**Q10:**`, `Question 10:`, bullets, and surrounding whitespace.
+- For a one-question recovery call, any nonempty provider text is accepted as that question's answer when no recognizable question wrapper is present; attribution is unambiguous because only one question was asked.
+- If a multi-question response is still unparseable, the Worker returns a short raw provider-response preview so diagnostics can show what was actually received.
+- No Theme ranking, AMA question wording, timeout, definitions, confidence, Matrix, lifecycle, Tuned, SLOP?, history, or report semantics changed. Matrix remains 0.0.0.0.
 
 ---
 
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.127 — AI AMA 3-question execution
 
-Current bundled Worker: v0.9.6.73-ai-ama-adaptive-chunks.
-
-## Worker 0.9.6.73 — Adaptive AI AMA question chunks
-
-- Adds canonical question-subset support inside each existing 9-question AMA block, allowing the site to request 9, 3, or 1 question without changing the 68-question bank.
-- Resumable interview question calls now make one 90-second provider attempt at their current granularity. They do not silently retry the same oversized chunk for a second 90-second window.
-- Missing IDs are returned as partial results instead of triggering a hidden repair call; the site checkpoints valid answers and reduces only the missing work.
-- Existing visual read, candidate audit, AMA history/report semantics, Theme logic, lifecycle isolation, Tuned, SLOP?, definitions, and Matrix behavior remain unchanged. Matrix remains 0.0.0.0.
-
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.72-ai-ama-resumable.
-
-## Worker 0.9.6.72 — Resumable AI AMA execution
-
-- Adds independent AMA modes for visual read, candidate audit, and small question blocks.
-- Uses eight question blocks with at most nine core questions per request instead of holding the complete 68-question interview open in one request.
-- Keeps the AMA-specific 90-second provider timeout and one transient retry per provider call.
-- Question-block responses preserve valid answers and report any still-missing IDs rather than inserting placeholder answers.
-- The site can persist each successful stage and resume from the first unfinished block after timeout, provider failure, refresh, or network interruption.
-- Legacy `mode=run` remains available for compatibility, but v0.9.40.124/.125 use the resumable modes.
-- No Theme selection/rerun, SLOP, Prim/PrimFusion definition, lifecycle, or Matrix behavior changes. Matrix remains 0.0.0.0.
+- Pairs with Worker v0.9.6.74-ai-ama-3q-resumable. Upload the Worker first, then this site build.
+- Keeps the persistent/resumable AMA architecture and all 68 canonical interview questions unchanged.
+- Removes the 9-question interview tier entirely. Normal AMA interview execution is now fixed at three canonical questions per step: Q1–Q3, Q4–Q6, and so on, with the final step Q67–Q68.
+- Every usable answer from a three-question response is checkpointed immediately.
+- If a three-question step times out, errors, or returns only some requested answers, only the still-missing question(s) fall back to one-question calls. There are no interview answer-repair passes and no retry of the same three-question step before single-question recovery.
+- Existing incomplete 9-question runs are migrated in place to the 3-question plan without discarding saved answers. A saved 9/68 run therefore resumes at Q10–Q12, not Q10–Q18.
+- Progress UI reports the exact 3-question step (23 total for 68 questions), Q range, saved count, elapsed time, and single-question recovery when needed.
+- Completed report/history semantics, Theme ranking, definitions, confidence, PrimFusion Matrix, image lifecycle, Theme Rerun, Tuned, SLOP?, and post-Batch outcomes are unchanged. Matrix remains 0.0.0.0.
 
 ---
 
-# Genreactrix AI Worker
+# Genreactrix v0.9.40.126 — AI AMA adaptive interview chunks
 
-Current bundled Worker: v0.9.6.70-ai-ama-slop-advisory.
+- Pairs with Worker v0.9.6.73-ai-ama-adaptive-chunks. Upload the Worker first, then this site build.
+- Keeps the persistent/resumable AMA architecture and all 68 canonical interview questions unchanged.
+- A fresh unfinished interview block first tries its normal block (up to 9 questions) once.
+- If that provider call times out or returns a transient 5xx/429 failure, the site immediately falls back to groups of up to 3 questions.
+- If a 3-question recovery call fails the same way, only that group falls back again to single-question calls.
+- Valid answers from every successful or partial response are checkpointed immediately; already-saved Q&A are never rerun merely because a later chunk fails.
+- On Resume, a partially completed block skips the large attempt and starts from the first missing question group.
+- Existing saved failures from v0.9.40.125 are recognized: if that block already has a recorded question-stage failure, .126 skips another full-block wait and enters 3-question recovery immediately.
+- Interview chunks no longer receive a hidden second 90-second Worker retry at the same size; the adaptive fallback owns recovery instead. Visual-read/candidate stages retain their existing reliability behavior.
+- Live AMA status names the exact Q range and whether the call is a primary block attempt, 3-question recovery, or single-question recovery. A final pause records the precise Q ID(s) that failed.
+- No Theme ranking, definitions, confidence semantics, PrimFusion Matrix, image lifecycle, Theme Rerun, Tuned, SLOP?, completed AMA report/history, or post-Batch outcome behavior changed. Matrix remains 0.0.0.0.
 
-## Worker 0.9.6.70 — AI AMA + SLOP advisory
+---
 
-- Adds the authenticated AI AMA interview endpoint used by site v0.9.40.122.
-- Runs the complete 68-question AI-versus-Director Theme interview for the current immutable snapshot and supports linked follow-up Q&A.
-- Saves the Theme-definition snapshot used by the AMA for historical audit.
-- Adds a separate SLOP advisory after Theme selection during Origin analysis and later reruns. SLOP cannot skip, replace, or weaken exactly-three Theme selection.
-- Theme selection/rerun definitions and PrimFusion Registry are unchanged from the prior Worker baseline.
+# Genreactrix v0.9.40.125 — AI AMA live-stage diagnostics
+
+- Site-only diagnostic patch. Worker remains v0.9.6.72-ai-ama-resumable; no Worker upload is required.
+- While an AMA call is active, the AI AMA dialog now names the exact stage, question block, Q-number range, saved Q&A count, and elapsed seconds.
+- After the first 90-second provider window passes, the status explicitly notes that the Worker's automatic retry may be active; longer waits note that retry or missing-answer repair may be in progress.
+- The Run button also names the current operation (Reading image, Auditing Themes, Q-range, Finalizing) instead of only saying “Running AMA…”.
+- Failed/paused AMAs now preserve the last error visibly in the AI AMA dialog, including the failing stage/block and saved progress. Reopening the dialog no longer overwrites that diagnostic with a generic “Incomplete AMA” message.
+- Resume messaging states that only the unfinished step/block is restarted and previously saved answers remain protected.
+- No AMA persistence architecture, Theme ranking, definitions, Matrix version, image lifecycle, Tuned, SLOP?, or normal Theme Rerun behavior changed.
+
+---
+
+# Genreactrix v0.9.40.124 — Resumable AI AMA execution
+
+- Replaces the single long-running AI AMA request with persistent, resumable execution.
+- Creates an AMA run record before the first provider call and checkpoints the visual read, candidate audit, and each completed interview block.
+- Splits the 68-question interview into eight small Worker calls (maximum nine questions per block).
+- If a provider/network failure interrupts a run, already-saved answers remain intact and **Resume AI AMA** continues from the first unfinished block.
+- A partially answered block preserves valid returned Q&A and can repair/retry only the missing portion on resume.
+- The immutable numbered AMA report is created only after all 68 core answers and all question blocks are complete.
+- Existing completed AMA reports, AMA History, follow-up Q&A, exports, Tuned, SLOP?, Theme Rerun lifecycle isolation, Theme definitions, and Matrix 0.0.0.0 remain unchanged.
+- Worker counterpart: v0.9.6.72-ai-ama-resumable.
+
+---
+
+# Genreactrix v0.9.40.123 — AI AMA engine initialization fix
+## v0.9.40.123
+
+- Fixes **AI AMA failed: AMA Engine is unavailable**.
+- Defines the missing `getReport()` AMA-history adapter before the engine export is constructed.
+- AMA Engine now completes initialization and publishes `window.genreactrixAmaEngine`.
+- Retains the v0.9.40.122 AI AMA, Tuned, SLOP?, filtering, history, export, and post-Batch outcome behavior.
+- No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
+
+
+- Adds **AI AMA** to Landscape Theme Rerun. It is available with the current three AI Themes and at least one Director Theme.
+- **Run AI AMA?** captures the current total snapshot and creates a new immutable, numbered Q&A interview report. Director comparison is dynamic for 1, 2, or 3 Director Themes.
+- The Worker answers the complete 68-question Director interview template, plus supports linked freeform follow-up questions without editing the original AMA report.
+- **AMA History** is image-specific and lists numbered, dated AI-versus-Director snapshots. Saved reports are readable later and can be printed/saved as PDF, saved as HTML, or exported as JSON.
+- Batch submission records a separate linked post-Batch outcome for existing AMAs so the immutable report itself is not rewritten. Agreement versus final Director result is preserved as outcome data.
+- Adds **Tuned** status for images with AI work after the original Origin scan. Tuned opens the image's detailed AI lineage/history and is filterable.
+- Adds advisory **SLOP?** detection during Origin AI analysis and later AI reruns. SLOP never skips or weakens the required exactly-three Theme task. The Director can review the AI reason and choose Yellow, Red, Hot Magenta, or NOT SLOP. SLOP is filterable.
+- AI AMA, Tuned, and SLOP status colors are UI-only and do not print hexadecimal values in the interface.
+- Retains v0.9.40.121 Theme Rerun lifecycle/placement recovery.
+- No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
+- Worker counterpart: v0.9.6.70-ai-ama-slop-advisory.
+
+---
+
+# Genreactrix v0.9.40.121 — Theme Rerun placement integrity reconciliation
+
+- Recovers open Quarantine cases when Theme Rerun attempts incorrectly contributed to the three-isolated-failure threshold.
+- Restores the image to its pre-rerun active stage without clearing its AI artifacts.
+- Verifies the full-resolution payload before restoring placement.
+- If the payload itself is missing, leaves the record untouched and creates an explicit Maintenance notification instead of silently pretending recovery succeeded.
+- Also repairs Theme-Rerun images that are active but outside every authoritative lifecycle owner when history provides the prior stage.
+- Correctly accounted images are not touched.
+- No Theme definitions, scoring, Evidence Pass, Theme selection, or Matrix changes.
+
+# Genreactrix v0.9.40.120 — Theme Rerun lifecycle isolation and recovery
+
+## v0.9.40.120
+
+- Theme Rerun AI jobs are lifecycle-isolated: they no longer move an image to AI Processing, Staged, Queue, Partial, or Quarantine.
+- Theme Rerun cannot trigger automatic Bundle movement or automatic Queue/AI maintenance after its job.
+- Each Theme Rerun job snapshots and guards the image lifecycle placement, Batch IDs, active/historical Bundle membership, storage references, recycle/archive/reject state, and isolated-failure/quarantine metadata.
+- If any guarded field drifts during a Theme Rerun, the job restores the pre-rerun value without rolling back the new Theme artifact.
+- Startup recovery inspects legacy Theme Rerun history and restores images whose most recent lifecycle changes were caused only by old Theme Rerun jobs. This includes Theme-Rerun-caused Quarantine.
+- Theme Rerun attempts are removed from Quarantine isolation evidence; an invalid Quarantine case is voided when fewer than three non-Theme-Rerun isolated failures remain.
+- No Theme prompt, Theme definition, confidence logic, Evidence Pass, exactly-three rule, PFM identity rule, or Theme Edit Log behavior changed.
 - PrimFusion Matrix remains 0.0.0.0.
+- Current Worker remains v0.9.6.68-theme-rerun-plain-text-selection-transport; no Worker upload is required for this site fix.
 
 ---
 
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.68-theme-rerun-plain-text-selection-transport.
-
-## Worker 0.9.6.68 — current bundled snapshot
-
-- Theme Rerun Stage 2 uses plain-text compact selection transport.
-- Frozen evidence, E# support, exactly-three PFM selection, targeted repair, and Theme Edit Log behavior are unchanged.
-- This Worker is unchanged by Genreactrix site v0.9.40.120.
-- No Prim or PrimFusion semantic definition changes. Matrix remains **0.0.0.0**.
-
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.61-theme-edit-log-version-fix.
-
-## Worker 0.9.6.61 — synchronized site/version-label release
-
-- Worker behavior is unchanged from 0.9.6.60.
-- Version is advanced only to keep the deployed Worker synchronized with Genreactrix v0.9.40.115.
-- Theme Rerun targeted repair, Reaction targeted weight repair, and Theme Edit Log rationale behavior are unchanged.
-- No Prim or PrimFusion semantic definition changes. Matrix remains **0.0.0.0**.
-
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.60-theme-change-checkbox-alignment.
-
-## Worker 0.9.6.60 — synchronized site-layout release
-
-- Worker behavior is unchanged from 0.9.6.59.
-- Version is advanced only to keep the deployed Worker synchronized with Genreactrix v0.9.40.114.
-- Theme Rerun targeted repair, Reaction targeted weight repair, and Theme-change rationale behavior are unchanged.
-- No Prim or PrimFusion semantic definition changes. Matrix remains **0.0.0.0**.
-
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.59-theme-change-reasoning-cache-fix.
-
-## Worker 0.9.6.59 — synchronized site-fix release
-
-- Worker behavior is unchanged from 0.9.6.58.
-- Version is advanced only to keep the deployed Worker synchronized with Genreactrix v0.9.40.113.
-- Theme Rerun targeted repair, Reaction targeted weight repair, and Theme-change rationale behavior are unchanged.
-- No Prim or PrimFusion semantic definition changes. Matrix remains **0.0.0.0**.
-
----
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.58-theme-change-reasoning.
-
-## Worker 0.9.6.58 — Theme-change reasoning + targeted repair
-
-- Theme Rerun accepts `explainChanges`; it defaults to **true** when absent for backward compatibility.
-- When enabled, each open Theme stores its brief image-grounded rationale with the immutable Theme artifact.
-- When disabled, the returned Theme artifact does not retain an incidental rationale.
-- Theme Rerun preserves valid PFM-code selections and makes a small repair call only for missing open Theme slots.
-- Already accepted Theme slots are immutable during repair; slot eligibility, exclusions, PrimPicker requirements, Preserve/Replace behavior, and unique final PFM codes remain enforced.
-- Reaction Analysis preserves every valid P01–P14 weight and makes a small repair call only for missing, non-numeric, or out-of-range weights.
-- Valid reaction weights are never recalculated merely because another Prim weight failed.
-- Matrix remains **0.0.0.0**. No Prim or PrimFusion semantic definitions changed in this Worker.
-
-Current bundled Worker: v0.9.6.56-nostalgia-theme-rerun-code-first.
-
-## Worker 0.9.6.56 — Nostalgia + Theme Rerun code-first recovery
-
-- PFM0308 Liminal is replaced by Nostalgia with the approved definition: **Old-timey, vintage, retro, memory-filled, or evocative of the past, childhood, bygone eras, or “the good old days.”**
-- Theme Rerun resolves returned selections from valid eligible PFM codes; provider-written Theme-name text is ignored for identity.
-- Recovers the observed Markdown block format such as `**Theme 1: Neutral** * PFM code: PFM0206 * Confidence: 100 * Reason: ...`.
-- Existing Preserve/Replace, exclusion, PrimPicker, uniqueness, and slot eligibility rules remain enforced.
-- Matrix remains **0.0.0.0**. No other definition changes.
-
-# Genreactrix AI Worker
-
-Current bundled Worker: v0.9.6.55-romance-obsessive-mundane-calibration.
-
-## Worker 0.9.6.55 — Romance + Obsessive/Mundane calibration
-
-- PFM0208 Romance tightened to specifically romantic evidence and explicitly includes marriage proposals and engagements.
-- PFM0512 Brilliant renamed to Obsessive; existing Obsessive semantics moved intact.
-- PFM1214 Obsessive renamed to Mundane with ordinary/dull/commonplace semantics.
-- Matrix remains 0.0.0.0.
-- All Worker parsing/recovery/self-check behavior from 0.9.6.54 is retained.
-
-
-- Adds a 105-wide final-score self-check: the AI must re-read its own completed component assessments/reasons and revise a conflicting score. Assessment → score; never score → assessment. No new evidence may be invented during the self-check.
-- Adds `<ASSESSMENT>` placeholder recovery: when a provider returns `CODE.NN <ASSESSMENT> - reason`, the Worker preserves the reason and makes a tiny label-only repair call for that exact component instead of guessing from prose or stopping the run.
-- Refines only PFM0308 Liminal, PFM0412 Witty, PFM0414 Trolling, PFM0610 Mutant, PFM0614 Monstrous, PFM0712 Parodic, PFM0713 Snarky, and PFM1011 Horror.
-- PFM0308 begins with the canonical requirement `Liminal is always quiet.`
-- PFM0713 defines smirk versus an ordinary smile.
-- PFM0614 is synchronized into the Worker registry; the prior site text and Worker registry had diverged.
-- Matrix remains 0.0.0.0.
-
----
-
-## Worker 0.9.6.52 — Prompt Diagnostics assessment/reason recovery
-
-- Component-chunk repairs now accept `CODE.PART :: component text` followed by `<allowed assessment>: <reason>` when the provider omits the literal `ASSESSMENT` and `REASON` labels.
-- The fallback is exact-component anchored: the component heading must already be a valid expected component, the next substantive line must start with an allowed assessment token and delimiter, and it must contain a substantive reason.
-- Unrelated prose clears the pending component; a new component cannot inherit an earlier component's assessment/reason.
-- Existing 0.9.6.51 component-heading forms and all prior parser recovery remain supported.
-- Regression coverage includes the observed PFM0513.01–PFM0513.03 response and strict no-cross-component/no-arbitrary-prose guardrails.
-- No definition or semantic-scoring changes. Matrix remains 0.0.0.0.
-
----
-
-## Worker 0.9.6.51 — Prompt Diagnostics component-heading recovery
-
-- Component repairs accept the provider form `CODE.PART :: component text`, then `ASSESSMENT: <allowed token>`, then `REASON: <text>` on separate substantive lines.
-- Scope is parser-only and exact-ID anchored. A heading does not create a result by itself; it becomes eligible only when the next substantive line is a structured allowed assessment, and the pending heading is discarded on unrelated prose or a new component.
-- `REASON:` is treated as a formatting label and stripped before storing the component reason.
-- Regression coverage includes the observed P01.07–P01.11 response plus no-cross-component/no-unrelated-prose guardrails.
-- No definition or semantic-scoring changes. Matrix remains 0.0.0.0. Inherits 0.9.6.50 unlabeled-WHY recovery and all earlier recovery/calibration behavior.
-
----
-
-## Worker 0.9.6.50 — Prompt Diagnostics unlabeled-WHY recovery
-
-- Single-concept final-score repair accepts the provider form `CODE SCORE <0-100>` followed by a normal explanatory paragraph when the literal `WHY` label is omitted.
-- Scope is deliberately narrow: final-score repair only, one target concept only, and only after a valid target score. Explicit WHY labels retain precedence. Foreign concept codes, placeholders, component records, and ambiguous structured output are rejected by this fallback.
-- Covers the observed PFM0112 and PFM0204 failures without changing definitions or semantic scoring.
-- Matrix remains 0.0.0.0. Inherits 0.9.6.49 Playful/Snarky calibration and all 0.9.6.48 parser/provider recovery behavior.
-
----
-
-## Worker 0.9.6.49 — Playful / Snarky calibration
-
-- PFM0113 Playful now explicitly recognizes playful role-taking, dress-up, character customization, make-believe, character experimentation, and deliberately fun/lighthearted presentation when they function as play.
-- PFM0713 Snarky now gates out general humor, silliness, playfulness, costumes, joking, and lightheartedness unless the evidence is specifically sarcastic, cutting, mocking, dismissive, or contemptuous.
-- No global Prompt Diagnostics semantic rule was added from this image.
-- Matrix remains 0.0.0.0.
-- Inherits 0.9.6.48 parser/final-score recovery behavior unchanged.
-
----
-
-## Deployment
-
-Adapted from the Billy Labs Cloudflare Workers AI Vision infrastructure.
-
-1. Install dependencies: `npm install`
-2. Set the analysis secret: `npx wrangler secret put ANALYSIS_KEY`
-3. Accept the configured Workers AI model license in Cloudflare if prompted.
-4. In Cloudflare AI Gateway, enable Unified Billing and load credits for the fallback provider. The default fallback is `openai/gpt-4.1-mini`; no OpenAI API key is required.
-5. Deploy: `npm run deploy`
-6. Enter the deployed Worker URL and the same analysis key in Genreactrix → AI.
-
-The browser never receives provider credentials. The Worker accepts authenticated `POST /api/genreactrix/analyze` for AI results and `POST /api/genreactrix/image` as a bounded image-fetch proxy used when browser CORS would otherwise prevent Import from creating its required 64×64 thumbnail.
-
-
-
-## Worker 0.9.6.48 — Prompt Diagnostics final-score label recovery
-
-Single-concept final-score repair accepts harmless Markdown and unqualified `WHY` labels when the target concept is unambiguous, while multi-concept responses remain code-strict. Preserves 0.9.6.47 component-label recovery, 0.9.6.46 provider-timeout recovery, and 0.9.6.45 repair-state recovery. No semantic or Matrix changes.
-
-## Reaction Rerun evidence routing
-
-Worker v0.9.6.35 keeps Image-only on Llama 3.2 Vision and Description-only on Llama 4 Scout structured output. Image + Description uses Llama 4 Scout as a multimodal `messages` request containing both a text part and an `image_url` data-URI part, with `guided_json` for the 14-Prim Reaction assessment. The Worker retains the hard all-zero/all-identical/numeric validation gates and retries one invalid combined assessment before failing.
-
-
-## Theme Rerun Submit
-
-The analyze endpoint accepts a structured `themeRerun` context for Theme-only reruns. Stable PFM/P codes are authoritative. Preserve, Replace, PrimPicker, Theme Exclusions, and included Description references are enforced in the Worker before/while selecting the three Theme results.
-
-Worker v0.9.6.28 moves Theme Rerun provider output off JSON Mode and onto a compact pipe-delimited text protocol. Preserved slots are resolved locally; only open slots are requested from the vision model. The Worker still validates every returned PFM against the exact slot candidate set and enforces final uniqueness. This specifically addresses the all-Neutral failure where the vision provider returned invalid JSON. Deploy this Worker before retesting Genreactrix v0.9.40.61 Theme Rerun Submit.
-
-
-## Worker 0.9.6.32 — Reaction rerun Vision routing
-
-Image-bearing Direct Reaction reruns use the configured Llama 3.2 Vision model with the image field. Because that model does not expose the Worker guided_json contract used by the Description-only path, the Worker requests text output, parses the returned 14-Prim assessment locally, and applies the same strict validation and Hamilton apportionment afterward. Description-only continues to use Llama 4 Scout guided_json and does not send image bytes.
-
-
-Worker 0.9.6.33 validation note: top-four effort notes are optional for reactions-only requests and remain required for reactionReasons requests.
-
-
-## Worker 0.9.6.34 — Combined Reaction evidence protocol
-
-Image + Description Direct Reaction reruns use the Vision model with a compact strict line protocol (`P01|weight` through `P14|weight`, then `RANKING|...`). Every Prim weight must be independently present and numeric; malformed or missing values trigger a retry. Image-only and Description-only routing are unchanged from their accepted 0.9.6.33 behavior.
-
-
-## Worker 0.9.6.37 — Prompt Diagnostics call modes
-
-Prompt Diagnostics can evaluate a complete 15-concept batch or one exact 5-concept wave from that same batch. Both paths use the same live Prim/PrimFusion registry definitions and the same independent 0–100 definition-part scoring contract. Five-concept waves use a smaller output allowance and return wave metadata so the portrait diagnostic surface can persist and compare results call-by-call.
-
-
-## Worker 0.9.6.44 — Compound PrimFusion name casing
-
-Naming-only cleanup. **PFM0110** is now **UglyCute** and **PFM0411** is now **ComedyHorror**. Their stable PFM codes, Prim pairings, AI meanings, exactly-three Theme selection behavior, and Matrix `0.0.0.0` are unchanged. This establishes the closed-compound display style already used by names such as CreepyCute and PartyTime.
-
-## Worker 0.9.6.43 — Semantic calibration + diagnostic consistency repair
-
-Keeps Matrix `0.0.0.0`. Synchronizes the booked pre-lock PrimFusion wording changes, including the locked Humiliation definition and the PFM0110 redefinition as Uglycute. Prompt Diagnostics now uses MATCH_EVIDENCE versus GATE_CONFIRMED, explicit 0–100 calibration, cue≠meaning/evidence-fidelity rules, target isolation, and an automatic consistency/evidence repair when a complete response contradicts its own score or leaks unrelated same-wave concepts. Exactly-three normal Theme selection remains mandatory; weak forced-third matches should lower confidence rather than fabricate evidence. Diagnostics retain the 90-second provider timeout; normal analysis remains at 45 seconds.
-
-## Worker 0.9.6.42 — Prompt Diagnostics component parser
-
-Keeps Matrix version `0.0.0.0`, the locked PFM0309 Humiliation working definition, and the 90-second Prompt Diagnostics-only provider timeout from 0.9.6.41. Component repair parsing now anchors on the known component ID and accepts the assessment token after intervening definition text, including forms such as `PFM0412.02 :: [definition text]. SUPPORTS - reason`.
-
-## Worker 0.9.6.41 — Prompt Diagnostics timeout + locked Humiliation
-
-Prompt Diagnostics provider calls use a 90-second timeout while ordinary AI calls remain unchanged. PFM0309 Humiliation uses the locked pre-baseline working definition. Matrix version remains `0.0.0.0`; test-era report cleanup will occur before the historical Matrix baseline is locked.
-
-## Worker 0.9.6.40 — Prompt Diagnostics 3 × 5 + adaptive definition repair
-
-Adds 3-concept waves (five waves per 15-concept batch). The existing 5-concept and 15-concept paths remain available. If a concept cannot enumerate its complete numbered definition after one focused repair, the Worker falls back only for that concept to five-definition-component chunks, then derives a fresh final confidence score from the completed component findings. Score parsing also accepts trailing explanatory text after the numeric score.
-
-
-### Worker 0.9.6.78 — Theme human-fit calibration
-- Removes emotional/evocative/interestingness as a Theme-ranking advantage.
-- Requires boring/neutral closer fits to outrank richer affective Themes.
-- Blocks unsupported substitutions such as simplicity/minimalism -> playfulness and generic visual praise -> affective Theme evidence.
-- Filters generic evaluative praise from Theme Rerun frozen evidence.
-- Leaves PrimFusion definitions and Matrix version 0.0.0.0 unchanged.
+# Genreactrix v0.9.40.119 — Theme Rerun evidence-support selection
+
+## v0.9.40.119
+
+- Keeps the v0.9.40.118 frozen pre-selection Evidence Pass.
+- Theme Rerun Stage 2 now returns only compact slot + PFM code + confidence + supporting E# IDs.
+- The Stage 2 selection call has no image access and does not generate Theme Edit Log prose.
+- Every open Theme choice must cite one or more valid facts from the frozen evidence ledger.
+- Valid partial selections are preserved; only missing/malformed slots are repaired.
+- Theme Edit Log explanation is generated only after the exactly-three selection is locked, without image access, using only the E# facts cited by that locked selection.
+- Theme Edit Log schema is bumped so pre-v0.9.40.119 rerun logs are not presented as evidence-support logs.
+- Normal Theme Analysis is unchanged. No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
+- Worker counterpart: v0.9.6.65-theme-rerun-evidence-support-selection.
