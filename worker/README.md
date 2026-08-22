@@ -1,6 +1,16 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.89-theme-definition-gates.
+Current bundled Worker: v0.9.6.91-blind-prim-diagnostic.
+
+## Worker 0.9.6.91 — Blind Prim diagnostic
+
+- Preserves the v0.9.6.90 Theme reasoning diagnostic and all v0.9.6.89 Theme gates.
+- Adds authenticated `/api/genreactrix/blind-prims` for the isolated 60-image Blind Prim experiment.
+- Each call receives only the image plus the 14 canonical Prim definitions. It receives no Theme list, descriptions, prior AI results, Reaction scores, Director data, or PrimPicker state.
+- Valid output is zero through four ranked Prim codes with one short concrete image-grounded reason each. Blank is valid; the Worker does not fill or repair missing Prim selections.
+- Per-call provider/model routing is returned so mixed-provider runs are visible in the exported test data.
+
+---
 
 ## Worker 0.9.6.89 — Theme definition gates
 
