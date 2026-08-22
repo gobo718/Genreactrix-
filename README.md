@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.150 — Blind Prim transport-contract repair
+
+- Pairs the site with Worker v0.9.6.92-blind-prim-text-contract.
+- Fixes the isolated Blind Prim diagnostic failure while leaving established Primary/Fallback routing unchanged.
+- Blind Prim now requests a minimal text contract (`PICK|P##|reason`, or `NONE`) and validates it locally instead of requiring provider-side JSON Schema compliance.
+- Zero through four Prims remain valid; no semantic selections are fabricated or repaired.
+- No Theme, Reaction, Description, Theme Sweep, Bundle, lifecycle, or layout behavior changed.
+
+---
+
 # Genreactrix v0.9.40.149 — Blind Prim diagnostic
 
 - Adds an isolated **Blind Prim Test** for the frozen 60-image Theme Sweep population.
