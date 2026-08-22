@@ -1,5 +1,19 @@
 # Genreactrix AI Worker
 
+Current bundled Worker: v0.9.6.95-preserve-theme-machinery-description-refinement.
+
+## Worker 0.9.6.95 — Preserve Theme machinery + Description refinement
+
+- Preserves the existing image-based human-vote Theme selector as the preliminary Theme source.
+- Adds the Theme-aware Description and description-only final Theme refinement.
+- Any preliminary Zazzly-associated Theme triggers the exhaustive all-14 Zazzly Description procedure.
+- Description refusal/limitation gets one alternate-provider retry.
+- Existing Theme reasoning sidecar and ordinary Primary/Fallback routing remain in place.
+
+---
+
+# Genreactrix AI Worker
+
 Current bundled Worker: v0.9.6.92-blind-prim-text-contract.
 
 ## Worker 0.9.6.92 — Blind Prim text-contract repair
