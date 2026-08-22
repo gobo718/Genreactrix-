@@ -1,3 +1,11 @@
+# Genreactrix v0.9.40.151 — coherent Description-led Theme experiment
+
+- Preserves the existing image-based human-vote Theme selector as the preliminary Theme source.
+- Fresh Themes + Description are now sent in one Worker request so the persisted Description is exactly the Description used for final Theme selection.
+- Theme Sweep recovery passes preserve that same Description/Theme coherence when the root run included Description.
+- Danger Zone cleanup now clears completed Theme Sweep / Blind Prim experiment state for a fully selected test population, removes Theme Sweep hold metadata during derived cleanup, and includes both stores in Full Product Reset.
+- Worker remains v0.9.6.95; no Worker code change was required by this integration correction.
+
 # Genreactrix v0.9.40.150 — Blind Prim transport-contract repair
 
 - Pairs the site with Worker v0.9.6.92-blind-prim-text-contract.
