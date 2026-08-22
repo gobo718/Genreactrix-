@@ -1,11 +1,11 @@
-/* Genreactrix AI Worker v0.9.6.95-preserve-theme-machinery-description-refinement
-   Preserve the proven fresh-image Theme selector and Theme reasoning sidecar.
-   Its three Themes become preliminary hypotheses for the Theme-aware Description;
-   final Themes are then selected from that completed Description. Any preliminary
-   Zazzly-associated Theme triggers an exhaustive all-14 Zazzly description sweep.
-   Description refusal/limitation gets one alternate-provider retry.
+/* Genreactrix AI Worker v0.9.6.96-final-theme-second-shuffle
+   Controlled one-variable continuation of v0.9.6.95.
+   Preliminary Theme selection, Description generation, Zazzly handling, providers,
+   final Theme question, Reaction synthesis, reasoning sidecar, and all other behavior
+   remain unchanged. Only the 91-Theme presentation order for the final Description-only
+   Theme pass uses a second fixed deterministic shuffle.
 */
-const API_VERSION = '0.9.6.95-preserve-theme-machinery-description-refinement';
+const API_VERSION = '0.9.6.96-final-theme-second-shuffle';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1018,6 +1018,8 @@ async function runThemeAdversarialDecisionPipeline(env,model,image,behavior='ana
 // scoring objective. The only decision-input change is presentation order: the 91
 // unchanged Theme definitions are supplied in this fixed shuffled order.
 const HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER = ["PFM0511","PFM0210","PFM0107","PFM0912","PFM0508","PFM0109","PFM0506","PFM0102","PFM0914","PFM0214","PFM0712","PFM0313","PFM1113","PFM0207","PFM1013","PFM0112","PFM0507","PFM0910","PFM1011","PFM0414","PFM0413","PFM0512","PFM0411","PFM0304","PFM0306","PFM0410","PFM0711","PFM0110","PFM0305","PFM0205","PFM1014","PFM0612","PFM0814","PFM0104","PFM0114","PFM0514","PFM0211","PFM0513","PFM0113","PFM0311","PFM1214","PFM0714","PFM0713","PFM0913","PFM0209","PFM0204","PFM1114","PFM0405","PFM0710","PFM0509","PFM0314","PFM0206","PFM1112","PFM0213","PFM0307","PFM1012","PFM0613","PFM1213","PFM0203","PFM0510","PFM1314","PFM0812","PFM0709","PFM0111","PFM0309","PFM0407","PFM0412","PFM0406","PFM0208","PFM0911","PFM0408","PFM0810","PFM0608","PFM0212","PFM0614","PFM0611","PFM0811","PFM0609","PFM0312","PFM0813","PFM0809","PFM0308","PFM0103","PFM0106","PFM0708","PFM0310","PFM0607","PFM0409","PFM0108","PFM0610","PFM0105"];
+const HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER = ["PFM0809","PFM0512","PFM0408","PFM0709","PFM0307","PFM0509","PFM0210","PFM0513","PFM0310","PFM0911","PFM0314","PFM0712","PFM0810","PFM0213","PFM0510","PFM0209","PFM0414","PFM0110","PFM0114","PFM0614","PFM0913","PFM0204","PFM0203","PFM0511","PFM0102","PFM0104","PFM0412","PFM0714","PFM0311","PFM0304","PFM0413","PFM1013","PFM0607","PFM0813","PFM1011","PFM0711","PFM1014","PFM0507","PFM0313","PFM0814","PFM0208","PFM0713","PFM0914","PFM0609","PFM0610","PFM0206","PFM0103","PFM0811","PFM0910","PFM1314","PFM0409","PFM0708","PFM1112","PFM0111","PFM0207","PFM0405","PFM1214","PFM1113","PFM0105","PFM0407","PFM1012","PFM0912","PFM0112","PFM0113","PFM0109","PFM0508","PFM0612","PFM0410","PFM0812","PFM0306","PFM0205","PFM0514","PFM0212","PFM0611","PFM0309","PFM0211","PFM0305","PFM0406","PFM1213","PFM0214","PFM0106","PFM0506","PFM0308","PFM1114","PFM0710","PFM0608","PFM0411","PFM0107","PFM0312","PFM0108","PFM0613"];
+const HUMAN_VOTE_FINAL_FIXED_SHUFFLE_SEED = 'description-final-v1';
 function themeSweepSeedHash(value){let h=2166136261>>>0;for(const ch of String(value||'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
 function themeSweepRandom(seed){let a=themeSweepSeedHash(seed)||0x9e3779b9;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 function shuffledThemeOrder(seed){const out=PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code),rand=themeSweepRandom(seed);for(let i=out.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
@@ -1026,6 +1028,12 @@ function resolveHumanVoteThemeOrder(themeSweep=null){
   if(mode==='canonical')return{mode:'canonical',seed:null,codes:PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code)};
   if(mode==='shuffled'&&String(themeSweep?.orderSeed||'').trim())return{mode:'shuffled',seed:String(themeSweep.orderSeed),codes:shuffledThemeOrder(themeSweep.orderSeed)};
   return{mode:'fixed-shuffled-v1',seed:null,codes:[...HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER]};
+}
+function resolveThemeAssociationOrder(themeSweep=null,stage='preliminary'){
+  if(stage==='final'&&!themeSweep){
+    return{mode:'fixed-shuffled-final-v1',seed:HUMAN_VOTE_FINAL_FIXED_SHUFFLE_SEED,codes:[...HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER]};
+  }
+  return resolveHumanVoteThemeOrder(themeSweep);
 }
 function themeHumanVoteExperimentPrompt(themeSweep=null){
   const byCode=new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
@@ -1154,14 +1162,14 @@ async function runThemeHumanVoteExperiment(env,model,image,behavior='analyze',th
 // raw image -> preliminary Theme hypotheses -> Theme-aware Description ->
 // final Theme selection from Description only. Preliminary Themes never flow
 // directly into the final selector.
-function themeAssociationCatalog(themeSweep=null){
+function themeAssociationCatalog(themeSweep=null,stage='preliminary'){
   const byCode=new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
-  const order=resolveHumanVoteThemeOrder(themeSweep);
+  const order=resolveThemeAssociationOrder(themeSweep,stage);
   return order.codes.map(code=>byCode.get(code)).filter(Boolean).map(t=>`${t.code} — ${t.name}: ${t.aiMeaning}`).join('\n');
 }
 
 function themeAssociationPrompt({description='',themeSweep=null,stage='preliminary'}={}){
-  const catalog=themeAssociationCatalog(themeSweep);
+  const catalog=themeAssociationCatalog(themeSweep,stage);
   if(stage==='final'){
     return `FINAL GENREACTRIX THEME SELECTION — DESCRIPTION ONLY.\n\nWhich three of these 91 Themes would a human viewer be most likely to associate with an image matching this description? Rank them from strongest to weakest fit.\n\nIMAGE DESCRIPTION:\n${String(description||'').trim()}\n\nCURRENT 91 THEME DEFINITIONS:\n${catalog}\n\nReturn exactly three lines and no other text:\n1|PFM####|one short description-grounded reason\n2|PFM####|one short description-grounded reason\n3|PFM####|one short description-grounded reason`;
   }
@@ -1194,7 +1202,7 @@ async function runThemeAssociation(env,model,{image=null,description='',behavior
       const repair=attempt===1?'':'\n\nFORMAT RECOVERY: Return exactly ranks 1, 2, and 3 using valid PFM#### codes, one row per line, with no other text.';
       lastRaw=await runStructured(env,model,stage==='final'?null:image,themeAssociationPrompt({description,themeSweep,stage})+repair,null,650,'text',{behavior,temperature:0,themeSweepPass:Number(themeSweep?.pass)||null});
       const selections=parseThemeAssociation(lastRaw);
-      return {selections,diagnostics:{schemaVersion:1,protocol:stage==='final'?'description-only-human-association-v1':'image-only-preliminary-human-association-v1',stage,imageAccess:stage!=='final',descriptionAccess:stage==='final',themeDefinitionOrder:resolveHumanVoteThemeOrder(themeSweep).mode,themeDefinitionOrderSeed:resolveHumanVoteThemeOrder(themeSweep).seed,themeSweepId:themeSweep?.sweepId||null,themeSweepPass:Number(themeSweep?.pass)||null,selectedCodes:selections.map(row=>row.code),selectionCallCount:1}};
+      return {selections,diagnostics:{schemaVersion:1,protocol:stage==='final'?'description-only-human-association-v1':'image-only-preliminary-human-association-v1',stage,imageAccess:stage!=='final',descriptionAccess:stage==='final',themeDefinitionOrder:resolveThemeAssociationOrder(themeSweep,stage).mode,themeDefinitionOrderSeed:resolveThemeAssociationOrder(themeSweep,stage).seed,themeSweepId:themeSweep?.sweepId||null,themeSweepPass:Number(themeSweep?.pass)||null,selectedCodes:selections.map(row=>row.code),selectionCallCount:1}};
     }catch(error){lastError=error;}
   }
   throw diagnosticError(lastError?.message||`Theme ${stage} association selection failed.`,{phase:`theme-association-${stage}`,responsePreview:String(lastRaw||'').slice(0,1200)});
@@ -3450,6 +3458,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.96 — EXPERIMENT: one-variable replication of .95; only the final Description-only Theme pass uses a second fixed deterministic 91-Theme shuffle.
 // v0.9.6.88 — EXPERIMENT: Theme Sweep order control: canonical pack Pass 1; one fixed seeded shuffle per recovery Pass 2/3; human-vote scoring and 91 definitions unchanged.
 // v0.9.6.87 — EXPERIMENT: ordinary unconstrained Theme Rerun uses the .86 shuffled raw human-vote selector so the exact flagged sample can be rerolled; constrained reruns retain .84 logic.
 // v0.9.6.86 — EXPERIMENT: same raw human-vote selection as .85, with only the 91-definition presentation order fixed-shuffled; .84 remains frozen control and powers Theme Rerun.
@@ -4043,7 +4052,7 @@ async function analyze(env,body){
       };
       components.__freshPipelineDescription=descriptionPass.description;
       components.__freshPipelineDescriptionDiagnostics=descriptionPass.diagnostics;
-      promptVersions.themes='genreactrix-themes-pfm-v27-preserved-human-vote-plus-description-led-final';
+      promptVersions.themes='genreactrix-themes-pfm-v28-preserved-human-vote-plus-description-led-final-second-shuffle';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) {
