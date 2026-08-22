@@ -5,7 +5,7 @@
    literal evidence, independent Prim scores, candidate entry, gate/fit audit,
    closest alternatives, and Prim-to-Theme consistency.
 */
-const API_VERSION = '0.9.6.91-blind-prim-diagnostic';
+const API_VERSION = '0.9.6.92-blind-prim-text-contract';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -3701,28 +3701,36 @@ const analysisProviderSummary = (env,primaryModel) => {
 
 function blindPrimPrompt(){
   const definitions=PRIMFUSION_REGISTRY.primitives.map(row=>`${row.id} — ${row.name}: ${String(row.aiMeaning||'').replace(/\s+/g,' ').trim()}`).join('\n');
-  return `BLIND PRIM TEST — IMAGE ONLY\n\nEvaluate the image using only the 14 Prim definitions below.\nDo not use or infer PrimFusion Themes. You have not been given Themes, prior AI results, descriptions, Reaction scores, Director choices, or any other image history.\n\nChoose only the Prims that genuinely apply to this image. Return between ZERO and FOUR Prims. Zero is a valid answer when none fits meaningfully. Do not fill slots merely because up to four are allowed. Rank selected Prims strongest to weakest. Give exactly one short, concrete, image-grounded reason for each selected Prim. Do not output percentages, scores, confidence numbers, Theme names, or extra commentary.\n\n14 PRIM DEFINITIONS:\n${definitions}\n\nReturn the required structured result.`;
+  return `BLIND PRIM TEST — IMAGE ONLY\n\nEvaluate the image using only the 14 Prim definitions below.\nDo not use or infer PrimFusion Themes. You have not been given Themes, prior AI results, descriptions, Reaction scores, Director choices, or any other image history.\n\nChoose only the Prims that genuinely apply to this image. Return between ZERO and FOUR Prims. Zero is a valid answer when none fits meaningfully. Do not fill slots merely because up to four are allowed. Rank selected Prims strongest to weakest by line order. Give exactly one short, concrete, image-grounded reason for each selected Prim. Do not output percentages, scores, confidence numbers, Theme names, JSON, Markdown, or extra commentary.\n\n14 PRIM DEFINITIONS:\n${definitions}\n\nOUTPUT CONTRACT\nIf no Prim genuinely applies, return exactly:\nNONE\n\nOtherwise return one line per selected Prim, strongest first, using exactly:\nPICK|P##|short concrete visible reason\n\nReturn no other lines.`;
 }
 
-function blindPrimSchema(){
-  return {
-    type:'object',
-    properties:{
-      picks:{
-        type:'array',maxItems:4,
-        items:{
-          type:'object',
-          properties:{
-            rank:{type:'integer',minimum:1,maximum:4},
-            code:{type:'string',enum:PRIMFUSION_REGISTRY.primitives.map(row=>row.id)},
-            reason:{type:'string',minLength:1,maxLength:400}
-          },
-          required:['rank','code','reason'],additionalProperties:false
-        }
-      }
-    },
-    required:['picks'],additionalProperties:false
-  };
+function parseBlindPrimText(value){
+  const raw=String(value??'').trim();
+  if(!raw)throw diagnosticError('Blind Prim provider returned an empty response',{phase:'blind-prim-parse',responsePreview:''});
+  const cleaned=raw.replace(/^```(?:text)?\s*/i,'').replace(/\s*```$/,'').trim();
+  if(/^NONE\s*[.!]?$/i.test(cleaned))return [];
+  const validCodes=new Set(PRIMFUSION_REGISTRY.primitives.map(row=>row.id));
+  const rows=[],seen=new Set();
+  for(const sourceLine of cleaned.split(/\r?\n/)){
+    const line=sourceLine.trim().replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, '');
+    if(!line)continue;
+    if(/^NONE\s*[.!]?$/i.test(line)){
+      if(rows.length)throw diagnosticError('Blind Prim provider mixed NONE with Prim picks',{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
+      return [];
+    }
+    let match=line.match(/^PICK\s*\|\s*(P\d{2})\s*\|\s*(.+)$/i);
+    if(!match)match=line.match(/^PICK\s*\|\s*\d+\s*\|\s*(P\d{2})\s*\|\s*(.+)$/i);
+    if(!match)match=line.match(/^(P\d{2})\s*(?:\||:|—|-)\s*(.+)$/i);
+    if(!match)continue;
+    const code=String(match[1]||'').toUpperCase(),reason=String(match[2]||'').replace(/\s+/g,' ').trim().slice(0,400);
+    if(!validCodes.has(code))throw diagnosticError(`Blind Prim provider returned unknown Prim ${code||'(blank)'}`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
+    if(seen.has(code))throw diagnosticError(`Blind Prim provider returned duplicate Prim ${code}`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
+    if(!reason)throw diagnosticError(`Blind Prim provider returned no reason for ${code}`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
+    seen.add(code);rows.push({rank:rows.length+1,code,reason});
+    if(rows.length>4)throw diagnosticError(`Blind Prim provider returned ${rows.length} picks; maximum is 4`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
+  }
+  if(!rows.length)throw diagnosticError('Blind Prim provider response did not match the PICK/NONE contract',{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
+  return rows;
 }
 
 async function runBlindPrimDiagnostic(env,body){
@@ -3730,18 +3738,12 @@ async function runBlindPrimDiagnostic(env,body){
   if(!body?.imageId)throw new Error('imageId is required');
   const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl);
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
-  const raw=await runStructured(env,model,image,blindPrimPrompt(),blindPrimSchema(),1200,'json_schema',{behavior:'analyze',temperature:0.1});
-  const picks=Array.isArray(raw?.picks)?raw.picks:[];
-  if(picks.length>4)throw new Error(`Blind Prim provider returned ${picks.length} picks; maximum is 4`);
-  const validCodes=new Set(PRIMFUSION_REGISTRY.primitives.map(row=>row.id)),seen=new Set();
-  for(let index=0;index<picks.length;index++){
-    const row=picks[index]||{},code=String(row.code||'').trim().toUpperCase(),rank=Number(row.rank),reason=String(row.reason||'').replace(/\s+/g,' ').trim();
-    if(rank!==index+1)throw new Error(`Blind Prim provider returned invalid rank sequence at position ${index+1}`);
-    if(!validCodes.has(code))throw new Error(`Blind Prim provider returned unknown Prim ${code||'(blank)'}`);
-    if(seen.has(code))throw new Error(`Blind Prim provider returned duplicate Prim ${code}`);
-    if(!reason)throw new Error(`Blind Prim provider returned no reason for ${code}`);
-    seen.add(code);
-  }
+  // The Blind Prim experiment deliberately avoids provider-enforced JSON Schema.
+  // Provider routing is already proven independently; semantic output is parsed and
+  // validated here so this diagnostic cannot fail merely because a model/provider
+  // rejects a schema keyword or structured-output dialect.
+  const raw=await runStructured(env,model,image,blindPrimPrompt(),null,900,'text',{behavior:'analyze',temperature:0.1,preserveWhitespace:true});
+  const picks=parseBlindPrimText(raw);
   const routing=providerRoutingSnapshot(env,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
   return {
     schemaVersion:1,
@@ -3754,7 +3756,7 @@ async function runBlindPrimDiagnostic(env,body){
     provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
     providerRouting:routing,
     rawProviderResult:raw,
-    picks:picks.map(row=>({rank:Number(row.rank),code:String(row.code).trim().toUpperCase(),reason:String(row.reason).replace(/\s+/g,' ').trim()}))
+    picks
   };
 }
 
