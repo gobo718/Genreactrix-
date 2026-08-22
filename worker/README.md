@@ -1,6 +1,23 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.96-final-theme-second-shuffle.
+Current bundled Worker: v0.9.6.99-theme-mismatch-auto-recovery.
+
+## Worker 0.9.6.99 — Theme mismatch auto-recovery
+
+- Matrix remains **0.0.0.0**.
+- Hard Theme/evidence contradictions trigger one blocked Theme rescan; audit-only `GATE_FAIL` results get one unblocked confirmation rescan.
+- Preliminary Theme rationales that contradict their selected Theme’s defining requirements get one blocked preliminary rescan.
+- Pride, PartyTime, and Obsessive use the newly approved wording; approved Exposure, Brutal, and Grotesque calibration is preserved; Aggressive and Mundane remain unchanged.
+- Theme/Prompt diagnostic provider timeout is 120 seconds. Malformed/incomplete Theme reasoning gets one immediate format retry; provider timeout exits for one fresh outer request rather than nesting another 120-second provider call.
+- Corrects the prior pre-live Matrix metadata/file-name booboo; canonical Matrix identity is 0.0.0.0.
+
+## Worker 0.9.6.97 — Targeted Theme-definition calibration
+
+- Matrix remains v0.0.0.0; this pre-live Theme-definition calibration does not advance the Matrix version.
+- Changes only PFM0512 Obsessive, PFM0210 Grotesque, PFM0510 Brutal, PFM0209 Exposure, and PFM0513 Pride wording.
+- PFM0514 Aggressive and PFM1214 Mundane are unchanged.
+- Inherits the v0.9.6.96 final Description-only fixed second shuffle unchanged; no additional AI calls or unrelated selection machinery changes.
+
 
 ## Worker 0.9.6.96 — Final Theme second shuffle
 
