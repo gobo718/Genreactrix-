@@ -1,6 +1,13 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.95-preserve-theme-machinery-description-refinement.
+Current bundled Worker: v0.9.6.96-final-theme-second-shuffle.
+
+## Worker 0.9.6.96 — Final Theme second shuffle
+
+- One-variable continuation of v0.9.6.95.
+- Preliminary Theme selection keeps the existing fixed shuffled order.
+- Only the final Description-only Theme catalog presentation order changes, using a second fixed deterministic shuffle.
+- No extra AI calls and no changes to prompts, definitions, Description/Zazzly behavior, providers, fallback routing, Theme reasoning, Reactions, or storage.
 
 ## Worker 0.9.6.95 — Preserve Theme machinery + Description refinement
 
