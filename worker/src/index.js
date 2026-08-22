@@ -1,10 +1,11 @@
-/* Genreactrix AI Worker v0.9.6.89-theme-definition-gates
-   Theme Sweep behavior remains layered onto v0.9.6.88.
-   Human-vote scoring, Theme ordering behavior, Reactions, and Description are unchanged.
-   Only PFM0407 Satirical, PFM0514 Aggressive, PFM0614 Monstrous, and
-   PFM1014 Repulsive definitions are tightened with explicit negative gates.
+/* Genreactrix AI Worker v0.9.6.90-theme-reasoning-diagnostic
+   Diagnostic continuation of v0.9.6.89. Theme definitions and Theme Sweep
+   mechanics remain unchanged. The human-vote selector now records a terse
+   selection basis, and Themes Info adds an after-selection audit containing
+   literal evidence, independent Prim scores, candidate entry, gate/fit audit,
+   closest alternatives, and Prim-to-Theme consistency.
 */
-const API_VERSION = '0.9.6.89-theme-definition-gates';
+const API_VERSION = '0.9.6.91-blind-prim-diagnostic';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1034,7 +1035,7 @@ function themeHumanVoteExperimentPrompt(themeSweep=null){
     .filter(Boolean)
     .map(t=>`${t.code} — ${t.name}${t.aiMeaning?` — Meaning: ${t.aiMeaning}`:''}`)
     .join('\n');
-  return `GENREACTRIX HUMAN-VOTE THEME EXPERIMENT.\n\nImagine a large group of independent human judges viewing this image. Each human may choose up to 3 Themes from the 91 definitions below. Predict the resulting human Theme leaderboard.\n\nSubmit up to 3 ranked Themes to maximize your expected score under this scoring system:\n- Human rank #1: +10,000 points.\n- Human ranks #2-4: +2,000 points each.\n- Human ranks #5-8: +500 points each.\n- Human ranks #9-12: +125 points each.\n- Each blank submitted slot: -500 points.\n- A submitted Theme outside the human top 12 but selected by at least one human: -1,000 points.\n- A submitted Theme selected by no humans at all: -10,000 points.\n\nMaximize expected score.\n\nCURRENT 91 THEME DEFINITIONS:\n${choices}\n\nOUTPUT ONLY these three ranked rows, one per line:\n1|PFM#### or 1|BLANK\n2|PFM#### or 2|BLANK\n3|PFM#### or 3|BLANK\n\nDo not output percentages, confidence scores, rationales, explanations, or any other text.`;
+  return `GENREACTRIX HUMAN-VOTE THEME EXPERIMENT.\n\nImagine a large group of independent human judges viewing this image. Each human may choose up to 3 Themes from the 91 definitions below. Predict the resulting human Theme leaderboard.\n\nSubmit up to 3 ranked Themes to maximize your expected score under this scoring system:\n- Human rank #1: +10,000 points.\n- Human ranks #2-4: +2,000 points each.\n- Human ranks #5-8: +500 points each.\n- Human ranks #9-12: +125 points each.\n- Each blank submitted slot: -500 points.\n- A submitted Theme outside the human top 12 but selected by at least one human: -1,000 points.\n- A submitted Theme selected by no humans at all: -10,000 points.\n\nMaximize expected score.\n\nCURRENT 91 THEME DEFINITIONS:\n${choices}\n\nOUTPUT ONLY these three ranked rows, one per line:\n1|PFM####|brief concrete selection basis or 1|BLANK|brief reason for leaving blank\n2|PFM####|brief concrete selection basis or 2|BLANK|brief reason for leaving blank\n3|PFM####|brief concrete selection basis or 3|BLANK|brief reason for leaving blank\n\nDo not output percentages or confidence scores. Keep each selection basis to one short sentence grounded in what is visible in the image. Do not add any other text.`;
 }
 
 function parseThemeHumanVoteExperiment(raw){
@@ -1046,21 +1047,70 @@ function parseThemeHumanVoteExperiment(raw){
     const rank=Number(String(parts[0]||'').replace(/[^0-9]/g,''));
     if(![1,2,3].includes(rank)||rows.has(rank))continue;
     const value=String(parts[1]||'').toUpperCase();
+    const rationale=parts.slice(2).join('|').replace(/\s+/g,' ').trim().slice(0,700);
     if(value==='BLANK'){
-      rows.set(rank,{rank,blank:true});
+      rows.set(rank,{rank,blank:true,rationale});
       continue;
     }
     if(!validCodes.has(value)||used.has(value))continue;
     used.add(value);
-    rows.set(rank,{rank,blank:false,code:value});
+    rows.set(rank,{rank,blank:false,code:value,rationale});
   }
   if(rows.size!==3)throw new Error(`Human-vote Theme experiment returned ${rows.size} valid ranked rows instead of 3.`);
   const ordered=[1,2,3].map(rank=>rows.get(rank));
   return {
-    selections:ordered.filter(row=>!row.blank).map((row,index)=>({rank:index+1,source:'matrix',code:row.code,confidence:null,rationale:''})),
-    submittedRows:ordered.map(row=>row.blank?{rank:row.rank,blank:true}:{rank:row.rank,blank:false,code:row.code}),
+    selections:ordered.filter(row=>!row.blank).map((row,index)=>({rank:index+1,source:'matrix',code:row.code,confidence:null,rationale:String(row.rationale||'').trim()})),
+    submittedRows:ordered.map(row=>row.blank?{rank:row.rank,blank:true,rationale:String(row.rationale||'').trim()}:{rank:row.rank,blank:false,code:row.code,rationale:String(row.rationale||'').trim()}),
     blankCount:ordered.filter(row=>row.blank).length
   };
+}
+
+
+const THEME_REASONING_FAILURE_CLASSES = new Set(['none','image-misread','definition-misread','ranking-error','emotional-salience','invented-evidence','cue-trap','order-availability','other']);
+function themeReasoningPrimCatalog(){
+  return PRIMFUSION_REGISTRY.primitives.map(p=>`${p.id} — ${p.name}: ${String(p.aiMeaning||'').split(/\n/)[0]}`).join('\n');
+}
+function themeReasoningSelectedCatalog(selections=[]){
+  const byCode=new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
+  return selections.map(row=>{const t=byCode.get(row.code);return t?`${row.rank}|${t.code} — ${t.name}: ${t.aiMeaning}\nSTATED SELECTION BASIS: ${String(row.rationale||'').trim()||'None supplied'}`:''}).filter(Boolean).join('\n\n');
+}
+function themeReasoningPrompt(selections=[],themeSweep=null){
+  const order=resolveHumanVoteThemeOrder(themeSweep),orderByCode=new Map(order.codes.map((code,index)=>[code,index+1]));
+  const allThemes=PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>`${t.code} — ${t.name}: ${t.aiMeaning}`).join('\n');
+  const locked=selections.map(row=>`${row.rank}|${row.code}|basis=${String(row.rationale||'').trim()||'None supplied'}`).join('\n')||'No nonblank Theme was selected.';
+  return `GENREACTRIX THEMES INFO — DIAGNOSTIC SIDECAR.\n\nThe Theme selections below are already LOCKED by a prior human-vote selection call. This diagnostic MUST NOT change them. Analyze why they may have been chosen and whether the visible evidence actually supports them.\n\nFirst construct literal visual evidence. Then score the 14 Prims independently from the image. Then identify up to 12 Themes that deserve serious consideration before ranking. Finally audit each locked selected Theme against its exact definition.\n\nDo not reward a Theme merely for being emotional, dramatic, provocative, attention-grabbing, evocative, aesthetically interesting, or richer to discuss. If a selected Theme lacks its required semantic evidence, mark it REJECT even if a plausible story can be written.\n\nFor Prim scores, 0 means no meaningful support; 100 means unmistakable support. Score all 14. The Prim pass is diagnostic only and does not alter the locked Theme result.\n\nFor SELECTED audit status: SUPPORTED = clear evidence; WEAK = partial/closest-available evidence; REJECT = insufficient or contradicted evidence. GATE_PASS means the selected Theme's defining/required meaning is visibly satisfied; GATE_FAIL means it is not.\n\nFailure class must be exactly one of: none, image-misread, definition-misread, ranking-error, emotional-salience, invented-evidence, cue-trap, order-availability, other. Use none when the selection is sound. CLOSEST may be one PFM code from the full vocabulary or NONE.\n\nLOCKED SELECTIONS\n${locked}\n\n14 PRIMS\n${themeReasoningPrimCatalog()}\n\nFULL THEME VOCABULARY\n${allThemes}\n\nReturn only these line types, in this order:\nEVIDENCE|E1|one concrete visible fact\n... 6 to 12 EVIDENCE lines\nPRIM|P01|0-100|E1,E2_or_NONE|brief concrete reason\n... exactly one PRIM line for every P01 through P14\nCANDIDATE|PFM####\n... up to 12 unique serious pre-ranking candidates\nSELECTED|rank|PFM####|SUPPORTED_or_WEAK_or_REJECT|E1,E2_or_NONE|GATE_PASS_or_GATE_FAIL|PFM####_or_NONE|failure-class|brief audit reason\n... exactly one SELECTED line for every nonblank locked Theme.\n\nDo not output prose outside these records.`;
+}
+function parseThemeReasoningDiagnostic(raw,selections=[],themeSweep=null){
+  const validThemes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code)),validPrims=new Set(PRIMFUSION_REGISTRY.primitives.map(p=>p.id));
+  const evidence=[],evidenceIds=new Set(),primMap=new Map(),candidates=[],candidateSet=new Set(),selectedMap=new Map();
+  for(const line of String(raw||'').replace(/\r/g,'').split('\n')){
+    const parts=line.trim().replace(/^[-*•]\s*/,'').split('|').map(x=>x.trim());if(!parts.length)continue;
+    const kind=String(parts[0]||'').toUpperCase();
+    if(kind==='EVIDENCE'&&parts.length>=3){const id=String(parts[1]||'').toUpperCase();if(!/^E\d{1,2}$/.test(id)||evidenceIds.has(id))continue;const fact=parts.slice(2).join('|').replace(/\s+/g,' ').trim().slice(0,500);if(!fact)continue;evidenceIds.add(id);evidence.push({id,fact});continue;}
+    if(kind==='PRIM'&&parts.length>=5){const code=String(parts[1]||'').toUpperCase(),score=Number(String(parts[2]||'').replace(/[^0-9.]/g,''));if(!validPrims.has(code)||primMap.has(code)||!Number.isFinite(score))continue;const refs=[...new Set((String(parts[3]||'').match(/\bE\d{1,2}\b/gi)||[]).map(x=>x.toUpperCase()))];const reason=parts.slice(4).join('|').replace(/\s+/g,' ').trim().slice(0,700);primMap.set(code,{code,score:Math.max(0,Math.min(100,score)),evidenceIds:refs,reason});continue;}
+    if(kind==='CANDIDATE'&&parts.length>=2){const code=String(parts[1]||'').toUpperCase();if(validThemes.has(code)&&!candidateSet.has(code)){candidateSet.add(code);candidates.push(code);}continue;}
+    if(kind==='SELECTED'&&parts.length>=9){const rank=Number(parts[1]),code=String(parts[2]||'').toUpperCase(),status=String(parts[3]||'').toUpperCase(),gate=String(parts[5]||'').toUpperCase(),closestRaw=String(parts[6]||'').toUpperCase(),failure=String(parts[7]||'').toLowerCase();if(!Number.isInteger(rank)||!validThemes.has(code)||!['SUPPORTED','WEAK','REJECT'].includes(status)||!['GATE_PASS','GATE_FAIL'].includes(gate))continue;const refs=[...new Set((String(parts[4]||'').match(/\bE\d{1,2}\b/gi)||[]).map(x=>x.toUpperCase()))];const closest=validThemes.has(closestRaw)&&closestRaw!==code?closestRaw:null,reason=parts.slice(8).join('|').replace(/\s+/g,' ').trim().slice(0,900);selectedMap.set(code,{rank,code,status,evidenceIds:refs,gate,closestAlternativeCode:closest,failureClass:THEME_REASONING_FAILURE_CLASSES.has(failure)?failure:'other',reason});}
+  }
+  const primScores=PRIMFUSION_REGISTRY.primitives.map(p=>primMap.get(p.id)||{code:p.id,score:null,evidenceIds:[],reason:'Diagnostic did not return a valid score.'});
+  const byPrim=new Map(primScores.map(row=>[row.code,row]));
+  const order=resolveHumanVoteThemeOrder(themeSweep),orderByCode=new Map(order.codes.map((code,index)=>[code,index+1]));
+  const selectedAudits=selections.map(row=>selectedMap.get(row.code)||{rank:row.rank,code:row.code,status:'UNPARSED',evidenceIds:[],gate:'UNPARSED',closestAlternativeCode:null,failureClass:'other',reason:'Diagnostic did not return a valid selected-Theme audit.'});
+  const primConsistency=selections.map(row=>{const m=String(row.code||'').match(/^PFM(\d{2})(\d{2})$/),primCodes=m?[`P${m[1]}`,`P${m[2]}`]:[],scores=primCodes.map(code=>byPrim.get(code)?.score??null);return{rank:row.rank,code:row.code,themeOrderPosition:orderByCode.get(row.code)||null,primCodes,primScores:scores,minPrimScore:scores.every(v=>Number.isFinite(v))?Math.min(...scores):null,averagePrimScore:scores.every(v=>Number.isFinite(v))?Math.round((scores[0]+scores[1])/2):null,candidateEntered:candidateSet.has(row.code)};});
+  return{schemaVersion:1,status:'complete',protocol:'human-vote-reasoning-sidecar-v1',evidenceLedger:evidence,primScores,candidateCodes:candidates.slice(0,12),selectedAudits,primConsistency,themeDefinitionOrder:order.mode,themeDefinitionOrderSeed:order.seed};
+}
+async function runThemeReasoningDiagnostic(env,model,image,behavior,selections=[],themeSweep=null){
+  let lastError=null,lastRaw='';
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const recovery=attempt===1?'':'\n\nFORMAT RECOVERY: Return only EVIDENCE, PRIM, CANDIDATE, and SELECTED records exactly as specified. Include all 14 PRIM records and every locked SELECTED record.';
+      lastRaw=await runStructured(env,model,image,themeReasoningPrompt(selections,themeSweep)+recovery,null,3600,'text',{behavior,themeReasoningDiagnostic:true,temperature:0,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS,preserveWhitespace:true});
+      const parsed=parseThemeReasoningDiagnostic(lastRaw,selections,themeSweep);
+      const validPrimCount=parsed.primScores.filter(row=>Number.isFinite(row.score)).length,validAuditCount=parsed.selectedAudits.filter(row=>row.status!=='UNPARSED').length;
+      if(validPrimCount<14||validAuditCount<selections.length)throw new Error(`Theme reasoning diagnostic incomplete: ${validPrimCount}/14 Prim scores and ${validAuditCount}/${selections.length} selected audits.`);
+      return parsed;
+    }catch(error){lastError=error;}
+  }
+  return{schemaVersion:1,status:'incomplete',protocol:'human-vote-reasoning-sidecar-v1',error:String(lastError?.message||lastError||'Theme reasoning diagnostic failed').slice(0,1200),responsePreview:String(lastRaw||'').slice(0,1200),evidenceLedger:[],primScores:[],candidateCodes:[],selectedAudits:[],primConsistency:[],themeDefinitionOrder:resolveHumanVoteThemeOrder(themeSweep).mode,themeDefinitionOrderSeed:resolveHumanVoteThemeOrder(themeSweep).seed};
 }
 
 async function runThemeHumanVoteExperiment(env,model,image,behavior='analyze',themeSweep=null){
@@ -1091,7 +1141,7 @@ async function runThemeHumanVoteExperiment(env,model,image,behavior='analyze',th
           selectedCodes:parsed.selections.map(row=>row.code),
           blankCount:parsed.blankCount,
           confidenceGenerated:false,
-          rationaleGenerated:false
+          rationaleGenerated:true
         }
       };
     }catch(error){lastError=error;}
@@ -1148,7 +1198,7 @@ async function runThemeHumanVoteRerunExperiment(env,model,image,behavior,rerunIn
           selectedCodes:parsed.selections.map(row=>row.code),
           blankCount:parsed.blankCount,
           confidenceGenerated:false,
-          rationaleGenerated:false,
+          rationaleGenerated:true,
           recordFlagsTouched:false
         }
       };
@@ -3648,6 +3698,66 @@ const analysisProviderSummary = (env,primaryModel) => {
   return {provider:{id,displayName,model:effectiveModel,routing},model:effectiveModel};
 };
 
+
+function blindPrimPrompt(){
+  const definitions=PRIMFUSION_REGISTRY.primitives.map(row=>`${row.id} — ${row.name}: ${String(row.aiMeaning||'').replace(/\s+/g,' ').trim()}`).join('\n');
+  return `BLIND PRIM TEST — IMAGE ONLY\n\nEvaluate the image using only the 14 Prim definitions below.\nDo not use or infer PrimFusion Themes. You have not been given Themes, prior AI results, descriptions, Reaction scores, Director choices, or any other image history.\n\nChoose only the Prims that genuinely apply to this image. Return between ZERO and FOUR Prims. Zero is a valid answer when none fits meaningfully. Do not fill slots merely because up to four are allowed. Rank selected Prims strongest to weakest. Give exactly one short, concrete, image-grounded reason for each selected Prim. Do not output percentages, scores, confidence numbers, Theme names, or extra commentary.\n\n14 PRIM DEFINITIONS:\n${definitions}\n\nReturn the required structured result.`;
+}
+
+function blindPrimSchema(){
+  return {
+    type:'object',
+    properties:{
+      picks:{
+        type:'array',maxItems:4,
+        items:{
+          type:'object',
+          properties:{
+            rank:{type:'integer',minimum:1,maximum:4},
+            code:{type:'string',enum:PRIMFUSION_REGISTRY.primitives.map(row=>row.id)},
+            reason:{type:'string',minLength:1,maxLength:400}
+          },
+          required:['rank','code','reason'],additionalProperties:false
+        }
+      }
+    },
+    required:['picks'],additionalProperties:false
+  };
+}
+
+async function runBlindPrimDiagnostic(env,body){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  if(!body?.imageId)throw new Error('imageId is required');
+  const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl);
+  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
+  const raw=await runStructured(env,model,image,blindPrimPrompt(),blindPrimSchema(),1200,'json_schema',{behavior:'analyze',temperature:0.1});
+  const picks=Array.isArray(raw?.picks)?raw.picks:[];
+  if(picks.length>4)throw new Error(`Blind Prim provider returned ${picks.length} picks; maximum is 4`);
+  const validCodes=new Set(PRIMFUSION_REGISTRY.primitives.map(row=>row.id)),seen=new Set();
+  for(let index=0;index<picks.length;index++){
+    const row=picks[index]||{},code=String(row.code||'').trim().toUpperCase(),rank=Number(row.rank),reason=String(row.reason||'').replace(/\s+/g,' ').trim();
+    if(rank!==index+1)throw new Error(`Blind Prim provider returned invalid rank sequence at position ${index+1}`);
+    if(!validCodes.has(code))throw new Error(`Blind Prim provider returned unknown Prim ${code||'(blank)'}`);
+    if(seen.has(code))throw new Error(`Blind Prim provider returned duplicate Prim ${code}`);
+    if(!reason)throw new Error(`Blind Prim provider returned no reason for ${code}`);
+    seen.add(code);
+  }
+  const routing=providerRoutingSnapshot(env,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
+  return {
+    schemaVersion:1,
+    protocol:'blind-prim-image-only-v1',
+    imageId:String(body.imageId),
+    analyzedAt:new Date().toISOString(),
+    workerVersion:API_VERSION,
+    primFusionMatrixVersion:matrixVersion(),
+    model:effectiveProviderModel(env,model),
+    provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
+    providerRouting:routing,
+    rawProviderResult:raw,
+    picks:picks.map(row=>({rank:Number(row.rank),code:String(row.code).trim().toUpperCase(),reason:String(row.reason).replace(/\s+/g,' ').trim()}))
+  };
+}
+
 async function analyze(env,body){
   if (!env.AI?.run) throw new Error('Workers AI binding AI is not configured');
 
@@ -3746,13 +3856,24 @@ async function analyze(env,body){
       promptVersions.themes=body.themeSweep?.orderMode==='canonical'?'genreactrix-themes-pfm-v25-human-vote-pack-sweep-canonical':body.themeSweep?.orderMode==='shuffled'?'genreactrix-themes-pfm-v25-human-vote-pack-sweep-shuffled-recovery':'genreactrix-themes-pfm-v23-human-vote-raw-fixed-shuffled-order-experiment';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
-    if (requested.includes('genreReasons')) components.genreReasons = resolvedThemes.map(item=>({
-      rank:item.rank,code:item.code||null,name:item.name||item.proposedName||'',confidence:item.confidence,
-      rationale:item.rationale,matrixVersion:item.matrixVersion
-    }));
+    if (requested.includes('genreReasons')) {
+      const humanVoteDiagnosticEligible = !themeRerun || themeHumanVoteRerunExperimentEligible(themeRerun);
+      const diagnostic = humanVoteDiagnosticEligible
+        ? await runThemeReasoningDiagnostic(env,model,image,behavior,resolvedThemes,themeRerun?null:(body.themeSweep||null))
+        : {schemaVersion:1,status:'not-applicable',protocol:'human-vote-reasoning-sidecar-v1',reason:'Director-constrained Theme Rerun uses the frozen-evidence rerun diagnostic pipeline.'};
+      components.genreReasons = {
+        schemaVersion:2,
+        protocol:humanVoteDiagnosticEligible?'human-vote-selection-basis-plus-audit-v1':'director-rerun-shared-assessment-v1',
+        themes:resolvedThemes.map(item=>({
+          rank:item.rank,code:item.code||null,name:item.name||item.proposedName||'',confidence:item.confidence,
+          rationale:item.rationale,matrixVersion:item.matrixVersion
+        })),
+        diagnostic
+      };
+    }
     customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
     resolvedThemesForSlop = resolvedThemes.map(row=>({...row}));
-    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v1-shared-assessment';
+    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun&&!themeHumanVoteRerunExperimentEligible(themeRerun)?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v3-human-vote-reasoning-diagnostic';
   }
 
   if (requested.includes('description')){
@@ -3815,7 +3936,8 @@ export default {
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
         providerRouting:{primaryProvider:'cloudflare-workers-ai',fallbackProvider:'openai-via-cloudflare-ai-gateway',fallbackModel:fallbackModelFor(env),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
-        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
+        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'},
+        blindPrimDiagnostic:{enabled:true,protocol:'blind-prim-image-only-v1',minPicks:0,maxPicks:4}
       });
     }
 
@@ -3883,6 +4005,19 @@ export default {
         else if(mode==='question-block')result=await runAmaQuestionStep(routedEnv,body);
         else result=await runAma(routedEnv,body);
         return json({ok:true,result,providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/blind-prims'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+        const body = await request.json().catch(()=>null);
+        if (!body) return json({ok:false,error:'JSON body required'},{status:400});
+        const routedEnv=providerRoutingEnv(env,body);
+        return json({ok:true,result:await runBlindPrimDiagnostic(routedEnv,body),providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
