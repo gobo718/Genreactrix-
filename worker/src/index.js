@@ -1,11 +1,11 @@
-/* Genreactrix AI Worker v0.9.6.90-theme-reasoning-diagnostic
-   Diagnostic continuation of v0.9.6.89. Theme definitions and Theme Sweep
-   mechanics remain unchanged. The human-vote selector now records a terse
-   selection basis, and Themes Info adds an after-selection audit containing
-   literal evidence, independent Prim scores, candidate entry, gate/fit audit,
-   closest alternatives, and Prim-to-Theme consistency.
+/* Genreactrix AI Worker v0.9.6.95-preserve-theme-machinery-description-refinement
+   Preserve the proven fresh-image Theme selector and Theme reasoning sidecar.
+   Its three Themes become preliminary hypotheses for the Theme-aware Description;
+   final Themes are then selected from that completed Description. Any preliminary
+   Zazzly-associated Theme triggers an exhaustive all-14 Zazzly description sweep.
+   Description refusal/limitation gets one alternate-provider retry.
 */
-const API_VERSION = '0.9.6.92-blind-prim-text-contract';
+const API_VERSION = '0.9.6.95-preserve-theme-machinery-description-refinement';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1147,6 +1147,136 @@ async function runThemeHumanVoteExperiment(env,model,image,behavior='analyze',th
     }catch(error){lastError=error;}
   }
   throw diagnosticError(lastError?.message||'Human-vote Theme experiment failed.',{phase:'theme-human-vote-raw-experiment',responsePreview:String(lastRaw||'').slice(0,1200)});
+}
+
+
+// v0.9.6.94 — fresh analysis pipeline:
+// raw image -> preliminary Theme hypotheses -> Theme-aware Description ->
+// final Theme selection from Description only. Preliminary Themes never flow
+// directly into the final selector.
+function themeAssociationCatalog(themeSweep=null){
+  const byCode=new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>[t.code,t]));
+  const order=resolveHumanVoteThemeOrder(themeSweep);
+  return order.codes.map(code=>byCode.get(code)).filter(Boolean).map(t=>`${t.code} — ${t.name}: ${t.aiMeaning}`).join('\n');
+}
+
+function themeAssociationPrompt({description='',themeSweep=null,stage='preliminary'}={}){
+  const catalog=themeAssociationCatalog(themeSweep);
+  if(stage==='final'){
+    return `FINAL GENREACTRIX THEME SELECTION — DESCRIPTION ONLY.\n\nWhich three of these 91 Themes would a human viewer be most likely to associate with an image matching this description? Rank them from strongest to weakest fit.\n\nIMAGE DESCRIPTION:\n${String(description||'').trim()}\n\nCURRENT 91 THEME DEFINITIONS:\n${catalog}\n\nReturn exactly three lines and no other text:\n1|PFM####|one short description-grounded reason\n2|PFM####|one short description-grounded reason\n3|PFM####|one short description-grounded reason`;
+  }
+  return `PRELIMINARY GENREACTRIX THEME HYPOTHESES — IMAGE ONLY.\n\nLook directly at the image. Which three of these 91 Themes would a human viewer be most likely to associate with this image? These are preliminary hypotheses for a later Description pass and may be wrong. Rank the three strongest possibilities from strongest to weakest.\n\nCURRENT 91 THEME DEFINITIONS:\n${catalog}\n\nReturn exactly three lines and no other text:\n1|PFM####|one short visible basis\n2|PFM####|one short visible basis\n3|PFM####|one short visible basis`;
+}
+
+function parseThemeAssociation(raw){
+  const validCodes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code));
+  const rows=new Map(),used=new Set();
+  for(const sourceLine of String(raw||'').replace(/\r/g,'').split('\n')){
+    const line=sourceLine.trim().replace(/^[-*•]\s*/,'');
+    if(!line)continue;
+    const parts=line.split('|').map(x=>x.trim());
+    if(parts.length<2)continue;
+    const rank=Number(String(parts[0]||'').replace(/[^0-9]/g,''));
+    const code=String(parts[1]||'').toUpperCase();
+    if(![1,2,3].includes(rank)||rows.has(rank)||!validCodes.has(code)||used.has(code))continue;
+    const rationale=parts.slice(2).join('|').replace(/\s+/g,' ').trim().slice(0,700);
+    rows.set(rank,{rank,source:'matrix',code,confidence:null,rationale});
+    used.add(code);
+  }
+  if(rows.size!==3)throw new Error(`Theme association selector returned ${rows.size} valid ranked Themes instead of 3.`);
+  return [1,2,3].map(rank=>rows.get(rank));
+}
+
+async function runThemeAssociation(env,model,{image=null,description='',behavior='analyze',themeSweep=null,stage='preliminary'}={}){
+  let lastError=null,lastRaw='';
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const repair=attempt===1?'':'\n\nFORMAT RECOVERY: Return exactly ranks 1, 2, and 3 using valid PFM#### codes, one row per line, with no other text.';
+      lastRaw=await runStructured(env,model,stage==='final'?null:image,themeAssociationPrompt({description,themeSweep,stage})+repair,null,650,'text',{behavior,temperature:0,themeSweepPass:Number(themeSweep?.pass)||null});
+      const selections=parseThemeAssociation(lastRaw);
+      return {selections,diagnostics:{schemaVersion:1,protocol:stage==='final'?'description-only-human-association-v1':'image-only-preliminary-human-association-v1',stage,imageAccess:stage!=='final',descriptionAccess:stage==='final',themeDefinitionOrder:resolveHumanVoteThemeOrder(themeSweep).mode,themeDefinitionOrderSeed:resolveHumanVoteThemeOrder(themeSweep).seed,themeSweepId:themeSweep?.sweepId||null,themeSweepPass:Number(themeSweep?.pass)||null,selectedCodes:selections.map(row=>row.code),selectionCallCount:1}};
+    }catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||`Theme ${stage} association selection failed.`,{phase:`theme-association-${stage}`,responsePreview:String(lastRaw||'').slice(0,1200)});
+}
+
+function zazzlyTerms(){
+  const base=PRIMFUSION_REGISTRY.primitives.find(row=>row.id==='P09');
+  const fusions=PRIMFUSION_REGISTRY.aiThemeChoices.filter(row=>Array.isArray(row.primIds)&&row.primIds.includes('P09'));
+  return [
+    ...(base?[{code:base.id,name:base.name,aiMeaning:base.aiMeaning,kind:'prim'}]:[]),
+    ...fusions.map(row=>({code:row.code,name:row.name,aiMeaning:row.aiMeaning,kind:'fusion'}))
+  ];
+}
+
+function isZazzlyThemeCode(code){
+  const row=PRIMFUSION_REGISTRY.aiThemeChoices.find(item=>item.code===String(code||'').toUpperCase());
+  return Boolean(row&&Array.isArray(row.primIds)&&row.primIds.includes('P09'));
+}
+
+function preliminaryThemeDescriptionContext(preliminary=[]){
+  const byCode=new Map(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>[row.code,row]));
+  return preliminary.map(row=>byCode.get(row.code)).filter(Boolean).map((row,index)=>`${index+1}. ${row.code} — ${row.name}: ${row.aiMeaning}`).join('\n');
+}
+
+function zazzlyDescriptionProtocol(preliminary=[]){
+  const triggered=preliminary.some(row=>isZazzlyThemeCode(row.code));
+  if(!triggered)return{triggered:false,text:'',preliminaryZazzlyCodes:[],termCount:0};
+  const prelimCodes=preliminary.filter(row=>isZazzlyThemeCode(row.code)).map(row=>row.code);
+  const catalog=zazzlyTerms();
+  const text=`\n\nMANDATORY ZAZZLY COVERAGE — TRIGGERED BY THE PRELIMINARY THEMES.\nZazzly appeared in the preliminary Theme hypotheses. This trigger is absolute. Perform an exhaustive check of ALL 14 Zazzly terms below every time; do not stop after confirming one term.\n\nTreat every preliminary Zazzly-associated Theme as a strong 95% prior that the specific concept is genuinely present. Explicitly discuss the image evidence for that concept when reasonably supportable. The remaining 4.9% possibility belongs to the other Zazzly terms and is not a generic fallback bucket: inspect every alternative individually. Crucially, this 4.9% cross-check still happens even when the 95% preliminary Zazzly hypothesis is clearly supported. Continue through all 14 terms every time. Only after all 14 terms are unsupported may the Zazzly signal be treated as the 0.1% fully spurious case.\n\nThis is not merely an instruction to notice the evidence internally. The finished Description must actually SAY the reasonably supported Zazzly-relevant aspects. Directly and neutrally describe relevant body presentation, exposure, nudity, skin, underwear or revealing clothing, posing, sexual or erotic presentation, exhibitionistic framing, humiliation, lewdness, seduction, kink, indulgence, or other Zazzly-term evidence when it is visibly supported. Do not sanitize, euphemize, or silently omit those aspects.\n\nALL 14 ZAZZLY TERMS — CHECK EACH ONE:\n${catalog.map((row,index)=>`${index+1}. ${row.code} — ${row.name}: ${String(row.aiMeaning||'').replace(/\s+/g,' ').trim()}`).join('\n')}`;
+  return{triggered:true,text,preliminaryZazzlyCodes:prelimCodes,termCount:catalog.length};
+}
+
+function freshDescriptionPrompt({directorGuidance='',preliminaryThemes=[]}={}){
+  const guidance=String(directorGuidance||'').trim().slice(0,6000);
+  const preliminary=preliminaryThemeDescriptionContext(preliminaryThemes);
+  const zazzly=zazzlyDescriptionProtocol(preliminaryThemes);
+  return `GENREACTRIX DESCRIPTION PASS.\n\nDescribe what is visibly present in this image clearly, concretely, and substantially. The Description must be comfortable describing any kind of image. Include people, bodies, clothing or nudity, poses, expressions, actions, physical contact, setting, objects, visible text, composition, and overall presentation whenever they are materially relevant. Sexual, erotic, violent, humiliating, grotesque, disturbing, or otherwise explicit content may be important evidence: describe it directly and neutrally rather than softening, sanitizing, euphemizing, or replacing it with a milder caption.\n\nThe preliminary Themes below are hypotheses, not final answers. Use them as attention cues. Look specifically for concrete image elements that could reasonably support them and incorporate those aspects into the Description when they are reasonably supported. If a non-Zazzly preliminary Theme is genuinely a long shot, ignore that hypothesis rather than forcing it.\n\nPRELIMINARY THEME HYPOTHESES:\n${preliminary||'None'}${zazzly.text}${guidance?`\n\nDIRECTOR GUIDANCE:\n${guidance}`:''}\n\nReturn only the completed Description as plain prose. Do not return Theme rankings, a checklist, JSON, Markdown, or commentary about these instructions.`;
+}
+
+function descriptionLimitationDetected(text){
+  const value=String(text||'').trim();
+  if(!value)return true;
+  return /\b(?:i|we)\s+(?:can(?:not|'t)|am unable|are unable)\b/i.test(value)
+    || /\b(?:cannot|can't|unable to)\s+(?:describe|provide|comply|assist|help|analy[sz]e)\b/i.test(value)
+    || /\b(?:i(?:'m| am) sorry,? but|i must refuse|content policy|policy prevents|cannot fulfill)\b/i.test(value)
+    || /\b(?:non-explicit|less explicit|safer)\s+(?:description|version|summary)\b/i.test(value);
+}
+
+function mergeProviderTrace(targetEnv,sourceEnv,label='description-backup'){
+  const target=providerTrace(targetEnv),source=providerTrace(sourceEnv);
+  if(!target||!source)return;
+  for(const row of source)target.push({...row,recoveryRole:label});
+}
+
+function alternateProviderEnv(env){
+  const route=providerRoute(env);
+  const currentlyFallback=route?.mode==='fallback'&&Number(route.fallbackUntil)>Date.now();
+  return {env:providerRoutingEnv(env,currentlyFallback?{}:{providerRouting:{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'description-local-backup'}}),from:currentlyFallback?'fallback':'primary',to:currentlyFallback?'primary':'fallback'};
+}
+
+async function runFreshThemeAwareDescription(env,model,image,{behavior='analyze',directorGuidance='',preliminaryThemes=[]}={}){
+  const prompt=freshDescriptionPrompt({directorGuidance,preliminaryThemes});
+  const zazzly=zazzlyDescriptionProtocol(preliminaryThemes);
+  let firstError=null,firstText='';
+  try{
+    firstText=String(await runStructured(env,model,image,prompt,null,3400,'text',{behavior,temperature:0.08,multimodalMessages:true})).trim();
+    if(!descriptionLimitationDetected(firstText))return{description:firstText,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:false}};
+    firstError=new Error('Primary Description response showed a refusal/limitation pattern.');
+  }catch(error){firstError=error;}
+
+  const alternate=alternateProviderEnv(env);
+  let backupText='';
+  try{
+    backupText=String(await runStructured(alternate.env,model,image,`${prompt}\n\nBACKUP DESCRIPTION PASS: The first AI could not produce the required complete Description. Describe the image independently and directly. Do not mention the prior failure.`,null,3400,'text',{behavior,temperature:0.08,multimodalMessages:true})).trim();
+    mergeProviderTrace(env,alternate.env,'description-backup');
+    if(descriptionLimitationDetected(backupText))throw new Error('Backup Description response also showed a refusal/limitation pattern.');
+    return{description:backupText,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:true,backupFrom:alternate.from,backupTo:alternate.to,firstFailure:String(firstError?.message||firstError).slice(0,800)}};
+  }catch(error){
+    mergeProviderTrace(env,alternate.env,'description-backup');
+    throw diagnosticError(`Description failed on both available AI routes: ${error?.message||error}`,{phase:'theme-aware-description-backup',zazzlyTriggered:zazzly.triggered,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,firstError:String(firstError?.message||firstError).slice(0,1200),backupError:String(error?.message||error).slice(0,1200),backupFrom:alternate.from,backupTo:alternate.to});
+  }
 }
 
 
@@ -3738,26 +3868,70 @@ async function runBlindPrimDiagnostic(env,body){
   if(!body?.imageId)throw new Error('imageId is required');
   const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl);
   const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
-  // The Blind Prim experiment deliberately avoids provider-enforced JSON Schema.
-  // Provider routing is already proven independently; semantic output is parsed and
-  // validated here so this diagnostic cannot fail merely because a model/provider
-  // rejects a schema keyword or structured-output dialect.
-  const raw=await runStructured(env,model,image,blindPrimPrompt(),null,900,'text',{behavior:'analyze',temperature:0.1,preserveWhitespace:true});
-  const picks=parseBlindPrimText(raw);
-  const routing=providerRoutingSnapshot(env,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
-  return {
-    schemaVersion:1,
-    protocol:'blind-prim-image-only-v1',
-    imageId:String(body.imageId),
-    analyzedAt:new Date().toISOString(),
-    workerVersion:API_VERSION,
-    primFusionMatrixVersion:matrixVersion(),
-    model:effectiveProviderModel(env,model),
-    provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
-    providerRouting:routing,
-    rawProviderResult:raw,
-    picks
+  const basePrompt=blindPrimPrompt();
+
+  const execute=async(runEnv,{multimodalMessages=false,recovery=false}={})=>{
+    const prompt=recovery
+      ? `${basePrompt}\n\nRECOVERY PASS: The previous provider/transport could not produce a usable Blind Prim result. Re-evaluate the image independently. Do not infer or mention Themes or prior results. Obey the PICK/NONE output contract exactly.`
+      : basePrompt;
+    const raw=await runStructured(runEnv,model,image,prompt,null,900,'text',{
+      behavior:'analyze',temperature:0.1,preserveWhitespace:true,multimodalMessages
+    });
+    return{raw,picks:parseBlindPrimText(raw)};
   };
+
+  let firstError=null;
+  try{
+    const first=await execute(env);
+    const routing=providerRoutingSnapshot(env,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
+    return {
+      schemaVersion:1,protocol:'blind-prim-image-only-v1',imageId:String(body.imageId),
+      analyzedAt:new Date().toISOString(),workerVersion:API_VERSION,primFusionMatrixVersion:matrixVersion(),
+      model:effectiveProviderModel(env,model),
+      provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
+      providerRouting:routing,rawProviderResult:first.raw,picks:first.picks,
+      recoveryUsed:false
+    };
+  }catch(error){firstError=error;}
+
+  // Blind-Prim-only recovery. This does NOT mutate the established provider router or
+  // its 3040 cooldown. A stubborn specimen gets one independent attempt on the other
+  // provider/transport while remaining fully blind to Themes, descriptions, prior
+  // results, Reaction scores, and lifecycle data.
+  const initialRoute=providerRoute(env);
+  const initialWasFallback=initialRoute?.mode==='fallback'&&Number(initialRoute.fallbackUntil)>Date.now();
+  const recoveryBody=initialWasFallback
+    ? {}
+    : {providerRouting:{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'blind-prim-local-recovery'}};
+  const recoveryEnv=providerRoutingEnv(env,recoveryBody);
+  try{
+    const recovered=await execute(recoveryEnv,{multimodalMessages:true,recovery:true});
+    const routing=providerRoutingSnapshot(recoveryEnv,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
+    return {
+      schemaVersion:1,protocol:'blind-prim-image-only-v1',imageId:String(body.imageId),
+      analyzedAt:new Date().toISOString(),workerVersion:API_VERSION,primFusionMatrixVersion:matrixVersion(),
+      model:effectiveProviderModel(recoveryEnv,model),
+      provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
+      providerRouting:routing,rawProviderResult:recovered.raw,picks:recovered.picks,
+      recoveryUsed:true,
+      recoveryFrom:initialWasFallback?'fallback':'primary',
+      recoveryTo:initialWasFallback?'primary':'fallback',
+      firstFailure:String(firstError?.message||firstError).slice(0,800)
+    };
+  }catch(recoveryError){
+    throw diagnosticError(
+      `Blind Prim failed on both ${initialWasFallback?'fallback then primary':'primary then fallback'}: ${recoveryError?.message||recoveryError}`,
+      {
+        phase:'blind-prim-dual-provider-recovery',
+        initialProvider:initialWasFallback?'fallback':'primary',
+        recoveryProvider:initialWasFallback?'primary':'fallback',
+        firstError:String(firstError?.message||firstError).slice(0,1200),
+        firstDiagnostic:providerDiagnosticOf(firstError),
+        recoveryError:String(recoveryError?.message||recoveryError).slice(0,1200),
+        recoveryDiagnostic:providerDiagnosticOf(recoveryError)
+      }
+    );
+  }
 }
 
 async function analyze(env,body){
@@ -3849,16 +4023,33 @@ async function analyze(env,body){
         promptVersions.themes='genreactrix-themes-pfm-v19-rerun-adversarial-audit';
       }
     }else{
-      // v0.9.6.85 experiment: fresh Theme selection deliberately ignores secondary
-      // Description context and the v0.9.6.84 adversarial decision machinery.
-      // The image + unchanged 91 Theme definitions + human-vote scoring objective are the test.
-      const decision=await runThemeHumanVoteExperiment(env,model,image,behavior,body.themeSweep||null);
-      resolvedThemes=resolveThemes(decision.selections);
-      components.themeDecisionDiagnostics=decision.diagnostics;
-      promptVersions.themes=body.themeSweep?.orderMode==='canonical'?'genreactrix-themes-pfm-v25-human-vote-pack-sweep-canonical':body.themeSweep?.orderMode==='shuffled'?'genreactrix-themes-pfm-v25-human-vote-pack-sweep-shuffled-recovery':'genreactrix-themes-pfm-v23-human-vote-raw-fixed-shuffled-order-experiment';
+      // Preserve the proven fresh-image Theme machinery as the preliminary pass.
+      // These are hypotheses for Description attention, not the final answer.
+      const preliminary=await runThemeHumanVoteExperiment(env,model,image,behavior,body.themeSweep||null);
+      const preliminaryThemes=resolveThemes(preliminary.selections);
+      const descriptionPass=await runFreshThemeAwareDescription(env,model,image,{behavior,directorGuidance:body.directorGuidance,preliminaryThemes});
+      const finalDecision=await runThemeAssociation(env,model,{description:descriptionPass.description,behavior,themeSweep:body.themeSweep||null,stage:'final'});
+      resolvedThemes=resolveThemes(finalDecision.selections);
+      components.themeDecisionDiagnostics={
+        schemaVersion:3,
+        protocol:'preserved-human-vote-preliminary-to-theme-aware-description-to-description-only-final-themes-v1',
+        preliminary:preliminary.diagnostics,
+        preliminaryThemes:preliminaryThemes.map(row=>({rank:row.rank,code:row.code,name:row.name})),
+        description:descriptionPass.diagnostics,
+        final:finalDecision.diagnostics,
+        preliminarySelectorPreserved:true,
+        finalSelectionImageAccess:false,
+        finalSelectionPreliminaryThemeAccess:false
+      };
+      components.__freshPipelineDescription=descriptionPass.description;
+      components.__freshPipelineDescriptionDiagnostics=descriptionPass.diagnostics;
+      promptVersions.themes='genreactrix-themes-pfm-v27-preserved-human-vote-plus-description-led-final';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) {
+      // Preserve the existing Theme reasoning sidecar on fresh analysis and
+      // eligible all-three reruns. It remains diagnostic/evidence support and
+      // is not removed by the new Description-led refinement stage.
       const humanVoteDiagnosticEligible = !themeRerun || themeHumanVoteRerunExperimentEligible(themeRerun);
       const diagnostic = humanVoteDiagnosticEligible
         ? await runThemeReasoningDiagnostic(env,model,image,behavior,resolvedThemes,themeRerun?null:(body.themeSweep||null))
@@ -3880,18 +4071,33 @@ async function analyze(env,body){
 
   if (requested.includes('description')){
     const behavior = behaviorFor(['description']),descriptionRerun=normalizeDescriptionRerun(body.descriptionRerun),scopedEdit=['add','replace'].includes(descriptionRerun?.operation);
-    const description = await runStructured(env,model,image,descriptionPrompt(body.directorGuidance,descriptionRerun),descriptionSchema(),3200,'text',{behavior,scopedEdit,preserveWhitespace:scopedEdit});
-    if (typeof description !== 'string' || !description.trim()) throw new Error('Description provider response did not contain description text');
-    components.description = scopedEdit ? description : description.trim();
-    promptVersions.description = descriptionRerun ? `genreactrix-freeform-v3-rerun-workspace-${descriptionRerun.operation}` : (String(body.directorGuidance||'').trim() ? 'genreactrix-freeform-v2-director-guidance' : 'genreactrix-freeform-v1');
+    if(!descriptionRerun&&components.__freshPipelineDescription){
+      components.description=components.__freshPipelineDescription;
+      components.descriptionDiagnostics=components.__freshPipelineDescriptionDiagnostics;
+      promptVersions.description='genreactrix-freeform-v4-preliminary-theme-aware-zazzly-exhaustive';
+    }else if(!descriptionRerun){
+      const preliminary=await runThemeHumanVoteExperiment(env,model,image,behavior,body.themeSweep||null);
+      const preliminaryThemes=resolveThemes(preliminary.selections);
+      const descriptionPass=await runFreshThemeAwareDescription(env,model,image,{behavior,directorGuidance:body.directorGuidance,preliminaryThemes});
+      components.description=descriptionPass.description;
+      components.descriptionDiagnostics={...descriptionPass.diagnostics,preliminaryThemes:preliminaryThemes.map(row=>({rank:row.rank,code:row.code,name:row.name}))};
+      promptVersions.description='genreactrix-freeform-v4-preliminary-theme-aware-zazzly-exhaustive';
+    }else{
+      const description = await runStructured(env,model,image,descriptionPrompt(body.directorGuidance,descriptionRerun),descriptionSchema(),3200,'text',{behavior,scopedEdit,preserveWhitespace:scopedEdit});
+      if (typeof description !== 'string' || !description.trim()) throw new Error('Description provider response did not contain description text');
+      components.description = scopedEdit ? description : description.trim();
+      promptVersions.description = `genreactrix-freeform-v3-rerun-workspace-${descriptionRerun.operation}`;
+    }
   }
-
   if (requested.includes('themes') && resolvedThemesForSlop && !components.slopAssessment){
     const basis=body.themeRerun?'theme-rerun':'origin-or-analysis';
-    const descriptionForSlop=String(components.description||body.themeAnalysisContext||'').trim();
+    const descriptionForSlop=String(components.description||components.__freshPipelineDescription||body.themeAnalysisContext||'').trim();
     components.slopAssessment=await runSlopAssessment(env,model,image,resolvedThemesForSlop,descriptionForSlop,basis);
     promptVersions.slopAssessment='genreactrix-slop-advisory-v1';
   }
+
+  delete components.__freshPipelineDescription;
+  delete components.__freshPipelineDescriptionDiagnostics;
 
   const providerSummary=analysisProviderSummary(env,model);
   return {
