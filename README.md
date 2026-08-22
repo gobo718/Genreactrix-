@@ -1,3 +1,15 @@
+# Genreactrix v0.9.40.153 — targeted Theme-definition calibration
+
+- Bundled Worker is v0.9.6.97-targeted-theme-definition-calibration.
+- Matrix advances to v0.0.0.1 because existing PrimFusion wording changed; historical results retain the Matrix version recorded when they were evaluated.
+- PFM0512 Obsessive: ordinary focus, concentration, or training alone are explicitly insufficient.
+- PFM0210 Grotesque: costume, role-play, muscularity, unusual clothing, or animal-themed accessories alone are insufficient; the depicted form itself must be meaningfully distorted, hybridized, deformed, ornamental, or unnaturally transformed.
+- PFM0510 Brutal: muscularity, physique, nudity, confidence, posing, body display, or bold styling alone are insufficient; actual harshness/violence/cruelty/damage/injury/punishment/destruction/unsparing force is required.
+- PFM0209 Exposure: explicitly expands exhibitionism/exhibitionistic display, deliberate public or social exposure, and intentional display of underwear, genitals, buttocks, or other intimate areas for attention or reaction.
+- PFM0513 Pride: confidence, posing, muscularity, body display, attractiveness, and ordinary clothing/accessories alone are insufficient; identity symbols must actually communicate identity or affiliation.
+- PFM0514 Aggressive and PFM1214 Mundane are unchanged.
+- The v0.9.40.152 / Worker v0.9.6.96 final Description-only second-shuffle behavior is inherited unchanged. No new AI calls or other prompt/architecture changes are introduced.
+
 # Genreactrix v0.9.40.152 — final Theme second-shuffle experiment
 
 - Controlled one-variable continuation of v0.9.40.151 + Worker v0.9.6.95.

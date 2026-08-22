@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.152";
+const GENREACTRIX_BUILD="v0.9.40.153";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
