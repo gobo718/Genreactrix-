@@ -1,3 +1,12 @@
+# Genreactrix v0.9.40.152 — final Theme second-shuffle experiment
+
+- Controlled one-variable continuation of v0.9.40.151 + Worker v0.9.6.95.
+- The preliminary image-based Theme pass keeps the exact existing fixed shuffled 91-Theme order.
+- The final Description-only Theme pass uses a second fixed deterministic 91-Theme shuffle.
+- Theme definitions, prompts/questions, Description generation, Zazzly handling, provider routing, fallback behavior, Theme reasoning sidecar, Reaction synthesis, storage, lifecycle, and UI behavior are unchanged.
+- Final-pass diagnostics record `themeDefinitionOrder: fixed-shuffled-final-v1` and seed `description-final-v1` for reproducible comparison.
+- Bundled Worker is v0.9.6.96-final-theme-second-shuffle.
+
 # Genreactrix v0.9.40.151 — coherent Description-led Theme experiment
 
 - Preserves the existing image-based human-vote Theme selector as the preliminary Theme source.
