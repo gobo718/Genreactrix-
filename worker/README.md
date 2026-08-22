@@ -1,6 +1,15 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.91-blind-prim-diagnostic.
+Current bundled Worker: v0.9.6.92-blind-prim-text-contract.
+
+## Worker 0.9.6.92 — Blind Prim text-contract repair
+
+- Fixes the new Blind Prim diagnostic without changing Primary/Fallback routing.
+- Replaces provider-enforced JSON Schema for this diagnostic only with a minimal `PICK|P##|reason` / `NONE` text contract.
+- Genreactrix parses and validates the response locally: zero picks remains valid; maximum four; unknown and duplicate Prim codes still fail.
+- No Prim definitions, Theme behavior, Reaction behavior, provider circuit-breaker behavior, or ordinary AI analysis contracts changed.
+
+---
 
 ## Worker 0.9.6.91 — Blind Prim diagnostic
 
