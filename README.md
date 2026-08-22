@@ -1,4 +1,20 @@
-# Genreactrix v0.9.40.147 — Theme reasoning diagnostic capture
+# Genreactrix v0.9.40.149 — Blind Prim diagnostic
+
+- Adds an isolated **Blind Prim Test** for the frozen 60-image Theme Sweep population.
+- Each request contains only the image plus the 14 canonical Prim definitions; it sends no Themes, descriptions, prior AI results, Reaction scores, Director data, PrimPicker state, or Theme Sweep results.
+- AI may return zero through four ranked Prims with one short concrete reason each. Blank is valid and is never repaired into a forced selection.
+- Diagnostic results are stored separately from Image Records and do not mutate lifecycle state, Queue/Bundle membership, AI components, history, Director work, Theme Sweep state, or 60/40 Reaction synthesis.
+- The runner checkpoints after every image, resumes after interruption, retries transient transport failure, records provider/model per image, exposes failed-image retry, and exports raw per-image results plus pack-wide Prim/model/provider counts as JSON.
+- New Worker endpoint: `/api/genreactrix/blind-prims`.
+
+# Genreactrix v0.9.40.148 — Theme diagnostic report export wiring
+
+- Site-only correction to v0.9.40.147. Worker remains v0.9.6.90-theme-reasoning-diagnostic.
+- Persists fresh Theme decision diagnostics into the image AI record/artifact history.
+- Reports → Themes Info now exports both Theme reasons and the saved Theme decision/rerun diagnostic payload.
+- No Theme-selection behavior, definitions, sweep behavior, layout, or Worker logic changed.
+
+# Genreactrix v0.9.40.148 — Theme reasoning diagnostic capture
 
 - Diagnostic site build paired with Worker v0.9.6.90-theme-reasoning-diagnostic.
 - Whenever Themes are requested, Themes Info is automatically requested in the same AI family call, including managed Theme Sweep recovery passes.

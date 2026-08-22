@@ -253,6 +253,7 @@
       if(requested.includes('reactions')&&result.components?.reactions) returned.directReactions=clone(result.components.reactions);
       if(result.components?.reactionDiagnostics) returned.reactionDiagnostics=result.components.reactionDiagnostics;
       if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
+      if(result.components?.themeDecisionDiagnostics) returned.themeDecisionDiagnostics=clone(result.components.themeDecisionDiagnostics);
       if(result.components?.themeRerunDiagnostics) returned.themeRerunDiagnostics=clone(result.components.themeRerunDiagnostics);
       if(result.components?.slopAssessment) returned.slopAssessment=clone(result.components.slopAssessment);
 
