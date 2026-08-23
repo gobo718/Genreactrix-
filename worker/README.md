@@ -1,6 +1,12 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.101-mistral-description-resume-routing.
+Current bundled Worker: v0.9.6.102-production-cleanup.
+
+## Worker 0.9.6.102 — Production cleanup
+
+- Preserves Mistral Description rescue and downstream primary/fallback recovery.
+- Removes the completed one-time Blind Prim diagnostic endpoint and health advertisement.
+- Matrix remains 0.0.0.0.
 
 ## Worker 0.9.6.101 — Mistral description resume routing
 
