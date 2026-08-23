@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.159 — URL resolution repair
+
+- Pairs with Worker v0.9.6.103-url-resolution-repair. Upload the Worker first, then this site build.
+- Repairs URL-source extraction so CSV/TSV field boundaries are honored instead of swallowing adjacent fields such as `,Check` into the URL.
+- URL extraction now preserves valid URL punctuation such as parentheses and commas inside a URL while trimming surrounding prose/document delimiters.
+- Wikimedia Commons `.../wiki/File:...` source pages are resolved through the Commons API to a bounded media rendition when available (with direct-file redirect fallback) before import.
+- Other HTTPS webpage URLs get a bounded image-resolution pass using standard page image metadata (`og:image`, `twitter:image`, `image_src`) and then visible `<img>` candidates before Import is declared failed.
+- Resolved images continue through the existing Origin gates; the source-page URL remains the provenance URL.
+- Keeps the v0.9.40.158 production cleanup, Mistral Description rescue, downstream provider recovery, and Matrix **0.0.0.0** unchanged.
+
 # Genreactrix v0.9.40.158 — URL source import + production cleanup
 
 - Pairs with Worker v0.9.6.102-production-cleanup. Upload the Worker first, then this site build.
