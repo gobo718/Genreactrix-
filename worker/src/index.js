@@ -1,8 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.102-production-cleanup
+/* Genreactrix AI Worker v0.9.6.103-url-resolution-repair
    Preserves Mistral description rescue and downstream provider recovery.
-   Removes the completed one-time Blind Prim diagnostic endpoint and plumbing. Matrix remains 0.0.0.0.
+   Adds bounded source-page image resolution for URL imports while preserving production cleanup. Matrix remains 0.0.0.0.
 */
-const API_VERSION = '0.9.6.102-production-cleanup';
+const API_VERSION = '0.9.6.103-url-resolution-repair';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -212,14 +212,42 @@ const tagImageMime = (bytes,mimeType) => {
   return bytes;
 };
 
+const normalizedContentType = response => String(response?.headers?.get?.('content-type')||'').split(';')[0].trim().toLowerCase();
+const safeHttpsUrl = value => { try { const url=new URL(String(value||'')); return url.protocol==='https:'&&url.href.length<=2000?url:null; } catch { return null; } };
+const decodeHtmlEntities = value => String(value||'').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&#x([0-9a-f]+);/gi,(_,h)=>String.fromCodePoint(parseInt(h,16))).replace(/&#([0-9]+);/g,(_,d)=>String.fromCodePoint(parseInt(d,10)));
+const absoluteHttpsCandidate = (value,base) => { try { const url=new URL(decodeHtmlEntities(String(value||'').trim()),base); return url.protocol==='https:'&&url.href.length<=2000?url.href:null; } catch { return null; } };
+const commonsFileTitle = value => { const url=safeHttpsUrl(value); if(!url||url.hostname.toLowerCase()!=='commons.wikimedia.org'||!url.pathname.startsWith('/wiki/File:'))return null; try{return decodeURIComponent(url.pathname.slice('/wiki/'.length)).replace(/_/g,' ')}catch{return url.pathname.slice('/wiki/'.length).replace(/_/g,' ')} };
+const resolveCommonsOriginalUrl = async value => {
+  const title=commonsFileTitle(value);if(!title)return null;
+  const fallback=`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(title.replace(/^File:/i,'').replace(/ /g,'_'))}`;
+  try{const api=new URL('https://commons.wikimedia.org/w/api.php');api.searchParams.set('action','query');api.searchParams.set('format','json');api.searchParams.set('formatversion','2');api.searchParams.set('prop','imageinfo');api.searchParams.set('iiprop','url');api.searchParams.set('iiurlwidth','2048');api.searchParams.set('titles',title);
+    const response=await fetch(api.href,{headers:{accept:'application/json','user-agent':'Genreactrix/0.9 (+https://gobo718.github.io/)'}});if(response.ok){const payload=await response.json().catch(()=>null),info=payload?.query?.pages?.[0]?.imageinfo?.[0],resolved=info?.thumburl||info?.url,href=absoluteHttpsCandidate(resolved,'https://commons.wikimedia.org/');if(href)return href}}catch{}
+  return fallback;
+};
+const htmlAttribute = (tag,name) => { const match=String(tag||'').match(new RegExp(`\\b${name}\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))`,'i'));return match?(match[1]??match[2]??match[3]??''):''; };
+const pageImageCandidates = (html,base) => {
+  const text=String(html||''),out=[],seen=new Set(),push=value=>{const href=absoluteHttpsCandidate(value,base);if(href&&!seen.has(href)){seen.add(href);out.push(href)}};
+  for(const tag of text.match(/<meta\b[^>]*>/gi)||[]){const key=String(htmlAttribute(tag,'property')||htmlAttribute(tag,'name')).toLowerCase();if(['og:image','og:image:url','twitter:image','twitter:image:src'].includes(key))push(htmlAttribute(tag,'content'))}
+  for(const tag of text.match(/<link\b[^>]*>/gi)||[]){const rel=String(htmlAttribute(tag,'rel')).toLowerCase(),as=String(htmlAttribute(tag,'as')).toLowerCase();if(rel.split(/\s+/).includes('image_src')||(rel.split(/\s+/).includes('preload')&&as==='image'))push(htmlAttribute(tag,'href'))}
+  for(const tag of text.match(/<img\b[^>]*>/gi)||[]){push(htmlAttribute(tag,'src')||htmlAttribute(tag,'data-src'));if(out.length>=12)break}return out.slice(0,12);
+};
+const fetchImageResponse = async originalUrl => {
+  const source=safeHttpsUrl(originalUrl);if(!source)throw new Error('imageUrl must be HTTPS');
+  const commons=await resolveCommonsOriginalUrl(source.href).catch(()=>null);const firstUrl=commons||source.href;
+  let response=await fetch(firstUrl,{redirect:'follow',headers:{accept:'image/*, text/html;q=0.9, */*;q=0.1','user-agent':'Genreactrix/0.9 (+https://gobo718.github.io/)'}});
+  if(!response.ok)throw new Error(`Could not retrieve image (${response.status})`);let type=normalizedContentType(response);if(type.startsWith('image/'))return response;
+  if(type!=='text/html'&&type!=='application/xhtml+xml')throw new Error('URL did not return an image');
+  const length=Number(response.headers.get('content-length')||0);if(length>2_000_000)throw new Error('Image source page exceeds 2 MB');const html=(await response.text()).slice(0,2_000_000),base=response.url||source.href,candidates=pageImageCandidates(html,base);
+  for(const candidate of candidates){try{const candidateResponse=await fetch(candidate,{redirect:'follow',headers:{accept:'image/*','user-agent':'Genreactrix/0.9 (+https://gobo718.github.io/)'}});if(candidateResponse.ok&&normalizedContentType(candidateResponse).startsWith('image/'))return candidateResponse}catch{}}
+  throw new Error('Could not resolve an image from the source page');
+};
+
 const fetchBytes = async url => {
-  if (!/^https:\/\//i.test(url) || url.length > 2000) throw new Error('imageUrl must be HTTPS');
-  const response = await fetch(url,{headers:{accept:'image/*'}});
-  if (!response.ok) throw new Error(`Could not retrieve image (${response.status})`);
+  const response = await fetchImageResponse(url);
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (!bytes.length) throw new Error('Image was empty');
   if (bytes.length > 6_000_000) throw new Error('Image exceeds 6 MB');
-  return tagImageMime(Array.from(bytes),response.headers.get('content-type'));
+  return tagImageMime(Array.from(bytes),normalizedContentType(response));
 };
 
 const dataUrlBytes = value => {
@@ -4338,10 +4366,9 @@ export default {
         if (!/^https:\/\//i.test(imageUrl) || imageUrl.length > 2000){
           return json({ok:false,error:'imageUrl must be HTTPS'},{status:400});
         }
-        const upstream = await fetch(imageUrl,{headers:{accept:'image/*'}});
-        if (!upstream.ok) return json({ok:false,error:`Could not retrieve image (${upstream.status})`},{status:502});
-        const contentType = String(upstream.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
-        if (!contentType.startsWith('image/')) return json({ok:false,error:'URL did not return an image'},{status:415});
+        let upstream;
+        try{upstream=await fetchImageResponse(imageUrl)}catch(error){return json({ok:false,error:String(error?.message||error)},{status:502})}
+        const contentType = normalizedContentType(upstream);
         const bytes = new Uint8Array(await upstream.arrayBuffer());
         if (!bytes.length) return json({ok:false,error:'Image was empty'},{status:422});
         if (bytes.length > 6_000_000) return json({ok:false,error:'Image exceeds 6 MB'},{status:413});
