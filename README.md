@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.158 — URL source import + production cleanup
+
+- Pairs with Worker v0.9.6.102-production-cleanup. Upload the Worker first, then this site build.
+- Origin can now choose **any file type** as a URL source. Genreactrix scans plain text plus common document/spreadsheet ZIP internals and raw UTF-8/Windows-1252/UTF-16 text views for HTTP/HTTPS URLs. This covers TXT/CSV/TSV/JSON/HTML/Markdown/RTF, DOCX/XLSX/ODS, old/binary files when URLs are stored visibly, PDFs when URLs are present in readable/raw form, and other files on a best-effort basis.
+- Extracted URLs are normalized and deduplicated, the URL quantity defaults to the full extracted set, and Import retrieves the images through the existing Origin gates.
+- Removes the completed **Blind Prim Test** UI/engine/client/Worker endpoint and its diagnostic health advertisement.
+- Removes the one-time **Recover selected Pass 1** control and its now-dead selected-job recovery/retraction/bootstrap plumbing. Normal Theme Sweep Pass 1/2/3 behavior and failure continuation remain unchanged.
+- Keeps Mistral as Description fallback #3, preserves successful Mistral Descriptions, and retains downstream primary → fallback Theme/Reaction recovery.
+- Matrix remains **0.0.0.0**.
+
 # Genreactrix v0.9.40.157 — Mistral description resume routing
 
 - Pairs with Worker v0.9.6.101-mistral-description-resume-routing. Upload the Worker first, then this site build.

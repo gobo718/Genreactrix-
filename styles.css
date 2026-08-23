@@ -8494,8 +8494,3 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media (max-width:720px){.ai-theme-sweep-status{grid-template-columns:1fr}.ai-theme-sweep-field{grid-template-columns:52px 1fr;align-items:start}}
 
 
-/* v0.9.40.149 — isolated Blind Prim diagnostic controls. */
-.ai-blind-prim-test{margin-top:8px;padding-top:8px;border-top:1px solid currentColor}
-.ai-blind-prim-test>div:first-child{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-.ai-blind-prim-test #aiBlindPrimStatus{font-size:.85em;opacity:.8}
-.ai-blind-prim-test .ai-run-actions{margin-top:6px}
