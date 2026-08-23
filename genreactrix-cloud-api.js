@@ -37,6 +37,7 @@
     const blob=await response.blob();if(!blob.type?.startsWith('image/'))throw new Error('Image proxy did not return an image');return blob;
   },
   analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
+  analyzeImageWithRouting:(specimen,key,providerRouting)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify({...specimen,providerRouting:providerRouting||null})}),
   blindPrims:(specimen,key)=>request('/api/genreactrix/blind-prims',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
   ama:(specimen,key)=>request('/api/genreactrix/ama',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
   promptDiagnostics:(specimen,key)=>request('/api/genreactrix/prompt-diagnostics',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))})

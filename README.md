@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.157 — Mistral description resume routing
+
+- Pairs with Worker v0.9.6.101-mistral-description-resume-routing. Upload the Worker first, then this site build.
+- Adds visible provider testing for Primary, Fallback, and Mistral.
+- A successful Mistral Description is preserved if downstream Theme work fails instead of being discarded with the failed group.
+- Theme recovery reuses that exact Mistral Description with the original/primary Theme provider first, then the existing fallback provider.
+- If Reactions fail but a Mistral Description was successfully preserved, Reactions are retried from that Description with the primary provider first, then fallback.
+- A later retry of failed Themes reuses the preserved Mistral Description instead of regenerating the Description.
+- Matrix remains **0.0.0.0**. No Theme definitions or accepted Theme-selection architecture are changed.
+
 # Genreactrix v0.9.40.156 — Mistral description third fallback
 
 - Pairs with Worker v0.9.6.100-mistral-description-third-fallback. Upload the Worker first, then this site build.

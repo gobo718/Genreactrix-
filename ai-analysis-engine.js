@@ -236,15 +236,36 @@
       const mode=descriptionRerun?.operation?`rerun:description-${String(descriptionRerun.operation)}`:(themeRerun?'rerun:themes-director-workspace':baseMode);
       artifactAttempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode,directorGuidance:guidance,inputRefs:{imageId:record.id,sourceKind:descriptionOnlyReaction?'description-only':(input.imageUrl?'linked-url':'local-working-copy'),descriptionArtifact:previous.artifactHistory?.currentArtifacts?.description||null,priorArtifacts:clone(previous.artifactHistory?.currentArtifacts||{}),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'60/40',descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)}});
       const reactionRerunSources=requested.includes('reactions')&&job.config.reactionRerunSources?{image:job.config.reactionRerunSources.image!==false,description:Boolean(job.config.reactionRerunSources.description)}:null;
-      const specimen={imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',directReactionUseAnalysis:Boolean(reactionRerunSources?.description),reactionRerunSources:clone(reactionRerunSources),reactionDescriptionContext:reactionRerunSources?.description?existingDescription.slice(0,6000):'',descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),themeSweep:clone(job.config.themeSweep||null),...input};
+      const existingDescriptionDiagnostics=previous.components?.descriptionDiagnostics&&typeof previous.components.descriptionDiagnostics==='object'?previous.components.descriptionDiagnostics:null;
+      const usePreservedMistralDescription=requested.includes('themes')&&!requested.includes('description')&&Boolean(existingDescription)&&existingDescriptionDiagnostics?.thirdProviderUsed===true;
+      const specimen={imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',directReactionUseAnalysis:Boolean(reactionRerunSources?.description),reactionRerunSources:clone(reactionRerunSources),reactionDescriptionContext:reactionRerunSources?.description?existingDescription.slice(0,6000):'',preservedDescriptionContext:usePreservedMistralDescription?existingDescription.slice(0,12000):'',preservedDescriptionDiagnostics:usePreservedMistralDescription?clone(existingDescriptionDiagnostics):null,descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),themeSweep:clone(job.config.themeSweep||null),...input};
+      const persistPreservedMistralDescription=async providerDiagnostic=>{
+        const description=String(providerDiagnostic?.preservedDescription||'').trim();
+        if(!providerDiagnostic?.mistralDescriptionPreserved||!description)return false;
+        const diagnostics=clone(providerDiagnostic?.preservedDescriptionDiagnostics||{schemaVersion:1,thirdProviderUsed:true,thirdProvider:'mistral'});
+        const current=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record,currentAi=current.analysis?.ai||previous;
+        const partialAttempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:['description'],componentBehaviors:{description:'recovery'},mode:'recovery:mistral-description-preserved',directorGuidance:guidance,inputRefs:{imageId:record.id,sourceKind:input.imageUrl?'linked-url':'local-working-copy'},configRefs:{recovery:'mistral-description-preserved'}});
+        const returnedPartial={description,descriptionDiagnostics:diagnostics},mergedPartial={...(currentAi.components||{}),...returnedPartial};
+        const partialResult={provider:{id:'mistral-direct',displayName:'Mistral description fallback',model:String(diagnostics.thirdProviderModel||'ministral-14b-2512')},model:String(diagnostics.thirdProviderModel||'ministral-14b-2512'),promptVersions:{description:'genreactrix-freeform-v4-preliminary-theme-aware-zazzly-exhaustive'},researchConfiguration:{mistralDescriptionPreserved:true}};
+        const savedPartial=await artifactEngine.recordSuccess({record:current,attemptId:partialAttempt.id,requested:['description'],returned:returnedPartial,mergedComponents:mergedPartial,result:partialResult,mode:'recovery:mistral-description-preserved'});
+        const analysisPartial={...currentAi,components:mergedPartial,provider:partialResult.provider,model:partialResult.model,promptVersions:{...(currentAi.promptVersions||{}),...partialResult.promptVersions},requested:[...new Set([...(currentAi.requested||[]),'description'])],researchConfiguration:{...(currentAi.researchConfiguration||{}),mistralDescriptionPreserved:true},artifactHistory:savedPartial.artifactHistory,recordedAt:now(),jobId:job.id};
+        window.genreactrixImageRecordEngine.attachAI(record.id,analysisPartial,{aiDescription:'current'});
+        const descriptionRow=group.find(c=>c.component==='description');if(descriptionRow)descriptionRow.state='complete';
+        await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:'Preserved Mistral Description after downstream AI failure',payload:{attemptId:partialAttempt.id,artifactRefs:savedPartial.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:returnedPartial,provider:partialResult.provider,model:partialResult.model,promptVersions:partialResult.promptVersions,requested:['description'],jobId:job.id,artifactHistory:savedPartial.artifactHistory},componentUpdates:{aiDescription:'current'},partial:true}});
+        record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
+        return true;
+      };
       let payload,technicalRetry=null;
       try{payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey())}
       catch(firstError){
-        const providerDiagnostic=firstError?.providerDiagnostic||null,failureKind=String(providerDiagnostic?.failureKind||'').toLowerCase(),freshRequest=providerDiagnostic?.freshRequestRecommended===true&&failureKind==='timeout';
+        const providerDiagnostic=firstError?.providerDiagnostic||null;
+        await persistPreservedMistralDescription(providerDiagnostic).catch(error=>console.warn('Could not preserve Mistral Description after downstream failure',error));
+        const failureKind=String(providerDiagnostic?.failureKind||'').toLowerCase(),freshRequest=providerDiagnostic?.freshRequestRecommended===true&&failureKind==='timeout';
         if(!freshRequest)throw firstError;
         technicalRetry={at:now(),type:'diagnostic-timeout-fresh-request',firstError:String(firstError?.message||firstError),providerDiagnostic:clone(providerDiagnostic)};
         await window.genreactrixHistoryEngine?.append?.({imageId:record.id,eventType:'ai-technical-retry',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:'Theme diagnostic timed out; retrying in a fresh Worker request',payload:{itemAttemptId:item.currentAttemptId,components:requested,error:technicalRetry.firstError,providerDiagnostic:clone(providerDiagnostic)}}).catch(()=>{});
-        payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey());
+        try{payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey())}
+        catch(secondError){await persistPreservedMistralDescription(secondError?.providerDiagnostic||null).catch(error=>console.warn('Could not preserve Mistral Description after retry failure',error));throw secondError}
       }
       const result=payload.result||payload.report||payload;
       if(technicalRetry&&result&&typeof result==='object'){
@@ -269,6 +290,7 @@
       for(const c of group){c.state='complete';returned[c.component]=result.components[c.component]}
       if(requested.includes('reactions')&&result.components?.reactions) returned.directReactions=clone(result.components.reactions);
       if(result.components?.reactionDiagnostics) returned.reactionDiagnostics=result.components.reactionDiagnostics;
+      if(result.components?.descriptionDiagnostics) returned.descriptionDiagnostics=clone(result.components.descriptionDiagnostics);
       if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
       if(result.components?.themeDecisionDiagnostics) returned.themeDecisionDiagnostics=clone(result.components.themeDecisionDiagnostics);
       if(result.components?.themeRerunDiagnostics) returned.themeRerunDiagnostics=clone(result.components.themeRerunDiagnostics);
@@ -293,9 +315,42 @@
     }catch(error){
       const message=`${requested.join('+')}: ${String(error.message||error)}`;errors.push(message);
       if(artifactAttempt&&!artifactAttemptCompleted)await artifactEngine?.failAttempt?.(artifactAttempt.id,message).catch(()=>{});
-      for(const c of group){c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
+      for(const c of group){if(c.state==='complete')continue;c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
       await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:message,payload:{attemptId:artifactAttempt?.id||null,error:message,components:requested,directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,6000),reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)}}).catch(()=>{});
       if(isGlobalProviderFailure(message))break;
+    }
+  }
+  // If Mistral had to rescue the Description, that saved Description becomes a
+  // reusable evidence source for any Reaction family that failed earlier in the
+  // same image attempt. Ask the original provider first, then the existing fallback.
+  {
+    const live=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record,liveAi=live.analysis?.ai||{},savedDescription=String(liveAi.components?.description||'').trim(),savedDescriptionDiagnostics=liveAi.components?.descriptionDiagnostics||null;
+    const failedReactionRows=pending.filter(c=>['reactions','reactionReasons'].includes(c.component)&&c.state==='failed');
+    if(savedDescription&&savedDescriptionDiagnostics?.thirdProviderUsed===true&&failedReactionRows.length){
+      const recoveryRequested=failedReactionRows.map(c=>c.component),recoveryBehaviors=Object.fromEntries(failedReactionRows.map(c=>[c.component,c.behavior]));
+      const recoverySpecimen={imageId:record.id,components:recoveryRequested,componentBehaviors:recoveryBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:'',reactionRerunSources:{image:false,description:true},reactionDescriptionContext:savedDescription.slice(0,6000)};
+      let recoveryPayload=null,primaryFailure=null,recoveryRoute='primary';
+      try{
+        recoveryPayload=await window.GenreactrixCloudApi.analyzeImageWithRouting(recoverySpecimen,window.GenreactrixCloudApi.getKey(),{mode:'primary'});
+      }catch(error){
+        primaryFailure=error;recoveryRoute='fallback';
+        recoveryPayload=await window.GenreactrixCloudApi.analyzeImageWithRouting(recoverySpecimen,window.GenreactrixCloudApi.getKey(),{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'mistral-description-reaction-recovery'});
+      }
+      const recoveryResult=recoveryPayload?.result||recoveryPayload?.report||recoveryPayload;
+      if(recoveryResult&&typeof recoveryResult==='object'&&recoveryRequested.every(component=>Object.prototype.hasOwnProperty.call(recoveryResult.components||{},component))){
+        const recoveryArtifactEngine=window.genreactrixAiArtifactEngine;if(!recoveryArtifactEngine)throw new Error('AI Attempt/Artifact history engine is unavailable');const recoveryAttempt=await recoveryArtifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:recoveryRequested,componentBehaviors:recoveryBehaviors,mode:'recovery:mistral-description-to-reactions',directorGuidance:'',inputRefs:{imageId:record.id,sourceKind:'mistral-description-only',descriptionArtifact:liveAi.artifactHistory?.currentArtifacts?.description||null},configRefs:{recovery:'mistral-description-to-reactions',providerOrder:['primary','fallback']}});
+        const returnedRecovery={};for(const c of failedReactionRows)returnedRecovery[c.component]=recoveryResult.components[c.component];
+        if(recoveryResult.components?.reactions)returnedRecovery.directReactions=clone(recoveryResult.components.reactions);
+        if(recoveryResult.components?.reactionDiagnostics)returnedRecovery.reactionDiagnostics=clone(recoveryResult.components.reactionDiagnostics);
+        const latestNow=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||live,latestAi=latestNow.analysis?.ai||liveAi,mergedRecovery=applyHybridReactions({...(latestAi.components||{}),...returnedRecovery});
+        const savedRecovery=await recoveryArtifactEngine.recordSuccess({record:latestNow,attemptId:recoveryAttempt.id,requested:recoveryRequested,returned:returnedRecovery,mergedComponents:mergedRecovery,result:recoveryResult,mode:'recovery:mistral-description-to-reactions'});
+        const updates={};for(const c of failedReactionRows){c.state='complete';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];updates[field]='current'}
+        const analysisRecovery={...latestAi,components:mergedRecovery,provider:recoveryResult.provider||latestAi.provider||{},model:recoveryResult.model||recoveryResult.provider?.model||latestAi.model||'',promptVersions:{...(latestAi.promptVersions||{}),...(recoveryResult.promptVersions||{})},requested:[...new Set([...(latestAi.requested||[]),...recoveryRequested])],researchConfiguration:{...(latestAi.researchConfiguration||{}),...(recoveryResult.researchConfiguration||{}),mistralDescriptionReactionRecovery:{providerRoute:recoveryRoute,primaryFailure:primaryFailure?String(primaryFailure?.message||primaryFailure).slice(0,800):null}},artifactHistory:savedRecovery.artifactHistory,recordedAt:now(),jobId:job.id};
+        window.genreactrixImageRecordEngine.attachAI(record.id,analysisRecovery,updates);
+        await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`Recovered ${recoveryRequested.join(' + ')} from preserved Mistral Description`,payload:{attemptId:recoveryAttempt.id,artifactRefs:savedRecovery.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:returnedRecovery,provider:recoveryResult.provider||{},model:analysisRecovery.model,promptVersions:recoveryResult.promptVersions||{},requested:recoveryRequested,jobId:job.id,artifactHistory:savedRecovery.artifactHistory},componentUpdates:updates,partial:false,recovery:{descriptionProvider:'mistral',providerRoute:recoveryRoute}}});
+        for(let i=errors.length-1;i>=0;i--){if(/^(?:reactions|reactionReasons)(?:\+|:)/.test(errors[i]))errors.splice(i,1)}
+        record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
+      }
     }
   }
   for(const c of pending.filter(c=>c.state==='processing')){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];c.state='failed';window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
@@ -593,7 +648,7 @@
     await window.genreactrixSettingsEngine?.set?.('ai.lookAhead.priority',document.getElementById('aiAutoPriority').value);
     document.getElementById('aiAutomaticStatus').textContent='Saved';await render();if(document.getElementById('aiAutoEnabled').checked)maintainActiveMode().catch(console.warn);
   });
-  document.getElementById('aiHealthCheck')?.addEventListener('click',async()=>{const el=document.getElementById('aiProviderStatus');el.textContent='Checking primary + fallback…';try{const p=await window.GenreactrixCloudApi.verifyConnection(),providers=p.providers||{},primary=providers.primary||{},fallback=providers.fallback||{},fmt=row=>row.ready?'Ready':(row.status==='capacity-unavailable'?'Capacity unavailable':(row.error||row.status||'Failed'));el.textContent=`Primary: ${fmt(primary)} · Fallback: ${fmt(fallback)}`}catch(e){el.textContent=e.message}});
+  document.getElementById('aiHealthCheck')?.addEventListener('click',async()=>{const el=document.getElementById('aiProviderStatus');el.textContent='Checking primary + fallback + Mistral…';try{const p=await window.GenreactrixCloudApi.verifyConnection(),providers=p.providers||{},primary=providers.primary||{},fallback=providers.fallback||{},mistral=providers.mistral||{},fmt=row=>row.ready?'Ready':(row.status==='capacity-unavailable'?'Capacity unavailable':(row.error||row.status||'Failed'));el.textContent=`Primary: ${fmt(primary)} · Fallback: ${fmt(fallback)} · Mistral: ${fmt(mistral)}`}catch(e){el.textContent=e.message}});
   document.getElementById('aiQueueHold')?.addEventListener('change',async e=>{await window.genreactrixSettingsEngine?.set?.('ai.queue.holdUntilManualStart',e.target.checked);document.getElementById('aiJobSummary').textContent=e.target.checked?'Queue hold active · automatic AI intake paused until you press Start analysis.':'Queue hold off · automatic AI intake may resume.';if(!e.target.checked)maintainActiveMode().catch(console.warn);render();});
   document.getElementById('aiStartJob')?.addEventListener('click',async()=>{try{const cfg=configFromForm(), enabled=Object.values(cfg.components).some(v=>v.enabled);if(!enabled)throw new Error('Choose at least one AI component');if(!window.GenreactrixCloudApi.isConfigured())throw new Error('Save a Worker URL before starting');if(cfg.components?.themes?.enabled&&cfg.components?.themes?.behavior==='analyze')cfg.themeSweepRequested=true;const j=await createJob(cfg);if(!j.total)throw new Error('No matching images need the selected analysis');await run(j.id)}catch(e){document.getElementById('aiJobSummary').textContent=e.message}});
   document.getElementById('aiCycleBtn')?.addEventListener('click',()=>cycleMissing());
