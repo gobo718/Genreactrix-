@@ -1,3 +1,14 @@
+# Genreactrix v0.9.40.156 — Mistral description third fallback
+
+- Pairs with Worker v0.9.6.100-mistral-description-third-fallback. Upload the Worker first, then this site build.
+- Preserves the accepted v0.9.40.155 Theme architecture, definitions, mismatch recovery, Matrix identity **0.0.0.0**, provider routing, and UI behavior.
+- Changes only the fresh Theme-aware Description failure path: existing primary description route → existing alternate route → Mistral `ministral-14b-2512` as provider #3 if both prior routes fail or refuse.
+- Mistral is description-only. It is not added to Reactions, HUMAN-VOTE Theme selection, Theme reasoning diagnostics, AMA, Prim analysis, or general provider routing.
+- Requires Cloudflare Worker secret `MISTRAL_API_KEY`. Optional variable `MISTRAL_DESCRIPTION_MODEL` may override the default `ministral-14b-2512`.
+- Mistral requests use the same image and Theme-aware Description prompt, with no additional Mistral guardrail configuration.
+- Successful third-provider recovery records `thirdProviderUsed`, `thirdProvider`, `thirdProviderModel`, plus the first two failure messages in Description diagnostics.
+- If Mistral also fails or refuses, the Description stage still fails normally and preserves all three failure reasons in diagnostics.
+
 # Genreactrix v0.9.40.155 — Theme mismatch auto-recovery
 
 - Pairs with Worker v0.9.6.99-theme-mismatch-auto-recovery. Upload the Worker first, then this site build.
