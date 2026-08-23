@@ -1,10 +1,9 @@
-/* Genreactrix AI Worker v0.9.6.99-theme-mismatch-auto-recovery
-   Adds one-shot automatic Theme mismatch recovery using the existing Theme reasoning data.
-   Hard contradictions rescan with the offending Theme blocked; audit-only GATE_FAILs
-   get one unblocked confirmation rescan. Also applies the approved Theme-definition
-   calibrations and restores the pre-live Matrix identity to 0.0.0.0.
+/* Genreactrix AI Worker v0.9.6.100-mistral-description-third-fallback
+   Preserves the accepted Theme pipeline and mismatch recovery unchanged.
+   Adds Mistral Ministral 3 14B as a description-only third provider when both
+   existing description routes fail or refuse. Matrix remains 0.0.0.0.
 */
-const API_VERSION = '0.9.6.99-theme-mismatch-auto-recovery';
+const API_VERSION = '0.9.6.100-mistral-description-third-fallback';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -14,6 +13,7 @@ const PROVIDER_CALL_TIMEOUT_MS = 45000;
 const PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS = 120000;
 const AMA_PROVIDER_CALL_TIMEOUT_MS = 90000;
 const DEFAULT_FALLBACK_MODEL = 'openai/gpt-4.1-mini';
+const DEFAULT_MISTRAL_DESCRIPTION_MODEL = 'ministral-14b-2512';
 const DEFAULT_AI_GATEWAY_ID = 'default';
 const FALLBACK_COOLDOWN_MS = 15 * 60 * 1000;
 
@@ -88,6 +88,7 @@ const providerTrace = env => Array.isArray(env?.__GENREACTRIX_PROVIDER_TRACE)?en
 const providerRoute = env => env?.__GENREACTRIX_PROVIDER_ROUTE&&typeof env.__GENREACTRIX_PROVIDER_ROUTE==='object'?env.__GENREACTRIX_PROVIDER_ROUTE:null;
 const providerTraceEvent = (env,event) => { const trace=providerTrace(env); if(trace)trace.push({at:new Date().toISOString(),...event}); };
 const fallbackModelFor = env => String(env?.GENREACTRIX_FALLBACK_MODEL||DEFAULT_FALLBACK_MODEL).trim()||DEFAULT_FALLBACK_MODEL;
+const mistralDescriptionModelFor = env => String(env?.MISTRAL_DESCRIPTION_MODEL||DEFAULT_MISTRAL_DESCRIPTION_MODEL).trim()||DEFAULT_MISTRAL_DESCRIPTION_MODEL;
 const aiGatewayIdFor = env => String(env?.GENREACTRIX_AI_GATEWAY_ID||DEFAULT_AI_GATEWAY_ID).trim()||DEFAULT_AI_GATEWAY_ID;
 const effectiveProviderModel = (env,primaryModel) => {
   const models=[...new Set((providerTrace(env)||[]).filter(row=>row.outcome==='success').map(row=>row.model).filter(Boolean))];
@@ -1381,26 +1382,84 @@ function alternateProviderEnv(env){
   return {env:providerRoutingEnv(env,currentlyFallback?{}:{providerRouting:{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'description-local-backup'}}),from:currentlyFallback?'fallback':'primary',to:currentlyFallback?'primary':'fallback'};
 }
 
+function mistralDescriptionText(payload){
+  const content=payload?.choices?.[0]?.message?.content;
+  if(typeof content==='string')return content.trim();
+  if(Array.isArray(content))return content.map(part=>typeof part==='string'?part:String(part?.text||part?.content||'')).filter(Boolean).join('\n').trim();
+  const value=responseValue(payload);
+  return typeof value==='string'?value.trim():'';
+}
+
+async function runMistralDescriptionFallback(env,image,prompt){
+  const apiKey=String(env?.MISTRAL_API_KEY||'').trim();
+  const model=mistralDescriptionModelFor(env);
+  if(!apiKey)throw diagnosticError('Mistral description fallback is not configured: MISTRAL_API_KEY is missing.',{phase:'mistral-description-provider',provider:'mistral-direct',model});
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),PROVIDER_CALL_TIMEOUT_MS);
+  try{
+    const response=await fetch('https://api.mistral.ai/v1/chat/completions',{
+      method:'POST',
+      headers:{'content-type':'application/json','authorization':`Bearer ${apiKey}`},
+      body:JSON.stringify({
+        model,
+        messages:[{role:'user',content:[{type:'text',text:prompt},{type:'image_url',image_url:imageBytesDataUrl(image)}]}],
+        max_tokens:3400,
+        temperature:0.08
+      }),
+      signal:controller.signal
+    });
+    const raw=await response.text();
+    let payload=null;
+    try{payload=raw?JSON.parse(raw):null;}catch{}
+    if(!response.ok){
+      const detail=String(payload?.message||payload?.error?.message||raw||`HTTP ${response.status}`).slice(0,1200);
+      throw diagnosticError(`Mistral description fallback failed (${response.status}): ${detail}`,{phase:'mistral-description-provider',provider:'mistral-direct',model,status:response.status,errorMessage:detail});
+    }
+    const text=mistralDescriptionText(payload);
+    if(!text)throw diagnosticError('Mistral description fallback returned no description.',{phase:'mistral-description-provider',provider:'mistral-direct',model,status:response.status,responsePreview:raw.slice(0,1200)});
+    providerTraceEvent(env,{provider:'mistral-direct',model,outcome:'success'});
+    return{text,model};
+  }catch(error){
+    const timedOut=error?.name==='AbortError';
+    const message=timedOut?`Mistral description fallback timed out after ${Math.round(PROVIDER_CALL_TIMEOUT_MS/1000)}s`:String(error?.message||error);
+    providerTraceEvent(env,{provider:'mistral-direct',model,outcome:'failure',errorMessage:message.slice(0,500)});
+    if(providerDiagnosticOf(error))throw error;
+    throw diagnosticError(message,{phase:'mistral-description-provider',provider:'mistral-direct',model,errorName:error?.name||null,errorMessage:message.slice(0,1200)});
+  }finally{clearTimeout(timer);}
+}
+
 async function runFreshThemeAwareDescription(env,model,image,{behavior='analyze',directorGuidance='',preliminaryThemes=[]}={}){
   const prompt=freshDescriptionPrompt({directorGuidance,preliminaryThemes});
   const zazzly=zazzlyDescriptionProtocol(preliminaryThemes);
   let firstError=null,firstText='';
   try{
     firstText=String(await runStructured(env,model,image,prompt,null,3400,'text',{behavior,temperature:0.08,multimodalMessages:true})).trim();
-    if(!descriptionLimitationDetected(firstText))return{description:firstText,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:false}};
+    if(!descriptionLimitationDetected(firstText))return{description:firstText,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:false,thirdProviderUsed:false}};
     firstError=new Error('Primary Description response showed a refusal/limitation pattern.');
   }catch(error){firstError=error;}
 
   const alternate=alternateProviderEnv(env);
-  let backupText='';
+  let backupText='',backupError=null;
   try{
-    backupText=String(await runStructured(alternate.env,model,image,`${prompt}\n\nBACKUP DESCRIPTION PASS: The first AI could not produce the required complete Description. Describe the image independently and directly. Do not mention the prior failure.`,null,3400,'text',{behavior,temperature:0.08,multimodalMessages:true})).trim();
+    backupText=String(await runStructured(alternate.env,model,image,`${prompt}
+
+BACKUP DESCRIPTION PASS: The first AI could not produce the required complete Description. Describe the image independently and directly. Do not mention the prior failure.`,null,3400,'text',{behavior,temperature:0.08,multimodalMessages:true})).trim();
     mergeProviderTrace(env,alternate.env,'description-backup');
     if(descriptionLimitationDetected(backupText))throw new Error('Backup Description response also showed a refusal/limitation pattern.');
-    return{description:backupText,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:true,backupFrom:alternate.from,backupTo:alternate.to,firstFailure:String(firstError?.message||firstError).slice(0,800)}};
+    return{description:backupText,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:true,backupAttempted:true,backupFrom:alternate.from,backupTo:alternate.to,thirdProviderUsed:false,firstFailure:String(firstError?.message||firstError).slice(0,800)}};
   }catch(error){
+    backupError=error;
     mergeProviderTrace(env,alternate.env,'description-backup');
-    throw diagnosticError(`Description failed on both available AI routes: ${error?.message||error}`,{phase:'theme-aware-description-backup',zazzlyTriggered:zazzly.triggered,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,firstError:String(firstError?.message||firstError).slice(0,1200),backupError:String(error?.message||error).slice(0,1200),backupFrom:alternate.from,backupTo:alternate.to});
+  }
+
+  try{
+    const third=await runMistralDescriptionFallback(env,image,`${prompt}
+
+THIRD-PROVIDER DESCRIPTION PASS: Two prior AI routes could not produce the required complete Description. Describe the image independently, factually, and directly. Do not mention the prior failures.`);
+    if(descriptionLimitationDetected(third.text))throw new Error('Mistral Description response also showed a refusal/limitation pattern.');
+    return{description:third.text,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',zazzlyTriggered:zazzly.triggered,zazzlyTermCount:zazzly.termCount,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,backupUsed:false,backupAttempted:true,backupFrom:alternate.from,backupTo:alternate.to,thirdProviderUsed:true,thirdProvider:'mistral',thirdProviderModel:third.model,firstFailure:String(firstError?.message||firstError).slice(0,800),backupFailure:String(backupError?.message||backupError).slice(0,800)}};
+  }catch(thirdError){
+    throw diagnosticError(`Description failed on primary, backup, and Mistral routes: ${thirdError?.message||thirdError}`,{phase:'theme-aware-description-third-fallback',zazzlyTriggered:zazzly.triggered,preliminaryZazzlyCodes:zazzly.preliminaryZazzlyCodes,firstError:String(firstError?.message||firstError).slice(0,1200),backupError:String(backupError?.message||backupError).slice(0,1200),thirdProvider:'mistral',thirdProviderModel:mistralDescriptionModelFor(env),thirdError:String(thirdError?.message||thirdError).slice(0,1200),backupFrom:alternate.from,backupTo:alternate.to});
   }
 }
 
@@ -3581,6 +3640,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.100 — Description-only Mistral third fallback after both existing routes fail/refuse; Theme pipeline unchanged.
 // v0.9.6.99 — Type-check-safe Theme mismatch recovery signature; behavior unchanged from 0.9.6.98; Matrix remains 0.0.0.0.
 // v0.9.6.88 — EXPERIMENT: Theme Sweep order control: canonical pack Pass 1; one fixed seeded shuffle per recovery Pass 2/3; human-vote scoring and 91 definitions unchanged.
 // v0.9.6.87 — EXPERIMENT: ordinary unconstrained Theme Rerun uses the .86 shuffled raw human-vote selector so the exact flagged sample can be rerolled; constrained reruns retain .84 logic.
