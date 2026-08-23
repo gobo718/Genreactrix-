@@ -1,7 +1,15 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.100-mistral-description-third-fallback.
+Current bundled Worker: v0.9.6.101-mistral-description-resume-routing.
 
+## Worker 0.9.6.101 — Mistral description resume routing
+
+- Keeps Mistral description-only role.
+- Adds Mistral to the provider readiness probe.
+- Reuses a successful Mistral Description for Theme work using primary first, then existing fallback.
+- Emits the successful Mistral Description in downstream failure diagnostics so the site can persist it rather than discard it.
+- Accepts a preserved Mistral Description on a later Theme retry and resumes from Themes instead of rerunning Description.
+- Matrix remains **0.0.0.0**.
 
 ## Worker 0.9.6.100 — Mistral description third fallback
 
