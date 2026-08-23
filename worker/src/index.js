@@ -1,9 +1,9 @@
-/* Genreactrix AI Worker v0.9.6.100-mistral-description-third-fallback
-   Preserves the accepted Theme pipeline and mismatch recovery unchanged.
-   Adds Mistral Ministral 3 14B as a description-only third provider when both
-   existing description routes fail or refuse. Matrix remains 0.0.0.0.
+/* Genreactrix AI Worker v0.9.6.101-mistral-description-resume-routing
+   Keeps a successful Mistral Description when downstream AI work fails.
+   Reuses that Description with the primary Theme/Reaction providers first, then
+   the existing fallback provider. Adds visible Mistral readiness probing. Matrix remains 0.0.0.0.
 */
-const API_VERSION = '0.9.6.100-mistral-description-third-fallback';
+const API_VERSION = '0.9.6.101-mistral-description-resume-routing';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -116,18 +116,38 @@ const providerRoutingSnapshot = (env,primaryModel=null) => {
 };
 
 const providerReadinessProbe = async (env,{timeoutMs=12000}={}) => {
-  if(!env.AI?.run)return{primary:{ready:false,status:'not-configured',provider:'cloudflare-workers-ai',model:env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,error:'Workers AI binding AI is not configured'},fallback:{ready:false,status:'not-configured',provider:'openai-via-cloudflare-ai-gateway',model:fallbackModelFor(env),gatewayId:aiGatewayIdFor(env),error:'Workers AI binding AI is not configured'}};
-  const run=async({provider,model,request,options=null})=>{
+  const runWorkers=async({provider,model,request,options=null})=>{
+    if(!env.AI?.run)return{ready:false,status:'not-configured',provider,model,error:'Workers AI binding AI is not configured'};
     try{
       await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error(`Provider readiness probe timed out after ${Math.round(timeoutMs/1000)}s`)),timeoutMs);const invocation=options?env.AI.run(model,request,options):env.AI.run(model,request);Promise.resolve(invocation).then(value=>{clearTimeout(timer);resolve(value)},error=>{clearTimeout(timer);reject(error)})});
       return{ready:true,status:'ready',provider,model};
     }catch(error){return{ready:false,status:capacity3040(error)?'capacity-unavailable':'failed',provider,model,error:String(error?.message||error).replace(/\s+/g,' ').trim().slice(0,500),errorCode:capacity3040(error)?'3040':null};}
   };
+  const runMistral=async()=>{
+    const provider='mistral-direct',model=mistralDescriptionModelFor(env),apiKey=String(env?.MISTRAL_API_KEY||'').trim();
+    if(!apiKey)return{ready:false,status:'not-configured',provider,model,error:'MISTRAL_API_KEY is not configured'};
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const response=await fetch('https://api.mistral.ai/v1/chat/completions',{
+        method:'POST',
+        headers:{'content-type':'application/json','authorization':`Bearer ${apiKey}`},
+        body:JSON.stringify({model,messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0}),
+        signal:controller.signal
+      });
+      const raw=await response.text();let payload=null;try{payload=raw?JSON.parse(raw):null}catch{}
+      if(!response.ok){const detail=String(payload?.message||payload?.error?.message||raw||`HTTP ${response.status}`).replace(/\s+/g,' ').trim().slice(0,500);return{ready:false,status:'failed',provider,model,error:detail,httpStatus:response.status};}
+      const answer=mistralDescriptionText(payload);
+      if(!answer)return{ready:false,status:'failed',provider,model,error:'Mistral readiness probe returned no text'};
+      return{ready:true,status:'ready',provider,model};
+    }catch(error){return{ready:false,status:error?.name==='AbortError'?'timeout':'failed',provider,model,error:String(error?.name==='AbortError'?`Mistral readiness probe timed out after ${Math.round(timeoutMs/1000)}s`:error?.message||error).replace(/\s+/g,' ').trim().slice(0,500)};}
+    finally{clearTimeout(timer);}
+  };
   const primaryModel=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL,fallbackModel=fallbackModelFor(env),gatewayId=aiGatewayIdFor(env);
-  const primary=await run({provider:'cloudflare-workers-ai',model:primaryModel,request:{prompt:'Reply with READY only.',max_tokens:8,temperature:0}});
-  const fallback=await run({provider:'openai-via-cloudflare-ai-gateway',model:fallbackModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0},options:{gateway:{id:gatewayId}}});
+  const primary=await runWorkers({provider:'cloudflare-workers-ai',model:primaryModel,request:{prompt:'Reply with READY only.',max_tokens:8,temperature:0}});
+  const fallback=await runWorkers({provider:'openai-via-cloudflare-ai-gateway',model:fallbackModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0},options:{gateway:{id:gatewayId}}});
   fallback.gatewayId=gatewayId;
-  return{primary,fallback,probedAt:new Date().toISOString(),cooldownStateChanged:false};
+  const mistral=await runMistral();
+  return{primary,fallback,mistral,probedAt:new Date().toISOString(),cooldownStateChanged:false};
 };
 
 const safeProviderDiagnostic = payload => {
@@ -1325,6 +1345,42 @@ async function runFreshThemeMismatchRecovery(env,model,image,behavior,options={}
   }
   const finalDiagnostic=await runThemeReasoningDiagnostic(env,model,image,behavior,rescanResolved,themeSweep),postSignals=themeRecoverySignals(finalDiagnostic,rescan.selections);
   return{resolvedThemes:rescanResolved,finalDecision:rescan,diagnostic:finalDiagnostic,recovery:{schemaVersion:1,trigger:hard?'theme-evidence-contradiction':'audit-gate-fail',mode,blockedThemeCodes:blocked,questionedThemeCodes:questioned,initialSelectedCodes:initialDecision.selections.map(row=>row.code),rescanSelectedCodes:rescan.selections.map(row=>row.code),acceptedRescan:true,confirmationRetainedOriginal:false,rescanCount:1,postRescanHardCodes:postSignals.hardCodes,postRescanSoftCodes:postSignals.softCodes}};
+}
+
+async function runThemesFromMistralDescriptionThroughExistingProviders(env,model,image,behavior,{description='',themeSweep=null}={}){
+  const runChain=async(runEnv)=>{
+    const initialFinalDecision=await runThemeAssociation(runEnv,model,{description,behavior,themeSweep,stage:'final'});
+    const mismatchRecovery=await runFreshThemeMismatchRecovery(runEnv,model,image,behavior,{description,initialDecision:initialFinalDecision,themeSweep});
+    return{initialFinalDecision,mismatchRecovery};
+  };
+  const primaryEnv=providerRoutingEnv(env,{});
+  try{
+    const result=await runChain(primaryEnv);
+    mergeProviderTrace(env,primaryEnv,'mistral-description-downstream-primary');
+    return{...result,recovery:{schemaVersion:1,descriptionProvider:'mistral',themeProviderRoute:'primary',fallbackUsed:false}};
+  }catch(primaryError){
+    mergeProviderTrace(env,primaryEnv,'mistral-description-downstream-primary');
+    const fallbackEnv=providerRoutingEnv(env,{providerRouting:{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'mistral-description-downstream-fallback'}});
+    try{
+      const result=await runChain(fallbackEnv);
+      mergeProviderTrace(env,fallbackEnv,'mistral-description-downstream-fallback');
+      return{...result,recovery:{schemaVersion:1,descriptionProvider:'mistral',themeProviderRoute:'fallback',fallbackUsed:true,primaryFailure:String(primaryError?.message||primaryError).slice(0,1000)}};
+    }catch(fallbackError){
+      mergeProviderTrace(env,fallbackEnv,'mistral-description-downstream-fallback');
+      throw diagnosticError(
+        `Mistral Description was preserved, but Theme processing failed on primary and fallback providers: ${fallbackError?.message||fallbackError}`,
+        {
+          phase:'mistral-description-downstream-theme-recovery',
+          failureKind:'theme-downstream-failed',
+          mistralDescriptionPreserved:true,
+          preservedDescription:String(description||'').slice(0,12000),
+          preservedDescriptionDiagnostics:{schemaVersion:1,thirdProviderUsed:true,thirdProvider:'mistral',thirdProviderModel:mistralDescriptionModelFor(env)},
+          primaryError:String(primaryError?.message||primaryError).slice(0,1200),
+          fallbackError:String(fallbackError?.message||fallbackError).slice(0,1200)
+        }
+      );
+    }
+  }
 }
 function zazzlyTerms(){
   const base=PRIMFUSION_REGISTRY.primitives.find(row=>row.id==='P09');
@@ -3640,6 +3696,7 @@ function resolveThemes(rawThemes){
 }
 
 
+// v0.9.6.101 — Preserve successful Mistral Description; reuse it for downstream Theme/Reaction recovery via primary then fallback; visible Mistral readiness probe.
 // v0.9.6.100 — Description-only Mistral third fallback after both existing routes fail/refuse; Theme pipeline unchanged.
 // v0.9.6.99 — Type-check-safe Theme mismatch recovery signature; behavior unchanged from 0.9.6.98; Matrix remains 0.0.0.0.
 // v0.9.6.88 — EXPERIMENT: Theme Sweep order control: canonical pack Pass 1; one fixed seeded shuffle per recovery Pass 2/3; human-vote scoring and 91 definitions unchanged.
@@ -4215,32 +4272,61 @@ async function analyze(env,body){
         promptVersions.themes='genreactrix-themes-pfm-v19-rerun-adversarial-audit';
       }
     }else{
-      // Preserve the proven fresh-image Theme machinery as the preliminary pass,
-      // but automatically rescan once when its own rationale contradicts a defining requirement.
-      const preliminaryRun=await runPreliminaryThemeMismatchRecovery(env,model,image,behavior,body.themeSweep||null),preliminary=preliminaryRun.result;
-      const preliminaryThemes=resolveThemes(preliminary.selections);
-      const descriptionPass=await runFreshThemeAwareDescription(env,model,image,{behavior,directorGuidance:body.directorGuidance,preliminaryThemes});
-      const initialFinalDecision=await runThemeAssociation(env,model,{description:descriptionPass.description,behavior,themeSweep:body.themeSweep||null,stage:'final'});
-      const mismatchRecovery=await runFreshThemeMismatchRecovery(env,model,image,behavior,{description:descriptionPass.description,initialDecision:initialFinalDecision,themeSweep:body.themeSweep||null});
+      // Preserve the proven fresh-image Theme machinery. If Mistral had to rescue
+      // the Description, that exact Description becomes the durable downstream
+      // evidence source: primary Theme provider first, then the existing fallback.
+      const preservedDescription=String(body.preservedDescriptionContext||'').trim().slice(0,12000);
+      const preservedDiagnostics=body.preservedDescriptionDiagnostics&&typeof body.preservedDescriptionDiagnostics==='object'?body.preservedDescriptionDiagnostics:null;
+      let preliminaryRun=null,preliminary=null,preliminaryThemes=[],descriptionPass;
+      if(preservedDescription){
+        descriptionPass={description:preservedDescription,diagnostics:{schemaVersion:1,protocol:'preliminary-theme-aware-description-v1',...(preservedDiagnostics||{}),thirdProviderUsed:true,thirdProvider:'mistral',thirdProviderModel:String(preservedDiagnostics?.thirdProviderModel||mistralDescriptionModelFor(env)),preservedForDownstreamRecovery:true}};
+      }else{
+        preliminaryRun=await runPreliminaryThemeMismatchRecovery(env,model,image,behavior,body.themeSweep||null);
+        preliminary=preliminaryRun.result;
+        preliminaryThemes=resolveThemes(preliminary.selections);
+        descriptionPass=await runFreshThemeAwareDescription(env,model,image,{behavior,directorGuidance:body.directorGuidance,preliminaryThemes});
+      }
+      let initialFinalDecision,mismatchRecovery,mistralDownstreamRecovery=null;
+      if(descriptionPass.diagnostics?.thirdProviderUsed){
+        try{
+          const downstream=await runThemesFromMistralDescriptionThroughExistingProviders(env,model,image,behavior,{description:descriptionPass.description,themeSweep:body.themeSweep||null});
+          initialFinalDecision=downstream.initialFinalDecision;
+          mismatchRecovery=downstream.mismatchRecovery;
+          mistralDownstreamRecovery=downstream.recovery;
+        }catch(error){
+          const prior=providerDiagnosticOf(error)||{};
+          throw diagnosticError(error?.message||'Mistral Description downstream Theme recovery failed.',{
+            ...prior,
+            mistralDescriptionPreserved:true,
+            preservedDescription:String(descriptionPass.description||'').slice(0,12000),
+            preservedDescriptionDiagnostics:{...descriptionPass.diagnostics,preservedForDownstreamRecovery:true}
+          });
+        }
+      }else{
+        initialFinalDecision=await runThemeAssociation(env,model,{description:descriptionPass.description,behavior,themeSweep:body.themeSweep||null,stage:'final'});
+        mismatchRecovery=await runFreshThemeMismatchRecovery(env,model,image,behavior,{description:descriptionPass.description,initialDecision:initialFinalDecision,themeSweep:body.themeSweep||null});
+      }
       resolvedThemes=mismatchRecovery.resolvedThemes;
       sharedThemeReasoningDiagnostic=mismatchRecovery.diagnostic;
       components.themeDecisionDiagnostics={
-        schemaVersion:4,
-        protocol:'preserved-human-vote-preliminary-to-theme-aware-description-to-description-only-final-themes-v2-auto-recovery',
-        preliminary:preliminary.diagnostics,
+        schemaVersion:5,
+        protocol:'preserved-human-vote-preliminary-to-theme-aware-description-to-description-only-final-themes-v3-mistral-downstream-recovery',
+        preliminary:preliminary?.diagnostics||null,
         preliminaryThemes:preliminaryThemes.map(row=>({rank:row.rank,code:row.code,name:row.name})),
-        preliminaryMismatchRecovery:preliminaryRun.recovery,
+        preliminaryMismatchRecovery:preliminaryRun?.recovery||null,
         description:descriptionPass.diagnostics,
         initialFinal:initialFinalDecision.diagnostics,
         final:mismatchRecovery.finalDecision.diagnostics,
         automaticMismatchRecovery:mismatchRecovery.recovery,
-        preliminarySelectorPreserved:true,
+        mistralDescriptionDownstreamRecovery:mistralDownstreamRecovery,
+        preservedDescriptionReused:Boolean(preservedDescription),
+        preliminarySelectorPreserved:!preservedDescription,
         finalSelectionImageAccess:false,
         finalSelectionPreliminaryThemeAccess:false
       };
       components.__freshPipelineDescription=descriptionPass.description;
       components.__freshPipelineDescriptionDiagnostics=descriptionPass.diagnostics;
-      promptVersions.themes='genreactrix-themes-pfm-v29-description-led-mismatch-auto-recovery';
+      promptVersions.themes='genreactrix-themes-pfm-v30-mistral-description-downstream-recovery';
     }
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) {
@@ -4340,7 +4426,7 @@ export default {
         totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
-        providerRouting:{primaryProvider:'cloudflare-workers-ai',fallbackProvider:'openai-via-cloudflare-ai-gateway',fallbackModel:fallbackModelFor(env),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
+        providerRouting:{primaryProvider:'cloudflare-workers-ai',fallbackProvider:'openai-via-cloudflare-ai-gateway',fallbackModel:fallbackModelFor(env),thirdDescriptionProvider:'mistral-direct',thirdDescriptionModel:mistralDescriptionModelFor(env),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
         promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'},
         blindPrimDiagnostic:{enabled:true,protocol:'blind-prim-image-only-v1',minPicks:0,maxPicks:4}
       });
