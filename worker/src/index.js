@@ -1,9 +1,8 @@
-/* Genreactrix AI Worker v0.9.6.101-mistral-description-resume-routing
-   Keeps a successful Mistral Description when downstream AI work fails.
-   Reuses that Description with the primary Theme/Reaction providers first, then
-   the existing fallback provider. Adds visible Mistral readiness probing. Matrix remains 0.0.0.0.
+/* Genreactrix AI Worker v0.9.6.102-production-cleanup
+   Preserves Mistral description rescue and downstream provider recovery.
+   Removes the completed one-time Blind Prim diagnostic endpoint and plumbing. Matrix remains 0.0.0.0.
 */
-const API_VERSION = '0.9.6.101-mistral-description-resume-routing';
+const API_VERSION = '0.9.6.102-production-cleanup';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -4078,111 +4077,6 @@ const analysisProviderSummary = (env,primaryModel) => {
 };
 
 
-function blindPrimPrompt(){
-  const definitions=PRIMFUSION_REGISTRY.primitives.map(row=>`${row.id} — ${row.name}: ${String(row.aiMeaning||'').replace(/\s+/g,' ').trim()}`).join('\n');
-  return `BLIND PRIM TEST — IMAGE ONLY\n\nEvaluate the image using only the 14 Prim definitions below.\nDo not use or infer PrimFusion Themes. You have not been given Themes, prior AI results, descriptions, Reaction scores, Director choices, or any other image history.\n\nChoose only the Prims that genuinely apply to this image. Return between ZERO and FOUR Prims. Zero is a valid answer when none fits meaningfully. Do not fill slots merely because up to four are allowed. Rank selected Prims strongest to weakest by line order. Give exactly one short, concrete, image-grounded reason for each selected Prim. Do not output percentages, scores, confidence numbers, Theme names, JSON, Markdown, or extra commentary.\n\n14 PRIM DEFINITIONS:\n${definitions}\n\nOUTPUT CONTRACT\nIf no Prim genuinely applies, return exactly:\nNONE\n\nOtherwise return one line per selected Prim, strongest first, using exactly:\nPICK|P##|short concrete visible reason\n\nReturn no other lines.`;
-}
-
-function parseBlindPrimText(value){
-  const raw=String(value??'').trim();
-  if(!raw)throw diagnosticError('Blind Prim provider returned an empty response',{phase:'blind-prim-parse',responsePreview:''});
-  const cleaned=raw.replace(/^```(?:text)?\s*/i,'').replace(/\s*```$/,'').trim();
-  if(/^NONE\s*[.!]?$/i.test(cleaned))return [];
-  const validCodes=new Set(PRIMFUSION_REGISTRY.primitives.map(row=>row.id));
-  const rows=[],seen=new Set();
-  for(const sourceLine of cleaned.split(/\r?\n/)){
-    const line=sourceLine.trim().replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, '');
-    if(!line)continue;
-    if(/^NONE\s*[.!]?$/i.test(line)){
-      if(rows.length)throw diagnosticError('Blind Prim provider mixed NONE with Prim picks',{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
-      return [];
-    }
-    let match=line.match(/^PICK\s*\|\s*(P\d{2})\s*\|\s*(.+)$/i);
-    if(!match)match=line.match(/^PICK\s*\|\s*\d+\s*\|\s*(P\d{2})\s*\|\s*(.+)$/i);
-    if(!match)match=line.match(/^(P\d{2})\s*(?:\||:|—|-)\s*(.+)$/i);
-    if(!match)continue;
-    const code=String(match[1]||'').toUpperCase(),reason=String(match[2]||'').replace(/\s+/g,' ').trim().slice(0,400);
-    if(!validCodes.has(code))throw diagnosticError(`Blind Prim provider returned unknown Prim ${code||'(blank)'}`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
-    if(seen.has(code))throw diagnosticError(`Blind Prim provider returned duplicate Prim ${code}`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
-    if(!reason)throw diagnosticError(`Blind Prim provider returned no reason for ${code}`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
-    seen.add(code);rows.push({rank:rows.length+1,code,reason});
-    if(rows.length>4)throw diagnosticError(`Blind Prim provider returned ${rows.length} picks; maximum is 4`,{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
-  }
-  if(!rows.length)throw diagnosticError('Blind Prim provider response did not match the PICK/NONE contract',{phase:'blind-prim-parse',responsePreview:cleaned.slice(0,1200)});
-  return rows;
-}
-
-async function runBlindPrimDiagnostic(env,body){
-  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
-  if(!body?.imageId)throw new Error('imageId is required');
-  const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl);
-  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
-  const basePrompt=blindPrimPrompt();
-
-  const execute=async(runEnv,{multimodalMessages=false,recovery=false}={})=>{
-    const prompt=recovery
-      ? `${basePrompt}\n\nRECOVERY PASS: The previous provider/transport could not produce a usable Blind Prim result. Re-evaluate the image independently. Do not infer or mention Themes or prior results. Obey the PICK/NONE output contract exactly.`
-      : basePrompt;
-    const raw=await runStructured(runEnv,model,image,prompt,null,900,'text',{
-      behavior:'analyze',temperature:0.1,preserveWhitespace:true,multimodalMessages
-    });
-    return{raw,picks:parseBlindPrimText(raw)};
-  };
-
-  let firstError=null;
-  try{
-    const first=await execute(env);
-    const routing=providerRoutingSnapshot(env,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
-    return {
-      schemaVersion:1,protocol:'blind-prim-image-only-v1',imageId:String(body.imageId),
-      analyzedAt:new Date().toISOString(),workerVersion:API_VERSION,primFusionMatrixVersion:matrixVersion(),
-      model:effectiveProviderModel(env,model),
-      provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
-      providerRouting:routing,rawProviderResult:first.raw,picks:first.picks,
-      recoveryUsed:false
-    };
-  }catch(error){firstError=error;}
-
-  // Blind-Prim-only recovery. This does NOT mutate the established provider router or
-  // its 3040 cooldown. A stubborn specimen gets one independent attempt on the other
-  // provider/transport while remaining fully blind to Themes, descriptions, prior
-  // results, Reaction scores, and lifecycle data.
-  const initialRoute=providerRoute(env);
-  const initialWasFallback=initialRoute?.mode==='fallback'&&Number(initialRoute.fallbackUntil)>Date.now();
-  const recoveryBody=initialWasFallback
-    ? {}
-    : {providerRouting:{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'blind-prim-local-recovery'}};
-  const recoveryEnv=providerRoutingEnv(env,recoveryBody);
-  try{
-    const recovered=await execute(recoveryEnv,{multimodalMessages:true,recovery:true});
-    const routing=providerRoutingSnapshot(recoveryEnv,model),successfulProviders=[...new Set(routing.successfulProviders||[])];
-    return {
-      schemaVersion:1,protocol:'blind-prim-image-only-v1',imageId:String(body.imageId),
-      analyzedAt:new Date().toISOString(),workerVersion:API_VERSION,primFusionMatrixVersion:matrixVersion(),
-      model:effectiveProviderModel(recoveryEnv,model),
-      provider:successfulProviders.length===1?successfulProviders[0]:(successfulProviders.length>1?'mixed':''),
-      providerRouting:routing,rawProviderResult:recovered.raw,picks:recovered.picks,
-      recoveryUsed:true,
-      recoveryFrom:initialWasFallback?'fallback':'primary',
-      recoveryTo:initialWasFallback?'primary':'fallback',
-      firstFailure:String(firstError?.message||firstError).slice(0,800)
-    };
-  }catch(recoveryError){
-    throw diagnosticError(
-      `Blind Prim failed on both ${initialWasFallback?'fallback then primary':'primary then fallback'}: ${recoveryError?.message||recoveryError}`,
-      {
-        phase:'blind-prim-dual-provider-recovery',
-        initialProvider:initialWasFallback?'fallback':'primary',
-        recoveryProvider:initialWasFallback?'primary':'fallback',
-        firstError:String(firstError?.message||firstError).slice(0,1200),
-        firstDiagnostic:providerDiagnosticOf(firstError),
-        recoveryError:String(recoveryError?.message||recoveryError).slice(0,1200),
-        recoveryDiagnostic:providerDiagnosticOf(recoveryError)
-      }
-    );
-  }
-}
-
 async function analyze(env,body){
   if (!env.AI?.run) throw new Error('Workers AI binding AI is not configured');
 
@@ -4427,8 +4321,7 @@ export default {
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
         providerRouting:{primaryProvider:'cloudflare-workers-ai',fallbackProvider:'openai-via-cloudflare-ai-gateway',fallbackModel:fallbackModelFor(env),thirdDescriptionProvider:'mistral-direct',thirdDescriptionModel:mistralDescriptionModelFor(env),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
-        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'},
-        blindPrimDiagnostic:{enabled:true,protocol:'blind-prim-image-only-v1',minPicks:0,maxPicks:4}
+        promptDiagnostics:{enabled:true,conceptCount:105,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
       });
     }
 
@@ -4496,19 +4389,6 @@ export default {
         else if(mode==='question-block')result=await runAmaQuestionStep(routedEnv,body);
         else result=await runAma(routedEnv,body);
         return json({ok:true,result,providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
-      }
-
-      if (request.method === 'POST' && url.pathname === '/api/genreactrix/blind-prims'){
-        if (!env.ANALYSIS_KEY){
-          return json({ok:false,error:'Analysis access is not configured'},{status:503});
-        }
-        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
-          return json({ok:false,error:'Unauthorized'},{status:401});
-        }
-        const body = await request.json().catch(()=>null);
-        if (!body) return json({ok:false,error:'JSON body required'},{status:400});
-        const routedEnv=providerRoutingEnv(env,body);
-        return json({ok:true,result:await runBlindPrimDiagnostic(routedEnv,body),providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze'){
