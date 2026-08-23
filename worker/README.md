@@ -1,6 +1,16 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.99-theme-mismatch-auto-recovery.
+Current bundled Worker: v0.9.6.100-mistral-description-third-fallback.
+
+
+## Worker 0.9.6.100 — Mistral description third fallback
+
+- Preserves the accepted v0.9.6.99 Theme pipeline and mismatch recovery unchanged; Matrix remains **0.0.0.0**.
+- Adds direct Mistral Chat Completions vision only after both existing fresh-description routes fail or return a refusal/limitation pattern.
+- Default third-provider model: `ministral-14b-2512`.
+- Requires Worker secret `MISTRAL_API_KEY`; optional `MISTRAL_DESCRIPTION_MODEL` overrides the model.
+- Mistral is not added to general provider routing or any non-Description component.
+- Description diagnostics identify successful third-provider rescue and preserve the preceding primary/backup failures.
 
 ## Worker 0.9.6.99 — Theme mismatch auto-recovery
 
