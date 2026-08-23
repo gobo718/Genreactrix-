@@ -1,6 +1,14 @@
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.102-production-cleanup.
+Current bundled Worker: v0.9.6.103-url-resolution-repair.
+
+## Worker 0.9.6.103 — URL resolution repair
+
+- Keeps direct HTTPS image retrieval unchanged when the URL already returns image bytes.
+- Resolves Wikimedia Commons `wiki/File:` pages through the Commons API to a bounded media rendition when available, with a direct-file redirect fallback.
+- For other HTTPS HTML source pages, performs a bounded metadata/image candidate resolution pass before failing import.
+- The same resolver is used by the authenticated image proxy and internal image-byte loading, so linked source-page records remain usable downstream.
+- Mistral Description recovery, Theme/Reaction routing, and Matrix 0.0.0.0 are unchanged.
 
 ## Worker 0.9.6.102 — Production cleanup
 
