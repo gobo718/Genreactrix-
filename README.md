@@ -1,3 +1,9 @@
+# Genreactrix v0.9.40.164 — Smart matrix heading restored
+
+- Pairs with Worker v0.9.6.111-goofy-camp-swap; no Worker change is required.
+- Fills the previously empty bottom-right PrimFusion Matrix axis heading with **🧠 Smart**.
+- Uses the existing axis-button styling and seventh column, so matrix geometry, Theme cells, PrimFusion taxonomy, and diagonal emoji placement are unchanged.
+
 # Genreactrix v0.9.40.163 — Goofy/Camp swap
 
 - Pairs with Worker v0.9.6.111-goofy-camp-swap.

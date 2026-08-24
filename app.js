@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.163";
+const GENREACTRIX_BUILD="v0.9.40.164";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -166,6 +166,7 @@ function canonicalPrimFusionLabel(firstName, secondName){
   return CANONICAL_PRIMFUSION_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
 
+// v0.9.40.164 — PrimFusion Matrix bottom-right heading restored with Smart 🧠. Geometry and taxonomy unchanged.
 // v0.9.40.163 — Goofy/Camp swap. PFM0104 (Adorable + Funny) is now Goofy and PFM0204 (Beautiful + Funny) is now Camp. Charming remains retired. Active Prim IDs remain P01-P13 with Angry at P07.
 window.genreactrixCurrentFusionThemes = Object.freeze([...new Set(
   Object.entries(CANONICAL_PRIMFUSION_LABELS)
@@ -1634,7 +1635,7 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   // Exact source of truth: PrimFusion_Interlocked_Matrix_Compact_Screenshot_Match.xlsm, B2:H14.
   // Current 13-Prim / 78-Theme PrimFusion interlocked matrix. Ticket is retired; former P14 Angry now occupies P07.
   const topSymbols=["🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠"];
-  const bottomSymbols=["🌀", "🌌", "🤢", "👻", "💥", "🤬"];
+  const bottomSymbols=["🌀", "🌌", "🤢", "👻", "💥", "🤬", "🧠"];
   const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "🌀", "🌌", "🤢", "👻", "💥", "🤬"];
   const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠"];
   const matrixRows=[
