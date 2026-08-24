@@ -197,6 +197,14 @@
  async function imageInput(record){if(record.storage?.hyperlink)return{imageUrl:record.storage.hyperlink};const blob=await window.imageBlobGet?.(record.id).catch(()=>null);if(!blob)throw new Error('Image source is unavailable');try{const prepared=await normalizeAiImageBlob(blob),dataUrl=await blobDataUrl(prepared.blob);return{imageDataUrl:dataUrl}}catch(error){throw new Error(`AI image preparation failed: ${String(error?.message||error)}`)}}
  async function createJob(config){config=clone(config||{});config.components=clone(config.components||{});if(config.components?.themes?.enabled){const behavior=config.components.themes.behavior||'analyze';config.components.genreReasons={enabled:true,behavior};}const selected=Object.entries(config.components||{}).filter(([,v])=>v.enabled);if(!selected.length)throw new Error('Choose at least one AI component');const selectedIds=selected.map(([id])=>id),reactionSources=config.reactionRerunSources&&typeof config.reactionRerunSources==='object'?config.reactionRerunSources:null,descriptionOnlyReaction=selectedIds.length===1&&selectedIds[0]==='reactions'&&reactionSources?.image===false&&reactionSources?.description===true;const existingItems=await all(ITEMS),activeImageIds=new Set(existingItems.filter(i=>['queued','processing'].includes(i.state)).map(i=>i.imageId));const candidates=applyQuantity(eligibleRecords(config).filter(r=>{if(activeImageIds.has(r.id))return false;if(config.skipFailed){const hasFailed=selected.some(([c])=>{const field=COMPONENTS.find(([id])=>id===c)?.[2];return field&&r.components?.[field]==='failed'});if(hasFailed)return false;}return selected.some(([c,v])=>shouldRun(r,c,v.behavior));}),config);const rows=[],sourceRejects=[];for(const record of candidates){const check=descriptionOnlyReaction?{ok:true,kind:'description-only'}:await validateAiSource(record);if(check.ok)rows.push(record);else sourceRejects.push({imageId:record.id,name:record.name||record.source?.originalFilename||record.id,mimeType:check.mimeType||record.storage?.mimeType||'',reason:check.reason});}if(!rows.length)return {id:null,schemaVersion:1,state:'completed',createdAt:now(),startedAt:null,completedAt:now(),config:clone(config),total:0,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`No queueable images · ${sourceRejects.length} unsupported or undecodable`:'No eligible images',stopRequested:false};const job={id:id('ai_job'),schemaVersion:1,state:'queued',createdAt:now(),startedAt:null,completedAt:null,config:clone(config),total:rows.length,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`Queued · ${sourceRejects.length} unsupported/undecodable skipped`:'Queued',stopRequested:false};if(selectedIds.includes('themes')&&!job.config.themeSweep&&!job.config.themeRerun&&(job.config.target!=='selected'||job.config.themeSweepRequested===true)){const sweep=window.genreactrixThemeSweepEngine?.begin?.({jobId:job.id,imageIds:rows.map(r=>r.id)});if(sweep)job.config.themeSweep={managed:true,sweepId:sweep.id,pass:1,orderMode:'canonical',orderSeed:null,rootJobId:job.id,persistDescription:selectedIds.includes('description')};}await put(JOBS,job);const queueJob=await q()?.createJob?.({id:`queue_${job.id}`,type:'ai',ownerEngine:'ai-analysis',ownerJobId:job.id,label:`AI analysis · ${rows.length} image${rows.length===1?'':'s'}`,state:'queued',total:rows.length,imageIds:rows.map(r=>r.id),batchId:null,message:'Queued'});const queueRows=[];for(const [order,record] of rows.entries()){const item={id:id('ai_item'),jobId:job.id,imageId:record.id,order,state:'queued',attempts:0,error:'',themeRerunLifecycleGuard:isThemeRerunConfig(config)?themeRerunLifecycleGuardFor(record):null,components:selected.map(([component,settings])=>({component,behavior:settings.behavior,state:'queued'}))};await put(ITEMS,item);queueRows.push({id:`queue_${item.id}`,imageId:record.id,ownerItemId:item.id,order,type:'ai',state:'queued'})}if(queueJob)await q()?.addItems?.(queueJob.id,queueRows);emit();return clone(job)}
  async function updateJob(job,patch){Object.assign(job,patch);await put(JOBS,job);emit();return job}
+ async function startAiRequestOutcome(specimen){
+  const startedMs=Date.now();
+  try{
+   const payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey());
+   return{ok:true,payload,startedMs,endedMs:Date.now()};
+  }catch(error){return{ok:false,error,startedMs,endedMs:Date.now()};}
+ }
+
  async function processItem(job,item){
   const lifecycleIsolated=isThemeRerunConfig(job.config);
   item.state='processing';item.attempts++;item.currentAttemptId=`${item.id}:attempt:${item.attempts}`;item.error='';await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'processing',{attempts:item.attempts});if(!lifecycleIsolated)window.genreactrixLifecycleEngine?.markAiProcessing?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId});job.processing=1;await updateJob(job,{message:`Analyzing ${job.completed+job.failed+1} of ${job.total}`});
@@ -219,26 +227,54 @@
   else{take(['themes','genreReasons']);take(['description']);}
   for(const c of pending)if(!groups.some(group=>group.includes(c)))groups.push([c]);
 
-  for(const group of groups){
+  // v0.9.40.166 — When the normal fresh Reaction family and Theme/Description
+  // family are both requested and do not depend on one another, start their
+  // initial Worker requests together. Their artifact/history commits remain
+  // serialized below so local project writes keep the existing ordering.
+  const buildGroupContext=(group,sourceRecord)=>{
     const requested=group.map(c=>c.component);
     const componentBehaviors=Object.fromEntries(group.map(c=>[c.component,c.behavior]));
+    const previous=sourceRecord.analysis?.ai||{},guidance=String(job.config.analysisGuidance||'').trim().slice(0,6000);
+    const existingDescription=String(previous.components?.description||previous.description||'').trim();
+    const descriptionRerun=requested.includes('description')&&job.config.descriptionRerun?clone(job.config.descriptionRerun):null;
+    const themeRerun=requested.includes('themes')&&job.config.themeRerun?clone(job.config.themeRerun):null;
+    const groupReactionSources=requested.includes('reactions')&&job.config.reactionRerunSources?{image:job.config.reactionRerunSources.image!==false,description:Boolean(job.config.reactionRerunSources.description)}:null;
+    const existingDescriptionDiagnostics=previous.components?.descriptionDiagnostics&&typeof previous.components.descriptionDiagnostics==='object'?previous.components.descriptionDiagnostics:null;
+    const usePreservedMistralDescription=requested.includes('themes')&&!requested.includes('description')&&Boolean(existingDescription)&&existingDescriptionDiagnostics?.thirdProviderUsed===true;
+    const specimen={imageId:sourceRecord.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',directReactionUseAnalysis:Boolean(groupReactionSources?.description),reactionRerunSources:clone(groupReactionSources),reactionDescriptionContext:groupReactionSources?.description?existingDescription.slice(0,6000):'',preservedDescriptionContext:usePreservedMistralDescription?existingDescription.slice(0,12000):'',preservedDescriptionDiagnostics:usePreservedMistralDescription?clone(existingDescriptionDiagnostics):null,descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),themeSweep:clone(job.config.themeSweep||null),...input};
+    return{requested,componentBehaviors,previous,guidance,existingDescription,descriptionRerun,themeRerun,reactionRerunSources:groupReactionSources,existingDescriptionDiagnostics,usePreservedMistralDescription,specimen};
+  };
+  const reactionGroup=groups.find(group=>group.some(c=>['reactions','reactionReasons'].includes(c.component)))||null;
+  const themeGroup=groups.find(group=>group.some(c=>['themes','genreReasons'].includes(c.component)))||null;
+  const freshParallelEligible=Boolean(reactionGroup&&themeGroup&&!job.config.themeRerun&&!job.config.descriptionRerun&&!reactionSources?.description);
+  const parallelContexts=new Map(),parallelRequests=new Map();
+  if(freshParallelEligible){
+    for(const group of [reactionGroup,themeGroup])parallelContexts.set(group,buildGroupContext(group,record));
+  }
+
+  for(const group of groups){
+    const context=parallelContexts.get(group)||buildGroupContext(group,record);
+    const {requested,componentBehaviors,previous:requestPrevious,guidance,descriptionRerun,themeRerun,specimen}=context;
     const artifactEngine=window.genreactrixAiArtifactEngine;
     let artifactAttempt=null,artifactAttemptCompleted=false;
     try{
       if(!artifactEngine)throw new Error('AI Attempt/Artifact history engine is unavailable');
       await artifactEngine.ensureImageReady?.(record.id);
       record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
-      const previous=record.analysis?.ai||{},guidance=String(job.config.analysisGuidance||'').trim().slice(0,6000);
-      const existingDescription=String(previous.components?.description||previous.description||'').trim();
-      const descriptionRerun=requested.includes('description')&&job.config.descriptionRerun?clone(job.config.descriptionRerun):null;
-      const themeRerun=requested.includes('themes')&&job.config.themeRerun?clone(job.config.themeRerun):null;
+      const previous=record.analysis?.ai||requestPrevious;
       const baseMode=artifactEngine.attemptMode({requested,componentBehaviors,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),directReactionUseAnalysis:Boolean(job.config.directReactionUseAnalysis),reactionRerunSources:clone(job.config.reactionRerunSources||null),directorGuidance:guidance});
       const mode=descriptionRerun?.operation?`rerun:description-${String(descriptionRerun.operation)}`:(themeRerun?'rerun:themes-director-workspace':baseMode);
       artifactAttempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode,directorGuidance:guidance,inputRefs:{imageId:record.id,sourceKind:descriptionOnlyReaction?'description-only':(input.imageUrl?'linked-url':'local-working-copy'),descriptionArtifact:previous.artifactHistory?.currentArtifacts?.description||null,priorArtifacts:clone(previous.artifactHistory?.currentArtifacts||{}),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'60/40',descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)}});
-      const reactionRerunSources=requested.includes('reactions')&&job.config.reactionRerunSources?{image:job.config.reactionRerunSources.image!==false,description:Boolean(job.config.reactionRerunSources.description)}:null;
-      const existingDescriptionDiagnostics=previous.components?.descriptionDiagnostics&&typeof previous.components.descriptionDiagnostics==='object'?previous.components.descriptionDiagnostics:null;
-      const usePreservedMistralDescription=requested.includes('themes')&&!requested.includes('description')&&Boolean(existingDescription)&&existingDescriptionDiagnostics?.thirdProviderUsed===true;
-      const specimen={imageId:record.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',directReactionUseAnalysis:Boolean(reactionRerunSources?.description),reactionRerunSources:clone(reactionRerunSources),reactionDescriptionContext:reactionRerunSources?.description?existingDescription.slice(0,6000):'',preservedDescriptionContext:usePreservedMistralDescription?existingDescription.slice(0,12000):'',preservedDescriptionDiagnostics:usePreservedMistralDescription?clone(existingDescriptionDiagnostics):null,descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),themeSweep:clone(job.config.themeSweep||null),...input};
+      // Launch both independent initial Worker calls only after the first Artifact
+      // attempt has been safely established. This prevents AI spend if local
+      // attempt/history persistence is unavailable, while still overlapping the
+      // expensive network/provider work.
+      if(freshParallelEligible&&group===reactionGroup&&!parallelRequests.size){
+        for(const parallelGroup of [reactionGroup,themeGroup]){
+          const parallelContext=parallelContexts.get(parallelGroup);
+          parallelRequests.set(parallelGroup,startAiRequestOutcome(parallelContext.specimen));
+        }
+      }
       const persistPreservedMistralDescription=async providerDiagnostic=>{
         const description=String(providerDiagnostic?.preservedDescription||'').trim();
         if(!providerDiagnostic?.mistralDescriptionPreserved||!description)return false;
@@ -256,7 +292,11 @@
         return true;
       };
       let payload,technicalRetry=null;
-      try{payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey())}
+      try{
+        const prefetched=parallelRequests.get(group);
+        if(prefetched){const outcome=await prefetched;if(!outcome.ok)throw outcome.error;payload=outcome.payload;}
+        else payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey());
+      }
       catch(firstError){
         const providerDiagnostic=firstError?.providerDiagnostic||null;
         await persistPreservedMistralDescription(providerDiagnostic).catch(error=>console.warn('Could not preserve Mistral Description after downstream failure',error));
@@ -317,7 +357,10 @@
       if(artifactAttempt&&!artifactAttemptCompleted)await artifactEngine?.failAttempt?.(artifactAttempt.id,message).catch(()=>{});
       for(const c of group){if(c.state==='complete')continue;c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
       await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:message,payload:{attemptId:artifactAttempt?.id||null,error:message,components:requested,directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,6000),reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)}}).catch(()=>{});
-      if(isGlobalProviderFailure(message))break;
+      // A parallel sibling may already have completed successfully. Do not discard
+      // that valid branch merely because this branch encountered a global-looking
+      // failure; finalize the sibling, then let the item carry the failed branch.
+      if(isGlobalProviderFailure(message)&&!freshParallelEligible)break;
     }
   }
   // If Mistral had to rescue the Description, that saved Description becomes a

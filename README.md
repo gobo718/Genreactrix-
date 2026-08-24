@@ -1,4 +1,24 @@
-# Genreactrix v0.9.40.164 — Smart matrix heading restored
+# Genreactrix v0.9.40.166 — Fresh AI family concurrency
+
+- Preserves v0.9.40.165 linked-page display fallback and all existing UI/layout behavior.
+- Normal fresh per-image AI analysis now starts the independent Reaction-family Worker request and Theme/Description-family Worker request concurrently.
+- Local AI Artifact, Image Record, History, lifecycle, and Bundle commits remain serialized to avoid browser-side write races.
+- Specialized Theme/Description reruns and Reaction reruns that depend on Description remain sequential.
+- A failed parallel branch does not prevent a completed sibling branch from being committed.
+- Worker v0.9.6.115 remains unchanged.
+
+QA: JS syntax passed; concurrency simulation showed 0 ms launch separation in the test run and ~131 ms wall time for 90 ms + 130 ms branches (rather than ~220 ms sequential); forced Reaction failure preserved successful Theme sibling outcome.
+
+## Previous build notes
+
+# Genreactrix v0.9.40.165 — Linked image display fallback
+
+- Preserves v0.9.40.164 layout, taxonomy, and Smart matrix heading.
+- Linked images still try their recorded URL directly first.
+- If the browser cannot render that URL, the UI falls back to the existing authenticated Worker image proxy and displays the returned image bytes through a temporary object URL.
+- Stored source URL, linked/saved status, and full-resolution persistence semantics are unchanged.
+- No AI, Theme, Reaction, Worker, or Scary-calibration behavior changed in this site build.
+- Current tested companion Worker: **v0.9.6.115-timing-concurrency-telemetry**. Historical release notes below retain their original pairing notes.
 
 - Pairs with Worker v0.9.6.111-goofy-camp-swap; no Worker change is required.
 - Fills the previously empty bottom-right PrimFusion Matrix axis heading with **🧠 Smart**.
@@ -421,4 +441,3 @@ The older sections below are retained only for provenance. Their upload/version 
 - Theme Edit Log schema is bumped so pre-v0.9.40.119 rerun logs are not presented as evidence-support logs.
 - Normal Theme Analysis is unchanged. No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
 - Worker counterpart: v0.9.6.65-theme-rerun-evidence-support-selection.
-

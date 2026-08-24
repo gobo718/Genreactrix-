@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.164";
+const GENREACTRIX_BUILD="v0.9.40.166";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -166,6 +166,8 @@ function canonicalPrimFusionLabel(firstName, secondName){
   return CANONICAL_PRIMFUSION_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
 
+// v0.9.40.166 — fresh independent Reaction and Theme/Description Worker requests now launch concurrently; local commits remain serialized.
+// v0.9.40.165 — linked-image display fallback: if a direct linked URL cannot render, resolve it through the existing Worker image proxy without changing linked storage semantics.
 // v0.9.40.164 — PrimFusion Matrix bottom-right heading restored with Smart 🧠. Geometry and taxonomy unchanged.
 // v0.9.40.163 — Goofy/Camp swap. PFM0104 (Adorable + Funny) is now Goofy and PFM0204 (Beautiful + Funny) is now Camp. Charming remains retired. Active Prim IDs remain P01-P13 with Angry at P07.
 window.genreactrixCurrentFusionThemes = Object.freeze([...new Set(
@@ -393,13 +395,39 @@ function requestCurrentLandscapeAsset(){
   // Inbox population remains fully available without materializing every asset.
   queueMicrotask(()=>hydrateLandscapeWindow(generation,state.index).catch(error=>console.warn("Landscape prefetch window failed",error)));
 }
-function markLandscapeAssetUnavailable(imageId,failedSrc,message="Image source could not be displayed."){
+async function markLandscapeAssetUnavailable(imageId,failedSrc,message="Image source could not be displayed."){
   const id=String(imageId||"");if(!id)return;
-  const index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
-  const live=state.files[index];
+  let index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
+  let live=state.files[index];
   if(live?.isMissingAsset||String(live?.url||"")!==String(failedSrc||""))return;
   const record=live.imageRecord||window.genreactrixImagesEngine?.recordById?.(id)||null;
-  const missing=window.genreactrixImagesEngine?.missingAssetPlaceholder?.(record,message);
+
+  // v0.9.40.165 — A linked source may be a webpage (for example a Wikimedia
+  // Commons File: page) rather than directly decodable image bytes. Do not
+  // mutate the Image Record or convert linked storage into a local copy. Only
+  // after the browser proves the direct <img> source cannot render, ask the
+  // existing Worker image proxy for display bytes and use a temporary object URL.
+  if(record?.storage?.mode==="linked"&&!record?.attributes?.saved&&!live?.isResolvedRemoteSource){
+    try{
+      const imagesEngine=/** @type {any} */(window).genreactrixImagesEngine;
+      const resolved=await imagesEngine?.resolveLinkedDisplay?.(id,{failedSrc});
+      index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
+      live=state.files[index];
+      // Navigation or another hydration may have replaced this source while the
+      // proxy request was in flight. Never overwrite newer display state.
+      if(String(live?.url||"")!==String(failedSrc||""))return;
+      if(resolved?.url){
+        state.files[index]={...resolved,id,imageRecord:resolved.imageRecord||record,isHydratingAsset:false,isResolvedRemoteSource:true};
+        if(index===state.index){renderImage();renderTabletWorkbench();}
+        return;
+      }
+    }catch(error){
+      message=`${message} Worker display fallback failed: ${String(error?.message||error)}`;
+    }
+  }
+
+  const imagesEngine=/** @type {any} */(window).genreactrixImagesEngine;
+  const missing=imagesEngine?.missingAssetPlaceholder?.(record,message);
   if(!missing)return;
   state.files[index]={...missing,id,imageRecord:missing.imageRecord||record,isHydratingAsset:false};
   if(index===state.index){renderImage();renderTabletWorkbench();}
@@ -4224,6 +4252,7 @@ function createImagesEngine(){
   const records=window.genreactrixImageRecordEngine;
   let activeSessionIds=[];
   let objectUrls=new Map();
+  const linkedDisplayInFlight=new Map();
   const now=()=>new Date().toISOString();
   const clone=value=>value==null?value:structuredClone(value);
   function revokeObjectUrls(){objectUrls.forEach(url=>URL.revokeObjectURL(url));objectUrls.clear();}
@@ -4313,7 +4342,11 @@ function createImagesEngine(){
   }
   async function fileForRecord(record){
     if(!record)return null;
-    if(record.storage.mode==="linked"&&!record.attributes.saved)return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record,thumbnailKey:record.storage.thumbnailKey||record.id};
+    if(record.storage.mode==="linked"&&!record.attributes.saved){
+      const cachedUrl=objectUrls.get(record.id);
+      if(cachedUrl)return{id:record.id,name:record.name,url:cachedUrl,imageRecord:record,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:record.storage.hyperlink||record.source.originalUrl,thumbnailKey:record.storage.thumbnailKey||record.id};
+      return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record,thumbnailKey:record.storage.thumbnailKey||record.id};
+    }
     let blob=await imageBlobGet(record.id).catch(()=>null);if(!blob&&record.storage.mode==="kept")blob=await keptBlobGet(record.id).catch(()=>null);
     if(!blob&&["temporary","reference"].includes(record.storage.mode))blob=await recoverKnownSource(record,{attempts:3,context:"working-copy-missing"});
     if(!blob){
@@ -4334,14 +4367,37 @@ function createImagesEngine(){
     const cachedUrl=reuseCached?objectUrls.get(record?.id):null;
     return cachedUrl?{id:record.id,name:record.name,url:cachedUrl,imageRecord:record,isCachedDisplay:true,isThumbnail:Boolean(record.storage?.missingReference)}:null;
   }
+  async function resolveLinkedDisplayForRecord(record,{failedSrc=""}={}){
+    if(!record)throw new Error("Linked Image Record is unavailable");
+    const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
+    if(!/^https:\/\//i.test(remote))throw new Error("Linked source URL is unavailable");
+    const cached=cachedDisplayForRecord(record,true);
+    if(cached)return{...cached,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:remote};
+    const key=String(record.id||remote);
+    if(linkedDisplayInFlight.has(key))return linkedDisplayInFlight.get(key);
+    const task=(async()=>{
+      const cloudApi=/** @type {any} */(window).GenreactrixCloudApi;
+      if(!cloudApi?.isConfigured?.()||!cloudApi?.getKey?.())throw new Error("AI Worker image proxy is not configured");
+      const blob=await cloudApi.fetchImage(remote);
+      if(!blob?.type?.startsWith("image/"))throw new Error("Worker image proxy did not return image bytes");
+      const prior=objectUrls.get(record.id);if(prior)try{URL.revokeObjectURL(prior)}catch{}
+      const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);
+      return{id:record.id,name:record.name,url,imageRecord:record,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:remote,isThumbnail:false};
+    })().finally(()=>linkedDisplayInFlight.delete(key));
+    linkedDisplayInFlight.set(key,task);
+    return task;
+  }
   async function displayFileForRecord(record,{allowRecovery=false,reuseCached=true}={}){
     if(!record)return null;
+    const cached=cachedDisplayForRecord(record,reuseCached);
+    if(cached){
+      if(record.storage?.mode==="linked"&&!record.attributes?.saved)return{...cached,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:record.storage?.hyperlink||record.source?.originalUrl||""};
+      return cached;
+    }
     if(record.storage?.mode==="linked"&&!record.attributes?.saved){
       const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
       return remote?{id:record.id,name:record.name,url:remote,imageRecord:record,isRemoteSource:true}:missingAssetPlaceholder(record,'Linked source URL is unavailable.');
     }
-    const cached=cachedDisplayForRecord(record,reuseCached);
-    if(cached)return cached;
     // Director display must never block on network source recovery. Resolve the
     // runtime-local working/kept asset first, then the permanent thumbnail, then
     // a direct recorded URL. Source recovery remains an explicit/Housekeeping job.
@@ -4611,7 +4667,7 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,displayFile,missingAssetPlaceholder,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,displayFile,resolveLinkedDisplay:(id,options={})=>resolveLinkedDisplayForRecord(records.get(id,{touch:false}),options),missingAssetPlaceholder,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixProjectRuntimeEngine?.ready?.then(()=>{window.genreactrixImageRecordEngine?.migrateScope?.();return window.genreactrixImagesEngine?.backfillRuntimeAssetLocations?.()}).catch(error=>console.warn('Project/runtime image migration could not complete',error));
