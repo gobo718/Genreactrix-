@@ -8494,3 +8494,13 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media (max-width:720px){.ai-theme-sweep-status{grid-template-columns:1fr}.ai-theme-sweep-field{grid-template-columns:52px 1fr;align-items:start}}
 
 
+
+
+/* v0.9.40.163 — Ticket retired; Angry occupies P07: 13 active Prims / 78 PrimFusion Themes.
+   Preserve existing geometry; only restore active matrix/diagnostic grid counts. */
+.interlocked-axis-left,.interlocked-axis-right{grid-template-rows:repeat(13,minmax(0,1fr))!important;}
+.interlocked-matrix-grid{grid-template-rows:repeat(13,minmax(0,1fr))!important;}
+.tablet-workbench-matrix .true-primfusion-grid{grid-template-columns:var(--true-pf-y-axis-width) repeat(13,minmax(0,1fr))!important;grid-template-rows:var(--true-pf-x-axis-height) repeat(13,minmax(0,1fr))!important;}
+.true-primfusion-grid{grid-template-columns:var(--true-pf-y-axis-width) repeat(13,minmax(0,1fr))!important;grid-template-rows:var(--true-pf-x-axis-height) repeat(13,minmax(0,1fr))!important;}
+@media (max-width: 700px){.true-primfusion-grid{min-width:704px;}}
+.theme-rerun-prim-strip{grid-template-columns:repeat(13,calc(100% / 25))!important;column-gap:calc(100% / 25)!important;}

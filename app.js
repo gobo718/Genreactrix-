@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.159";
+const GENREACTRIX_BUILD="v0.9.40.163";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -20,22 +20,27 @@ const PRIMITIVES = [
   {id:"P04",name:"Funny",symbol:"🤣"},
   {id:"P05",name:"Intense",symbol:"💥"},
   {id:"P06",name:"Weird",symbol:"🌀"},
-  {id:"P07",name:"Ticket",symbol:"🎟️"},
   {id:"P08",name:"Dreamy",symbol:"🌌"},
   {id:"P09",name:"Zazzly",symbol:"🌶️"},
   {id:"P10",name:"Disgusting",symbol:"🤢"},
   {id:"P11",name:"Scary",symbol:"👻"},
   {id:"P12",name:"Smart",symbol:"🧠"},
   {id:"P13",name:"Celebration",symbol:"🎉"},
-  {id:"P14",name:"Angry",symbol:"🤬"}
+  {id:"P07",name:"Angry",symbol:"🤬"}
 ];
 const PRIMITIVE_BY_ID = Object.fromEntries(PRIMITIVES.map(p=>[p.id,p]));
 const PRIMITIVE_BY_NAME = Object.fromEntries(PRIMITIVES.map(p=>[p.name,p]));
+// Director reaction selections historically persist numeric slots. Ticket's old numeric
+// slot remains legacy-only; active P07 is Angry, while Angry continues to write/read
+// the historical Angry numeric slot so existing Director classifications do not shift.
+const LEGACY_REACTION_SLOT_BY_PRIM_ID = Object.freeze({P01:0,P02:1,P03:2,P04:3,P05:4,P06:5,P07:13,P08:7,P09:8,P10:9,P11:10,P12:11,P13:12});
+const primitiveSelectionToken=primitive=>LEGACY_REACTION_SLOT_BY_PRIM_ID[primitive?.id];
 // Cloud Worker / PrimFusion Matrix canonical IDs keep Adorable=P01 and Beautiful=P02.
 // The local reaction display order historically stores those two in the opposite P slots,
 // so AI payload lookup must resolve by canonical semantic identity rather than local slot ID.
-const AI_CANONICAL_PRIM_ID_BY_NAME = Object.freeze({Beautiful:"P02",Adorable:"P01",Tragic:"P03",Funny:"P04",Intense:"P05",Weird:"P06",Ticket:"P07",Dreamy:"P08",Zazzly:"P09",Disgusting:"P10",Scary:"P11",Smart:"P12",Celebration:"P13",Angry:"P14"});
+const AI_CANONICAL_PRIM_ID_BY_NAME = Object.freeze({Beautiful:"P02",Adorable:"P01",Tragic:"P03",Funny:"P04",Intense:"P05",Weird:"P06",Angry:"P07",Dreamy:"P08",Zazzly:"P09",Disgusting:"P10",Scary:"P11",Smart:"P12",Celebration:"P13"});
 const AI_CANONICAL_PRIM_NAME_BY_ID = Object.freeze(Object.fromEntries(Object.entries(AI_CANONICAL_PRIM_ID_BY_NAME).map(([name,id])=>[id,name])));
+const LEGACY_AI_PRIM_ID_ALIASES = Object.freeze({P07:Object.freeze(["P07"])});
 
 const CUSTOM_REACTION_LIBRARY_KEY="genreactrix-custom-reactions-v1";
 const CUSTOM_THEME_LIBRARY_KEY="genreactrix-custom-themes-v2";
@@ -66,10 +71,9 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Beautiful|Beautiful": "Beautiful",
   "Adorable|Beautiful": "Cozy",
   "Beautiful|Tragic": "Melancholic",
-  "Beautiful|Funny": "Charming",
+  "Beautiful|Funny": "Camp",
   "Beautiful|Intense": "Majestic",
   "Beautiful|Weird": "Surreal",
-  "Beautiful|Ticket": "Irreverent",
   "Beautiful|Dreamy": "Romance",
   "Beautiful|Zazzly": "Exposure",
   "Beautiful|Disgusting": "Grotesque",
@@ -82,7 +86,6 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Adorable|Funny": "Goofy",
   "Adorable|Intense": "Joy",
   "Adorable|Weird": "Bizarre",
-  "Adorable|Ticket": "Camp",
   "Adorable|Dreamy": "Whimsical",
   "Adorable|Zazzly": "Kawaii",
   "Adorable|Disgusting": "UglyCute",
@@ -91,40 +94,36 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Adorable|Celebration": "Playful",
   "Adorable|Angry": "Saccharine",
   "Tragic|Tragic": "Tragic",
-  "Funny|Tragic": "Ironic",
+  "Funny|Tragic": "Freakshow",
   "Intense|Tragic": "Devastating",
   "Tragic|Weird": "Nightmarish",
-  "Ticket|Tragic": "Shame",
   "Dreamy|Tragic": "Nostalgia",
   "Tragic|Zazzly": "Humiliation",
   "Disgusting|Tragic": "Despair",
   "Scary|Tragic": "Foreboding",
   "Smart|Tragic": "Poignant",
   "Celebration|Tragic": "Bittersweet",
-  "Angry|Tragic": "Dysphoria",
+  "Angry|Tragic": "Shame",
   "Funny|Funny": "Funny",
   "Funny|Intense": "Cringe",
   "Funny|Weird": "Zany",
-  "Funny|Ticket": "Satirical",
   "Dreamy|Funny": "Absurd",
   "Funny|Zazzly": "Ribaldry",
   "Disgusting|Funny": "Grossout",
   "Funny|Scary": "ComedyHorror",
   "Funny|Smart": "Witty",
   "Celebration|Funny": "PartyTime",
-  "Angry|Funny": "Trolling",
+  "Angry|Funny": "Mockery",
   "Intense|Intense": "Intense",
   "Intense|Weird": "Chaotic",
-  "Intense|Ticket": "Outrageous",
   "Dreamy|Intense": "Epic",
   "Intense|Zazzly": "Lust",
   "Disgusting|Intense": "Brutal",
   "Intense|Scary": "Terror",
-  "Intense|Smart": "Obsessive",
+  "Intense|Smart": "Medicated",
   "Celebration|Intense": "Pride",
   "Angry|Intense": "Aggressive",
   "Weird|Weird": "Weird",
-  "Ticket|Weird": "Freakshow",
   "Dreamy|Weird": "Psychedelic",
   "Weird|Zazzly": "FreakyDeaky",
   "Disgusting|Weird": "Mutant",
@@ -132,16 +131,8 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Smart|Weird": "Alien",
   "Celebration|Weird": "Delirious",
   "Angry|Weird": "Monstrous",
-  "Ticket|Ticket": "Ticket",
-  "Dreamy|Ticket": "Medicated",
-  "Ticket|Zazzly": "Exploitation",
-  "Disgusting|Ticket": "Tasteless",
-  "Scary|Ticket": "Execrable",
-  "Smart|Ticket": "Parodic",
-  "Celebration|Ticket": "Snarky",
-  "Angry|Ticket": "Wickedness",
   "Dreamy|Dreamy": "Dreamy",
-  "Dreamy|Zazzly": "Limerence",
+  "Dreamy|Zazzly": "Seduction",
   "Disgusting|Dreamy": "Putrid",
   "Dreamy|Scary": "Eerie",
   "Dreamy|Smart": "Ethereal",
@@ -149,7 +140,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Angry|Dreamy": "Phantasmagoric",
   "Zazzly|Zazzly": "Zazzly",
   "Disgusting|Zazzly": "Lewd",
-  "Scary|Zazzly": "Seduction",
+  "Scary|Zazzly": "Exploitation",
   "Smart|Zazzly": "Kinky",
   "Celebration|Zazzly": "Hedonism",
   "Angry|Zazzly": "Sadomasochism",
@@ -161,7 +152,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Scary|Scary": "Scary",
   "Scary|Smart": "Paranoia",
   "Celebration|Scary": "Spirituality",
-  "Angry|Scary": "Violated",
+  "Angry|Scary": "Wickedness",
   "Smart|Smart": "Smart",
   "Celebration|Smart": "Glory",
   "Angry|Smart": "Mundane",
@@ -175,7 +166,7 @@ function canonicalPrimFusionLabel(firstName, secondName){
   return CANONICAL_PRIMFUSION_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
 
-// v0.9.39.69 — expose current 91 non-diagonal Theme labels to the reporting engine.
+// v0.9.40.163 — Goofy/Camp swap. PFM0104 (Adorable + Funny) is now Goofy and PFM0204 (Beautiful + Funny) is now Camp. Charming remains retired. Active Prim IDs remain P01-P13 with Angry at P07.
 window.genreactrixCurrentFusionThemes = Object.freeze([...new Set(
   Object.entries(CANONICAL_PRIMFUSION_LABELS)
     .filter(([pair])=>{const [a,b]=pair.split("|");return a!==b;})
@@ -194,19 +185,19 @@ const DEMOS = [
     src: svgData("MUTOSIS","🦄","🦥"),
     description:"A dreamy creature mashup combining a unicorn with a sloth. The composition is whimsical, gentle, and intentionally improbable.",
     aiThemes:[["Fantasy",96],["Cute",82],["Nature",59]],
-    aiWeights:{P01:79,P02:72,P03:4,P04:18,P05:12,P06:42,P07:0,P08:88,P09:5,P10:0,P11:8,P12:34,P13:21,P14:0}
+    aiWeights:{P01:79,P02:72,P03:4,P04:18,P05:12,P06:42,P08:88,P09:5,P10:0,P11:8,P12:34,P13:21,P07:0}
   },
   {
     src: svgData("MUTOSIS","🐙","🫖"),
     description:"An octopus–teapot hybrid with domestic and aquatic visual cues. The humor comes from treating an object as a living creature.",
     aiThemes:[["Aquatic",93],["Comedy",77],["Domestic",65]],
-    aiWeights:{P01:18,P02:12,P03:2,P04:91,P05:20,P06:85,P07:4,P08:27,P09:9,P10:5,P11:15,P12:72,P13:33,P14:0}
+    aiWeights:{P01:18,P02:12,P03:2,P04:91,P05:20,P06:85,P08:27,P09:9,P10:5,P11:15,P12:72,P13:33,P07:0}
   },
   {
     src: svgData("MUTOSIS","🐈","🌙"),
     description:"A cat merged with a crescent moon. The image reads as nocturnal fantasy with celestial and magical themes.",
     aiThemes:[["Celestial",94],["Magic",89],["Fantasy",86]],
-    aiWeights:{P01:88,P02:64,P03:3,P04:9,P05:17,P06:39,P07:0,P08:92,P09:4,P10:0,P11:31,P12:44,P13:16,P14:0}
+    aiWeights:{P01:88,P02:64,P03:3,P04:9,P05:17,P06:39,P08:92,P09:4,P10:0,P11:31,P12:44,P13:16,P07:0}
   }
 ];
 
@@ -424,7 +415,7 @@ function canonicalAiRunFromRecord(record){
   const reactionObjectByKey=new Map(Object.entries(reactionObject).map(([key,value])=>[normalizeAiKey(key),value]));
   const weights=Object.fromEntries(PRIMITIVES.map(p=>{
     const canonicalAiId=AI_CANONICAL_PRIM_ID_BY_NAME[p.name]||p.id;
-    const aliases=[canonicalAiId,p.name,...(reactionAliases[canonicalAiId]||reactionAliases[p.id]||[])];
+    const aliases=[canonicalAiId,...(LEGACY_AI_PRIM_ID_ALIASES[canonicalAiId]||[]),p.name,...(reactionAliases[canonicalAiId]||reactionAliases[p.id]||[])];
     let row=null;
     for(const alias of aliases){const hit=reactionObjectByKey.get(normalizeAiKey(alias));if(hit!==undefined){row=hit;break;}}
     if(row==null&&reactionRows.length){
@@ -753,7 +744,7 @@ function renderReactions(){
   const records=allReactionRecords();
   records.forEach((record,index)=>{
     const canonical=record.type==="canonical";
-    const token=canonical?PRIMITIVES.findIndex(p=>p.id===record.id):customReactionSelectionToken(record.id);
+    const token=canonical?primitiveSelectionToken(PRIMITIVE_BY_ID[record.id]):customReactionSelectionToken(record.id);
     const make=()=>{
       const b=document.createElement("button");
       b.className="reaction-button"+(state.selectedReactions.includes(token)?" selected":"")+(canonical?"":" custom-reaction-button");
@@ -879,7 +870,7 @@ function renderPrimitiveWeights(target, {showDirector=false}={}){
   const weights=displayReactionPercentages(currentAiWeights());
   PRIMITIVES.forEach((p,index)=>{
     const item=document.createElement("div");
-    item.className="primitive-weight-item"+(showDirector && state.selectedReactions.includes(index)?" director-selected":"");
+    item.className="primitive-weight-item"+(showDirector && state.selectedReactions.includes(primitiveSelectionToken(p))?" director-selected":"");
     item.innerHTML=`<span class="primitive-weight-symbol" title="${p.name}">${p.symbol}</span><small>${weights[p.id]>0?`${Math.round(weights[p.id])}%`:"-%"}</small>`;
     target.appendChild(item);
   });
@@ -1008,33 +999,40 @@ const THEME_RERUN_CURRENT_KEY='genreactrix-theme-rerun-current-v1';
 const THEME_RERUN_THEME_STATES=Object.freeze(['neutral','replace','preserve']);
 const THEME_RERUN_PRIM_STATES=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden']);
 const THEME_RERUN_PRIM_CYCLE=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden',null]);
-const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`));
+const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:13},(_,index)=>`P${String(index+1).padStart(2,'0')}`));
 function themeRerunPfmCode(firstCode,secondCode){const nums=[firstCode,secondCode].map(code=>Number(String(code).replace(/\D/g,''))||0).sort((a,b)=>a-b);return`PFM${String(nums[0]).padStart(2,'0')}${String(nums[1]).padStart(2,'0')}`}
-const THEME_RERUN_FUSION_CATALOG=Object.freeze((()=>{const rows=[];for(let first=1;first<=14;first++)for(let second=first+1;second<=14;second++){const firstCode=`P${String(first).padStart(2,'0')}`,secondCode=`P${String(second).padStart(2,'0')}`,code=themeRerunPfmCode(firstCode,secondCode),firstName=AI_CANONICAL_PRIM_NAME_BY_ID[firstCode]||firstCode,secondName=AI_CANONICAL_PRIM_NAME_BY_ID[secondCode]||secondCode;rows.push(Object.freeze({code,primitiveCodes:Object.freeze([firstCode,secondCode]),label:canonicalPrimFusionLabel(firstName,secondName)}));}return rows;})());
+const THEME_RERUN_FUSION_CATALOG=Object.freeze((()=>{const rows=[],activeIds=Object.keys(AI_CANONICAL_PRIM_NAME_BY_ID).sort((a,b)=>Number(a.slice(1))-Number(b.slice(1)));for(let first=0;first<activeIds.length;first++)for(let second=first+1;second<activeIds.length;second++){const firstCode=activeIds[first],secondCode=activeIds[second],code=themeRerunPfmCode(firstCode,secondCode),firstName=AI_CANONICAL_PRIM_NAME_BY_ID[firstCode]||firstCode,secondName=AI_CANONICAL_PRIM_NAME_BY_ID[secondCode]||secondCode;rows.push(Object.freeze({code,primitiveCodes:Object.freeze([firstCode,secondCode]),label:canonicalPrimFusionLabel(firstName,secondName)}));}return rows;})());
 const THEME_RERUN_FUSION_BY_CODE=Object.freeze(Object.fromEntries(THEME_RERUN_FUSION_CATALOG.map(row=>[row.code,row])));
+const LEGACY_ANGRY_PFM_CODE_TO_CURRENT=Object.freeze({"PFM0114":"PFM0107","PFM0214":"PFM0207","PFM0314":"PFM0307","PFM0414":"PFM0407","PFM0514":"PFM0507","PFM0614":"PFM0607","PFM0814":"PFM0708","PFM0914":"PFM0709","PFM1014":"PFM0710","PFM1114":"PFM0711","PFM1214":"PFM0712","PFM1314":"PFM0713"});
 const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null,exclusionQuery:'',descriptionCatalog:[],descriptionsLongPress:false,descriptionsTimer:null,themeHistoryCatalog:[]};
-const emptyThemeRerunCurrent=()=>({schemaVersion:1,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},excludedThemeCodes:[],includedDescriptionIds:[],populatedDescriptionId:null,descriptionContextInitialized:false,explainChanges:true,updatedAt:null});
+const emptyThemeRerunCurrent=()=>({schemaVersion:2,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},excludedThemeCodes:[],includedDescriptionIds:[],populatedDescriptionId:null,descriptionContextInitialized:false,explainChanges:true,updatedAt:null});
 function themeRerunStorageKey(){return window.genreactrixProjectRuntimeEngine?.projectKey?.(THEME_RERUN_CURRENT_KEY)||THEME_RERUN_CURRENT_KEY}
 function readThemeRerunMap(){try{const raw=localStorage.getItem(themeRerunStorageKey());const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch{return {}}}
 function writeThemeRerunMap(map){try{localStorage.setItem(themeRerunStorageKey(),JSON.stringify(map||{}));return true}catch(error){console.warn('Theme rerun Current state could not be stored',error);return false}}
 function normalizeThemeRerunCurrent(value){
   const source=value&&typeof value==='object'?value:{},themeStates={},primScopes={};
   for(let slot=1;slot<=3;slot++){const raw=String(source.themeStates?.[slot]||'neutral');themeStates[slot]=THEME_RERUN_THEME_STATES.includes(raw)?raw:'neutral';}
+  const sourceSchema=Number(source.schemaVersion)||1;
   for(const scope of ['theme1','theme2','theme3','general']){
     const clean={};const raw=source.primScopes?.[scope];
-    if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [code,state] of Object.entries(raw))if(THEME_RERUN_PRIM_ORDER.includes(code)&&THEME_RERUN_PRIM_STATES.includes(state))clean[code]=state;
+    if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [rawCode,state] of Object.entries(raw)){
+      let code=String(rawCode);
+      if(sourceSchema<2){if(code==='P07')continue;if(code==='P14')code='P07';}
+      else if(code==='P14')code='P07';
+      if(THEME_RERUN_PRIM_ORDER.includes(code)&&THEME_RERUN_PRIM_STATES.includes(state))clean[code]=state;
+    }
     primScopes[scope]=clean;
   }
-  const excludedThemeCodes=[...new Set((Array.isArray(source.excludedThemeCodes)?source.excludedThemeCodes:[]).map(String).filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code])))];
+  const excludedThemeCodes=[...new Set((Array.isArray(source.excludedThemeCodes)?source.excludedThemeCodes:[]).map(String).map(code=>LEGACY_ANGRY_PFM_CODE_TO_CURRENT[code]||code).filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code])))];
   const includedDescriptionIds=[...new Set((Array.isArray(source.includedDescriptionIds)?source.includedDescriptionIds:[]).filter(Boolean).map(String))];
-  return{schemaVersion:1,themeStates,primScopes,excludedThemeCodes,includedDescriptionIds,populatedDescriptionId:source.populatedDescriptionId?String(source.populatedDescriptionId):null,descriptionContextInitialized:Boolean(source.descriptionContextInitialized),explainChanges:source.explainChanges!==false,updatedAt:source.updatedAt||null};
+  return{schemaVersion:2,themeStates,primScopes,excludedThemeCodes,includedDescriptionIds,populatedDescriptionId:source.populatedDescriptionId?String(source.populatedDescriptionId):null,descriptionContextInitialized:Boolean(source.descriptionContextInitialized),explainChanges:source.explainChanges!==false,updatedAt:source.updatedAt||null};
 }
 function loadThemeRerunCurrent(imageId=currentKey()){const map=readThemeRerunMap();return normalizeThemeRerunCurrent(map[String(imageId)]||emptyThemeRerunCurrent())}
 function saveThemeRerunCurrent(){if(!themeRerunWorkspace.imageId||!themeRerunWorkspace.current)return false;themeRerunWorkspace.current.updatedAt=new Date().toISOString();const map=readThemeRerunMap();map[String(themeRerunWorkspace.imageId)]=normalizeThemeRerunCurrent(themeRerunWorkspace.current);return writeThemeRerunMap(map)}
 function themeRerunPrimPresentation(code){const name=AI_CANONICAL_PRIM_NAME_BY_ID[code]||PRIMITIVE_BY_ID[code]?.name||code;const semantic=PRIMITIVES.find(item=>item.name===name);return{code,name,symbol:semantic?.symbol||PRIMITIVE_BY_ID[code]?.symbol||'•'}}
 function themeRerunAiThemeSnapshot(slot){const sorted=(currentAiRun()?.themes||[]).map(row=>({id:row?.id||null,label:String(row?.label||''),weight:Number(row?.weight)||0})).sort((a,b)=>b.weight-a.weight).slice(0,3);return sorted[slot-1]||null}
 function themeRerunFusionFromLabel(label){const wanted=String(label||'').trim().toLowerCase();return THEME_RERUN_FUSION_CATALOG.find(row=>row.label.toLowerCase()===wanted)||null}
-function themeRerunCurrentThemeFusion(slot){const snapshot=themeRerunAiThemeSnapshot(slot),code=String(snapshot?.id||'').trim().toUpperCase();return THEME_RERUN_FUSION_BY_CODE[code]||themeRerunFusionFromLabel(snapshot?.label||'')}
+function themeRerunCurrentThemeFusion(slot){const snapshot=themeRerunAiThemeSnapshot(slot),labelMatch=themeRerunFusionFromLabel(snapshot?.label||''),rawCode=String(snapshot?.id||'').trim().toUpperCase(),code=LEGACY_ANGRY_PFM_CODE_TO_CURRENT[rawCode]||rawCode;return labelMatch||THEME_RERUN_FUSION_BY_CODE[code]||null}
 function themeRerunExcludedCodes(){return themeRerunWorkspace.current?.excludedThemeCodes||[]}
 function themeRerunIsExcluded(code){return themeRerunExcludedCodes().includes(code)}
 function themeRerunProtectedSlotsForCode(code){const slots=[];for(let slot=1;slot<=3;slot++)if(themeRerunWorkspace.current?.themeStates?.[slot]==='preserve'&&themeRerunCurrentThemeFusion(slot)?.code===code)slots.push(slot);return slots}
@@ -1634,11 +1632,26 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   root.innerHTML="";
 
   // Exact source of truth: PrimFusion_Interlocked_Matrix_Compact_Screenshot_Match.xlsm, B2:H14.
+  // Current 13-Prim / 78-Theme PrimFusion interlocked matrix. Ticket is retired; former P14 Angry now occupies P07.
   const topSymbols=["🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠"];
-  const bottomSymbols=["🌀", "🎟️", "🌌", "🤢", "👻", "💥", "🧠"];
-  const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🎟️", "🌀", "🧸", "🌀", "🎟️", "🌌", "🤢", "👻", "💥", "🤬"];
-  const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🎟️", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠", "🤬"];
-  const matrixRows=[[{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Trolling","tone":"lavender"},{"value":"Dysphoria","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Revenge","tone":"lavender"},{"value":"Mundane","tone":"lavender"}],[{"value":"Joy","tone":"lavender"},{"value":"Majestic","tone":"lavender"},{"value":"Cringe","tone":"lavender"},{"value":"Devastating","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Pride","tone":"lavender"},{"value":"Obsessive","tone":"lavender"}],[{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"ComedyHorror","tone":"lavender"},{"value":"Foreboding","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Spirituality","tone":"lavender"},{"value":"Paranoia","tone":"lavender"}],[{"value":"UglyCute","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Greed","tone":"lavender"}],[{"value":"Whimsical","tone":"lavender"},{"value":"Romance","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Nostalgia","tone":"lavender"},{"value":"Limerence","tone":"lavender"},{"value":"Magical","tone":"lavender"},{"value":"Ethereal","tone":"lavender"}],[{"value":"Camp","tone":"lavender"},{"value":"Irreverent","tone":"lavender"},{"value":"Satirical","tone":"lavender"},{"value":"Shame","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Snarky","tone":"lavender"},{"value":"Parodic","tone":"lavender"}],[{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Zany","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Alien","tone":"lavender"}],[{"value":"🧸","tone":"green"},{"value":"Cozy","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Playful","tone":"lavender"},{"value":"Innocence","tone":"lavender"}],[{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Charming","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Exposure","tone":"lavender"},{"value":"Festive","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],[{"value":"Freakshow","tone":"peach"},{"value":"🎟️","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Ironic","tone":"lavender"},{"value":"Ribaldry","tone":"lavender"},{"value":"PartyTime","tone":"lavender"},{"value":"Witty","tone":"lavender"}],[{"value":"Psychedelic","tone":"peach"},{"value":"Medicated","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],[{"value":"Mutant","tone":"peach"},{"value":"Tasteless","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],[{"value":"Macabre","tone":"peach"},{"value":"Execrable","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Horror","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Glory","tone":"lavender"}],[{"value":"Chaotic","tone":"peach"},{"value":"Outrageous","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Terror","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🧠","tone":"green"}],[{"value":"Monstrous","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Violated","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"}]];
+  const bottomSymbols=["🌀", "🌌", "🤢", "👻", "💥", "🤬"];
+  const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "🌀", "🌌", "🤢", "👻", "💥", "🤬"];
+  const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠"];
+  const matrixRows=[
+    [{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Mockery","tone":"lavender"},{"value":"Shame","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Revenge","tone":"lavender"},{"value":"Mundane","tone":"lavender"}],
+    [{"value":"Joy","tone":"lavender"},{"value":"Majestic","tone":"lavender"},{"value":"Cringe","tone":"lavender"},{"value":"Devastating","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Pride","tone":"lavender"},{"value":"Medicated","tone":"lavender"}],
+    [{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"ComedyHorror","tone":"lavender"},{"value":"Foreboding","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Spirituality","tone":"lavender"},{"value":"Paranoia","tone":"lavender"}],
+    [{"value":"UglyCute","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Greed","tone":"lavender"}],
+    [{"value":"Whimsical","tone":"lavender"},{"value":"Romance","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Nostalgia","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Magical","tone":"lavender"},{"value":"Ethereal","tone":"lavender"}],
+    [{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Zany","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Alien","tone":"lavender"}],
+    [{"value":"🧸","tone":"green"},{"value":"Cozy","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Playful","tone":"lavender"},{"value":"Innocence","tone":"lavender"}],
+    [{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Camp","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Exposure","tone":"lavender"},{"value":"Festive","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],
+    [{"value":"Psychedelic","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Freakshow","tone":"lavender"},{"value":"Ribaldry","tone":"lavender"},{"value":"PartyTime","tone":"lavender"},{"value":"Witty","tone":"lavender"}],
+    [{"value":"Mutant","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],
+    [{"value":"Macabre","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Horror","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],
+    [{"value":"Chaotic","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Terror","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Glory","tone":"lavender"}],
+    [{"value":"Monstrous","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"},{"value":"🧠","tone":"green"}]
+  ];
 
   const primitiveForSymbol=symbol=>PRIMITIVES.find(p=>p.symbol===symbol);
   const pairForLabel=(label)=>{
@@ -1868,20 +1881,20 @@ function renderTabletWorkbench(){
   /* v0.9.39.49 — explicit canonical Judgment order by stable primitive ID.
      Avoid symbol matching so variation-selector differences can never create
      empty slots or shift later canonical/custom reactions. */
-  const judgmentReactionOrder=["P02","P01","P03","P04","P09","P13","P12","P05","P11","P10","P08","P07","P06","P14"];
+  const judgmentReactionOrder=["P02","P01","P03","P04","P09","P13","P12","P05","P11","P10","P08","P06","P07"];
   judgmentReactionOrder.forEach(primitiveId=>{
-    const primitiveIndex=PRIMITIVES.findIndex(item=>item.id===primitiveId);
-    const p=PRIMITIVES[primitiveIndex];
+    const p=PRIMITIVE_BY_ID[primitiveId];
     if(!p) return;
+    const selectionToken=primitiveSelectionToken(p);
     const b=document.createElement("button");
     b.type="button";
-    b.className="tablet-prim-button"+(state.selectedReactions.includes(primitiveIndex)?" selected":"");
+    b.className="tablet-prim-button"+(state.selectedReactions.includes(selectionToken)?" selected":"");
     b.title=p.name;
-    b.setAttribute("aria-pressed",String(state.selectedReactions.includes(primitiveIndex)));
+    b.setAttribute("aria-pressed",String(state.selectedReactions.includes(selectionToken)));
     const pctText=`${Number(weights[p.id])||0}%`;
     b.classList.toggle("ai-percentage-hidden",!tabletLandscapeView.aiReactions);
     b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${p.symbol}</span></span><span class="pct" aria-hidden="${String(!tabletLandscapeView.aiReactions)}">${pctText}</span>`;
-    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(primitiveIndex);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(primitiveIndex);saveCurrent("director-reaction-auto");renderAll();});
+    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(selectionToken);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(selectionToken);saveCurrent("director-reaction-auto");renderAll();});
     prims.appendChild(b);
   });
 
@@ -2129,7 +2142,7 @@ function renderPrimFusionMatrix(filter, targetId="primFusionMatrix"){
   const singleGrid=targetId==="tabletPrimFusionMatrix" || targetId==="tabletWorkbenchMatrix" || landscapeSingleGrid;
   const bands=singleGrid
     ? [PRIMITIVES.map((_,index)=>index)]
-    : [[0,1,2,3],[4,5,6,7,8],[9,10,11,12,13]];
+    : [[0,1,2,3],[4,5,6,7,8],[9,10,11,12]];
 
   bands.forEach((columnIndexes,bandIndex)=>{
     const section=document.createElement("section");
@@ -3634,11 +3647,12 @@ function renderLandscapeImageView(){
     primRoot.innerHTML="";
     const field=document.createElement("div");field.className="landscape-image-view-reaction-field";primRoot.appendChild(field);
     const points=[];
-    const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀","🤬"];
+    const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🌀","🤬"];
     order.forEach((symbol,displayIndex)=>{
-      const index=PRIMITIVES.findIndex(item=>item.symbol===symbol);const primitive=PRIMITIVES[index];if(!primitive)return;
+      const primitive=PRIMITIVES.find(item=>item.symbol===symbol);if(!primitive)return;
+      const selectionToken=primitiveSelectionToken(primitive);
       const point=landscapeImageViewCenter(displayIndex,false);points.push(point);
-      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);
+      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(selectionToken)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(selectionToken)?", selected":""}`);
       item.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${primitive.symbol}</span></span>`;
       placeLandscapeImageReaction(item,point);field.appendChild(item);
     });

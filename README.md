@@ -1,12 +1,43 @@
+# Genreactrix v0.9.40.163 — Goofy/Camp swap
+
+- Pairs with Worker v0.9.6.111-goofy-camp-swap.
+- **PFM0104 (Adorable + Funny) is now Goofy. PFM0204 (Beautiful + Funny) is now Camp. Charming remains retired.**
+- Swaps Goofy and Camp so Goofy returns to Adorable + Funny and Camp occupies Beautiful + Funny. No other Theme definitions change.
+- Active taxonomy remains **13 Prims / 78 PrimFusion Themes** with contiguous P01–P13 and Angry at P07.
+- No Prim IDs change. PFM0104 now resolves to Goofy and PFM0204 now resolves to Camp.
+- Preserves the canonical PrimFusion Matrix geometry and diagonal emoji placement. Matrix identity remains **0.0.0.0**.
+
+# Genreactrix v0.9.40.161 — P07 Angry fill
+
+- Pairs with Worker v0.9.6.109-p07-angry-fill.
+- Ticket remains retired. Former **P14 Angry is reassigned to P07**, so the active Prim IDs are now contiguous **P01–P13** with no P07 hole.
+- P08–P13 keep their existing identities; only Angry moves. This minimizes downstream code churn compared with shifting every later Prim.
+- The 78 active PrimFusion Themes remain the same concepts and approved pairings. Only the 12 Angry-involving PFM codes are regenerated for Angry=P07.
+- Theme Rerun migrates prior P14 Angry PrimPicker state to P07, drops legacy Ticket P07 PrimPicker state, remaps prior Angry PFM exclusions, and prefers Theme labels when reading historical snapshots so former Ticket codes cannot be mistaken for new Angry-pair codes.
+- Existing numeric Director reaction selections preserve their historical slot meanings.
+- Prompt Diagnostics and Customs now use the contiguous 13-Prim active ID set.
+- Inherits v0.9.40.160 taxonomy changes and v0.9.40.159 URL-resolution repair. Matrix identity remains **0.0.0.0**.
+
+# Genreactrix v0.9.40.160 — 13-Prim / 78-Theme taxonomy rebuild
+
+- Pairs with Worker v0.9.6.108-ticket-removal-taxonomy-rebuild.
+- Retires P07 Ticket without renumbering the surviving Prim codes.
+- Rebuilds the active PrimFusion Matrix to 13 Prims and 78 pairwise PrimFusion Themes.
+- Relocates Camp, Freakshow, Shame, Mockery, Medicated, Seduction, Exploitation, and Wickedness into surviving pair slots.
+- Mockery unifies the former Satirical/Parodic/Snarky territory using the approved combined definition and boundary.
+- Theme Rerun, Prompt Diagnostics, reaction handling, matrix rendering, and active Theme definitions now use the 13-Prim taxonomy.
+- Existing numeric Director reaction selections preserve their historical slot meanings after Ticket is retired.
+- Inherits the v0.9.40.159 URL-resolution repair and all accepted behavior outside the taxonomy change.
+- Matrix identity remains **0.0.0.0**.
+
 # Genreactrix v0.9.40.159 — URL resolution repair
 
-- Pairs with Worker v0.9.6.103-url-resolution-repair. Upload the Worker first, then this site build.
+- Pairs with Worker v0.9.6.103-url-resolution-repair.
 - Repairs URL-source extraction so CSV/TSV field boundaries are honored instead of swallowing adjacent fields such as `,Check` into the URL.
-- URL extraction now preserves valid URL punctuation such as parentheses and commas inside a URL while trimming surrounding prose/document delimiters.
-- Wikimedia Commons `.../wiki/File:...` source pages are resolved through the Commons API to a bounded media rendition when available (with direct-file redirect fallback) before import.
-- Other HTTPS webpage URLs get a bounded image-resolution pass using standard page image metadata (`og:image`, `twitter:image`, `image_src`) and then visible `<img>` candidates before Import is declared failed.
-- Resolved images continue through the existing Origin gates; the source-page URL remains the provenance URL.
-- Keeps the v0.9.40.158 production cleanup, Mistral Description rescue, downstream provider recovery, and Matrix **0.0.0.0** unchanged.
+- URL extraction preserves valid URL punctuation such as parentheses and commas inside a URL while trimming surrounding prose/document delimiters.
+- Wikimedia Commons `.../wiki/File:...` source pages resolve through the Commons API to a bounded media rendition when available, with direct-file redirect fallback.
+- Other HTTPS webpage URLs use a bounded image-resolution pass through standard page image metadata and visible `<img>` candidates before Import is declared failed.
+- Resolved images continue through the existing Origin gates and preserve the source-page URL as provenance.
 
 # Genreactrix v0.9.40.158 — URL source import + production cleanup
 
@@ -384,3 +415,4 @@ The older sections below are retained only for provenance. Their upload/version 
 - Theme Edit Log schema is bumped so pre-v0.9.40.119 rerun logs are not presented as evidence-support logs.
 - Normal Theme Analysis is unchanged. No Prim/PrimFusion semantic definition changes. PrimFusion Matrix remains 0.0.0.0.
 - Worker counterpart: v0.9.6.65-theme-rerun-evidence-support-selection.
+

@@ -22,7 +22,7 @@ function directorReactionName(value){
  const raw=String(value).trim();if(!raw)return'';
  if(/^\d+$/.test(raw)){const index=Number(raw);if(index>=0&&index<LOCAL_DIRECTOR_REACTION_NAME_BY_INDEX.length)return LOCAL_DIRECTOR_REACTION_NAME_BY_INDEX[index]}
  if(/^custom:/i.test(raw))return customReactionLabel(raw);
- if(AI_REACTION_NAME_BY_ID[raw])return AI_REACTION_NAME_BY_ID[raw];
+ if(AI_REACTION_NAME_BY_ID[raw]||LEGACY_AI_REACTION_NAME_BY_ID[raw])return AI_REACTION_NAME_BY_ID[raw]||LEGACY_AI_REACTION_NAME_BY_ID[raw];
  return raw;
 }
 function directorReactions(r){const d=r.analysis?.director||{},canonical=Array.isArray(d.reactions)&&d.reactions.length?d.reactions:null,legacy=Array.isArray(d.selectedReactions)?d.selectedReactions:[];return [...new Set((canonical||legacy).map(directorReactionName).filter(Boolean))]}
@@ -30,10 +30,11 @@ function directorThemes(r){return (r.analysis?.director?.themes||[]).filter(Bool
 function directorCompletion(r){const d=r.analysis?.director;if(!d||typeof d!=='object')return'unclassified';const explicit=String(d.completion||r.metadata?.extended?.directorCompletion||'').toLowerCase();if(['complete','partial','unclassified','blocked'].includes(explicit))return explicit;if(d.blocked)return'blocked';const rs=directorReactions(r),ts=directorThemes(r),hasReaction=rs.length>0,hasTheme=ts.length>0,needsPrim=rs.length>=2,hasPrim=Boolean(d.primFusion||r.components?.primFusion==='current');if(!hasReaction&&!hasTheme)return'unclassified';return hasReaction&&hasTheme&&(!needsPrim||hasPrim)?'complete':'partial'}
 function directorComplete(r){return directorCompletion(r)==='complete'}
 function aiComponents(r){return r.analysis?.ai?.components||r.analysis?.ai||{}}
-const AI_REACTION_NAME_BY_ID=Object.freeze({P01:'Adorable',P02:'Beautiful',P03:'Tragic',P04:'Funny',P05:'Intense',P06:'Weird',P07:'Ticket',P08:'Dreamy',P09:'Zazzly',P10:'Disgusting',P11:'Scary',P12:'Smart',P13:'Celebration',P14:'Angry'});
+const AI_REACTION_NAME_BY_ID=Object.freeze({P01:'Adorable',P02:'Beautiful',P03:'Tragic',P04:'Funny',P05:'Intense',P06:'Weird',P07:'Angry',P08:'Dreamy',P09:'Zazzly',P10:'Disgusting',P11:'Scary',P12:'Smart',P13:'Celebration'});
+const LEGACY_AI_REACTION_NAME_BY_ID=Object.freeze({P14:'Angry'});
 const AI_REACTION_ID_BY_NAME=Object.freeze(Object.fromEntries(Object.entries(AI_REACTION_NAME_BY_ID).map(([id,name])=>[name,id])));
 const DEFAULT_ROW_FIELDS=Object.freeze(['imageId','filename','batch','directorReactions','directorThemes','primFusion','aiAgreement','saved','flagged']);
-function aiReactionNames(r){const a=aiComponents(r).reactions;if(!a)return[];if(Array.isArray(a))return a.map(x=>String(x?.name||x?.reaction||AI_REACTION_NAME_BY_ID[x?.id]||x?.id||'')).filter(Boolean);return Object.keys(a).map(key=>AI_REACTION_NAME_BY_ID[key]||key)}
+function aiReactionNames(r){const a=aiComponents(r).reactions;if(!a)return[];if(Array.isArray(a))return a.map(x=>String(x?.name||x?.reaction||AI_REACTION_NAME_BY_ID[x?.id]||LEGACY_AI_REACTION_NAME_BY_ID[x?.id]||x?.id||'')).filter(Boolean);return Object.keys(a).map(key=>AI_REACTION_NAME_BY_ID[key]||LEGACY_AI_REACTION_NAME_BY_ID[key]||key)}
 function aiThemeSelections(r){const raw=aiComponents(r).themes;return Array.isArray(raw)?raw.filter(Boolean):[]}
 function aiThemeName(item){return String(item?.name||item?.proposedName||item?.label||item?.code||'Unknown').trim()}
 function average(values){const nums=values.filter(Number.isFinite);return nums.length?Math.round(nums.reduce((a,b)=>a+b,0)/nums.length*10)/10:null}
@@ -87,7 +88,7 @@ function aiThemeUsage(items){
  const used=new Set(rows.map(x=>x.name));const allCurrent=[...(window.genreactrixCurrentFusionThemes||[])];const neverSelected=allCurrent.filter(name=>!used.has(name)).sort((a,b)=>a.localeCompare(b));
  return{scopeImages:items.length,analyzedImages,missingThemeResults:Math.max(0,items.length-analyzedImages),totalSelections,matrixSelections,customSelections,customRate:totalSelections?Math.round(customSelections/totalSelections*1000)/10:0,promptVersions,models,rows,customRows,neverSelected};
 }
-function aiReactionScore(r,name){const a=aiComponents(r).reactions;if(!a)return null;const raw=String(name||'').trim(),canonical=Object.values(AI_REACTION_NAME_BY_ID).find(x=>x.toLocaleLowerCase()===raw.toLocaleLowerCase())||raw,id=AI_REACTION_ID_BY_NAME[canonical]||canonical;if(Array.isArray(a)){const hit=a.find(x=>{const itemName=String(x?.name||x?.reaction||AI_REACTION_NAME_BY_ID[x?.id]||x?.id||'');return itemName.toLocaleLowerCase()===canonical.toLocaleLowerCase()||String(x?.id||'')===id});return Number(hit?.percentage??hit?.confidence??hit?.score??hit?.weight);}const v=a[canonical]??a[id]??a[raw];return typeof v==='number'?v:Number(v?.percentage??v?.confidence??v?.score??v?.weight)}
+function aiReactionScore(r,name){const a=aiComponents(r).reactions;if(!a)return null;const raw=String(name||'').trim(),canonical=Object.values(AI_REACTION_NAME_BY_ID).find(x=>x.toLocaleLowerCase()===raw.toLocaleLowerCase())||raw,id=AI_REACTION_ID_BY_NAME[canonical]||canonical;if(Array.isArray(a)){const hit=a.find(x=>{const itemName=String(x?.name||x?.reaction||AI_REACTION_NAME_BY_ID[x?.id]||LEGACY_AI_REACTION_NAME_BY_ID[x?.id]||x?.id||'');return itemName.toLocaleLowerCase()===canonical.toLocaleLowerCase()||String(x?.id||'')===id});return Number(hit?.percentage??hit?.confidence??hit?.score??hit?.weight);}const v=a[canonical]??a[id]??a[raw];return typeof v==='number'?v:Number(v?.percentage??v?.confidence??v?.score??v?.weight)}
 function localDateBoundary(value,nextDay=false){const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value||''));if(!match)return NaN;const [,y,m,d]=match;return new Date(Number(y),Number(m)-1,Number(d)+(nextDay?1:0),0,0,0,0).getTime()}
 async function latestAiScope(all,{component=null}={}){const snap=await window.genreactrixAiAnalysisEngine?.snapshot?.().catch?.(()=>null)||null;const jobs=[...(snap?.jobs||[])].filter(j=>j?.id&&(!component||j?.config?.components?.[component]?.enabled)).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));const job=jobs[0]||null;if(!job)return{records:[],batchIds:[],aiJob:null};const ids=new Set((snap?.items||[]).filter(i=>i.jobId===job.id).map(i=>i.imageId));return{records:all.filter(r=>ids.has(r.id)),batchIds:[],aiJob:job}}
 async function resolveScope(scope={type:'all-records'}){
