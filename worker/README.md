@@ -1,3 +1,11 @@
+## 0.9.6.111 — Goofy/Camp swap
+
+- PFM0104 (Adorable + Funny) is now **Goofy**.
+- PFM0204 (Beautiful + Funny) is now **Camp**.
+- Charming remains retired.
+- Keeps 13 active Prims, 78 active PrimFusion Themes, Angry=P07, and Matrix identity 0.0.0.0.
+- No PFM codes or other Theme definitions change.
+
 # Genreactrix AI Worker
 
 Current bundled Worker: v0.9.6.103-url-resolution-repair.
@@ -472,3 +480,17 @@ Adds 3-concept waves (five waves per 15-concept batch). The existing 5-concept a
 - Blocks unsupported substitutions such as simplicity/minimalism -> playfulness and generic visual praise -> affective Theme evidence.
 - Filters generic evaluative praise from Theme Rerun frozen evidence.
 - Leaves PrimFusion definitions and Matrix version 0.0.0.0 unchanged.
+
+
+## 0.9.6.108 taxonomy rebuild
+- 13 active Prims; P07 Ticket retired with surviving IDs unchanged.
+- 78 active fusion Themes; 91 total prompt-diagnostic concepts including standalone Prims.
+- Theme/Reaction diagnostics derive active Prim counts from the registry.
+- Preserves .107 per-image alternate-provider retry behavior.
+
+
+## 0.9.6.109 P07 Angry fill
+- Ticket remains retired. Former P14 Angry now occupies P07, producing contiguous active Prim IDs P01–P13.
+- 78 active fusion Themes and 91 Prompt Diagnostics concepts are unchanged in count.
+- Only Angry-involving PFM codes change; all P08–P13 identities remain stable.
+- Preserves .108 taxonomy semantics and .107 per-image alternate-provider retry behavior.
