@@ -1,3 +1,12 @@
+# Genreactrix AI Worker 0.9.6.133-smart-matrix-cache-repair — Smart matrix/cache repair
+
+- Active taxonomy remains 12 Prims / 63 assigned PrimFusion Themes / 3 open pair slots.
+- Restores the approved PFM0104 Goofy / PFM0204 Camp mapping in the Worker registry.
+- Prompt Diagnostics remains 75 concepts / 5 complete batches.
+- No AI Reaction scan is reintroduced.
+
+---
+
 # Genreactrix AI Worker 0.9.6.132-p13-audit-repair — P13 audit repair
 
 Matrix identity and taxonomy remain unchanged from 0.9.6.131: 12 Prims, 63 assigned PrimFusion Themes, 3 open pair slots.
@@ -52,7 +61,7 @@ Matrix identity remains 0.0.0.0. Active taxonomy: 13 Prims, 66 assigned PrimFusi
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.132-p13-audit-repair.
+Current bundled Worker: v0.9.6.133-smart-matrix-cache-repair.
 
 ## Historical bundled Worker notes
 
