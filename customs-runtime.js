@@ -8,7 +8,7 @@
   const PRIMS=[
     ['P01','Beautiful','✨'],['P02','Adorable','🧸'],['P03','Tragic','😭'],['P04','Funny','🤣'],
     ['P05','Intense','💥'],['P06','Weird','🌀'],['P08','Dreamy','🌌'],
-    ['P09','Zazzly','🌶️'],['P10','Disgusting','🤢'],['P11','Scary','👻'],['P12','Smart','🧠'],['P13','Celebration','🎉'],['P07','Angry','🤬']
+    ['P09','Zazzly','🌶️'],['P10','Disgusting','🤢'],['P11','Scary','👻'],['P12','Celebration','🎉'],['P07','Angry','🤬']
   ];
   let themeRefs=[];
   let editingThemeId=null;

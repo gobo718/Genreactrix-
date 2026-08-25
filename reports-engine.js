@@ -30,8 +30,8 @@ function directorThemes(r){return (r.analysis?.director?.themes||[]).filter(Bool
 function directorCompletion(r){const d=r.analysis?.director;if(!d||typeof d!=='object')return'unclassified';const explicit=String(d.completion||r.metadata?.extended?.directorCompletion||'').toLowerCase();if(['complete','partial','unclassified','blocked'].includes(explicit))return explicit;if(d.blocked)return'blocked';const rs=directorReactions(r),ts=directorThemes(r),hasReaction=rs.length>0,hasTheme=ts.length>0,needsPrim=rs.length>=2,hasPrim=Boolean(d.primFusion||r.components?.primFusion==='current');if(!hasReaction&&!hasTheme)return'unclassified';return hasReaction&&hasTheme&&(!needsPrim||hasPrim)?'complete':'partial'}
 function directorComplete(r){return directorCompletion(r)==='complete'}
 function aiComponents(r){return r.analysis?.ai?.components||r.analysis?.ai||{}}
-const AI_REACTION_NAME_BY_ID=Object.freeze({P01:'Adorable',P02:'Beautiful',P03:'Tragic',P04:'Funny',P05:'Intense',P06:'Weird',P07:'Angry',P08:'Dreamy',P09:'Zazzly',P10:'Disgusting',P11:'Scary',P12:'Smart',P13:'Celebration'});
-const LEGACY_AI_REACTION_NAME_BY_ID=Object.freeze({P14:'Angry'});
+const AI_REACTION_NAME_BY_ID=Object.freeze({P01:'Adorable',P02:'Beautiful',P03:'Tragic',P04:'Funny',P05:'Intense',P06:'Weird',P07:'Angry',P08:'Dreamy',P09:'Zazzly',P10:'Disgusting',P11:'Scary',P12:'Celebration'});
+const LEGACY_AI_REACTION_NAME_BY_ID=Object.freeze({P13:'Celebration',P14:'Angry'});
 const AI_REACTION_ID_BY_NAME=Object.freeze(Object.fromEntries(Object.entries(AI_REACTION_NAME_BY_ID).map(([id,name])=>[name,id])));
 const DEFAULT_ROW_FIELDS=Object.freeze(['imageId','filename','batch','directorReactions','directorThemes','primFusion','aiAgreement','saved','flagged']);
 function aiReactionNames(r){const a=aiComponents(r).reactions;if(!a)return[];if(Array.isArray(a))return a.map(x=>String(x?.name||x?.reaction||AI_REACTION_NAME_BY_ID[x?.id]||LEGACY_AI_REACTION_NAME_BY_ID[x?.id]||x?.id||'')).filter(Boolean);return Object.keys(a).map(key=>AI_REACTION_NAME_BY_ID[key]||LEGACY_AI_REACTION_NAME_BY_ID[key]||key)}

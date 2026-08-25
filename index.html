@@ -275,7 +275,7 @@
 
 <section class="prompt-diagnostics-panel" data-settings-panel="prompt-diagnostics" hidden="">
 <h3>Prompt Diagnostics</h3>
-<p class="settings-note">Research-only semantic diagnostics. Uses the exact current Worker definitions for all 13 active Prims and 66 assigned PrimFusion Themes; twelve PrimFusion pairs are open. Results do not alter normal evaluation, reactions, Themes, Director data, Batch, or evaluation versions.</p>
+<p class="settings-note">Research-only semantic diagnostics. Uses the exact current Worker definitions for all 12 active Prims and 63 assigned PrimFusion Themes; three PrimFusion pairs are open. Results do not alter normal evaluation, reactions, Themes, Director data, Batch, or evaluation versions.</p>
 <label>Image<select id="promptDiagnosticsImage"><option value="">Choose image…</option></select></label>
 <p class="prompt-diagnostics-selected-info" id="promptDiagnosticsSelectedInfo">Choose an existing Image Record.</p>
 <div class="prompt-diagnostics-image-card" id="promptDiagnosticsImageCard" data-image-id="">
@@ -292,11 +292,11 @@
 <label><input checked id="promptDiagnosticsUseDescription" type="checkbox"/> AI Description</label>
 </fieldset>
 <label class="prompt-diagnostics-call-mode">Diagnostic call size<select id="promptDiagnosticsExecutionMode"><option value="three" selected>3 × 5 waves</option><option value="five">5 × 3 waves</option><option value="fifteen">15 at once</option><option value="compare">Compare 15 ↔ 5</option></select></label>
-<p class="settings-note">Each diagnostic batch still contains exactly 15 concepts: 2 Prims + 13 PrimFusion Themes. <b>15 at once</b> uses 7 large AI calls; <b>5 × 3</b> uses 21 calls; <b>3 × 5</b> uses 35 smaller calls; <b>Compare 15 ↔ 5</b> preserves the existing two-size comparison. If one concept still cannot enumerate its full definition, the Worker falls back to five-definition-component repair chunks for that concept only. Scores are independent 0–100 match confidences and never total 100.</p>
-<div class="prompt-diagnostics-actions"><button id="promptDiagnosticsTest15" type="button">Test first 15</button><button id="promptDiagnosticsComplete" type="button">Run full 79</button><button disabled id="promptDiagnosticsStop" type="button">Stop after call</button></div>
-<progress id="promptDiagnosticsProgress" max="79" value="0"></progress>
+<p class="settings-note">Each diagnostic batch contains exactly 15 concepts. Across five batches, the Prim/Theme mix is balanced as 3 Prims + 12 PrimFusion Themes in the first two batches and 2 Prims + 13 PrimFusion Themes in the remaining three. <b>15 at once</b> uses 5 large AI calls; <b>5 × 3</b> uses 15 calls; <b>3 × 5</b> uses 25 smaller calls; <b>Compare 15 ↔ 5</b> preserves the existing two-size comparison. If one concept still cannot enumerate its full definition, the Worker falls back to five-definition-component repair chunks for that concept only. Scores are independent 0–100 match confidences and never total 100.</p>
+<div class="prompt-diagnostics-actions"><button id="promptDiagnosticsTest15" type="button">Test first 15</button><button id="promptDiagnosticsComplete" type="button">Run full 75</button><button disabled id="promptDiagnosticsStop" type="button">Stop after call</button></div>
+<progress id="promptDiagnosticsProgress" max="75" value="0"></progress>
 <section aria-live="polite" class="prompt-diagnostics-live-status" id="promptDiagnosticsLiveStatus">
-<div class="prompt-diagnostics-live-head"><strong id="promptDiagnosticsRunState">READY</strong><span id="promptDiagnosticsBatchStatus">Batch — of 6</span><span id="promptDiagnosticsConceptStatus">0 / 79</span></div>
+<div class="prompt-diagnostics-live-head"><strong id="promptDiagnosticsRunState">READY</strong><span id="promptDiagnosticsBatchStatus">Batch — of 5</span><span id="promptDiagnosticsConceptStatus">0 / 75</span></div>
 <div class="prompt-diagnostics-batch-track" id="promptDiagnosticsBatchTrack" aria-label="Diagnostic batch progress"></div>
 <p class="prompt-diagnostics-active" id="promptDiagnosticsActiveBatch">No diagnostic batch is running.</p>
 <div class="prompt-diagnostics-error" id="promptDiagnosticsErrorBox" hidden><strong>Exact error</strong><pre id="promptDiagnosticsErrorText"></pre></div>
@@ -967,7 +967,7 @@
 </div>
 <div class="report-condition-header"><strong>Filters</strong><div class="report-condition-header-actions"><button id="reportModuleHelp" type="button">Report Help</button><button id="reportFilterHelp" type="button">Filter Help</button><button id="reportAddCondition" type="button">+ Condition</button></div></div>
 <div class="report-conditions" id="reportConditions"></div>
-<datalist id="reportReactionNames"><option value="Adorable"></option><option value="Beautiful"></option><option value="Tragic"></option><option value="Funny"></option><option value="Intense"></option><option value="Weird"></option><option value="Dreamy"></option><option value="Zazzly"></option><option value="Disgusting"></option><option value="Scary"></option><option value="Smart"></option><option value="Celebration"></option><option value="Angry"></option></datalist>
+<datalist id="reportReactionNames"><option value="Adorable"></option><option value="Beautiful"></option><option value="Tragic"></option><option value="Funny"></option><option value="Intense"></option><option value="Weird"></option><option value="Dreamy"></option><option value="Zazzly"></option><option value="Disgusting"></option><option value="Scary"></option><option value="Celebration"></option><option value="Angry"></option></datalist>
 <div class="report-actions"><button id="reportSavePreset" type="button">Save preset</button><button id="reportsAnalyticsOpen" type="button">Research Analytics</button><button id="reportAiThemeUsage" type="button">AI Theme Usage · Latest Run</button><button class="primary" id="reportRun" type="button">Run report</button></div>
 </section>
 <section><h3>Presets</h3><div class="report-presets" id="reportPresets"></div></section>

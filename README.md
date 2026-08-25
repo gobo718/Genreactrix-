@@ -1,3 +1,26 @@
+# Genreactrix v0.9.40.177 — P13 audit repair
+
+- Follow-up verification release built from v0.9.40.176.
+- No taxonomy semantics changed from v0.9.40.176: 12 Prims, 63 assigned PrimFusion Themes, 3 open pair slots.
+- Repairs Prompt Diagnostics after Smart retirement: five complete 15-concept batches / 75 concepts total.
+- Synchronizes live Prompt Diagnostics counts, progress, batch labels, report heading, and call-count descriptions.
+- Retains intentional legacy P13→P12 migration handling for pre-retirement records.
+
+---
+
+# Genreactrix v0.9.40.176 — Smart retired / Celebration renumbered
+
+- Retires P12 Smart completely.
+- Moves Celebration from P13 to P12, following the same contiguous-active-ID policy used when Ticket was retired and Angry moved into P07.
+- Retires Innocence, Elegant, and Gloomy.
+- Moves Mundane to PFM0203 (Beautiful + Tragic), preserving the exact Mundane definition.
+- Moves Glory to PFM0512 (Intense + Celebration), preserving the exact Glory definition.
+- Recodes every surviving Celebration fusion from former PFMxx13 to current PFMxx12.
+- Active taxonomy: 12 Prims, 63 assigned PrimFusion Themes, 3 open pair slots.
+- No active Smart vocabulary remains. Historical release notes below are retained as history.
+
+---
+
 # Genreactrix v0.9.40.175 — Smart cleanup
 
 Built from v0.9.40.174 with Worker 0.9.6.130-smart-cleanup.
