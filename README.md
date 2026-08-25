@@ -1,6 +1,6 @@
-# Genreactrix v0.9.40.173 — PrimFusion consolidation
+# Genreactrix v0.9.40.174 — Hot Magenta OPEN cells
 
-Built from accepted v0.9.40.172 with Worker 0.9.6.129-primfusion-consolidation.
+Built from v0.9.40.173 with Worker 0.9.6.129-primfusion-consolidation.
 
 ## Final approved Matrix revision
 
@@ -44,3 +44,8 @@ Together with the pre-existing PFM0708 vacancy, the active taxonomy is now 13 Pr
 - Theme recovery examples no longer reference an open PFM code.
 - The affected Matrix cells, Worker registry entries, bundled Worker source, and definition reference file are synchronized.
 - No AI Theme/Description routing, provider-lane behavior, deterministic Theme-derived Reaction logic, or Matrix versioning semantics were changed.
+
+
+## v0.9.40.174
+- PrimFusion Matrix cells labeled `OPEN` now use the existing Hot Magenta reject shade `#ff00a8`.
+- No taxonomy, definitions, matrix assignments, geometry, AI behavior, or Worker behavior changed.

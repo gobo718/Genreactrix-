@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.173";
+const GENREACTRIX_BUILD="v0.9.40.174";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -1716,6 +1716,7 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
       const cell=document.createElement("button");
       cell.type="button";
       cell.className=`interlocked-cell interlocked-${entry.tone}`;
+      if(entry.value==="OPEN") cell.classList.add("interlocked-open");
       if(entry.tone==="green"){
         const nextIsGreen=row[columnIndex+1]?.tone==="green";
         const bottomRightAngry=rowIndex===matrixRows.length-1 && columnIndex===row.length-1 && entry.value==="🤬";

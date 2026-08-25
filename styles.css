@@ -8504,3 +8504,6 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .true-primfusion-grid{grid-template-columns:var(--true-pf-y-axis-width) repeat(13,minmax(0,1fr))!important;grid-template-rows:var(--true-pf-x-axis-height) repeat(13,minmax(0,1fr))!important;}
 @media (max-width: 700px){.true-primfusion-grid{min-width:704px;}}
 .theme-rerun-prim-strip{grid-template-columns:repeat(13,calc(100% / 25))!important;column-gap:calc(100% / 25)!important;}
+
+/* v0.9.40.174 — OPEN PrimFusion cells use the established Hot Magenta reject shade. */
+.interlocked-cell.interlocked-open{background:#ff00a8!important;color:#17131b!important;}
