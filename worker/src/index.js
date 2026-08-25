@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.118-live-provider-progress
+/* Genreactrix AI Worker v0.9.6.120-theme-audit-fast-path
    Preserves v0.9.6.115 timing/concurrency telemetry and v0.9.6.111 Festive/Pride calibration.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions and unrelated rerun behavior remain unchanged.
 */
-const API_VERSION = '0.9.6.118-live-provider-progress';
+const API_VERSION = '0.9.6.120-theme-audit-fast-path';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1252,6 +1252,42 @@ function parseThemeReasoningDiagnostic(raw,selections=[],themeSweep=null){
   const primConsistency=selections.map(row=>{const m=String(row.code||'').match(/^PFM(\d{2})(\d{2})$/),primCodes=m?[`P${m[1]}`,`P${m[2]}`]:[],scores=primCodes.map(code=>byPrim.get(code)?.score??null);return{rank:row.rank,code:row.code,themeOrderPosition:orderByCode.get(row.code)||null,primCodes,primScores:scores,minPrimScore:scores.every(v=>Number.isFinite(v))?Math.min(...scores):null,averagePrimScore:scores.every(v=>Number.isFinite(v))?Math.round((scores[0]+scores[1])/2):null,candidateEntered:candidateSet.has(row.code)};});
   return{schemaVersion:1,status:'complete',protocol:'human-vote-reasoning-sidecar-v1',evidenceLedger:evidence,primScores,candidateCodes:candidates.slice(0,12),selectedAudits,primConsistency,themeDefinitionOrder:order.mode,themeDefinitionOrderSeed:order.seed};
 }
+function themeSelectedDecisionGatePrompt(selections=[]){
+  const selected=themeReasoningSelectedCatalog(selections)||'No nonblank Theme was selected.';
+  return `GENREACTRIX THEME DECISION AUDIT — FAST GATE.
+
+The three locked Theme selections below have already been chosen. Your only job is to decide whether each selected Theme is actually supported by the visible image and its exact definition. Do not score Prims, generate alternate candidate lists, or re-rank the vocabulary.
+
+Be strict. Do not reward a Theme merely because it is emotional, dramatic, provocative, attention-grabbing, evocative, aesthetically interesting, or easy to write about. If a Theme lacks its required semantic evidence, mark it REJECT even if a plausible story could be invented.
+
+CONTRADICTION CHECK: Compare each Theme definition with its STATED SELECTION BASIS and the visible image. If the basis says a defining requirement is absent (for example “without X”, “no X”, “lacks X”, or explicitly says the Theme does not fit), that absence is not support. A contradicted required element is REJECT + GATE_FAIL.
+
+Status: SUPPORTED = clear evidence; WEAK = partial/closest-available evidence; REJECT = insufficient or contradicted evidence. Gate: GATE_PASS only when the Theme's defining/required meaning is visibly satisfied; otherwise GATE_FAIL.
+
+Failure class must be exactly one of: none, image-misread, definition-misread, ranking-error, emotional-salience, invented-evidence, cue-trap, order-availability, other. Use none when the selection is sound.
+
+LOCKED THEMES WITH EXACT DEFINITIONS
+${selected}
+
+Return only these records, in this order:
+EVIDENCE|E1|one concrete visible fact
+... 3 to 6 EVIDENCE lines total
+SELECTED|rank|PFM####|SUPPORTED_or_WEAK_or_REJECT|E1,E2_or_NONE|GATE_PASS_or_GATE_FAIL|NONE|failure-class|brief concrete audit reason
+... exactly one SELECTED line for every locked Theme.
+
+Do not output PRIM or CANDIDATE records. Do not output prose outside these records.`;
+}
+function parseThemeSelectedDecisionGate(raw,selections=[]){
+  const validThemes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code)),evidence=[],evidenceIds=new Set(),selectedMap=new Map();
+  for(const line of String(raw||'').replace(/\r/g,'').split('\n')){
+    const parts=line.trim().replace(/^[-*•]\s*/,'').split('|').map(x=>x.trim());if(!parts.length)continue;
+    const kind=String(parts[0]||'').toUpperCase();
+    if(kind==='EVIDENCE'&&parts.length>=3){const id=String(parts[1]||'').toUpperCase();if(!/^E\d{1,2}$/.test(id)||evidenceIds.has(id))continue;const fact=parts.slice(2).join('|').replace(/\s+/g,' ').trim().slice(0,500);if(!fact)continue;evidenceIds.add(id);evidence.push({id,fact});continue;}
+    if(kind==='SELECTED'&&parts.length>=9){const rank=Number(parts[1]),code=String(parts[2]||'').toUpperCase(),status=String(parts[3]||'').toUpperCase(),gate=String(parts[5]||'').toUpperCase(),failure=String(parts[7]||'').toLowerCase();if(!Number.isInteger(rank)||!validThemes.has(code)||!['SUPPORTED','WEAK','REJECT'].includes(status)||!['GATE_PASS','GATE_FAIL'].includes(gate))continue;const refs=[...new Set((String(parts[4]||'').match(/\bE\d{1,2}\b/gi)||[]).map(x=>x.toUpperCase()))];const reason=parts.slice(8).join('|').replace(/\s+/g,' ').trim().slice(0,900);selectedMap.set(code,{rank,code,status,evidenceIds:refs,gate,closestAlternativeCode:null,failureClass:THEME_REASONING_FAILURE_CLASSES.has(failure)?failure:'other',reason});}
+  }
+  const selectedAudits=selections.map(row=>themeAuditContradictionRepair(selectedMap.get(row.code)||{rank:row.rank,code:row.code,status:'UNPARSED',evidenceIds:[],gate:'UNPARSED',closestAlternativeCode:null,failureClass:'other',reason:'Decision audit did not return a valid selected-Theme record.'},row,evidence));
+  return{schemaVersion:1,status:'complete',protocol:'selected-theme-decision-audit-v1',diagnosticClass:'decision-critical',evidenceLedger:evidence,selectedAudits,primScores:[],candidateCodes:[],primConsistency:[],reportingSidecar:{status:'pending',protocol:'human-vote-reasoning-sidecar-v1'}};
+}
 const THEME_PROVIDER_CYCLE_ORDER=['mistral','secondary','qwen'];
 const THEME_PROVIDER_CYCLE_POLICY='mistral-gpt41mini-qwen-one-attempt-per-cycle-v1';
 const THEME_WHOLE_RUN_POLICY='mistral-primary-gpt41mini-secondary-qwen-third-whole-run-v1';
@@ -1340,15 +1376,34 @@ async function runThemeProviderCycle(env,model,{stage,image=null,promptForCycle,
   throw diagnosticError(lastError?.message||`Provider cycle exhausted for ${stage}.`,{phase:`provider-cycle-${stage}-exhausted`,failureKind:'provider-cycle-exhausted',freshRequestRecommended:true,providerCycle:providerCycleRecoverySummary({stage,attempts,winningCycle:null,winningProvider:null,startedMs:stageStartedMs,endedMs,maxCycles:effectiveMaxCycles}),responsePreview:String(lastRaw||'').slice(0,1200)});
 }
 
-async function runThemeReasoningDiagnostic(env,model,image,behavior,selections=[],themeSweep=null){
+async function runThemeSelectedDecisionAudit(env,model,image,behavior,selections=[]){
   const cycle=await runThemeProviderCycle(env,model,{
-    stage:'theme-reasoning-diagnostic',image,maxTokens:3600,behavior,temperature:0,
-    options:{themeReasoningDiagnostic:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS,preserveWhitespace:true},
+    stage:'theme-decision-audit',image,maxTokens:1200,behavior,temperature:0,
+    options:{themeDecisionAudit:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS,preserveWhitespace:true},
+    promptForCycle:cycleNumber=>themeSelectedDecisionGatePrompt(selections)+(cycleNumber===1?'':`
+
+FORMAT RECOVERY: Return only 3 to 6 EVIDENCE records and exactly ${selections.length} SELECTED records. Do not output PRIM or CANDIDATE records.`),
+    validate:raw=>{
+      const parsed=parseThemeSelectedDecisionGate(raw,selections);
+      const validAuditCount=parsed.selectedAudits.filter(row=>row.status!=='UNPARSED').length;
+      if(validAuditCount<selections.length)throw diagnosticError(`Theme decision audit incomplete: ${validAuditCount}/${selections.length} selected audits.`,{phase:'theme-decision-audit-incomplete',failureKind:'malformed-or-incomplete'});
+      return parsed;
+    }
+  });
+  cycle.result.providerCycle=cycle.recovery;
+  if(cycle.recovery.attemptCount>1)cycle.result.technicalRecovery={schemaVersion:2,type:'provider-cycle',policy:cycle.recovery.policy,winningCycle:cycle.recovery.winningCycle,winningProvider:cycle.recovery.winningProvider,attemptCount:cycle.recovery.attemptCount,attempts:cycle.recovery.attempts};
+  return cycle.result;
+}
+
+async function runThemeReportingDiagnostic(env,model,image,behavior,selections=[],themeSweep=null){
+  const cycle=await runThemeProviderCycle(env,model,{
+    stage:'theme-reporting-diagnostic',image,maxTokens:3600,behavior,temperature:0,
+    options:{themeReasoningDiagnostic:true,themeReportingDiagnostic:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS,preserveWhitespace:true},
     promptForCycle:cycleNumber=>themeReasoningPrompt(selections,themeSweep)+(cycleNumber===1?'':`\n\nFORMAT RECOVERY: Return only EVIDENCE, PRIM, CANDIDATE, and SELECTED records exactly as specified. Include all ${PRIMFUSION_REGISTRY.primitives.length} active PRIM records and every locked SELECTED record.`),
     validate:raw=>{
       const parsed=parseThemeReasoningDiagnostic(raw,selections,themeSweep);
       const validPrimCount=parsed.primScores.filter(row=>Number.isFinite(row.score)).length,validAuditCount=parsed.selectedAudits.filter(row=>row.status!=='UNPARSED').length;
-      if(validPrimCount<PRIMFUSION_REGISTRY.primitives.length||validAuditCount<selections.length)throw diagnosticError(`Theme reasoning diagnostic incomplete: ${validPrimCount}/${PRIMFUSION_REGISTRY.primitives.length} Prim scores and ${validAuditCount}/${selections.length} selected audits.`,{phase:'theme-reasoning-diagnostic-incomplete',failureKind:'malformed-or-incomplete'});
+      if(validPrimCount<PRIMFUSION_REGISTRY.primitives.length||validAuditCount<selections.length)throw diagnosticError(`Theme reasoning diagnostic incomplete: ${validPrimCount}/${PRIMFUSION_REGISTRY.primitives.length} Prim scores and ${validAuditCount}/${selections.length} selected audits.`,{phase:'theme-reporting-diagnostic-incomplete',failureKind:'malformed-or-incomplete'});
       return parsed;
     }
   });
@@ -1472,14 +1527,14 @@ function themeConfirmationContext(diagnostic,codes=[]){
 /** @param {{description?:string,initialDecision?:any,themeSweep?:any}} options */
 async function runFreshThemeMismatchRecovery(env,model,image,behavior,options={}){
   const {description='',initialDecision,themeSweep=null}=options;
-  const initialResolved=resolveThemes(initialDecision.selections),initialDiagnostic=await runThemeReasoningDiagnostic(env,model,image,behavior,initialResolved,themeSweep),signals=themeRecoverySignals(initialDiagnostic,initialDecision.selections);
+  const initialResolved=resolveThemes(initialDecision.selections),initialDiagnostic=await runThemeSelectedDecisionAudit(env,model,image,behavior,initialResolved),signals=themeRecoverySignals(initialDiagnostic,initialDecision.selections);
   if(!signals.hardCodes.length&&!signals.softCodes.length)return{resolvedThemes:initialResolved,finalDecision:initialDecision,diagnostic:initialDiagnostic,recovery:null};
   const hard=signals.hardCodes.length>0,mode=hard?'blocked-rescan':'unblocked-confirmation-rescan',blocked=hard?signals.hardCodes:[],questioned=hard?signals.hardCodes:signals.softCodes;
   const rescan=await runThemeAssociation(env,model,{description,behavior,themeSweep,stage:'final',excludedThemeCodes:blocked,confirmationContext:hard?'':themeConfirmationContext(initialDiagnostic,questioned)}),rescanResolved=resolveThemes(rescan.selections),rescanCodes=new Set(rescan.selections.map(row=>row.code));
   if(!hard&&questioned.every(code=>rescanCodes.has(code))){
     return{resolvedThemes:initialResolved,finalDecision:initialDecision,diagnostic:initialDiagnostic,recovery:{schemaVersion:3,trigger:'audit-gate-fail',rollbackTarget:'final-theme-selection',rerunReason:'downstream-audit-questioned-final-selection',mode,blockedThemeCodes:[],questionedThemeCodes:questioned,initialSelectedCodes:initialDecision.selections.map(row=>row.code),rescanSelectedCodes:rescan.selections.map(row=>row.code),acceptedRescan:false,confirmationRetainedOriginal:true,rescanCount:1,initialFinalProviderCycle:initialDecision.diagnostics?.providerCycle||null,initialDiagnosticProviderCycle:initialDiagnostic?.providerCycle||null,rescanProviderCycle:rescan.diagnostics?.providerCycle||null}};
   }
-  const finalDiagnostic=await runThemeReasoningDiagnostic(env,model,image,behavior,rescanResolved,themeSweep),postSignals=themeRecoverySignals(finalDiagnostic,rescan.selections);
+  const finalDiagnostic=await runThemeSelectedDecisionAudit(env,model,image,behavior,rescanResolved),postSignals=themeRecoverySignals(finalDiagnostic,rescan.selections);
   return{resolvedThemes:rescanResolved,finalDecision:rescan,diagnostic:finalDiagnostic,recovery:{schemaVersion:3,trigger:hard?'theme-evidence-contradiction':'audit-gate-fail',rollbackTarget:'final-theme-selection',rerunReason:hard?'downstream-audit-found-theme-evidence-contradiction':'downstream-audit-questioned-final-selection',mode,blockedThemeCodes:blocked,questionedThemeCodes:questioned,initialSelectedCodes:initialDecision.selections.map(row=>row.code),rescanSelectedCodes:rescan.selections.map(row=>row.code),acceptedRescan:true,confirmationRetainedOriginal:false,rescanCount:1,postRescanHardCodes:postSignals.hardCodes,postRescanSoftCodes:postSignals.softCodes,initialFinalProviderCycle:initialDecision.diagnostics?.providerCycle||null,initialDiagnosticProviderCycle:initialDiagnostic?.providerCycle||null,rescanProviderCycle:rescan.diagnostics?.providerCycle||null,finalDiagnosticProviderCycle:finalDiagnostic?.providerCycle||null}};
 }
 
@@ -1502,7 +1557,7 @@ async function runIndependentThemeReview(env,model,image,behavior,selections=[],
   for(const reviewer of themeReviewProviderOrder(runProvider)){
     const reviewEnv=themePinnedProviderEnv(env,reviewer,`independent-theme-review-${runProvider}-by-${reviewer}`);
     try{
-      const diagnostic=await runThemeReasoningDiagnostic(reviewEnv,model,image,behavior,selections,themeSweep);
+      const diagnostic=await runThemeSelectedDecisionAudit(reviewEnv,model,image,behavior,selections);
       mergeProviderTrace(env,reviewEnv,`independent-theme-review:${reviewer}`);
       attempts.push({provider:reviewer,role:themeProviderRole(reviewer),model:themeProviderModel(env,reviewer,model),outcome:'success'});
       return{diagnostic,reviewer,attempts};
@@ -3843,6 +3898,8 @@ function resolveThemes(rawThemes){
 // v0.9.6.112 — Fresh Theme provider-cycle router: Primary -> Secondary -> Mistral once per cycle; no consecutive same-provider retries; cycle telemetry in reports.
 // v0.9.6.114 — Reaction Analysis joins the same provider-cycle policy; all-zero/malformed whole assessments advance providers instead of immediately repeating one provider.
 // v0.9.6.115 — Adds URL/image-input, family, stage, and provider-attempt timing telemetry; Reactions and Themes execute concurrently when both are requested and independent; existing mismatch recovery behavior is preserved and now reports rollback target/reason.
+// v0.9.6.120 — Split decision-critical Theme audit from the heavy reporting diagnostic.
+// v0.9.6.119 — Live progress stream compatibility repair: use TransformStream instead of ReadableStream constructor; no Cloudflare compatibility-flag change required.
 // v0.9.6.101 — Preserve successful Mistral Description; reuse it for downstream Theme/Reaction recovery via primary then fallback; visible Mistral readiness probe.
 // v0.9.6.100 — Description-only Mistral third fallback after both existing routes fail/refuse; Theme pipeline unchanged.
 // v0.9.6.99 — Type-check-safe Theme mismatch recovery signature; behavior unchanged from 0.9.6.98; Matrix remains 0.0.0.0.
@@ -4415,7 +4472,7 @@ async function analyze(env,body){
             description:descriptionPass.diagnostics,
             initialFinal:initialFinalDecision.diagnostics,
             final:initialFinalDecision.diagnostics,
-            independentReview:{schemaVersion:1,reviewer:review.reviewer,reviewerRole:themeProviderRole(review.reviewer),reviewerModel:themeProviderModel(runEnv,review.reviewer,model),attempts:review.attempts,rejectedCodes:[],accepted:true},
+            independentReview:{schemaVersion:2,auditProtocol:review.diagnostic?.protocol||'selected-theme-decision-audit-v1',reviewer:review.reviewer,reviewerRole:themeProviderRole(review.reviewer),reviewerModel:themeProviderModel(runEnv,review.reviewer,model),attempts:review.attempts,rejectedCodes:[],accepted:true},
             preliminaryFinalComparison:comparison,
             automaticMismatchRecovery:null,
             sameProviderFinalRescanUsed:false,
@@ -4462,7 +4519,7 @@ async function analyze(env,body){
       // is not removed by the new Description-led refinement stage.
       const humanVoteDiagnosticEligible = !themeRerun || themeHumanVoteRerunExperimentEligible(themeRerun);
       const diagnostic = humanVoteDiagnosticEligible
-        ? (sharedThemeReasoningDiagnostic||await runThemeReasoningDiagnostic(env,model,image,behavior,resolvedThemes,themeRerun?null:(body.themeSweep||null)))
+        ? (sharedThemeReasoningDiagnostic||await runThemeSelectedDecisionAudit(env,model,image,behavior,resolvedThemes))
         : {schemaVersion:1,status:'not-applicable',protocol:'human-vote-reasoning-sidecar-v1',reason:'Director-constrained Theme Rerun uses the frozen-evidence rerun diagnostic pipeline.'};
       const pipelineProviderCycles=themeProviderCycleReportSnapshot(components);
       if(diagnostic&&typeof diagnostic==='object'&&pipelineProviderCycles)diagnostic.pipelineProviderCycles=pipelineProviderCycles;
@@ -4478,7 +4535,7 @@ async function analyze(env,body){
     }
     customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
     resolvedThemesForSlop = resolvedThemes.map(row=>({...row}));
-    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun&&!themeHumanVoteRerunExperimentEligible(themeRerun)?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v5-whole-run-independent-review';
+    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun&&!themeHumanVoteRerunExperimentEligible(themeRerun)?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v6-fast-decision-audit-deferred-reporting';
   
     }finally{recordFamilyTiming('themes',familyStartedMs,Date.now(),{parallelWithReactions:Boolean(reactionFamilyRequested)});}
   })():Promise.resolve();
@@ -4559,24 +4616,48 @@ function analyzeProgressStreamResponse(routedEnv,body){
   const encoder=new TextEncoder();
   let sequence=0,closed=false;
   const diagnosticSummary=error=>{const d=providerDiagnosticOf(error)||{};return{phase:d.phase||null,failureKind:d.failureKind||null,errorName:String(error?.name||'Error'),errorMessage:String(error?.message||error).slice(0,1200)};};
-  const stream=new ReadableStream({
-    start(controller){
-      const emit=payload=>{if(closed)return;try{controller.enqueue(encoder.encode(`${JSON.stringify({sequence:++sequence,at:new Date().toISOString(),...payload})}\n`));}catch{closed=true;}};
-      Object.defineProperty(routedEnv,'__GENREACTRIX_PROGRESS_SINK',{value:event=>emit({type:'progress',...event}),enumerable:false,configurable:true});
-      (async()=>{
-        emit({type:'progress',event:'analysis-start',stage:'request',state:'running',components:Array.isArray(body?.components)?[...body.components]:[]});
-        try{
-          const result=await analyze(routedEnv,body);
-          emit({type:'progress',event:'analysis-complete',stage:'request',state:'success'});
-          emit({type:'result',ok:true,result,providerRouting:providerRoutingSnapshot(routedEnv,routedEnv?.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
-        }catch(error){
-          emit({type:'error',ok:false,error:error?.message||String(error),providerDiagnostic:diagnosticSummary(error),providerRouting:providerRoutingSnapshot(routedEnv,routedEnv?.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
-        }finally{if(!closed){closed=true;try{controller.close();}catch{}}}
-      })();
-    },
-    cancel(){closed=true;}
-  });
-  return new Response(stream,{status:200,headers:{...cors,'content-type':'application/x-ndjson; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+  // Use Cloudflare's identity TransformStream so live progress works on older
+  // compatibility dates without requiring streams_enable_constructors.
+  const {readable,writable}=new TransformStream();
+  const writer=writable.getWriter();
+  let writeChain=Promise.resolve();
+  const emit=payload=>{
+    if(closed)return;
+    const chunk=encoder.encode(`${JSON.stringify({sequence:++sequence,at:new Date().toISOString(),...payload})}\n`);
+    writeChain=writeChain.then(()=>writer.write(chunk)).catch(()=>{closed=true;});
+  };
+  Object.defineProperty(routedEnv,'__GENREACTRIX_PROGRESS_SINK',{value:event=>emit({type:'progress',...event}),enumerable:false,configurable:true});
+  (async()=>{
+    emit({type:'progress',event:'analysis-start',stage:'request',state:'running',components:Array.isArray(body?.components)?[...body.components]:[]});
+    try{
+      const result=await analyze(routedEnv,body);
+      emit({type:'progress',event:'analysis-complete',stage:'request',state:'success'});
+      emit({type:'result',ok:true,result,providerRouting:providerRoutingSnapshot(routedEnv,routedEnv?.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
+    }catch(error){
+      emit({type:'error',ok:false,error:error?.message||String(error),providerDiagnostic:diagnosticSummary(error),providerRouting:providerRoutingSnapshot(routedEnv,routedEnv?.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
+    }finally{
+      try{await writeChain;}catch{}
+      if(!closed){closed=true;try{await writer.close();}catch{}}
+    }
+  })();
+  return new Response(readable,{status:200,headers:{...cors,'content-type':'application/x-ndjson; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+}
+
+async function runThemeReportingSidecarRequest(env,body={}){
+  if(!env.AI?.run)throw new Error('Workers AI binding AI is not configured');
+  const validCodes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code));
+  const seen=new Set(),selections=[];
+  for(const [index,row] of (Array.isArray(body.themes)?body.themes:[]).slice(0,3).entries()){
+    const code=String(row?.code||'').toUpperCase();if(!validCodes.has(code)||seen.has(code))continue;seen.add(code);
+    selections.push({rank:Number(row?.rank)||index+1,code,rationale:String(row?.rationale||'').trim().slice(0,900)});
+  }
+  if(selections.length!==3)throw new Error('Theme reporting diagnostic requires exactly 3 valid Theme selections');
+  const image=body.imageDataUrl?dataUrlBytes(body.imageDataUrl):await fetchBytes(body.imageUrl);
+  const behavior=String(body.behavior||'analyze')==='reanalyze'?'reanalyze':'analyze';
+  const model=env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL;
+  const startedMs=Date.now(),diagnostic=await runThemeReportingDiagnostic(env,model,image,behavior,selections,body.themeSweep||null),endedMs=Date.now();
+  diagnostic.reportingSidecar={status:'complete',protocol:'human-vote-reasoning-sidecar-v1',startedAt:timingIso(startedMs),completedAt:timingIso(endedMs),durationMs:timingDurationMs(startedMs,endedMs)};
+  return{schemaVersion:1,protocol:'theme-reporting-diagnostic-background-v1',imageId:String(body.imageId||''),themeCodes:selections.map(row=>row.code),diagnostic};
 }
 
 export default {
@@ -4605,6 +4686,7 @@ export default {
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
         providerRouting:{primaryProvider:'mistral-direct',primaryModel:mistralDescriptionModelFor(env),secondaryProvider:'openai-via-cloudflare-ai-gateway',secondaryModel:fallbackModelFor(env),thirdProvider:'cloudflare-workers-ai-qwen',thirdProviderModel:qwenThemeModelFor(env),themeWholeRunPolicy:THEME_WHOLE_RUN_POLICY,providerCyclePolicy:THEME_PROVIDER_CYCLE_POLICY,providerCycleOrder:[...THEME_PROVIDER_CYCLE_ORDER],providerRoster:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
+        themeAudit:{decisionStage:'theme-decision-audit',decisionProtocol:'selected-theme-decision-audit-v1',reportingStage:'theme-reporting-diagnostic',reportingProtocol:'human-vote-reasoning-sidecar-v1',reportingEndpoint:'/api/genreactrix/theme-report-diagnostic',reportingDeferred:true},
         promptDiagnostics:{enabled:true,conceptCount:PRIMFUSION_REGISTRY.themeChoices.length,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
       });
     }
@@ -4672,6 +4754,19 @@ export default {
         else if(mode==='question-block')result=await runAmaQuestionStep(routedEnv,body);
         else result=await runAma(routedEnv,body);
         return json({ok:true,result,providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/genreactrix/theme-report-diagnostic'){
+        if (!env.ANALYSIS_KEY){
+          return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        }
+        if (request.headers.get('x-analysis-key') !== env.ANALYSIS_KEY){
+          return json({ok:false,error:'Unauthorized'},{status:401});
+        }
+        const body = await request.json().catch(()=>null);
+        if (!body) return json({ok:false,error:'JSON body required'},{status:400});
+        const routedEnv=providerRoutingEnv(env,body);
+        return json({ok:true,result:await runThemeReportingSidecarRequest(routedEnv,body),providerRouting:providerRoutingSnapshot(routedEnv,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL)});
       }
 
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/analyze-stream'){
