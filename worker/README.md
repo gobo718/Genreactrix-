@@ -1,3 +1,9 @@
+# Genreactrix AI Worker 0.9.6.127 — Theme-derived Reactions
+
+Current behavior: no AI Reaction scan. Reactions are derived 100% from the three selected Themes as six equal 1/6 Theme→Prim slots; duplicate Prims accumulate. Theme/Description provider routing remains Mistral → GPT-4.1 mini → Qwen 3.7 Plus.
+
+---
+
 ## 0.9.6.121 — Qwen 3.7 Plus non-thinking
 
 - Fresh Theme acceptance now uses the compact `theme-decision-audit` stage: only the three delivered Themes are audited on the decision-critical path.
@@ -10,7 +16,7 @@
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.121-qwen-non-thinking.
+Current bundled Worker: v0.9.6.127-theme-derived-reactions.
 
 ## Historical bundled Worker notes
 
