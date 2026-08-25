@@ -1,13 +1,15 @@
-## 0.9.6.118 — Live provider progress
+## 0.9.6.120 — Fast Theme audit + deferred reporting sidecar
 
-- Adds additive streamed progress reporting for ordinary image analysis through `/api/genreactrix/analyze-stream`.
-- Emits live provider/stage transitions for Mistral, GPT-4.1 mini, and Qwen 3.7 Plus, including failures and whole-Theme-run replacement.
-- Preserves `/api/genreactrix/analyze` and all analysis semantics unchanged.
-- Current provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**.
+- Fresh Theme acceptance now uses the compact `theme-decision-audit` stage: only the three delivered Themes are audited on the decision-critical path.
+- The strict SUPPORTED / WEAK / REJECT, GATE_PASS / GATE_FAIL, and contradiction rules are preserved.
+- The previous heavy Theme diagnostic (all active Prim scores + up to 12 serious candidates + selected-Theme audit) is retained as `theme-reporting-diagnostic` behind `/api/genreactrix/theme-report-diagnostic`.
+- The ordinary `/api/genreactrix/analyze` and `/api/genreactrix/analyze-stream` endpoints are preserved.
+- v0.9.6.119 TransformStream compatibility repair is retained.
+- Provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**.
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.118-live-provider-progress.
+Current bundled Worker: v0.9.6.120-theme-audit-fast-path.
 
 ## Historical bundled Worker notes
 
@@ -507,3 +509,6 @@ Adds 3-concept waves (five waves per 15-concept batch). The existing 5-concept a
 - 78 active fusion Themes and 91 Prompt Diagnostics concepts are unchanged in count.
 - Only Angry-involving PFM codes change; all P08–P13 identities remain stable.
 - Preserves .108 taxonomy semantics and .107 per-image alternate-provider retry behavior.
+
+- Adds `/api/genreactrix/theme-report-diagnostic` for the deferred full Theme reporting sidecar.
+- Decision-critical Theme review uses the compact `theme-decision-audit` stage; Prim scoring and candidate enumeration are no longer on the critical path.
