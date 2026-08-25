@@ -1,15 +1,15 @@
-/* Genreactrix AI Worker v0.9.6.121-qwen-non-thinking
+/* Genreactrix AI Worker v0.9.6.127-theme-derived-reactions
    Preserves v0.9.6.115 timing/concurrency telemetry and v0.9.6.111 Festive/Pride calibration.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
    A semantically rejected fresh Theme run is discarded wholesale before the next provider starts from the original image.
    Final Themes are independently reviewed by the next provider; reviewer technical failures rotate reviewers.
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
-   Reactions and unrelated rerun behavior remain unchanged.
+   Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.121-qwen-non-thinking';
+const API_VERSION = '0.9.6.127-theme-derived-reactions';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
-// Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
+// Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
 const COMPONENT_IDS = ['reactions','themes','description','reactionReasons','genreReasons'];
 const CUSTOM_THEME_GENERATION_ENABLED = false;
@@ -1253,41 +1253,68 @@ function parseThemeReasoningDiagnostic(raw,selections=[],themeSweep=null){
   const primConsistency=selections.map(row=>{const m=String(row.code||'').match(/^PFM(\d{2})(\d{2})$/),primCodes=m?[`P${m[1]}`,`P${m[2]}`]:[],scores=primCodes.map(code=>byPrim.get(code)?.score??null);return{rank:row.rank,code:row.code,themeOrderPosition:orderByCode.get(row.code)||null,primCodes,primScores:scores,minPrimScore:scores.every(v=>Number.isFinite(v))?Math.min(...scores):null,averagePrimScore:scores.every(v=>Number.isFinite(v))?Math.round((scores[0]+scores[1])/2):null,candidateEntered:candidateSet.has(row.code)};});
   return{schemaVersion:1,status:'complete',protocol:'human-vote-reasoning-sidecar-v1',evidenceLedger:evidence,primScores,candidateCodes:candidates.slice(0,12),selectedAudits,primConsistency,themeDefinitionOrder:order.mode,themeDefinitionOrderSeed:order.seed};
 }
-function themeSelectedDecisionGatePrompt(selections=[]){
-  const selected=themeReasoningSelectedCatalog(selections)||'No nonblank Theme was selected.';
-  return `GENREACTRIX THEME DECISION AUDIT — FAST GATE.
-
-The three locked Theme selections below have already been chosen. Your only job is to decide whether each selected Theme is actually supported by the visible image and its exact definition. Do not score Prims, generate alternate candidate lists, or re-rank the vocabulary.
-
-Be strict. Do not reward a Theme merely because it is emotional, dramatic, provocative, attention-grabbing, evocative, aesthetically interesting, or easy to write about. If a Theme lacks its required semantic evidence, mark it REJECT even if a plausible story could be invented.
-
-CONTRADICTION CHECK: Compare each Theme definition with its STATED SELECTION BASIS and the visible image. If the basis says a defining requirement is absent (for example “without X”, “no X”, “lacks X”, or explicitly says the Theme does not fit), that absence is not support. A contradicted required element is REJECT + GATE_FAIL.
-
-Status: SUPPORTED = clear evidence; WEAK = partial/closest-available evidence; REJECT = insufficient or contradicted evidence. Gate: GATE_PASS only when the Theme's defining/required meaning is visibly satisfied; otherwise GATE_FAIL.
-
-Failure class must be exactly one of: none, image-misread, definition-misread, ranking-error, emotional-salience, invented-evidence, cue-trap, order-availability, other. Use none when the selection is sound.
-
-LOCKED THEMES WITH EXACT DEFINITIONS
-${selected}
-
-Return only these records, in this order:
-EVIDENCE|E1|one concrete visible fact
-... 3 to 6 EVIDENCE lines total
-SELECTED|rank|PFM####|SUPPORTED_or_WEAK_or_REJECT|E1,E2_or_NONE|GATE_PASS_or_GATE_FAIL|NONE|failure-class|brief concrete audit reason
-... exactly one SELECTED line for every locked Theme.
-
-Do not output PRIM or CANDIDATE records. Do not output prose outside these records.`;
+function themeSingleDecisionGatePrompt(selection){
+  const code=String(selection?.code||'').toUpperCase();
+  const theme=PRIMFUSION_REGISTRY.aiThemeChoices.find(row=>String(row.code||'').toUpperCase()===code);
+  if(!theme)throw diagnosticError(`Cannot audit unknown Theme ${code||'(blank)'}.`,{phase:'theme-decision-audit-setup',failureKind:'unknown-theme',themeCode:code||null});
+  return `GENREACTRIX THEME DECISION AUDIT — ONE THEME ONLY.\n\nThe three selected Themes are an UNORDERED SET of equal selections. This request judges only ${theme.code} — ${theme.name}. Do not rank it, compare its position, or infer importance from any 1/2/3 ordering.\n\nTHEME DEFINITION\n${theme.code} — ${theme.name}: ${theme.aiMeaning}\n\nSTATED SELECTION BASIS\n${String(selection?.rationale||'').trim()||'None supplied'}\n\nDECISION\nKEEP = the visible image contains enough real support for this Theme to remain one of the three equal selected Themes. Partial but genuine support may still be KEEP when the Theme is a reasonable fit.\nREJECT = the Theme lacks its defining/required meaning, contradicts the visible image or its stated basis, depends on invented evidence, or is being justified only through emotional salience or semantic stretch.\n\nReturn exactly one word and nothing else:\nKEEP\nor\nREJECT`;
 }
-function parseThemeSelectedDecisionGate(raw,selections=[]){
-  const validThemes=new Set(PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code)),evidence=[],evidenceIds=new Set(),selectedMap=new Map();
-  for(const line of String(raw||'').replace(/\r/g,'').split('\n')){
-    const parts=line.trim().replace(/^[-*•]\s*/,'').split('|').map(x=>x.trim());if(!parts.length)continue;
-    const kind=String(parts[0]||'').toUpperCase();
-    if(kind==='EVIDENCE'&&parts.length>=3){const id=String(parts[1]||'').toUpperCase();if(!/^E\d{1,2}$/.test(id)||evidenceIds.has(id))continue;const fact=parts.slice(2).join('|').replace(/\s+/g,' ').trim().slice(0,500);if(!fact)continue;evidenceIds.add(id);evidence.push({id,fact});continue;}
-    if(kind==='SELECTED'&&parts.length>=9){const rank=Number(parts[1]),code=String(parts[2]||'').toUpperCase(),status=String(parts[3]||'').toUpperCase(),gate=String(parts[5]||'').toUpperCase(),failure=String(parts[7]||'').toLowerCase();if(!Number.isInteger(rank)||!validThemes.has(code)||!['SUPPORTED','WEAK','REJECT'].includes(status)||!['GATE_PASS','GATE_FAIL'].includes(gate))continue;const refs=[...new Set((String(parts[4]||'').match(/\bE\d{1,2}\b/gi)||[]).map(x=>x.toUpperCase()))];const reason=parts.slice(8).join('|').replace(/\s+/g,' ').trim().slice(0,900);selectedMap.set(code,{rank,code,status,evidenceIds:refs,gate,closestAlternativeCode:null,failureClass:THEME_REASONING_FAILURE_CLASSES.has(failure)?failure:'other',reason});}
-  }
-  const selectedAudits=selections.map(row=>themeAuditContradictionRepair(selectedMap.get(row.code)||{rank:row.rank,code:row.code,status:'UNPARSED',evidenceIds:[],gate:'UNPARSED',closestAlternativeCode:null,failureClass:'other',reason:'Decision audit did not return a valid selected-Theme record.'},row,evidence));
-  return{schemaVersion:1,status:'complete',protocol:'selected-theme-decision-audit-v1',diagnosticClass:'decision-critical',evidenceLedger:evidence,selectedAudits,primScores:[],candidateCodes:[],primConsistency:[],reportingSidecar:{status:'pending',protocol:'human-vote-reasoning-sidecar-v1'}};
+function themeBinaryAuditDecision(value){
+  const token=String(value||'').toUpperCase().replace(/[^A-Z]/g,'');
+  if(['KEEP','KEPT','ACCEPT','ACCEPTED','PASS','PASSED','YES','SUPPORTED','SUPPORT','WEAK'].includes(token))return'KEEP';
+  if(['REJECT','REJECTED','FAIL','FAILED','NO','DROP','DROPPED','REMOVE','REMOVED','UNSUPPORTED','NOTSUPPORTED','GATEFAIL'].includes(token))return'REJECT';
+  return null;
+}
+function parseThemeSingleDecisionGate(raw){
+  const original=String(raw||'');
+  let cleaned=original.replace(/\r/g,'').replace(/```(?:text|txt|markdown|md|json)?/gi,'').replace(/```/g,'').trim();
+  if(!cleaned)return null;
+  // Accept tiny JSON wrappers providers sometimes add despite the one-word instruction.
+  try{
+    const parsed=JSON.parse(cleaned);
+    if(typeof parsed==='string'){
+      const d=themeBinaryAuditDecision(parsed);if(d)return d;
+    }else if(parsed&&typeof parsed==='object'){
+      for(const key of ['decision','verdict','result','answer','status']){
+        const d=themeBinaryAuditDecision(parsed[key]);if(d)return d;
+      }
+    }
+  }catch{}
+  const direct=themeBinaryAuditDecision(cleaned);if(direct)return direct;
+  const labeled=cleaned.match(/\b(?:decision|verdict|result|answer|status)\s*[:=|>\-]+\s*(KEEP|KEPT|ACCEPT(?:ED)?|PASS(?:ED)?|YES|SUPPORTED|SUPPORT|WEAK|REJECT(?:ED)?|FAIL(?:ED)?|NO|DROP(?:PED)?|REMOVE(?:D)?|UNSUPPORTED|NOT\s+SUPPORTED|GATE\s*FAIL)\b/i);
+  if(labeled){const d=themeBinaryAuditDecision(labeled[1]);if(d)return d;}
+  const tokens=cleaned.match(/\b(?:KEEP|KEPT|ACCEPT(?:ED)?|PASS(?:ED)?|YES|SUPPORTED|SUPPORT|WEAK|REJECT(?:ED)?|FAIL(?:ED)?|NO|DROP(?:PED)?|REMOVE(?:D)?|UNSUPPORTED|NOT\s+SUPPORTED|GATE\s*FAIL)\b/ig)||[];
+  const decisions=[...new Set(tokens.map(themeBinaryAuditDecision).filter(Boolean))];
+  return decisions.length===1?decisions[0]:null;
+}
+function themeSingleDecisionAuditRow(selection,decision){
+  const code=String(selection?.code||'').toUpperCase();
+  return decision==='KEEP'
+    ?{rank:selection?.rank,code,status:'SUPPORTED',evidenceIds:[],gate:'GATE_PASS',closestAlternativeCode:null,failureClass:'none',reason:'Independent one-Theme binary audit: KEEP.'}
+    :{rank:selection?.rank,code,status:'REJECT',evidenceIds:[],gate:'GATE_FAIL',closestAlternativeCode:null,failureClass:'other',reason:'Independent one-Theme binary audit: REJECT.'};
+}
+function themeStableProviderRotation(code,providers=[]){
+  const list=[...providers];if(list.length<2)return list;
+  let hash=0;for(const ch of String(code||''))hash=(hash*31+ch.charCodeAt(0))>>>0;
+  const offset=hash%list.length;return[...list.slice(offset),...list.slice(0,offset)];
+}
+function themeProviderLaneExecutor(){
+  const tails=new Map();
+  return async(provider,task)=>{
+    const prior=tails.get(provider)||Promise.resolve();
+    const run=prior.catch(()=>{}).then(()=>task());
+    tails.set(provider,run.catch(()=>{}));
+    return await run;
+  };
+}
+function buildPerThemeDecisionDiagnostic(selections=[],themeResults=[],protocol='selected-theme-decision-audit-v4-single-theme-binary-unordered'){
+  const byCode=new Map(themeResults.map(result=>[String(result?.code||'').toUpperCase(),result]));
+  const selectedAudits=selections.map(selection=>{
+    const code=String(selection?.code||'').toUpperCase(),result=byCode.get(code);
+    return result?.audit||{rank:selection?.rank,code,status:'UNPARSED',evidenceIds:[],gate:'UNPARSED',closestAlternativeCode:null,failureClass:'other',reason:'No valid one-Theme decision audit was returned.'};
+  });
+  const attempts=themeResults.flatMap(result=>(result?.attempts||[]).map(attempt=>({...attempt,themeCode:result.code})));
+  return{schemaVersion:4,status:'complete',protocol,diagnosticClass:'decision-critical',themeSetSemantics:'unordered-equal',auditUnit:'one-theme-per-request',selectedAudits,evidenceLedger:[],primScores:[],candidateCodes:[],primConsistency:[],reportingSidecar:{status:'pending',protocol:'human-vote-reasoning-sidecar-v1'},providerCycle:{schemaVersion:4,policy:'per-theme-binary-provider-retry-v1',stage:'theme-decision-audit',attemptCount:attempts.length,perTheme:themeResults.map(result=>({code:result.code,decision:result.decision,winningProvider:result.winningProvider,attemptCount:(result.attempts||[]).length,durationMs:result.durationMs,attempts:result.attempts||[]})),attempts}};
 }
 const THEME_PROVIDER_CYCLE_ORDER=['mistral','secondary','qwen'];
 const THEME_PROVIDER_CYCLE_POLICY='mistral-gpt41mini-qwen-one-attempt-per-cycle-v1';
@@ -1377,23 +1404,58 @@ async function runThemeProviderCycle(env,model,{stage,image=null,promptForCycle,
   throw diagnosticError(lastError?.message||`Provider cycle exhausted for ${stage}.`,{phase:`provider-cycle-${stage}-exhausted`,failureKind:'provider-cycle-exhausted',freshRequestRecommended:true,providerCycle:providerCycleRecoverySummary({stage,attempts,winningCycle:null,winningProvider:null,startedMs:stageStartedMs,endedMs,maxCycles:effectiveMaxCycles}),responsePreview:String(lastRaw||'').slice(0,1200)});
 }
 
-async function runThemeSelectedDecisionAudit(env,model,image,behavior,selections=[]){
-  const cycle=await runThemeProviderCycle(env,model,{
-    stage:'theme-decision-audit',image,maxTokens:1200,behavior,temperature:0,
-    options:{themeDecisionAudit:true,providerCallTimeoutMs:PROMPT_DIAGNOSTIC_PROVIDER_CALL_TIMEOUT_MS,preserveWhitespace:true},
-    promptForCycle:cycleNumber=>themeSelectedDecisionGatePrompt(selections)+(cycleNumber===1?'':`
+async function runThemeSingleDecisionAcrossProviders(env,model,image,behavior,selection,providers=[],laneRun=null){
+  const code=String(selection?.code||'').toUpperCase(),ordered=themeStableProviderRotation(code,providers),attempts=[],startedMs=Date.now();
+  let lastError=null,lastRaw='';
+  for(let attemptNumber=1;attemptNumber<=ordered.length;attemptNumber++){
+    const provider=ordered[attemptNumber-1],attemptStartedMs=Date.now();
+    const perform=async()=>{
+      const attemptEnv=providerCycleAttemptEnv(env,provider,'theme-decision-audit',attemptNumber);
+      providerProgressEvent(attemptEnv,{event:'provider-attempt-start',stage:'theme-decision-audit',themeCode:code,cycle:attemptNumber,provider,providerRole:themeProviderRole(provider),model:themeProviderModel(env,provider,model),state:'running'});
+      let raw='';
+      try{
+        raw=String(await runStructured(attemptEnv,model,image,themeSingleDecisionGatePrompt(selection),null,24,'text',{behavior,temperature:0,themeDecisionAudit:true,themeDecisionAuditBinary:true,themeDecisionAuditSingleTheme:true,themeDecisionAuditUnordered:true,providerCallTimeoutMs:30000,preserveWhitespace:true}));
+        const decision=parseThemeSingleDecisionGate(raw);
+        if(!decision)throw diagnosticError(`Theme decision audit for ${code} did not return an unambiguous KEEP/REJECT decision.`,{phase:'theme-decision-audit-incomplete',failureKind:'malformed-or-incomplete',themeCode:code,responsePreview:raw.slice(0,1200)});
+        const endedMs=Date.now();mergeProviderTrace(env,attemptEnv,`theme-decision-audit:${code}:${provider}`);
+        const row={cycle:attemptNumber,provider,outcome:'success',startedAt:timingIso(attemptStartedMs),endedAt:timingIso(endedMs),durationMs:timingDurationMs(attemptStartedMs,endedMs),responsePreview:raw.slice(0,300)};
+        attempts.push(row);
+        providerProgressEvent(env,{event:'provider-attempt-success',stage:'theme-decision-audit',themeCode:code,cycle:attemptNumber,provider,providerRole:themeProviderRole(provider),model:themeProviderModel(env,provider,model),state:'success',durationMs:row.durationMs,decision});
+        return{code,decision,audit:themeSingleDecisionAuditRow(selection,decision),winningProvider:provider,attempts:[...attempts],durationMs:timingDurationMs(startedMs,endedMs)};
+      }catch(error){
+        const endedMs=Date.now();mergeProviderTrace(env,attemptEnv,`theme-decision-audit:${code}:${provider}:failed`);lastError=error;lastRaw=raw;
+        const failure=providerCycleFailureRow(error,{cycle:attemptNumber,provider,raw,startedMs:attemptStartedMs,endedMs});failure.themeCode=code;attempts.push(failure);
+        providerProgressEvent(env,{event:'provider-attempt-failure',stage:'theme-decision-audit',themeCode:code,cycle:attemptNumber,provider,providerRole:themeProviderRole(provider),model:themeProviderModel(env,provider,model),state:'failure',durationMs:failure.durationMs,failurePhase:failure.failurePhase,failureKind:failure.failureKind,errorMessage:failure.errorMessage});
+        throw error;
+      }
+    };
+    try{return await(laneRun?laneRun(provider,perform):perform());}catch(error){lastError=error;}
+  }
+  throw diagnosticError(lastError?.message||`Theme decision audit exhausted for ${code}.`,{phase:'theme-decision-audit-theme-exhausted',failureKind:'reviewer-technical-exhausted',themeCode:code,attempts,responsePreview:String(lastRaw||'').slice(0,1200)});
+}
 
-FORMAT RECOVERY: Return only 3 to 6 EVIDENCE records and exactly ${selections.length} SELECTED records. Do not output PRIM or CANDIDATE records.`),
-    validate:raw=>{
-      const parsed=parseThemeSelectedDecisionGate(raw,selections);
-      const validAuditCount=parsed.selectedAudits.filter(row=>row.status!=='UNPARSED').length;
-      if(validAuditCount<selections.length)throw diagnosticError(`Theme decision audit incomplete: ${validAuditCount}/${selections.length} selected audits.`,{phase:'theme-decision-audit-incomplete',failureKind:'malformed-or-incomplete'});
-      return parsed;
-    }
-  });
-  cycle.result.providerCycle=cycle.recovery;
-  if(cycle.recovery.attemptCount>1)cycle.result.technicalRecovery={schemaVersion:2,type:'provider-cycle',policy:cycle.recovery.policy,winningCycle:cycle.recovery.winningCycle,winningProvider:cycle.recovery.winningProvider,attemptCount:cycle.recovery.attemptCount,attempts:cycle.recovery.attempts};
-  return cycle.result;
+async function runThemeSelectedDecisionAudit(env,model,image,behavior,selections=[]){
+  const unique=[],seen=new Set();for(const row of selections||[]){const code=String(row?.code||'').toUpperCase();if(code&&!seen.has(code)){seen.add(code);unique.push(row);}}
+  if(!unique.length)throw diagnosticError('Theme decision audit received no Themes.',{phase:'theme-decision-audit-setup',failureKind:'no-themes'});
+  const pinned=String(env?.__GENREACTRIX_THEME_PINNED_PROVIDER||'').toLowerCase();
+  const providers=pinned?[pinned]:[...THEME_PROVIDER_CYCLE_ORDER];
+  const laneRun=pinned?null:themeProviderLaneExecutor();
+  let settled;
+  if(pinned){
+    const taskResults=new Array(unique.length);let cursor=0;
+    const worker=async()=>{for(;;){const index=cursor++;if(index>=unique.length)return;try{taskResults[index]={status:'fulfilled',value:await runThemeSingleDecisionAcrossProviders(env,model,image,behavior,unique[index],providers,null)};}catch(reason){taskResults[index]={status:'rejected',reason};}}};
+    await Promise.all(Array.from({length:Math.min(2,unique.length)},worker));settled=taskResults;
+  }else{
+    settled=await Promise.allSettled(unique.map(selection=>runThemeSingleDecisionAcrossProviders(env,model,image,behavior,selection,providers,laneRun)));
+  }
+  const results=settled.filter(row=>row.status==='fulfilled').map(row=>row.value);
+  if(results.length<unique.length){
+    const failures=settled.filter(row=>row.status==='rejected').map(row=>String(row.reason?.message||row.reason).slice(0,900));
+    throw diagnosticError(`Theme decision audit completed ${results.length}/${unique.length} one-Theme decisions.`,{phase:'theme-decision-audit-incomplete',failureKind:'reviewer-technical-exhausted',themeSetSemantics:'unordered-equal',successfulCodes:results.map(row=>row.code),failedCodes:unique.map(row=>String(row.code||'').toUpperCase()).filter(code=>!results.some(result=>result.code===code)),failures});
+  }
+  const diagnostic=buildPerThemeDecisionDiagnostic(unique,results);
+  if(diagnostic.providerCycle.attempts.some(row=>row.outcome==='failure'))diagnostic.technicalRecovery={schemaVersion:3,type:'per-theme-provider-retry',attemptCount:diagnostic.providerCycle.attemptCount,perTheme:diagnostic.providerCycle.perTheme};
+  return diagnostic;
 }
 
 async function runThemeReportingDiagnostic(env,model,image,behavior,selections=[],themeSweep=null){
@@ -1528,15 +1590,28 @@ function themeConfirmationContext(diagnostic,codes=[]){
 /** @param {{description?:string,initialDecision?:any,themeSweep?:any}} options */
 async function runFreshThemeMismatchRecovery(env,model,image,behavior,options={}){
   const {description='',initialDecision,themeSweep=null}=options;
-  const initialResolved=resolveThemes(initialDecision.selections),initialDiagnostic=await runThemeSelectedDecisionAudit(env,model,image,behavior,initialResolved),signals=themeRecoverySignals(initialDiagnostic,initialDecision.selections);
+  const initialResolved=resolveThemes(initialDecision.selections);
+  let initialDiagnostic;
+  try{
+    initialDiagnostic=await runThemeSelectedDecisionAudit(env,model,image,behavior,initialResolved);
+  }catch(error){
+    const d=providerDiagnosticOf(error)||{};
+    // This same-path audit exists to improve mismatch recovery. A technical audit
+    // failure is not semantic evidence against the Theme set and must not kill
+    // an otherwise usable result; downstream independent review remains mandatory.
+    return{resolvedThemes:initialResolved,finalDecision:initialDecision,diagnostic:{schemaVersion:4,status:'technical-unavailable',protocol:'selected-theme-decision-audit-v4-single-theme-binary-unordered',themeSetSemantics:'unordered-equal',auditUnit:'one-theme-per-request',selectedAudits:[],technicalFailure:{phase:d.phase||null,failureKind:d.failureKind||null,errorMessage:String(error?.message||error).slice(0,1200)}},recovery:{schemaVersion:4,trigger:'same-path-audit-technical-unavailable',rollbackTarget:null,rerunReason:'technical-audit-failure-is-not-semantic-evidence',acceptedOriginal:true,rescanCount:0,technicalFailureNonFatal:true}};
+  }
+  const signals=themeRecoverySignals(initialDiagnostic,initialDecision.selections);
   if(!signals.hardCodes.length&&!signals.softCodes.length)return{resolvedThemes:initialResolved,finalDecision:initialDecision,diagnostic:initialDiagnostic,recovery:null};
   const hard=signals.hardCodes.length>0,mode=hard?'blocked-rescan':'unblocked-confirmation-rescan',blocked=hard?signals.hardCodes:[],questioned=hard?signals.hardCodes:signals.softCodes;
   const rescan=await runThemeAssociation(env,model,{description,behavior,themeSweep,stage:'final',excludedThemeCodes:blocked,confirmationContext:hard?'':themeConfirmationContext(initialDiagnostic,questioned)}),rescanResolved=resolveThemes(rescan.selections),rescanCodes=new Set(rescan.selections.map(row=>row.code));
   if(!hard&&questioned.every(code=>rescanCodes.has(code))){
     return{resolvedThemes:initialResolved,finalDecision:initialDecision,diagnostic:initialDiagnostic,recovery:{schemaVersion:3,trigger:'audit-gate-fail',rollbackTarget:'final-theme-selection',rerunReason:'downstream-audit-questioned-final-selection',mode,blockedThemeCodes:[],questionedThemeCodes:questioned,initialSelectedCodes:initialDecision.selections.map(row=>row.code),rescanSelectedCodes:rescan.selections.map(row=>row.code),acceptedRescan:false,confirmationRetainedOriginal:true,rescanCount:1,initialFinalProviderCycle:initialDecision.diagnostics?.providerCycle||null,initialDiagnosticProviderCycle:initialDiagnostic?.providerCycle||null,rescanProviderCycle:rescan.diagnostics?.providerCycle||null}};
   }
-  const finalDiagnostic=await runThemeSelectedDecisionAudit(env,model,image,behavior,rescanResolved),postSignals=themeRecoverySignals(finalDiagnostic,rescan.selections);
-  return{resolvedThemes:rescanResolved,finalDecision:rescan,diagnostic:finalDiagnostic,recovery:{schemaVersion:3,trigger:hard?'theme-evidence-contradiction':'audit-gate-fail',rollbackTarget:'final-theme-selection',rerunReason:hard?'downstream-audit-found-theme-evidence-contradiction':'downstream-audit-questioned-final-selection',mode,blockedThemeCodes:blocked,questionedThemeCodes:questioned,initialSelectedCodes:initialDecision.selections.map(row=>row.code),rescanSelectedCodes:rescan.selections.map(row=>row.code),acceptedRescan:true,confirmationRetainedOriginal:false,rescanCount:1,postRescanHardCodes:postSignals.hardCodes,postRescanSoftCodes:postSignals.softCodes,initialFinalProviderCycle:initialDecision.diagnostics?.providerCycle||null,initialDiagnosticProviderCycle:initialDiagnostic?.providerCycle||null,rescanProviderCycle:rescan.diagnostics?.providerCycle||null,finalDiagnosticProviderCycle:finalDiagnostic?.providerCycle||null}};
+  let finalDiagnostic,postSignals={hardCodes:[],softCodes:[]},finalAuditTechnicalFailure=null;
+  try{finalDiagnostic=await runThemeSelectedDecisionAudit(env,model,image,behavior,rescanResolved);postSignals=themeRecoverySignals(finalDiagnostic,rescan.selections);}
+  catch(error){const d=providerDiagnosticOf(error)||{};finalAuditTechnicalFailure={phase:d.phase||null,failureKind:d.failureKind||null,errorMessage:String(error?.message||error).slice(0,1200)};finalDiagnostic={schemaVersion:4,status:'technical-unavailable',protocol:'selected-theme-decision-audit-v4-single-theme-binary-unordered',themeSetSemantics:'unordered-equal',selectedAudits:[],technicalFailure:finalAuditTechnicalFailure};}
+  return{resolvedThemes:rescanResolved,finalDecision:rescan,diagnostic:finalDiagnostic,recovery:{schemaVersion:4,trigger:hard?'theme-evidence-contradiction':'audit-gate-fail',rollbackTarget:'final-theme-selection',rerunReason:hard?'downstream-audit-found-theme-evidence-contradiction':'downstream-audit-questioned-final-selection',mode,blockedThemeCodes:blocked,questionedThemeCodes:questioned,initialSelectedCodes:initialDecision.selections.map(row=>row.code),rescanSelectedCodes:rescan.selections.map(row=>row.code),acceptedRescan:true,confirmationRetainedOriginal:false,rescanCount:1,postRescanHardCodes:postSignals.hardCodes,postRescanSoftCodes:postSignals.softCodes,initialFinalProviderCycle:initialDecision.diagnostics?.providerCycle||null,initialDiagnosticProviderCycle:initialDiagnostic?.providerCycle||null,rescanProviderCycle:rescan.diagnostics?.providerCycle||null,finalDiagnosticProviderCycle:finalDiagnostic?.providerCycle||null,finalAuditTechnicalFailureNonFatal:Boolean(finalAuditTechnicalFailure),finalAuditTechnicalFailure}};
 }
 
 
@@ -1554,22 +1629,25 @@ function themeReviewProviderOrder(runProvider){
   return [...order.slice(index+1),...order.slice(0,index)].filter(provider=>provider!==runProvider);
 }
 async function runIndependentThemeReview(env,model,image,behavior,selections=[],themeSweep=null,runProvider=''){
-  const attempts=[];
-  for(const reviewer of themeReviewProviderOrder(runProvider)){
-    const reviewEnv=themePinnedProviderEnv(env,reviewer,`independent-theme-review-${runProvider}-by-${reviewer}`);
-    try{
-      const diagnostic=await runThemeSelectedDecisionAudit(reviewEnv,model,image,behavior,selections);
-      mergeProviderTrace(env,reviewEnv,`independent-theme-review:${reviewer}`);
-      attempts.push({provider:reviewer,role:themeProviderRole(reviewer),model:themeProviderModel(env,reviewer,model),outcome:'success'});
-      return{diagnostic,reviewer,attempts};
-    }catch(error){
-      mergeProviderTrace(env,reviewEnv,`independent-theme-review:${reviewer}:failed`);
-      const d=providerDiagnosticOf(error)||{};
-      attempts.push({provider:reviewer,role:themeProviderRole(reviewer),model:themeProviderModel(env,reviewer,model),outcome:'technical-failure',failurePhase:d.phase||null,failureKind:d.failureKind||null,errorMessage:String(error?.message||error).slice(0,800)});
-    }
+  const unique=[],seen=new Set();for(const row of selections||[]){const code=String(row?.code||'').toUpperCase();if(code&&!seen.has(code)){seen.add(code);unique.push(row);}}
+  const reviewers=themeReviewProviderOrder(runProvider);
+  if(!reviewers.length)throw diagnosticError('No independent Theme reviewer is available.',{phase:'independent-theme-review-setup',failureKind:'no-independent-reviewer',runProvider});
+  const laneRun=themeProviderLaneExecutor();
+  const settled=await Promise.allSettled(unique.map(selection=>runThemeSingleDecisionAcrossProviders(env,model,image,behavior,selection,reviewers,laneRun)));
+  const results=settled.filter(row=>row.status==='fulfilled').map(row=>row.value);
+  const failures=settled.filter(row=>row.status==='rejected').map((row,index)=>({error:String(row.reason?.message||row.reason).slice(0,1000),diagnostic:providerDiagnosticOf(row.reason)||null}));
+  const successfulCodes=new Set(results.map(row=>row.code)),failedCodes=unique.map(row=>String(row.code||'').toUpperCase()).filter(code=>!successfulCodes.has(code));
+  const attempts=results.flatMap(result=>(result.attempts||[]).map(attempt=>({...attempt,themeCode:result.code})));
+  for(const row of settled)if(row.status==='rejected'){
+    const d=providerDiagnosticOf(row.reason)||{};for(const attempt of d.attempts||[])attempts.push(attempt);
   }
-  throw diagnosticError('All independent Theme reviewers failed technically.',{phase:'independent-theme-review-exhausted',failureKind:'reviewer-technical-exhausted',runProvider,reviewAttempts:attempts});
+  if(failedCodes.length){
+    throw diagnosticError(`Independent Theme review failed technically for ${failedCodes.length} Theme${failedCodes.length===1?'':'s'}: ${failedCodes.join(', ')}.`,{phase:'independent-theme-review-exhausted',failureKind:'reviewer-technical-exhausted',runProvider,themeSetSemantics:'unordered-equal',failedCodes,successfulCodes:[...successfulCodes],reviewers:[...reviewers],reviewAttempts:attempts,perThemeFailures:failures});
+  }
+  const diagnostic=buildPerThemeDecisionDiagnostic(unique,results,'selected-theme-decision-audit-v4-independent-per-theme-binary-unordered');
+  return{diagnostic,reviewer:'per-theme-independent',reviewers:[...new Set(results.map(row=>row.winningProvider))],attempts:diagnostic.providerCycle.attempts,perTheme:diagnostic.providerCycle.perTheme};
 }
+
 function themeReviewSemanticRejects(diagnostic){return (diagnostic?.selectedAudits||[]).filter(row=>row?.status==='REJECT'||row?.gate==='GATE_FAIL').map(row=>String(row.code||'').toUpperCase()).filter(Boolean);}
 
 async function runThemesFromMistralDescriptionThroughExistingProviders(env,model,image,behavior,{description='',themeSweep=null}={}){
@@ -3899,6 +3977,12 @@ function resolveThemes(rawThemes){
 // v0.9.6.112 — Fresh Theme provider-cycle router: Primary -> Secondary -> Mistral once per cycle; no consecutive same-provider retries; cycle telemetry in reports.
 // v0.9.6.114 — Reaction Analysis joins the same provider-cycle policy; all-zero/malformed whole assessments advance providers instead of immediately repeating one provider.
 // v0.9.6.115 — Adds URL/image-input, family, stage, and provider-attempt timing telemetry; Reactions and Themes execute concurrently when both are requested and independent; existing mismatch recovery behavior is preserved and now reports rollback target/reason.
+// v0.9.6.126 — Replace manual Promise-resolver release callback with direct per-provider promise chaining. Same serialization behavior, but removes Cloudflare editor ts(2322)/ts(2722) inference hazards entirely.
+// v0.9.6.127 — Retire the AI Reaction scan. Reactions are 100% derived from the three selected Themes as six equal 1/6 Prim slots; duplicates accumulate.
+// v0.9.6.125 — Initialize the provider-lane release callback before Promise assignment so Cloudflare editor type-checking cannot treat it as possibly undefined. Runtime behavior is unchanged.
+// v0.9.6.124 — Theme decision audit now uses one KEEP/REJECT request per Theme. Independent reviewers retry only the technically failed Theme; Theme order is never used. Provider-lane serialization prevents duplicate same-provider audit calls from colliding within one image, and one-word audit calls have a 30s ceiling.
+// v0.9.6.123 — Theme decision audit is now a binary KEEP/REJECT gate over an unordered equal three-Theme set; Theme identity is matched by PFM code/name only, never by 1/2/3 position.
+// v0.9.6.122 — Fast Theme decision audit now uses a compact three-record contract plus tolerant parsing for harmless provider formatting differences; rejected raw audit output is retained in diagnostics.
 // v0.9.6.121 — Qwen 3.7 Plus runs with enable_thinking:false to avoid deep-reasoning latency on Genreactrix Theme stages; provider progress/readiness telemetry labels Qwen as non-thinking.
 // v0.9.6.120 — Split decision-critical Theme audit from the heavy reporting diagnostic.
 // v0.9.6.119 — Live progress stream compatibility repair: use TransformStream instead of ReadableStream constructor; no Cloudflare compatibility-flag change required.
@@ -4311,6 +4395,27 @@ function themeProviderCycleReportSnapshot(components={}){
   };
 }
 
+
+const THEME_REACTION_SLOT_WEIGHT=100/6;
+function themeReactionPrimIds(theme){
+  const code=String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase(),match=code.match(/^PFM(\d{2})(\d{2})$/);
+  if(!match)return[];
+  const ids=[`P${match[1]}`,`P${match[2]}`],valid=new Set(PRIMFUSION_REGISTRY.primitives.map(row=>String(row.id)));
+  return ids.every(id=>valid.has(id))?ids:[];
+}
+function deriveReactionsFromThemes(themes){
+  const selected=Array.isArray(themes)?themes.slice(0,3):[];
+  if(selected.length!==3)throw new Error('Theme-derived Reactions require exactly three selected Themes.');
+  const reactions=Object.fromEntries(PRIMFUSION_REGISTRY.primitives.map(row=>[row.id,0])),slots=[];
+  for(const theme of selected){
+    const ids=themeReactionPrimIds(theme);if(ids.length!==2)throw new Error(`Theme-derived Reactions could not resolve two Prim codes from ${String(theme?.code||theme?.name||'Theme')}.`);
+    const themeCode=String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase();
+    for(const primId of ids){reactions[primId]+=THEME_REACTION_SLOT_WEIGHT;slots.push({themeCode,primId,weight:THEME_REACTION_SLOT_WEIGHT});}
+  }
+  const diagnostics={schemaVersion:1,method:'theme-derived-six-equal-slots-v1',aiScan:false,themeOrderSignificant:false,slotCount:6,slotWeight:THEME_REACTION_SLOT_WEIGHT,total:100,themeCodes:selected.map(theme=>String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase()),slots};
+  return{reactions,diagnostics};
+}
+
 async function analyze(env,body){
   if (!env.AI?.run) throw new Error('Workers AI binding AI is not configured');
 
@@ -4318,28 +4423,25 @@ async function analyze(env,body){
   if (!body.imageId || !requested.length) throw new Error('imageId and components are required');
   const analysisStartedMs=Date.now();
 
-  const reactionOnly = requested.every(name=>name==='reactions'||name==='reactionReasons');
-  const rawReactionSources = body.reactionRerunSources && typeof body.reactionRerunSources==='object' ? body.reactionRerunSources : null;
-  const reactionSources = rawReactionSources ? {image:rawReactionSources.image!==false,description:Boolean(rawReactionSources.description)} : {image:true,description:false};
-  const reactionDescriptionContext = reactionSources.description ? String(body.reactionDescriptionContext||'').trim().slice(0,6000) : '';
-  if (reactionOnly && !reactionSources.image && !reactionSources.description) throw new Error('Reaction rerun requires Image, Description, or both');
-  if (reactionOnly && reactionSources.description && !reactionDescriptionContext) throw new Error('Reaction rerun requested Description evidence but no AI Description context was supplied');
-  const needsImage = !reactionOnly || reactionSources.image;
+  const reactionFamilyRequested=requested.includes('reactions')||requested.includes('reactionReasons');
+  const themeFamilyRequested=requested.includes('themes')||requested.includes('genreReasons');
+  if(reactionFamilyRequested&&!themeFamilyRequested)throw new Error('AI Reaction scan is retired. Request Themes with Reactions, or recalculate Reactions locally from the current three Themes.');
+  const needsImage = true;
   const imageInputStartedMs=Date.now();
-  const image = needsImage ? (body.imageDataUrl ? dataUrlBytes(body.imageDataUrl) : await fetchBytes(body.imageUrl)) : null;
+  const image = body.imageDataUrl ? dataUrlBytes(body.imageDataUrl) : await fetchBytes(body.imageUrl);
   const imageInputEndedMs=Date.now();
 
   const model = env.WORKERS_AI_VISION_MODEL || DEFAULT_MODEL;
   const components = {};
   const promptVersions = {};
   let customThemeTriggered = false;
-  let resolvedThemesForSlop = null;
+  let resolvedThemesForSlop = null,resolvedThemesForReactions=null;
   const pipelineTiming={
     schemaVersion:1,
     startedAt:timingIso(analysisStartedMs),
     endedAt:null,
     durationMs:null,
-    execution:{reactionThemeParallelEligible:false,reactionThemeRanInParallel:false,costOrderedProviderRouting:true,providerOrder:[...THEME_PROVIDER_CYCLE_ORDER]},
+    execution:{reactionAiScan:false,reactionArchitecture:'theme-derived-six-equal-slots-v1',reactionThemeParallelEligible:false,reactionThemeRanInParallel:false,costOrderedProviderRouting:true,providerOrder:[...THEME_PROVIDER_CYCLE_ORDER]},
     families:{
       imageInput:{startedAt:timingIso(imageInputStartedMs),endedAt:timingIso(imageInputEndedMs),durationMs:timingDurationMs(imageInputStartedMs,imageInputEndedMs),mode:needsImage?(body.imageDataUrl?'embedded-data-url':'remote-url'):'not-required',byteLength:image?Number(image.byteLength||image.length||0):0}
     },
@@ -4349,40 +4451,8 @@ async function analyze(env,body){
 
   const behaviorFor = names => names.some(name=>requested.includes(name) && body.componentBehaviors?.[name] === 'reanalyze') ? 'reanalyze' : 'analyze';
 
-  // Reaction and Theme families are intentionally analyzed independently.
-  // Info outputs share the exact same underlying assessment as their paired classification
-  // when both are requested, so research reasoning cannot drift away from the result it explains.
-  const reactionFamilyRequested=requested.includes('reactions')||requested.includes('reactionReasons');
-  const themeFamilyRequested=requested.includes('themes')||requested.includes('genreReasons');
-  pipelineTiming.execution.reactionThemeParallelEligible=Boolean(reactionFamilyRequested&&themeFamilyRequested);
-  pipelineTiming.execution.reactionThemeRanInParallel=Boolean(reactionFamilyRequested&&themeFamilyRequested);
-
-  const reactionTask=reactionFamilyRequested?(async()=>{
-    const familyStartedMs=Date.now();
-    try{
-
-    const behavior = behaviorFor(['reactions','reactionReasons']);
-    const reactionEvidence = {useImage:reactionSources.image,descriptionContext:reactionDescriptionContext,requireNotes:requested.includes('reactionReasons')};
-    const reactionResult = await runReactionAllocation(env,model,image,behavior,reactionEvidence);
-    components.reactionDiagnostics = reactionResult.diagnostics;
-    if (requested.includes('reactions')) components.reactions = reactionResult.display;
-    if (requested.includes('reactionReasons')) components.reactionReasons = {
-      rawAiWeights:reactionResult.diagnostics.rawAiWeights,
-      ranking:reactionResult.diagnostics.aiRanking,
-      notes:reactionResult.diagnostics.effortNotes,
-      reactionCombo:reactionResult.diagnostics.reactionCombo,
-      singleDominant:reactionResult.diagnostics.singleDominant,
-      providerCycle:reactionResult.diagnostics.providerCycle||null
-    };
-    promptVersions.reactions = reactionSources.image&&reactionSources.description
-      ? 'genreactrix-reactions-registry-v12-provider-cycle-combined'
-      : reactionSources.image
-        ? 'genreactrix-reactions-registry-v12-provider-cycle-vision'
-        : 'genreactrix-reactions-registry-v12-provider-cycle-description';
-    if (requested.includes('reactionReasons')) promptVersions.reactionReasons = 'genreactrix-reaction-info-v2-shared-assessment';
-  
-    }finally{recordFamilyTiming('reactions',familyStartedMs,Date.now(),{parallelWithThemes:Boolean(themeFamilyRequested)});}
-  })():Promise.resolve();
+  // Reactions are not independently analyzed. They are derived deterministically
+  // from the three selected Themes after Theme selection completes.
 
   const themeTask=themeFamilyRequested?(async()=>{
     const familyStartedMs=Date.now();
@@ -4451,7 +4521,7 @@ async function analyze(env,body){
         const rejectedCodes=themeReviewSemanticRejects(review.diagnostic);
         const comparison=comparePreliminaryFinalThemes(preliminaryThemes,resolvedFinal);
         if(rejectedCodes.length){
-          throw diagnosticError(`Independent Theme review rejected ${rejectedCodes.length} delivered Theme${rejectedCodes.length===1?'':'s'} from ${runProvider}.`,{phase:'fresh-theme-whole-run-semantic-reject',failureKind:'semantic-reject',runProvider,runProviderRole:themeProviderRole(runProvider),rejectedCodes,reviewer:review.reviewer,reviewAttempts:review.attempts,preliminaryFinalComparison:comparison});
+          throw diagnosticError(`Independent Theme review rejected ${rejectedCodes.length} delivered Theme${rejectedCodes.length===1?'':'s'} from ${runProvider}.`,{phase:'fresh-theme-whole-run-semantic-reject',failureKind:'semantic-reject',runProvider,runProviderRole:themeProviderRole(runProvider),rejectedCodes,reviewer:review.reviewer,reviewers:review.reviewers||[],reviewAttempts:review.attempts,preliminaryFinalComparison:comparison});
         }
         return{
           resolvedThemes:resolvedFinal,
@@ -4474,7 +4544,7 @@ async function analyze(env,body){
             description:descriptionPass.diagnostics,
             initialFinal:initialFinalDecision.diagnostics,
             final:initialFinalDecision.diagnostics,
-            independentReview:{schemaVersion:2,auditProtocol:review.diagnostic?.protocol||'selected-theme-decision-audit-v1',reviewer:review.reviewer,reviewerRole:themeProviderRole(review.reviewer),reviewerModel:themeProviderModel(runEnv,review.reviewer,model),attempts:review.attempts,rejectedCodes:[],accepted:true},
+            independentReview:{schemaVersion:3,auditProtocol:review.diagnostic?.protocol||'selected-theme-decision-audit-v4-independent-per-theme-binary-unordered',reviewerMode:'per-theme-independent',reviewers:review.reviewers||[],perTheme:review.perTheme||[],attempts:review.attempts,rejectedCodes:[],accepted:true},
             preliminaryFinalComparison:comparison,
             automaticMismatchRecovery:null,
             sameProviderFinalRescanUsed:false,
@@ -4514,6 +4584,7 @@ async function analyze(env,body){
       components.__freshPipelineDescriptionDiagnostics=freshChain.descriptionDiagnostics;
       promptVersions.themes='genreactrix-themes-pfm-v34-mistral-primary-whole-run';
     }
+    resolvedThemesForReactions=resolvedThemes.map(row=>({...row}));
     if (requested.includes('themes')) components.themes = resolvedThemes;
     if (requested.includes('genreReasons')) {
       // Preserve the existing Theme reasoning sidecar on fresh analysis and
@@ -4537,14 +4608,22 @@ async function analyze(env,body){
     }
     customThemeTriggered = resolvedThemes.some(t=>t.source==='custom');
     resolvedThemesForSlop = resolvedThemes.map(row=>({...row}));
-    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun&&!themeHumanVoteRerunExperimentEligible(themeRerun)?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v6-fast-decision-audit-deferred-reporting';
+    if (requested.includes('genreReasons')) promptVersions.genreReasons = themeRerun&&!themeHumanVoteRerunExperimentEligible(themeRerun)?'genreactrix-theme-info-v2-director-rerun':'genreactrix-theme-info-v7-per-theme-binary-audit-deferred-reporting';
   
-    }finally{recordFamilyTiming('themes',familyStartedMs,Date.now(),{parallelWithReactions:Boolean(reactionFamilyRequested)});}
+    }finally{recordFamilyTiming('themes',familyStartedMs,Date.now(),{parallelWithReactions:false});}
   })():Promise.resolve();
 
-  await Promise.all([reactionTask,themeTask]);
+  await themeTask;
 
-
+  if(reactionFamilyRequested){
+    const familyStartedMs=Date.now(),derived=deriveReactionsFromThemes(resolvedThemesForReactions);
+    components.reactionDiagnostics=derived.diagnostics;
+    if(requested.includes('reactions'))components.reactions=derived.reactions;
+    if(requested.includes('reactionReasons'))components.reactionReasons={schemaVersion:1,protocol:'theme-derived-six-equal-slots-v1',aiScan:false,themeCodes:[...derived.diagnostics.themeCodes],slots:derived.diagnostics.slots.map(row=>({...row})),summary:'Three selected Themes contribute six equal Prim slots; duplicate Prims accumulate.'};
+    promptVersions.reactions='genreactrix-reactions-theme-derived-v1';
+    if(requested.includes('reactionReasons'))promptVersions.reactionReasons='genreactrix-reaction-info-theme-derived-v1';
+    recordFamilyTiming('reactions-derived',familyStartedMs,Date.now(),{aiCall:false,slotCount:6,slotWeight:THEME_REACTION_SLOT_WEIGHT});
+  }
 
   if (requested.includes('description')){
     const familyStartedMs=Date.now();
@@ -4603,7 +4682,7 @@ async function analyze(env,body){
     model:providerSummary.model,
     primFusionMatrixVersion:matrixVersion(),
     promptVersions,
-    researchConfiguration:{customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,...(requested.includes('reactions')?{reactionEvidenceSources:{image:reactionSources.image,description:reactionSources.description}}:{})},
+    researchConfiguration:{customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,...(reactionFamilyRequested?{reactionArchitecture:'theme-derived-six-equal-slots-v1',reactionAiScan:false}:{})},
     reviewDirectives:{
       autoKeep:customThemeTriggered,
       autoFlag:customThemeTriggered,
@@ -4688,7 +4767,7 @@ export default {
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
         providerRouting:{primaryProvider:'mistral-direct',primaryModel:mistralDescriptionModelFor(env),secondaryProvider:'openai-via-cloudflare-ai-gateway',secondaryModel:fallbackModelFor(env),thirdProvider:'cloudflare-workers-ai-qwen',thirdProviderModel:qwenThemeModelFor(env),thirdProviderThinkingMode:'disabled',themeWholeRunPolicy:THEME_WHOLE_RUN_POLICY,providerCyclePolicy:THEME_PROVIDER_CYCLE_POLICY,providerCycleOrder:[...THEME_PROVIDER_CYCLE_ORDER],providerRoster:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
-        themeAudit:{decisionStage:'theme-decision-audit',decisionProtocol:'selected-theme-decision-audit-v1',reportingStage:'theme-reporting-diagnostic',reportingProtocol:'human-vote-reasoning-sidecar-v1',reportingEndpoint:'/api/genreactrix/theme-report-diagnostic',reportingDeferred:true},
+        themeAudit:{decisionStage:'theme-decision-audit',decisionProtocol:'selected-theme-decision-audit-v4-independent-per-theme-binary-unordered',reportingStage:'theme-reporting-diagnostic',reportingProtocol:'human-vote-reasoning-sidecar-v1',reportingEndpoint:'/api/genreactrix/theme-report-diagnostic',reportingDeferred:true},
         promptDiagnostics:{enabled:true,conceptCount:PRIMFUSION_REGISTRY.themeChoices.length,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
       });
     }
