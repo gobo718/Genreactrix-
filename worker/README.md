@@ -1,4 +1,4 @@
-# Genreactrix AI Worker 0.9.6.127 — Theme-derived Reactions
+# Genreactrix AI Worker 0.9.6.128 — PrimFusion Theme relocations
 
 Current behavior: no AI Reaction scan. Reactions are derived 100% from the three selected Themes as six equal 1/6 Theme→Prim slots; duplicate Prims accumulate. Theme/Description provider routing remains Mistral → GPT-4.1 mini → Qwen 3.7 Plus.
 
@@ -16,7 +16,7 @@ Current behavior: no AI Reaction scan. Reactions are derived 100% from the three
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.127-theme-derived-reactions.
+Current bundled Worker: v0.9.6.128-theme-relocations.
 
 ## Historical bundled Worker notes
 
