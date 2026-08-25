@@ -1,4 +1,4 @@
-## 0.9.6.120 — Fast Theme audit + deferred reporting sidecar
+## 0.9.6.121 — Qwen 3.7 Plus non-thinking
 
 - Fresh Theme acceptance now uses the compact `theme-decision-audit` stage: only the three delivered Themes are audited on the decision-critical path.
 - The strict SUPPORTED / WEAK / REJECT, GATE_PASS / GATE_FAIL, and contradiction rules are preserved.
@@ -6,10 +6,11 @@
 - The ordinary `/api/genreactrix/analyze` and `/api/genreactrix/analyze-stream` endpoints are preserved.
 - v0.9.6.119 TransformStream compatibility repair is retained.
 - Provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**.
+- Qwen 3.7 Plus requests set `enable_thinking:false`; live provider telemetry reports `thinkingMode: disabled`.
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.120-theme-audit-fast-path.
+Current bundled Worker: v0.9.6.121-qwen-non-thinking.
 
 ## Historical bundled Worker notes
 
@@ -512,3 +513,5 @@ Adds 3-concept waves (five waves per 15-concept batch). The existing 5-concept a
 
 - Adds `/api/genreactrix/theme-report-diagnostic` for the deferred full Theme reporting sidecar.
 - Decision-critical Theme review uses the compact `theme-decision-audit` stage; Prim scoring and candidate enumeration are no longer on the critical path.
+
+- Qwen 3.7 Plus requests set `enable_thinking:false`; live provider telemetry reports `thinkingMode: disabled`.
