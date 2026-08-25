@@ -1,10 +1,20 @@
-# Genreactrix AI Worker 0.9.6.129 — PrimFusion consolidation
+# Genreactrix AI Worker 0.9.6.130 — Smart cleanup
 
 Current behavior: no AI Reaction scan. Reactions remain derived 100% from the three selected Themes as six equal 1/6 Theme→Prim slots; duplicate Prims accumulate. Theme/Description provider routing remains Mistral → GPT-4.1 mini → Qwen 3.7 Plus.
 
-Matrix identity remains 0.0.0.0. Active taxonomy: 13 Prims, 70 assigned PrimFusion Themes, 8 open pair slots. This release applies the final approved Matrix consolidation/relocations and synchronizes definitions and fixed Theme-order arrays.
+Matrix identity remains 0.0.0.0. Active taxonomy: 13 Prims, 66 assigned PrimFusion Themes, 12 open pair slots. This release applies the approved Smart cleanup relocations, definition carryovers, and synchronized fixed Theme-order arrays.
 
 ---
+
+## 0.9.6.130 — Smart cleanup
+
+- Relocates Spirituality, Overstimulated, Shame, Despair, Absurd, Medicated, Excess, Foreboding, and Paranoia by stable PFM cell code.
+- Retires standalone Cringe, Witty, Devastating, Zany, and Macabre.
+- Adds Hilarious at PFM0405 using the prior Witty definition unchanged.
+- Despair absorbs visible Devastating loss/ruin/aftermath coverage; Goofy absorbs useful Zany eccentric/comic coverage with its anti-catch-all gate retained.
+- Active AI Theme vocabulary is 66; total Prompt Diagnostic concepts are 79 including 13 Prims.
+- No Reaction scan is reintroduced; Theme-derived Reaction architecture and provider/audit behavior are unchanged.
+
 ## 0.9.6.121 — Qwen 3.7 Plus non-thinking
 
 - Fresh Theme acceptance now uses the compact `theme-decision-audit` stage: only the three delivered Themes are audited on the decision-critical path.
@@ -17,7 +27,7 @@ Matrix identity remains 0.0.0.0. Active taxonomy: 13 Prims, 70 assigned PrimFusi
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.129-primfusion-consolidation.
+Current bundled Worker: v0.9.6.130-smart-cleanup.
 
 ## Historical bundled Worker notes
 
