@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.120-theme-audit-fast-path
+/* Genreactrix AI Worker v0.9.6.121-qwen-non-thinking
    Preserves v0.9.6.115 timing/concurrency telemetry and v0.9.6.111 Festive/Pride calibration.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions and unrelated rerun behavior remain unchanged.
 */
-const API_VERSION = '0.9.6.120-theme-audit-fast-path';
+const API_VERSION = '0.9.6.121-qwen-non-thinking';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Description-only Reaction analysis keeps the structured-output model used by v0.9.6.31.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -93,7 +93,7 @@ const providerTrace = env => Array.isArray(env?.__GENREACTRIX_PROVIDER_TRACE)?en
 const providerRoute = env => env?.__GENREACTRIX_PROVIDER_ROUTE&&typeof env.__GENREACTRIX_PROVIDER_ROUTE==='object'?env.__GENREACTRIX_PROVIDER_ROUTE:null;
 const providerAttemptContext = env => env?.__GENREACTRIX_PROVIDER_ATTEMPT_CONTEXT&&typeof env.__GENREACTRIX_PROVIDER_ATTEMPT_CONTEXT==='object'?env.__GENREACTRIX_PROVIDER_ATTEMPT_CONTEXT:null;
 const providerProgressSink = env => typeof env?.__GENREACTRIX_PROGRESS_SINK==='function'?env.__GENREACTRIX_PROGRESS_SINK:null;
-const providerProgressEvent = (env,event) => { const sink=providerProgressSink(env); if(!sink)return; try{sink({at:new Date().toISOString(),...(providerAttemptContext(env)||{}),...event});}catch{} };
+const providerProgressEvent = (env,event) => { const sink=providerProgressSink(env); if(!sink)return; try{const provider=String(event?.provider||'').toLowerCase();sink({at:new Date().toISOString(),...(providerAttemptContext(env)||{}),...event,...(provider==='qwen'||provider.includes('qwen')?{thinkingMode:'disabled'}:{})});}catch{} };
 const providerTraceEvent = (env,event) => { const trace=providerTrace(env); if(trace)trace.push({at:new Date().toISOString(),...(providerAttemptContext(env)||{}),...event}); };
 const fallbackModelFor = env => String(env?.GENREACTRIX_FALLBACK_MODEL||DEFAULT_FALLBACK_MODEL).trim()||DEFAULT_FALLBACK_MODEL;
 const mistralDescriptionModelFor = env => String(env?.MISTRAL_DESCRIPTION_MODEL||DEFAULT_MISTRAL_DESCRIPTION_MODEL).trim()||DEFAULT_MISTRAL_DESCRIPTION_MODEL;
@@ -158,7 +158,8 @@ const providerReadinessProbe = async (env,{timeoutMs=12000}={}) => {
   const primary=await runMistral();
   const secondary=await runWorkers({provider:'openai-via-cloudflare-ai-gateway',model:fallbackModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0},options:{gateway:{id:gatewayId}}});
   secondary.gatewayId=gatewayId;
-  const third=await runWorkers({provider:'cloudflare-workers-ai-qwen',model:qwenModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0}});
+  const third=await runWorkers({provider:'cloudflare-workers-ai-qwen',model:qwenModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0,enable_thinking:false}});
+  third.thinkingMode='disabled';
   // Compatibility aliases remain for the existing readiness UI while Theme roles are explicit.
   return{primary,secondary,third,fallback:secondary,mistral:primary,qwen:third,themeProviderOrder:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),probedAt:new Date().toISOString(),cooldownStateChanged:false};
 };
@@ -2430,7 +2431,7 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
     const content=image&&((image.byteLength||image.length)>0)
       ? [{type:'text',text:fullPrompt},{type:'image_url',image_url:{url:imageBytesDataUrl(image)}}]
       : fullPrompt;
-    return{messages:[{role:'user',content}],max_tokens:maxTokens,temperature};
+    return{messages:[{role:'user',content}],max_tokens:maxTokens,temperature,enable_thinking:false};
   };
 
   const timedRun=async(runModel,request,provider,gatewayId=null)=>{
@@ -3898,6 +3899,7 @@ function resolveThemes(rawThemes){
 // v0.9.6.112 — Fresh Theme provider-cycle router: Primary -> Secondary -> Mistral once per cycle; no consecutive same-provider retries; cycle telemetry in reports.
 // v0.9.6.114 — Reaction Analysis joins the same provider-cycle policy; all-zero/malformed whole assessments advance providers instead of immediately repeating one provider.
 // v0.9.6.115 — Adds URL/image-input, family, stage, and provider-attempt timing telemetry; Reactions and Themes execute concurrently when both are requested and independent; existing mismatch recovery behavior is preserved and now reports rollback target/reason.
+// v0.9.6.121 — Qwen 3.7 Plus runs with enable_thinking:false to avoid deep-reasoning latency on Genreactrix Theme stages; provider progress/readiness telemetry labels Qwen as non-thinking.
 // v0.9.6.120 — Split decision-critical Theme audit from the heavy reporting diagnostic.
 // v0.9.6.119 — Live progress stream compatibility repair: use TransformStream instead of ReadableStream constructor; no Cloudflare compatibility-flag change required.
 // v0.9.6.101 — Preserve successful Mistral Description; reuse it for downstream Theme/Reaction recovery via primary then fallback; visible Mistral readiness probe.
@@ -4685,7 +4687,7 @@ export default {
         totalThemeVocabularyCount:PRIMFUSION_REGISTRY.themeChoices.length,
         components:COMPONENT_IDS,
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
-        providerRouting:{primaryProvider:'mistral-direct',primaryModel:mistralDescriptionModelFor(env),secondaryProvider:'openai-via-cloudflare-ai-gateway',secondaryModel:fallbackModelFor(env),thirdProvider:'cloudflare-workers-ai-qwen',thirdProviderModel:qwenThemeModelFor(env),themeWholeRunPolicy:THEME_WHOLE_RUN_POLICY,providerCyclePolicy:THEME_PROVIDER_CYCLE_POLICY,providerCycleOrder:[...THEME_PROVIDER_CYCLE_ORDER],providerRoster:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
+        providerRouting:{primaryProvider:'mistral-direct',primaryModel:mistralDescriptionModelFor(env),secondaryProvider:'openai-via-cloudflare-ai-gateway',secondaryModel:fallbackModelFor(env),thirdProvider:'cloudflare-workers-ai-qwen',thirdProviderModel:qwenThemeModelFor(env),thirdProviderThinkingMode:'disabled',themeWholeRunPolicy:THEME_WHOLE_RUN_POLICY,providerCyclePolicy:THEME_PROVIDER_CYCLE_POLICY,providerCycleOrder:[...THEME_PROVIDER_CYCLE_ORDER],providerRoster:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
         themeAudit:{decisionStage:'theme-decision-audit',decisionProtocol:'selected-theme-decision-audit-v1',reportingStage:'theme-reporting-diagnostic',reportingProtocol:'human-vote-reasoning-sidecar-v1',reportingEndpoint:'/api/genreactrix/theme-report-diagnostic',reportingDeferred:true},
         promptDiagnostics:{enabled:true,conceptCount:PRIMFUSION_REGISTRY.themeChoices.length,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
       });
