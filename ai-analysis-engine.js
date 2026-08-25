@@ -11,41 +11,27 @@
  const THEME_REPORT_SIDECAR_QUEUE=[],THEME_REPORT_SIDECAR_KEYS=new Set();
  let themeReportSidecarPumpPromise=null;
  const LIVE_PROVIDER_LABELS={mistral:'Mistral',secondary:'GPT-4.1 mini',qwen:'Qwen 3.7 Plus','mistral-direct':'Mistral','openai-via-cloudflare-ai-gateway':'GPT-4.1 mini','cloudflare-workers-ai-qwen':'Qwen 3.7 Plus'};
- const LIVE_STAGE_LABELS={request:'Worker request',reactions:'Reaction assessment','fresh-theme-whole-run':'Fresh Theme whole run','preliminary-theme-selection':'Preliminary Theme selection','theme-aware-description':'Theme-aware Description','theme-association-final':'Final Theme selection','theme-decision-audit':'Theme decision audit','theme-reporting-diagnostic':'Theme report diagnostic','theme-rerun-human-vote-selection':'Theme rerun selection'};
+ const LIVE_STAGE_LABELS={request:'Worker request',reactions:'Theme-derived Reactions','fresh-theme-whole-run':'Fresh Theme whole run','preliminary-theme-selection':'Preliminary Theme selection','theme-aware-description':'Theme-aware Description','theme-association-final':'Final Theme selection','theme-decision-audit':'Theme decision audit','theme-reporting-diagnostic':'Theme report diagnostic','theme-rerun-human-vote-selection':'Theme rerun selection'};
  let liveTicker=null;
  const clone=v=>v==null?v:structuredClone(v),now=()=>new Date().toISOString(),id=p=>`${p}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`;
  function slopKind(a){if(a?.detected)return'detected';if(a?.warning===true||String(a?.status||'').toLowerCase()==='warning'||String(a?.kind||'').toLowerCase()==='warning')return'warning';return'none'}
  function effectiveSlopAssessment(previous,incoming,review){if(!incoming)return previous||null;const priorDismissed=review?.decision==='not-slop'&&String(review?.assessmentId||'')===String(previous?.assessmentId||'');if(slopKind(incoming)==='warning'&&slopKind(previous)==='detected'&&!priorDismissed)return clone(previous);return clone(incoming)}
  const REACTION_PRIM_IDS=Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`);
- const reactionNumber=value=>{const n=typeof value==='number'?value:Number(value?.percentage??value?.confidence??value?.score??value?.weight??value?.value??value);return Number.isFinite(n)?Math.max(0,n):0};
- function reactionMap(raw){const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};return Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,reactionNumber(source[pid])]));}
+ const THEME_REACTION_SLOT_WEIGHT=100/6;
  function themePrimIds(theme){const code=String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase(),m=code.match(/^PFM(\d{2})(\d{2})$/);if(!m)return[];const ids=[`P${m[1]}`,`P${m[2]}`];return ids.every(pid=>REACTION_PRIM_IDS.includes(pid))?ids:[];}
- const themeConfidence=theme=>{const n=typeof theme?.confidence==='number'?theme.confidence:Number(theme?.confidence??theme?.percentage??theme?.score??theme?.weight??theme?.value??0);return Number.isFinite(n)&&n>0?n:0};
- function buildHybridReactions(components){
+ function buildThemeDerivedReactions(components){
   const themes=Array.isArray(components?.themes)?components.themes.slice(0,3):[];
   if(themes.length!==3)return null;
-  const parsed=themes.map(theme=>({theme,ids:themePrimIds(theme),confidence:themeConfidence(theme)}));
-  if(parsed.some(row=>row.ids.length!==2))return null;
-  const confidenceTotal=parsed.reduce((sum,row)=>sum+row.confidence,0);
-  const equalFallback=!(confidenceTotal>0);
-  const themeAllocations=parsed.map((row,index)=>({
-   code:String(row.theme?.code||row.theme?.id||row.theme?.value||''),
-   primIds:[...row.ids],
-   confidence:row.confidence,
-   themePoints:equalFallback?20:(60*row.confidence/confidenceTotal),
-   index
-  }));
-  const themePoints=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,0]));
-  for(const row of themeAllocations){const share=row.themePoints/2;for(const pid of row.primIds)themePoints[pid]+=share;}
-  const directSource=components?.directReactions||components?.reactionDiagnostics?.discretionaryAllocation||(!components?.reactionHybridDiagnostics?components?.reactions:null);
-  if(!directSource)return null;
-  const direct=reactionMap(directSource),directTotal=REACTION_PRIM_IDS.reduce((sum,pid)=>sum+direct[pid],0);
-  if(!(directTotal>0))return null;
-  const direct40=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,direct[pid]*40/directTotal]));
-  const hybrid=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,themePoints[pid]+direct40[pid]]));
-  return{hybrid,direct,themePoints,direct40,themeTotal:60,directTotal:40,total:100,confidenceTotal,equalFallback,themeAllocations,method:'theme-confidence-60-direct-40'};
+  const reactions=Object.fromEntries(REACTION_PRIM_IDS.map(pid=>[pid,0])),slots=[];
+  for(const theme of themes){
+   const ids=themePrimIds(theme);if(ids.length!==2)return null;
+   const code=String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase();
+   for(const pid of ids){reactions[pid]+=THEME_REACTION_SLOT_WEIGHT;slots.push({themeCode:code,primId:pid,weight:THEME_REACTION_SLOT_WEIGHT});}
+  }
+  const diagnostics={schemaVersion:1,method:'theme-derived-six-equal-slots-v1',aiScan:false,themeOrderSignificant:false,slotCount:6,slotWeight:THEME_REACTION_SLOT_WEIGHT,total:100,themeCodes:themes.map(theme=>String(theme?.code||theme?.id||theme?.value||'').trim().toUpperCase()),slots};
+  return{reactions,diagnostics};
  }
- function applyHybridReactions(components){const built=buildHybridReactions(components);if(!built)return components;if(!components.directReactions)components.directReactions=clone(built.direct);components.reactions=built.hybrid;components.reactionHybridDiagnostics={method:built.method,themePoints:built.themePoints,direct40:built.direct40,themeTotal:60,directTotal:40,total:100,confidenceTotal:built.confidenceTotal,equalFallback:built.equalFallback,themeAllocations:built.themeAllocations};return components;}
+ function applyThemeDerivedReactions(components){const built=buildThemeDerivedReactions(components);if(!built)return components;components.reactions=built.reactions;components.reactionDiagnostics=built.diagnostics;components.reactionReasons={schemaVersion:1,protocol:'theme-derived-six-equal-slots-v1',aiScan:false,themeCodes:[...built.diagnostics.themeCodes],slots:clone(built.diagnostics.slots),summary:'Three selected Themes contribute six equal Prim slots; duplicate Prims accumulate.'};delete components.directReactions;delete components.reactionHybridDiagnostics;return components;}
  const openDb=()=>new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(JOBS)){const s=db.createObjectStore(JOBS,{keyPath:'id'});s.createIndex('state','state');s.createIndex('createdAt','createdAt')}if(!db.objectStoreNames.contains(ITEMS)){const s=db.createObjectStore(ITEMS,{keyPath:'id'});s.createIndex('jobId','jobId');s.createIndex('state','state');s.createIndex('imageId','imageId')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
  const tx=(store,mode,fn)=>openDb().then(db=>new Promise((resolve,reject)=>{const t=db.transaction(store,mode),s=t.objectStore(store);let out;try{out=fn(s,t)}catch(e){db.close();reject(e);return}t.oncomplete=()=>{db.close();resolve(out)};t.onerror=()=>{db.close();reject(t.error)}}));
  const put=(store,value)=>tx(store,'readwrite',s=>s.put(clone(value)));
@@ -250,7 +236,7 @@
  }
  const schedulePendingThemeReportResume=()=>setTimeout(()=>{try{resumePendingThemeReportSidecars()}catch(error){console.warn('Pending Theme report sidecar resume failed',error)}},0);
  if(window.genreactrixSettingsEngine?.ready)schedulePendingThemeReportResume();else window.addEventListener('genreactrix:settings-ready',schedulePendingThemeReportResume,{once:true});
- async function createJob(config){config=clone(config||{});config.components=clone(config.components||{});if(config.components?.themes?.enabled){const behavior=config.components.themes.behavior||'analyze';config.components.genreReasons={enabled:true,behavior};}const selected=Object.entries(config.components||{}).filter(([,v])=>v.enabled);if(!selected.length)throw new Error('Choose at least one AI component');const selectedIds=selected.map(([id])=>id),reactionSources=config.reactionRerunSources&&typeof config.reactionRerunSources==='object'?config.reactionRerunSources:null,descriptionOnlyReaction=selectedIds.length===1&&selectedIds[0]==='reactions'&&reactionSources?.image===false&&reactionSources?.description===true;const existingItems=await all(ITEMS),activeImageIds=new Set(existingItems.filter(i=>['queued','processing'].includes(i.state)).map(i=>i.imageId));const candidates=applyQuantity(eligibleRecords(config).filter(r=>{if(activeImageIds.has(r.id))return false;if(config.skipFailed){const hasFailed=selected.some(([c])=>{const field=COMPONENTS.find(([id])=>id===c)?.[2];return field&&r.components?.[field]==='failed'});if(hasFailed)return false;}return selected.some(([c,v])=>shouldRun(r,c,v.behavior));}),config);const rows=[],sourceRejects=[];for(const record of candidates){const check=descriptionOnlyReaction?{ok:true,kind:'description-only'}:await validateAiSource(record);if(check.ok)rows.push(record);else sourceRejects.push({imageId:record.id,name:record.name||record.source?.originalFilename||record.id,mimeType:check.mimeType||record.storage?.mimeType||'',reason:check.reason});}if(!rows.length)return {id:null,schemaVersion:1,state:'completed',createdAt:now(),startedAt:null,completedAt:now(),config:clone(config),total:0,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`No queueable images · ${sourceRejects.length} unsupported or undecodable`:'No eligible images',stopRequested:false};const job={id:id('ai_job'),schemaVersion:1,state:'queued',createdAt:now(),startedAt:null,completedAt:null,config:clone(config),total:rows.length,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`Queued · ${sourceRejects.length} unsupported/undecodable skipped`:'Queued',stopRequested:false};if(selectedIds.includes('themes')&&!job.config.themeSweep&&!job.config.themeRerun&&(job.config.target!=='selected'||job.config.themeSweepRequested===true)){const sweep=window.genreactrixThemeSweepEngine?.begin?.({jobId:job.id,imageIds:rows.map(r=>r.id)});if(sweep)job.config.themeSweep={managed:true,sweepId:sweep.id,pass:1,orderMode:'canonical',orderSeed:null,rootJobId:job.id,persistDescription:selectedIds.includes('description')};}await put(JOBS,job);const queueJob=await q()?.createJob?.({id:`queue_${job.id}`,type:'ai',ownerEngine:'ai-analysis',ownerJobId:job.id,label:`AI analysis · ${rows.length} image${rows.length===1?'':'s'}`,state:'queued',total:rows.length,imageIds:rows.map(r=>r.id),batchId:null,message:'Queued'});const queueRows=[];for(const [order,record] of rows.entries()){const item={id:id('ai_item'),jobId:job.id,imageId:record.id,order,state:'queued',attempts:0,error:'',themeRerunLifecycleGuard:isThemeRerunConfig(config)?themeRerunLifecycleGuardFor(record):null,components:selected.map(([component,settings])=>({component,behavior:settings.behavior,state:'queued'}))};await put(ITEMS,item);queueRows.push({id:`queue_${item.id}`,imageId:record.id,ownerItemId:item.id,order,type:'ai',state:'queued'})}if(queueJob)await q()?.addItems?.(queueJob.id,queueRows);emit();return clone(job)}
+ async function createJob(config){config=clone(config||{});config.components=clone(config.components||{});if(config.components?.themes?.enabled){const behavior=config.components.themes.behavior||'analyze';config.components.genreReasons={enabled:true,behavior};}const selected=Object.entries(config.components||{}).filter(([,v])=>v.enabled);if(!selected.length)throw new Error('Choose at least one AI component');const selectedIds=selected.map(([id])=>id),derivationOnly=selectedIds.length>0&&selectedIds.every(id=>['reactions','reactionReasons'].includes(id));const existingItems=await all(ITEMS),activeImageIds=new Set(existingItems.filter(i=>['queued','processing'].includes(i.state)).map(i=>i.imageId));const candidates=applyQuantity(eligibleRecords(config).filter(r=>{if(activeImageIds.has(r.id))return false;if(config.skipFailed){const hasFailed=selected.some(([c])=>{const field=COMPONENTS.find(([id])=>id===c)?.[2];return field&&r.components?.[field]==='failed'});if(hasFailed)return false;}return selected.some(([c,v])=>shouldRun(r,c,v.behavior));}),config);const rows=[],sourceRejects=[];for(const record of candidates){const check=derivationOnly?{ok:true,kind:'theme-derived-no-provider'}:await validateAiSource(record);if(check.ok)rows.push(record);else sourceRejects.push({imageId:record.id,name:record.name||record.source?.originalFilename||record.id,mimeType:check.mimeType||record.storage?.mimeType||'',reason:check.reason});}if(!rows.length)return {id:null,schemaVersion:1,state:'completed',createdAt:now(),startedAt:null,completedAt:now(),config:clone(config),total:0,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`No queueable images · ${sourceRejects.length} unsupported or undecodable`:'No eligible images',stopRequested:false};const job={id:id('ai_job'),schemaVersion:1,state:'queued',createdAt:now(),startedAt:null,completedAt:null,config:clone(config),total:rows.length,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`Queued · ${sourceRejects.length} unsupported/undecodable skipped`:'Queued',stopRequested:false};if(selectedIds.includes('themes')&&!job.config.themeSweep&&!job.config.themeRerun&&(job.config.target!=='selected'||job.config.themeSweepRequested===true)){const sweep=window.genreactrixThemeSweepEngine?.begin?.({jobId:job.id,imageIds:rows.map(r=>r.id)});if(sweep)job.config.themeSweep={managed:true,sweepId:sweep.id,pass:1,orderMode:'canonical',orderSeed:null,rootJobId:job.id,persistDescription:selectedIds.includes('description')};}await put(JOBS,job);const queueJob=await q()?.createJob?.({id:`queue_${job.id}`,type:'ai',ownerEngine:'ai-analysis',ownerJobId:job.id,label:`AI analysis · ${rows.length} image${rows.length===1?'':'s'}`,state:'queued',total:rows.length,imageIds:rows.map(r=>r.id),batchId:null,message:'Queued'});const queueRows=[];for(const [order,record] of rows.entries()){const item={id:id('ai_item'),jobId:job.id,imageId:record.id,order,state:'queued',attempts:0,error:'',themeRerunLifecycleGuard:isThemeRerunConfig(config)?themeRerunLifecycleGuardFor(record):null,components:selected.map(([component,settings])=>({component,behavior:settings.behavior,state:'queued'}))};await put(ITEMS,item);queueRows.push({id:`queue_${item.id}`,imageId:record.id,ownerItemId:item.id,order,type:'ai',state:'queued'})}if(queueJob)await q()?.addItems?.(queueJob.id,queueRows);emit();return clone(job)}
  async function updateJob(job,patch){Object.assign(job,patch);await put(JOBS,job);emit();return job}
  const liveProviderLabel=value=>LIVE_PROVIDER_LABELS[String(value||'').toLowerCase()]||String(value||'AI');
  const liveStageLabel=value=>LIVE_STAGE_LABELS[String(value||'').toLowerCase()]||String(value||'Working').replace(/-/g,' ').replace(/\b\w/g,m=>m.toUpperCase());
@@ -288,32 +274,28 @@
   beginLiveItem(job,item,record);
   const pending=item.components.filter(c=>c.state==='queued'||c.state==='failed');
   for(const c of pending){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(record.id,field,'processing')}
-  const reactionSources=job.config.reactionRerunSources&&typeof job.config.reactionRerunSources==='object'?job.config.reactionRerunSources:null;
-  const descriptionOnlyReaction=pending.length===1&&pending[0].component==='reactions'&&reactionSources?.image===false&&reactionSources?.description===true;
-  const input=descriptionOnlyReaction?{}:await imageInput(record),errors=[];
-  setLivePhase(job.id,descriptionOnlyReaction?'Using saved Description':'Image prepared · starting AI');
+  const derivationOnly=pending.length>0&&pending.every(c=>['reactions','reactionReasons'].includes(c.component));
+  const input=derivationOnly?{}:await imageInput(record),errors=[];
+  setLivePhase(job.id,derivationOnly?'Recalculating Reactions from current Themes':'Image prepared · starting AI');
   let liveRequestCounter=0;
   const runLiveRequest=async(specimen,requested,{providerRouting=undefined,label=''}={})=>{
    const key=`${item.currentAttemptId}:request:${++liveRequestCounter}`;beginLiveRequest(job.id,key,requested,label);const onProgress=event=>updateLiveProgress(job.id,key,event);
    try{let payload;if(providerRouting!==undefined&&window.GenreactrixCloudApi.analyzeImageWithRoutingProgress)payload=await window.GenreactrixCloudApi.analyzeImageWithRoutingProgress(specimen,window.GenreactrixCloudApi.getKey(),providerRouting,onProgress);else if(providerRouting!==undefined)payload=await window.GenreactrixCloudApi.analyzeImageWithRouting(specimen,window.GenreactrixCloudApi.getKey(),providerRouting);else if(window.GenreactrixCloudApi.analyzeImageWithProgress)payload=await window.GenreactrixCloudApi.analyzeImageWithProgress(specimen,window.GenreactrixCloudApi.getKey(),onProgress);else payload=await window.GenreactrixCloudApi.analyzeImage(specimen,window.GenreactrixCloudApi.getKey());finishLiveRequest(job.id,key);return payload;}catch(error){finishLiveRequest(job.id,key,error);throw error;}
   };
 
-  // Paired Info components must share the same underlying AI assessment as the
-  // classification they explain. Bundle each family into one Worker request.
+  // Reactions are deterministic outputs of the three selected Themes. There is no
+  // independent Reaction provider family. Fresh Theme/Description work and its
+  // derived Reaction outputs travel as one logical family; Reaction-only reruns
+  // are recalculated locally from the current three Theme codes.
   const groups=[];
   const take=(keys)=>{const rows=pending.filter(c=>keys.includes(c.component));if(rows.length)groups.push(rows)};
-  take(['reactions','reactionReasons']);
-  // Fresh Themes + Description must travel in one Worker request so the Description
-  // that drives final Theme selection is the exact Description persisted on the image.
-  // Specialized Theme/Description rerun workspaces retain their existing separation.
-  if(!job.config.themeRerun&&!job.config.descriptionRerun)take(['themes','genreReasons','description']);
-  else{take(['themes','genreReasons']);take(['description']);}
+  const hasThemePending=pending.some(c=>['themes','genreReasons'].includes(c.component));
+  if(!job.config.themeRerun&&!job.config.descriptionRerun){
+    if(hasThemePending)take(['themes','genreReasons','description','reactions','reactionReasons']);
+    else{take(['description']);take(['reactions','reactionReasons']);}
+  }else{take(['themes','genreReasons','reactions','reactionReasons']);take(['description']);}
   for(const c of pending)if(!groups.some(group=>group.includes(c)))groups.push([c]);
 
-  // v0.9.40.166 — When the normal fresh Reaction family and Theme/Description
-  // family are both requested and do not depend on one another, start their
-  // initial Worker requests together. Their artifact/history commits remain
-  // serialized below so local project writes keep the existing ordering.
   const buildGroupContext=(group,sourceRecord)=>{
     const requested=group.map(c=>c.component);
     const componentBehaviors=Object.fromEntries(group.map(c=>[c.component,c.behavior]));
@@ -321,22 +303,14 @@
     const existingDescription=String(previous.components?.description||previous.description||'').trim();
     const descriptionRerun=requested.includes('description')&&job.config.descriptionRerun?clone(job.config.descriptionRerun):null;
     const themeRerun=requested.includes('themes')&&job.config.themeRerun?clone(job.config.themeRerun):null;
-    const groupReactionSources=requested.includes('reactions')&&job.config.reactionRerunSources?{image:job.config.reactionRerunSources.image!==false,description:Boolean(job.config.reactionRerunSources.description)}:null;
     const existingDescriptionDiagnostics=previous.components?.descriptionDiagnostics&&typeof previous.components.descriptionDiagnostics==='object'?previous.components.descriptionDiagnostics:null;
     const usePreservedMistralDescription=requested.includes('themes')&&!requested.includes('description')&&Boolean(existingDescription)&&existingDescriptionDiagnostics?.thirdProviderUsed===true;
-    const specimen={imageId:sourceRecord.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',directReactionUseAnalysis:Boolean(groupReactionSources?.description),reactionRerunSources:clone(groupReactionSources),reactionDescriptionContext:groupReactionSources?.description?existingDescription.slice(0,6000):'',preservedDescriptionContext:usePreservedMistralDescription?existingDescription.slice(0,12000):'',preservedDescriptionDiagnostics:usePreservedMistralDescription?clone(existingDescriptionDiagnostics):null,descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),themeSweep:clone(job.config.themeSweep||null),...input};
-    return{requested,componentBehaviors,previous,guidance,existingDescription,descriptionRerun,themeRerun,reactionRerunSources:groupReactionSources,existingDescriptionDiagnostics,usePreservedMistralDescription,specimen};
+    const specimen={imageId:sourceRecord.id,components:requested,componentBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:guidance,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),themeAnalysisContext:job.config.themeUseAnalysis?existingDescription.slice(0,6000):'',preservedDescriptionContext:usePreservedMistralDescription?existingDescription.slice(0,12000):'',preservedDescriptionDiagnostics:usePreservedMistralDescription?clone(existingDescriptionDiagnostics):null,descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),themeSweep:clone(job.config.themeSweep||null),...input};
+    return{requested,componentBehaviors,previous,guidance,existingDescription,descriptionRerun,themeRerun,existingDescriptionDiagnostics,usePreservedMistralDescription,specimen};
   };
-  const reactionGroup=groups.find(group=>group.some(c=>['reactions','reactionReasons'].includes(c.component)))||null;
-  const themeGroup=groups.find(group=>group.some(c=>['themes','genreReasons'].includes(c.component)))||null;
-  const freshParallelEligible=Boolean(reactionGroup&&themeGroup&&!job.config.themeRerun&&!job.config.descriptionRerun&&!reactionSources?.description);
-  const parallelContexts=new Map(),parallelRequests=new Map();
-  if(freshParallelEligible){
-    for(const group of [reactionGroup,themeGroup])parallelContexts.set(group,buildGroupContext(group,record));
-  }
 
   for(const group of groups){
-    const context=parallelContexts.get(group)||buildGroupContext(group,record);
+    const context=buildGroupContext(group,record);
     const {requested,componentBehaviors,previous:requestPrevious,guidance,descriptionRerun,themeRerun,specimen}=context;
     const artifactEngine=window.genreactrixAiArtifactEngine;
     let artifactAttempt=null,artifactAttemptCompleted=false;
@@ -347,17 +321,7 @@
       const previous=record.analysis?.ai||requestPrevious;
       const baseMode=artifactEngine.attemptMode({requested,componentBehaviors,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),directReactionUseAnalysis:Boolean(job.config.directReactionUseAnalysis),reactionRerunSources:clone(job.config.reactionRerunSources||null),directorGuidance:guidance});
       const mode=descriptionRerun?.operation?`rerun:description-${String(descriptionRerun.operation)}`:(themeRerun?'rerun:themes-director-workspace':baseMode);
-      artifactAttempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode,directorGuidance:guidance,inputRefs:{imageId:record.id,sourceKind:descriptionOnlyReaction?'description-only':(input.imageUrl?'linked-url':'local-working-copy'),descriptionArtifact:previous.artifactHistory?.currentArtifacts?.description||null,priorArtifacts:clone(previous.artifactHistory?.currentArtifacts||{}),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'60/40',descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)}});
-      // Launch both independent initial Worker calls only after the first Artifact
-      // attempt has been safely established. This prevents AI spend if local
-      // attempt/history persistence is unavailable, while still overlapping the
-      // expensive network/provider work.
-      if(freshParallelEligible&&group===reactionGroup&&!parallelRequests.size){
-        for(const parallelGroup of [reactionGroup,themeGroup]){
-          const parallelContext=parallelContexts.get(parallelGroup);
-          parallelRequests.set(parallelGroup,startAiRequestOutcome(parallelContext.specimen,()=>runLiveRequest(parallelContext.specimen,parallelContext.requested)));
-        }
-      }
+      artifactAttempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode,directorGuidance:guidance,inputRefs:{imageId:record.id,sourceKind:derivationOnly?'theme-derived-no-provider':(input.imageUrl?'linked-url':'local-working-copy'),descriptionArtifact:previous.artifactHistory?.currentArtifacts?.description||null,priorArtifacts:clone(previous.artifactHistory?.currentArtifacts||{}),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'theme-derived-six-equal-slots-v1',reactionAiScan:false,descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),reactionRerunSources:clone(job.config.reactionRerunSources||null)}});
       const persistPreservedMistralDescription=async providerDiagnostic=>{
         const description=String(providerDiagnostic?.preservedDescription||'').trim();
         if(!providerDiagnostic?.mistralDescriptionPreserved||!description)return false;
@@ -375,10 +339,16 @@
         return true;
       };
       let payload,technicalRetry=null;
+      const reactionDerivationOnly=requested.length>0&&requested.every(name=>['reactions','reactionReasons'].includes(name));
       try{
-        const prefetched=parallelRequests.get(group);
-        if(prefetched){const outcome=await prefetched;if(!outcome.ok)throw outcome.error;payload=outcome.payload;}
-        else payload=await runLiveRequest(specimen,requested);
+        if(reactionDerivationOnly){
+          const built=buildThemeDerivedReactions(previous.components||{});if(!built)throw new Error('Three current PrimFusion Themes are required to derive Reactions.');
+          const localComponents={reactionDiagnostics:clone(built.diagnostics)};
+          if(requested.includes('reactions'))localComponents.reactions=clone(built.reactions);
+          if(requested.includes('reactionReasons'))localComponents.reactionReasons={schemaVersion:1,protocol:'theme-derived-six-equal-slots-v1',aiScan:false,themeCodes:[...built.diagnostics.themeCodes],slots:clone(built.diagnostics.slots),summary:'Three selected Themes contribute six equal Prim slots; duplicate Prims accumulate.'};
+          payload={result:{schemaVersion:3,imageId:record.id,provider:{id:'theme-derived',displayName:'Theme-derived deterministic'},model:'deterministic',promptVersions:{reactions:'genreactrix-reactions-theme-derived-v1',reactionReasons:'genreactrix-reaction-info-theme-derived-v1'},researchConfiguration:{reactionArchitecture:'theme-derived-six-equal-slots-v1',reactionAiScan:false},components:localComponents}};
+          const live=LIVE_JOBS.get(job.id);if(live){liveRecent(live,'Reactions recalculated from the current three Themes · no AI Reaction scan');repaintLiveDetail(job.id)}
+        }else payload=await runLiveRequest(specimen,requested);
       }
       catch(firstError){
         const providerDiagnostic=firstError?.providerDiagnostic||null;
@@ -411,7 +381,6 @@
 
       const returned={};
       for(const c of group){c.state='complete';returned[c.component]=result.components[c.component]}
-      if(requested.includes('reactions')&&result.components?.reactions) returned.directReactions=clone(result.components.reactions);
       if(result.components?.reactionDiagnostics) returned.reactionDiagnostics=result.components.reactionDiagnostics;
       if(result.components?.descriptionDiagnostics) returned.descriptionDiagnostics=clone(result.components.descriptionDiagnostics);
       if(result.components?.themeRecovery) returned.themeRecovery=result.components.themeRecovery;
@@ -421,20 +390,21 @@
 
       record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
       const latest=record.analysis?.ai||previous,latestExtended=record?.metadata?.extended||{},effectiveSlop=effectiveSlopAssessment(latest.components?.slopAssessment||latestExtended.aiSlopAssessment||null,returned.slopAssessment||null,latestExtended.slopDirectorReview||null);
+      const mergedComponents=applyThemeDerivedReactions({...(latest.components||{}),...returned});
       const componentUpdates={};
       for(const c of group){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];componentUpdates[field]='current'}
-      const mergedComponents=applyHybridReactions({...(latest.components||{}),...returned});
+      if(requested.includes('themes')&&mergedComponents.reactions)componentUpdates.aiReactions='current';
       const stored=await artifactEngine.recordSuccess({record,attemptId:artifactAttempt.id,requested,returned,mergedComponents,result,mode});artifactAttemptCompleted=true;
       const analysis={...latest,components:mergedComponents,provider:result.provider||latest.provider||{},model:result.model||result.provider?.model||latest.model||'',promptVersions:{...(latest.promptVersions||{}),...(result.promptVersions||{})},requested:[...new Set([...(latest.requested||[]),...requested])],researchConfiguration:{...(latest.researchConfiguration||{}),...(result.researchConfiguration||{})},artifactHistory:stored.artifactHistory,recordedAt:now(),jobId:job.id};
       window.genreactrixImageRecordEngine.attachAI(record.id,analysis,componentUpdates);
-      const rerunCompleted=Object.values(componentBehaviors||{}).some(value=>value==='reanalyze');
+      const directorTuningApplied=Boolean(guidance||descriptionRerun||themeRerun);
       const liveAfterAi=window.genreactrixImageRecordEngine.get(record.id,{touch:false});
       const extAfterAi=liveAfterAi?.metadata?.extended||{};
       const metadataPatch={};
-      if(rerunCompleted){metadataPatch.aiTuned=true;metadataPatch.aiTunedAt=now();metadataPatch.aiTunedCount=(Number(extAfterAi.aiTunedCount)||0)+1;metadataPatch.aiTunedAttemptId=artifactAttempt.id;metadataPatch.aiTunedJobId=job.id;}
+      if(directorTuningApplied){metadataPatch.aiTuned=true;metadataPatch.aiTunedAt=now();metadataPatch.aiTunedCount=(Number(extAfterAi.aiTunedCount)||0)+(String(extAfterAi.aiTunedJobId||'')===String(job.id)?0:1);metadataPatch.aiTunedAttemptId=artifactAttempt.id;metadataPatch.aiTunedJobId=job.id;}
       if(result.components?.slopAssessment&&String(effectiveSlop?.assessmentId||'')===String(result.components.slopAssessment?.assessmentId||'')){metadataPatch.aiSlopAssessment=clone(result.components.slopAssessment);metadataPatch.aiSlopAssessmentAttemptId=artifactAttempt.id;metadataPatch.aiSlopAssessmentJobId=job.id;}
-      if(Object.keys(metadataPatch).length)window.genreactrixImageRecordEngine.update(record.id,{metadata:{extended:metadataPatch}},rerunCompleted?'ai-tuned-metadata':'ai-slop-advisory-metadata');
-      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{attemptId:artifactAttempt.id,artifactRefs:stored.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:{...returned,...(descriptionEdit!==null?{descriptionEdit}:{}),...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id,artifactHistory:stored.artifactHistory},componentUpdates,directorGuidance:guidance,reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),partial:false}});
+      if(Object.keys(metadataPatch).length)window.genreactrixImageRecordEngine.update(record.id,{metadata:{extended:metadataPatch}},directorTuningApplied?'ai-tuned-metadata':'ai-slop-advisory-metadata');
+      await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{attemptId:artifactAttempt.id,artifactRefs:stored.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:{...returned,...(descriptionEdit!==null?{descriptionEdit}:{}),...(analysis.components?.reactionDiagnostics?.method==='theme-derived-six-equal-slots-v1'?{reactions:analysis.components.reactions,reactionDiagnostics:analysis.components.reactionDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id,artifactHistory:stored.artifactHistory},componentUpdates,directorGuidance:guidance,reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),partial:false}});
       if(String(returned.genreReasons?.diagnostic?.reportingSidecar?.status||'')==='pending'){
         const sidecarThemes=Array.isArray(returned.themes)?returned.themes:(Array.isArray(returned.genreReasons?.themes)?returned.genreReasons.themes:[]);
         if(enqueueThemeReportSidecar({imageId:record.id,jobId:job.id,themes:sidecarThemes,behavior:componentBehaviors.themes||componentBehaviors.genreReasons||'analyze',themeSweep:job.config.themeSweep||null})){
@@ -449,42 +419,10 @@
       // A parallel sibling may already have completed successfully. Do not discard
       // that valid branch merely because this branch encountered a global-looking
       // failure; finalize the sibling, then let the item carry the failed branch.
-      if(isGlobalProviderFailure(message)&&!freshParallelEligible)break;
+      if(isGlobalProviderFailure(message))break;
     }
   }
-  // If Mistral had to rescue the Description, that saved Description becomes a
-  // reusable evidence source for any Reaction family that failed earlier in the
-  // same image attempt. Ask the original provider first, then the existing fallback.
-  {
-    const live=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record,liveAi=live.analysis?.ai||{},savedDescription=String(liveAi.components?.description||'').trim(),savedDescriptionDiagnostics=liveAi.components?.descriptionDiagnostics||null;
-    const failedReactionRows=pending.filter(c=>['reactions','reactionReasons'].includes(c.component)&&c.state==='failed');
-    if(savedDescription&&savedDescriptionDiagnostics?.thirdProviderUsed===true&&failedReactionRows.length){
-      const recoveryRequested=failedReactionRows.map(c=>c.component),recoveryBehaviors=Object.fromEntries(failedReactionRows.map(c=>[c.component,c.behavior]));
-      const recoverySpecimen={imageId:record.id,components:recoveryRequested,componentBehaviors:recoveryBehaviors,promptRefs:job.config.promptRefs||{},directorGuidance:'',reactionRerunSources:{image:false,description:true},reactionDescriptionContext:savedDescription.slice(0,6000)};
-      let recoveryPayload=null,primaryFailure=null,recoveryRoute='primary';
-      try{
-        recoveryPayload=await runLiveRequest(recoverySpecimen,recoveryRequested,{providerRouting:{mode:'primary'},label:'Reaction recovery'});
-      }catch(error){
-        primaryFailure=error;recoveryRoute='fallback';
-        recoveryPayload=await runLiveRequest(recoverySpecimen,recoveryRequested,{providerRouting:{mode:'fallback',fallbackUntil:Date.now()+60000,reason:'mistral-description-reaction-recovery'},label:'Reaction recovery'});
-      }
-      const recoveryResult=recoveryPayload?.result||recoveryPayload?.report||recoveryPayload;
-      if(recoveryResult&&typeof recoveryResult==='object'&&recoveryRequested.every(component=>Object.prototype.hasOwnProperty.call(recoveryResult.components||{},component))){
-        const recoveryArtifactEngine=window.genreactrixAiArtifactEngine;if(!recoveryArtifactEngine)throw new Error('AI Attempt/Artifact history engine is unavailable');const recoveryAttempt=await recoveryArtifactEngine.beginAttempt({imageId:record.id,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:recoveryRequested,componentBehaviors:recoveryBehaviors,mode:'recovery:mistral-description-to-reactions',directorGuidance:'',inputRefs:{imageId:record.id,sourceKind:'mistral-description-only',descriptionArtifact:liveAi.artifactHistory?.currentArtifacts?.description||null},configRefs:{recovery:'mistral-description-to-reactions',providerOrder:['primary','fallback']}});
-        const returnedRecovery={};for(const c of failedReactionRows)returnedRecovery[c.component]=recoveryResult.components[c.component];
-        if(recoveryResult.components?.reactions)returnedRecovery.directReactions=clone(recoveryResult.components.reactions);
-        if(recoveryResult.components?.reactionDiagnostics)returnedRecovery.reactionDiagnostics=clone(recoveryResult.components.reactionDiagnostics);
-        const latestNow=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||live,latestAi=latestNow.analysis?.ai||liveAi,mergedRecovery=applyHybridReactions({...(latestAi.components||{}),...returnedRecovery});
-        const savedRecovery=await recoveryArtifactEngine.recordSuccess({record:latestNow,attemptId:recoveryAttempt.id,requested:recoveryRequested,returned:returnedRecovery,mergedComponents:mergedRecovery,result:recoveryResult,mode:'recovery:mistral-description-to-reactions'});
-        const updates={};for(const c of failedReactionRows){c.state='complete';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];updates[field]='current'}
-        const analysisRecovery={...latestAi,components:mergedRecovery,provider:recoveryResult.provider||latestAi.provider||{},model:recoveryResult.model||recoveryResult.provider?.model||latestAi.model||'',promptVersions:{...(latestAi.promptVersions||{}),...(recoveryResult.promptVersions||{})},requested:[...new Set([...(latestAi.requested||[]),...recoveryRequested])],researchConfiguration:{...(latestAi.researchConfiguration||{}),...(recoveryResult.researchConfiguration||{}),mistralDescriptionReactionRecovery:{providerRoute:recoveryRoute,primaryFailure:primaryFailure?String(primaryFailure?.message||primaryFailure).slice(0,800):null}},artifactHistory:savedRecovery.artifactHistory,recordedAt:now(),jobId:job.id};
-        window.genreactrixImageRecordEngine.attachAI(record.id,analysisRecovery,updates);
-        await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`Recovered ${recoveryRequested.join(' + ')} from preserved Mistral Description`,payload:{attemptId:recoveryAttempt.id,artifactRefs:savedRecovery.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:returnedRecovery,provider:recoveryResult.provider||{},model:analysisRecovery.model,promptVersions:recoveryResult.promptVersions||{},requested:recoveryRequested,jobId:job.id,artifactHistory:savedRecovery.artifactHistory},componentUpdates:updates,partial:false,recovery:{descriptionProvider:'mistral',providerRoute:recoveryRoute}}});
-        for(let i=errors.length-1;i>=0;i--){if(/^(?:reactions|reactionReasons)(?:\+|:)/.test(errors[i]))errors.splice(i,1)}
-        record=window.genreactrixImageRecordEngine.get(record.id,{touch:false})||record;
-      }
-    }
-  }
+  // Reaction recovery is unnecessary: Reactions are deterministically recalculated from Themes.
   for(const c of pending.filter(c=>c.state==='processing')){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];c.state='failed';window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
   item.state=errors.length?'failed':'complete';item.error=errors.join(' | ');await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,item.state,{error:item.error});if(lifecycleIsolated)restoreThemeRerunLifecycle(item);else{window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId||`${item.id}:attempt:${item.attempts}`,error:item.error,globalFailure:isGlobalProviderFailure(item.error)});await window.genreactrixBundleEngine?.maybeAutoBundle?.();}finishLiveItem(job.id,item.state,item.error);scheduleThemeReportSidecarPump();return item.state;
  }
@@ -507,7 +445,7 @@
    catch(error){
     item.state='failed';item.error=String(error.message||error);finishLiveItem(job.id,'failed',item.error);await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'failed',{error:item.error});job.processing=0;job.failed++;
     for(const c of item.components){if(c.state==='queued'||c.state==='processing')c.state='failed';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];window.genreactrixImageRecordEngine.setComponent(item.imageId,field,'failed')}
-    let pipelineAttemptId=null;try{const ae=window.genreactrixAiArtifactEngine;if(ae){const requested=(item.components||[]).map(c=>c.component),componentBehaviors=Object.fromEntries((item.components||[]).map(c=>[c.component,c.behavior])),guidance=String(job.config.analysisGuidance||'').trim().slice(0,6000),mode=job.config.descriptionRerun?.operation?`description-${String(job.config.descriptionRerun.operation)}`:(job.config.themeRerun?'themes-director-workspace':ae.attemptMode({requested,componentBehaviors,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),directReactionUseAnalysis:Boolean(job.config.directReactionUseAnalysis),reactionRerunSources:clone(job.config.reactionRerunSources||null),directorGuidance:guidance}));const attempt=await ae.beginAttempt({imageId:item.imageId,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode:`pipeline:${mode}`,directorGuidance:guidance,inputRefs:{imageId:item.imageId,descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'60/40',descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)}});pipelineAttemptId=attempt.id;await ae.failAttempt(attempt.id,item.error)}}catch(historyError){console.warn('AI pipeline failure attempt could not be recorded',historyError)}
+    let pipelineAttemptId=null;try{const ae=window.genreactrixAiArtifactEngine;if(ae){const requested=(item.components||[]).map(c=>c.component),componentBehaviors=Object.fromEntries((item.components||[]).map(c=>[c.component,c.behavior])),guidance=String(job.config.analysisGuidance||'').trim().slice(0,6000),mode=job.config.descriptionRerun?.operation?`description-${String(job.config.descriptionRerun.operation)}`:(job.config.themeRerun?'themes-director-workspace':ae.attemptMode({requested,componentBehaviors,themeUseAnalysis:Boolean(job.config.themeUseAnalysis),directReactionUseAnalysis:Boolean(job.config.directReactionUseAnalysis),reactionRerunSources:clone(job.config.reactionRerunSources||null),directorGuidance:guidance}));const attempt=await ae.beginAttempt({imageId:item.imageId,jobId:job.id,itemId:item.id,itemAttemptId:item.currentAttemptId,components:requested,componentBehaviors,mode:`pipeline:${mode}`,directorGuidance:guidance,inputRefs:{imageId:item.imageId,descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)},configRefs:{projectId:window.genreactrixSettingsEngine?.get?.('project.id')||'',promptRefs:clone(job.config.promptRefs||{}),configuredPromptVersion:window.genreactrixSettingsEngine?.get?.('ai.prompt.version')||'',reactionArchitecture:'theme-derived-six-equal-slots-v1',reactionAiScan:false,descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)}});pipelineAttemptId=attempt.id;await ae.failAttempt(attempt.id,item.error)}}catch(historyError){console.warn('AI pipeline failure attempt could not be recorded',historyError)}
     await window.genreactrixHistoryEngine.append({imageId:item.imageId,eventType:'ai-failed',actor:'system',sourceEngine:'ai-analysis',jobId:job.id,summary:item.error,payload:{attemptId:pipelineAttemptId,error:item.error,components:item.components,directorGuidance:String(job.config.analysisGuidance||'').trim().slice(0,6000),reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(job.config.descriptionRerun||null),themeRerun:clone(job.config.themeRerun||null)}}).catch(()=>{});
     if(isThemeRerunConfig(job.config))restoreThemeRerunLifecycle(item,'theme-rerun-lifecycle-guard-error');else window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId||`${item.id}:attempt:${item.attempts||1}`,error:item.error,globalFailure:isGlobalProviderFailure(item.error)});
     if(isGlobalProviderFailure(item.error))fatalMessage=item.error;

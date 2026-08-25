@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.170";
+const GENREACTRIX_BUILD="v0.9.40.171";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -307,8 +307,7 @@ function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRe
 window.genreactrixInboxAiOutputRecords=()=>aiOutputRecords().map(record=>structuredClone(record));
 window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
 function recordIsTuned(record){
-  const ext=record?.metadata?.extended||{};if(ext.aiTuned)return true;
-  const refs=Object.values(record?.analysis?.ai?.artifactHistory?.currentArtifacts||{});return refs.some(ref=>(Number(ref?.version)||0)>1);
+  const ext=record?.metadata?.extended||{};return ext.aiTuned===true;
 }
 function recordSlopAssessment(record){return record?.metadata?.extended?.aiSlopAssessment||record?.analysis?.ai?.components?.slopAssessment||null}
 function slopAssessmentKind(assessment){if(assessment?.detected)return'detected';if(assessment?.warning===true||String(assessment?.status||'').toLowerCase()==='warning'||String(assessment?.kind||'').toLowerCase()==='warning')return'warning';return'none'}
@@ -517,10 +516,9 @@ function currentAiRun(){ return currentAiRuns().at(-1); }
 function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
 function currentAiWeights(){ return currentAiRun().weights || {}; }
 
-/* v0.9.40.12 — whole-number presentation for the 60/40 hybrid.
-   Stored hybrid evidence may contain decimal tenths from the direct-AI × .4 share.
-   Largest-remainder presentation keeps the displayed vector at exactly 100 without
-   changing the stored 60/40 calculation. Existing integer 100-point vectors remain unchanged. */
+/* v0.9.40.171 — whole-number presentation for six equal Theme→Prim slots.
+   Stored weights use exact 1/6 contributions; largest-remainder display keeps the
+   visible vector at exactly 100 while preserving duplicate-Prim accumulation. */
 function displayReactionPercentages(source={}){
   const rows=PRIMITIVES.map((p,index)=>({id:p.id,index,value:Math.max(0,Number(source?.[p.id])||0)}));
   const total=rows.reduce((sum,row)=>sum+row.value,0);
@@ -1008,7 +1006,8 @@ function reactionRerunSources(){return{image:Boolean(reactionRerunWorkspace.useI
 function renderReactionRerunChrome(){const active=reactionRerunWorkspace.active,drawer=$("tabletSlidingDrawer"),controls=$("tabletReactionRerunControls"),image=$("reactionRerunUseImage"),description=$("reactionRerunUseDescription"),submit=$("reactionRerunSubmitBtn");drawer?.classList.toggle("reaction-rerun-active",active);if(controls)controls.hidden=!active;if(image)image.checked=Boolean(reactionRerunWorkspace.useImage);if(description)description.checked=Boolean(reactionRerunWorkspace.useDescription);if(submit){const noSource=!reactionRerunWorkspace.useImage&&!reactionRerunWorkspace.useDescription,missingDescription=reactionRerunWorkspace.useDescription&&!reactionRerunDescriptionText();submit.disabled=aiRerunInFlight||noSource||missingDescription;submit.setAttribute("aria-busy",String(aiRerunInFlight));}}
 function openReactionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight||reactionRerunWorkspace.active)return;if(descriptionRerunWorkspace?.active)closeDescriptionRerunWorkspace();if(themeRerunWorkspace?.active)closeThemeRerunWorkspace();reactionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};reactionRerunWorkspace.active=true;reactionRerunWorkspace.useImage=true;reactionRerunWorkspace.useDescription=true;tabletLandscapeView.face="judgment";tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=false;tabletLandscapeView.aiDescription=true;renderTabletWorkbench()}
 function closeReactionRerunWorkspace(){if(!reactionRerunWorkspace.active)return;reactionRerunWorkspace.active=false;const prior=reactionRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);reactionRerunWorkspace.preDrawer=null;renderTabletWorkbench()}
-async function submitReactionRerun(){if(!reactionRerunWorkspace.active||aiRerunInFlight)return;const sources=reactionRerunSources();if(!sources.image&&!sources.description){alert("Select Image, Description, or both.");return;}const description=reactionRerunDescriptionText();if(sources.description&&!description){alert("No current AI Description is available. Uncheck Description or create an AI Description first.");return;}const mode=sources.image&&sources.description?"Image + Description":sources.image?"Image":"Description";setDirectorStatus(`Rerunning direct Reaction 40% · ${mode}…`);try{await runCurrentAiRerun(["reactions"],{reactionRerunSources:sources});setDirectorStatus(`Direct Reaction rerun complete · ${mode}. Theme 60% retained; combined Reactions recalculated.`);}catch(error){const message=String(error?.message||error);console.error("Direct Reaction rerun failed",error);setDirectorStatus(`Direct Reaction rerun failed: ${message}`);alert(`Direct Reaction rerun failed: ${message}`)}}
+async function recalculateCurrentReactions(){if(aiRerunInFlight)return;setDirectorStatus('Recalculating Reactions from the current three Themes…');try{await runCurrentAiRerun(['reactions']);tabletLandscapeView.aiReactions=true;setDirectorStatus('Reactions recalculated from Themes · no AI Reaction scan.');}catch(error){const message=String(error?.message||error);console.error('Theme-derived Reaction recalculation failed',error);setDirectorStatus(`Reaction recalculation failed: ${message}`);alert(`Reaction recalculation failed: ${message}`)}}
+async function submitReactionRerun(){return recalculateCurrentReactions()}
 function syncTabletAiRerunControls(){
   const lock=$("tabletAiRerunLockBtn");
   lock?.setAttribute("aria-pressed",String(tabletAiRerunLocked));
@@ -1422,7 +1421,7 @@ async function submitThemeRerun(){
     await loadThemeRerunThemeHistory().catch(()=>[]);
     await refreshThemeChangeReasoning(themeRerunWorkspace.imageId,{force:true}).catch(()=>null);
     renderTabletWorkbench();
-    setDirectorStatus('AI Theme rerun complete. Theme 60% and combined Reactions were recalculated from the new Theme artifact.');
+    setDirectorStatus('AI Theme rerun complete. Reactions were recalculated 100% from the new three Themes.');
   }catch(error){
     const message=String(error?.message||error);
     console.error('AI Theme rerun failed',error);
@@ -2691,7 +2690,7 @@ $("rerunAiBtn").addEventListener("click",async()=>{
   try{
     const guidance=$("aiReanalysisGuidance")?.value?.trim()||"";
     await runCurrentAiRerun(AI_RERUN_COMPONENTS,{analysisGuidance:guidance});
-    setDirectorStatus("AI reactions, themes, and description rerun complete.");
+    setDirectorStatus("AI Themes and Description rerun complete. Reactions recalculated 100% from Themes; no Reaction scan was run.");
   }catch(error){
     const message=String(error?.message||error);
     console.error("AI rerun failed",error);
@@ -3442,7 +3441,7 @@ $("reactionRerunUseImage")?.addEventListener("change",event=>{if(!reactionRerunW
 $("reactionRerunUseDescription")?.addEventListener("change",event=>{if(!reactionRerunWorkspace.active)return;reactionRerunWorkspace.useDescription=event.target.checked;renderReactionRerunChrome();});
 $("reactionRerunSubmitBtn")?.addEventListener("click",()=>submitReactionRerun());
 $("reactionRerunReturnBtn")?.addEventListener("click",()=>closeReactionRerunWorkspace());
-$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>openReactionRerunWorkspace());
+$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>recalculateCurrentReactions());
 $("tabletAiRerunThemesBtn")?.addEventListener("click",()=>openThemeRerunWorkspace().catch(error=>{console.error("Theme rerun workspace could not open",error);alert(error.message||String(error));}));
 $("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>openDescriptionRerunWorkspace().catch(error=>{console.error("Description rerun workspace could not open",error);alert(error.message||String(error));}));
 syncTabletAiRerunControls();
