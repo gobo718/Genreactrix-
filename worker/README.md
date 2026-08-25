@@ -1,3 +1,16 @@
+## 0.9.6.118 — Live provider progress
+
+- Adds additive streamed progress reporting for ordinary image analysis through `/api/genreactrix/analyze-stream`.
+- Emits live provider/stage transitions for Mistral, GPT-4.1 mini, and Qwen 3.7 Plus, including failures and whole-Theme-run replacement.
+- Preserves `/api/genreactrix/analyze` and all analysis semantics unchanged.
+- Current provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**.
+
+# Genreactrix AI Worker
+
+Current bundled Worker: v0.9.6.118-live-provider-progress.
+
+## Historical bundled Worker notes
+
 ## 0.9.6.111 — Goofy/Camp swap
 
 - PFM0104 (Adorable + Funny) is now **Goofy**.
