@@ -1,3 +1,28 @@
+# Genreactrix AI Worker 0.9.6.132-p13-audit-repair — P13 audit repair
+
+Matrix identity and taxonomy remain unchanged from 0.9.6.131: 12 Prims, 63 assigned PrimFusion Themes, 3 open pair slots.
+
+- Repairs Prompt Diagnostics batching for the 75-concept post-Smart vocabulary.
+- Uses five complete 15-concept batches, balanced as 3+12, 3+12, 2+13, 2+13, 2+13 Prim/Theme concepts.
+- Removes the stale seven-batch validator path that could throw during Worker module initialization.
+- Retains intentional legacy P13→P12 migration references outside the active taxonomy.
+
+---
+
+# Genreactrix AI Worker 0.9.6.131-smart-retired — Smart retired / Celebration renumbered
+
+Matrix identity remains 0.0.0.0. Active taxonomy: 12 Prims, 63 assigned PrimFusion Themes, 3 open pair slots.
+
+- Retires Smart/P12.
+- Moves Celebration P13 → P12.
+- Retires Innocence, Elegant, and Gloomy.
+- Mundane → PFM0203 (Beautiful + Tragic).
+- Glory → PFM0512 (Intense + Celebration).
+- All surviving former Celebration PFMxx13 codes are recoded to PFMxx12.
+- Fixed shuffled Theme-order arrays are remapped by Theme identity, not positional rank.
+
+---
+
 # Genreactrix AI Worker 0.9.6.130 — Smart cleanup
 
 Current behavior: no AI Reaction scan. Reactions remain derived 100% from the three selected Themes as six equal 1/6 Theme→Prim slots; duplicate Prims accumulate. Theme/Description provider routing remains Mistral → GPT-4.1 mini → Qwen 3.7 Plus.
@@ -27,7 +52,7 @@ Matrix identity remains 0.0.0.0. Active taxonomy: 13 Prims, 66 assigned PrimFusi
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.130-smart-cleanup.
+Current bundled Worker: v0.9.6.132-p13-audit-repair.
 
 ## Historical bundled Worker notes
 
