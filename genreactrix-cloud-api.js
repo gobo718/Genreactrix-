@@ -7,6 +7,22 @@
  const withProviderRouting=specimen=>{const route=currentProviderRouting();return route?{...(specimen||{}),providerRouting:route}:{...(specimen||{})};};
  const absorbProviderRouting=payload=>{const route=payload?.providerRouting||payload?.result?.provider?.routing||payload?.providerDiagnostic||null;const until=Number(route?.fallbackUntil)||0;if(until>Date.now())localStorage.setItem(FALLBACK_UNTIL_KEY,String(until));else if(route?.mode==='primary'&&localStorage.getItem(FALLBACK_UNTIL_KEY))localStorage.removeItem(FALLBACK_UNTIL_KEY);};
  const request=async(path,init={})=>{if(!base)throw new Error('AI Worker URL is not configured');const response=await fetch(`${base}${path}`,{...init,headers:{'content-type':'application/json',...(init.headers||{})}});const payload=await response.json().catch(()=>({}));absorbProviderRouting(payload);if(!response.ok){const error=new Error(payload.error||`AI request failed (${response.status})`);error.httpStatus=response.status;error.providerDiagnostic=payload.providerDiagnostic||null;error.responsePayload=payload;throw error}return payload;};
+ const streamAnalyze=async(specimen,key,onProgress,providerRouting=undefined)=>{
+  if(!base)throw new Error('AI Worker URL is not configured');
+  const body=providerRouting===undefined?withProviderRouting(specimen):{...(specimen||{}),providerRouting:providerRouting||null};
+  const response=await fetch(`${base}/api/genreactrix/analyze-stream`,{method:'POST',headers:{'content-type':'application/json','x-analysis-key':String(key||'')},body:JSON.stringify(body)});
+  if(response.status===404||response.status===405)return request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(body)});
+  if(!response.ok){const payload=await response.json().catch(()=>({}));absorbProviderRouting(payload);const error=new Error(payload.error||`AI request failed (${response.status})`);error.httpStatus=response.status;error.providerDiagnostic=payload.providerDiagnostic||null;error.responsePayload=payload;throw error;}
+  if(!response.body){const payload=await response.json().catch(()=>({}));absorbProviderRouting(payload);if(payload?.ok===false){const error=new Error(payload.error||'AI request failed');error.providerDiagnostic=payload.providerDiagnostic||null;error.responsePayload=payload;throw error;}return payload;}
+  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',finalPayload=null;
+  const consumeLine=line=>{const text=String(line||'').trim();if(!text)return;let row;try{row=JSON.parse(text)}catch{return;}if(row.type==='progress'){try{onProgress?.(row)}catch(error){console.warn('AI progress callback failed',error)}return;}if(row.type==='result'){finalPayload={ok:true,result:row.result,providerRouting:row.providerRouting||null};return;}if(row.type==='error'){absorbProviderRouting(row);const error=new Error(row.error||'AI request failed');error.providerDiagnostic=row.providerDiagnostic||null;error.responsePayload=row;throw error;}};
+  try{
+   while(true){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let newline;while((newline=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,newline);buffer=buffer.slice(newline+1);consumeLine(line);}}
+   buffer+=decoder.decode();if(buffer.trim())consumeLine(buffer);
+  }finally{try{reader.releaseLock()}catch{}}
+  if(!finalPayload)throw new Error('AI progress stream ended without a final result');
+  absorbProviderRouting(finalPayload);return finalPayload;
+ };
  const storedKey=()=>String(window.genreactrixSettingsEngine?.get?.('ai.worker.accessKey','')||localStorage.getItem(KEY_KEY)||'');
  const verifyConnection=async()=>{
   if(!base)throw new Error('AI Worker URL is not configured');
@@ -37,7 +53,9 @@
     const blob=await response.blob();if(!blob.type?.startsWith('image/'))throw new Error('Image proxy did not return an image');return blob;
   },
   analyzeImage:(specimen,key)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
+  analyzeImageWithProgress:(specimen,key,onProgress)=>streamAnalyze(specimen,key,onProgress),
   analyzeImageWithRouting:(specimen,key,providerRouting)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify({...specimen,providerRouting:providerRouting||null})}),
+  analyzeImageWithRoutingProgress:(specimen,key,providerRouting,onProgress)=>streamAnalyze(specimen,key,onProgress,providerRouting),
   ama:(specimen,key)=>request('/api/genreactrix/ama',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
   promptDiagnostics:(specimen,key)=>request('/api/genreactrix/prompt-diagnostics',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))})
  });
