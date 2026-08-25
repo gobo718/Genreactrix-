@@ -1,23 +1,29 @@
-# Genreactrix v0.9.40.168 — Live AI status reporting
+# Genreactrix v0.9.40.169 — Fast Theme audit + deferred reporting sidecar
 
-Behavior/UI release based on v0.9.40.167. Requires Worker v0.9.6.118 for full live provider/stage telemetry.
+Behavior/AI-engine release based on v0.9.40.168. Requires Worker v0.9.6.120.
 
 ## Change
-- Reuses the existing **Selected job** box as a live AI activity readout; no new panel and no layout/geometry changes.
-- Shows current image number/name, elapsed time, request family, provider, provider-cycle stage, and live state.
-- Reports provider attempt starts, successes, failures, whole-Theme-run acceptance/discard, Worker completion, local save phase, and the most recent transitions.
-- Supports simultaneous Reaction and Theme/Description requests without hiding that they are running concurrently.
-- Keeps the last image/job activity visible after completion for the current session; persisted job history remains unchanged.
-- Updates Provider readiness wording to the actual roster: **Mistral · GPT-4.1 mini · Qwen 3.7 Plus**.
-- Manual **Start analysis** now selects the newly created job so the bottom box follows the run immediately.
-- If the streaming endpoint is unavailable, analysis falls back to the existing non-streaming request path rather than failing solely because live telemetry is unavailable.
+- Fresh Theme acceptance now uses a compact **decision-critical audit** of only the three selected Themes.
+- The decision audit keeps the same strict SUPPORTED / WEAK / REJECT and GATE_PASS / GATE_FAIL checks, including contradiction handling.
+- The former heavy diagnostic work — all active Prim scores plus up to 12 serious Theme candidates — is removed from the image decision path.
+- That heavy diagnostic is queued as a **background reporting sidecar** and merged back into stored Themes Info when it completes.
+- A stale sidecar is discarded if the image's selected Theme triplet changes before the sidecar returns.
+- A reporting-sidecar failure does not turn an otherwise successful Theme result into an AI failure.
+- The existing Selected job panel now labels the critical stage **Theme decision audit** and notes when the full reporting diagnostic has been queued.
+- No existing UI region is moved, resized, rearranged, or reflowed.
 
 ## Worker dependency
-- Worker v0.9.6.118 adds the additive `/api/genreactrix/analyze-stream` NDJSON endpoint.
-- The ordinary `/api/genreactrix/analyze` endpoint is preserved unchanged for compatibility.
-- Provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**; no Theme, Reaction, Description, scoring, gating, or routing semantics were changed by the reporting feature.
+- Worker v0.9.6.120 adds `/api/genreactrix/theme-report-diagnostic` for the deferred full reporting sidecar.
+- The ordinary `/api/genreactrix/analyze` and `/api/genreactrix/analyze-stream` paths remain available.
+- Provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**.
+- Worker v0.9.6.119's TransformStream compatibility repair is retained.
+
+## Reporting behavior
+- The immediate stored Themes Info contains the fast decision audit and marks the full reporting sidecar pending.
+- When the background sidecar completes, the full Prim/candidate diagnostic becomes the main stored diagnostic and the original decision audit is retained inside it as `decisionAudit`.
+- A separate immutable `theme-report-diagnostic` artifact and history entry are created for the background sidecar without replacing the classification attempt as the current/latest classification attempt.
 
 ## Not changed
-- No existing AI console regions were moved, resized, rearranged, or reflowed.
-- No Theme/Reaction definitions or Matrix identity changed.
-- No Queue, Bundle, Batch, lifecycle, report, or storage behavior changed.
+- No Theme/Reaction definitions or PrimFusion Matrix identity changed.
+- No Theme ranking rule, whole-run provider replacement rule, or independent-review acceptance rule was removed.
+- Reaction analysis, Description generation, Queue, Bundle, Batch, and lifecycle ownership remain unchanged.

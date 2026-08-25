@@ -8,8 +8,10 @@
   ['reactionReasons','Reactions Info','aiReactionReasons'],['genreReasons','Themes Info','aiGenreReasons']
  ];
  const LIVE_JOBS=new Map();
+ const THEME_REPORT_SIDECAR_QUEUE=[],THEME_REPORT_SIDECAR_KEYS=new Set();
+ let themeReportSidecarPumpPromise=null;
  const LIVE_PROVIDER_LABELS={mistral:'Mistral',secondary:'GPT-4.1 mini',qwen:'Qwen 3.7 Plus','mistral-direct':'Mistral','openai-via-cloudflare-ai-gateway':'GPT-4.1 mini','cloudflare-workers-ai-qwen':'Qwen 3.7 Plus'};
- const LIVE_STAGE_LABELS={request:'Worker request',reactions:'Reaction assessment','fresh-theme-whole-run':'Fresh Theme whole run','preliminary-theme-selection':'Preliminary Theme selection','theme-aware-description':'Theme-aware Description','theme-association-final':'Final Theme selection','theme-reasoning-diagnostic':'Theme reasoning audit','theme-rerun-human-vote-selection':'Theme rerun selection'};
+ const LIVE_STAGE_LABELS={request:'Worker request',reactions:'Reaction assessment','fresh-theme-whole-run':'Fresh Theme whole run','preliminary-theme-selection':'Preliminary Theme selection','theme-aware-description':'Theme-aware Description','theme-association-final':'Final Theme selection','theme-decision-audit':'Theme decision audit','theme-reporting-diagnostic':'Theme report diagnostic','theme-rerun-human-vote-selection':'Theme rerun selection'};
  let liveTicker=null;
  const clone=v=>v==null?v:structuredClone(v),now=()=>new Date().toISOString(),id=p=>`${p}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0,8)}`;
  function slopKind(a){if(a?.detected)return'detected';if(a?.warning===true||String(a?.status||'').toLowerCase()==='warning'||String(a?.kind||'').toLowerCase()==='warning')return'warning';return'none'}
@@ -199,6 +201,55 @@
   let bitmap=null;try{bitmap=await createImageBitmap(blob);if(!(bitmap.width>0&&bitmap.height>0))throw new Error('Image has no decodable dimensions');return{ok:true,kind:'local',mimeType,width:bitmap.width,height:bitmap.height};}catch(error){return{ok:false,reason:`Unsupported or undecodable image${mimeType?` (${mimeType})`:''}: ${String(error?.message||error)}`,mimeType};}finally{try{bitmap?.close?.()}catch{}}
  }
  async function imageInput(record){if(record.storage?.hyperlink)return{imageUrl:record.storage.hyperlink};const blob=await window.imageBlobGet?.(record.id).catch(()=>null);if(!blob)throw new Error('Image source is unavailable');try{const prepared=await normalizeAiImageBlob(blob),dataUrl=await blobDataUrl(prepared.blob);return{imageDataUrl:dataUrl}}catch(error){throw new Error(`AI image preparation failed: ${String(error?.message||error)}`)}}
+ const themeReportFingerprint=themes=>(Array.isArray(themes)?themes:[]).slice(0,3).map(row=>String(row?.code||'').toUpperCase()).filter(Boolean).join('|');
+ function enqueueThemeReportSidecar({imageId,jobId=null,themes=[],behavior='analyze',themeSweep=null}={}){
+  if(!window.GenreactrixCloudApi?.themeReportDiagnostic)return false;
+  const fingerprint=themeReportFingerprint(themes);if(!imageId||fingerprint.split('|').filter(Boolean).length!==3)return false;
+  const key=`${String(imageId)}:${fingerprint}`;if(THEME_REPORT_SIDECAR_KEYS.has(key))return false;
+  THEME_REPORT_SIDECAR_KEYS.add(key);THEME_REPORT_SIDECAR_QUEUE.push({key,imageId:String(imageId),jobId,themes:clone(themes),behavior,themeSweep:clone(themeSweep),fingerprint,queuedAt:now()});return true;
+ }
+ function scheduleThemeReportSidecarPump(){if(themeReportSidecarPumpPromise||!THEME_REPORT_SIDECAR_QUEUE.length)return;setTimeout(()=>pumpThemeReportSidecars().catch(error=>console.warn('Theme report sidecar pump failed',error)),0)}
+ async function markThemeReportSidecarFailure(task,error){
+  const engine=window.genreactrixImageRecordEngine,record=engine?.get?.(task.imageId,{touch:false});if(!record||themeReportFingerprint(record.analysis?.ai?.components?.themes)!==task.fingerprint)return;
+  const ai=record.analysis?.ai||{},genre=ai.components?.genreReasons;if(!genre||typeof genre!=='object')return;
+  const decision=clone(genre.diagnostic||{}),reporting={...(decision.reportingSidecar||{}),status:'failed',protocol:'human-vote-reasoning-sidecar-v1',failedAt:now(),error:String(error?.message||error).slice(0,1200)};
+  engine.update(record.id,{analysis:{ai:{...ai,components:{...(ai.components||{}),genreReasons:{...genre,diagnostic:{...decision,reportingSidecar:reporting}}}}}},'ai-theme-report-diagnostic-failed');
+ }
+ async function runThemeReportSidecar(task){
+  const engine=window.genreactrixImageRecordEngine,record=engine?.get?.(task.imageId,{touch:false});if(!record)return;
+  if(themeReportFingerprint(record.analysis?.ai?.components?.themes)!==task.fingerprint)return;
+  const source=await imageInput(record),artifactEngine=window.genreactrixAiArtifactEngine;let attempt=null;
+  try{
+   if(artifactEngine)attempt=await artifactEngine.beginAttempt({imageId:record.id,jobId:task.jobId,components:['genreReasons'],componentBehaviors:{genreReasons:task.behavior},mode:'background:theme-report-diagnostic',inputRefs:{imageId:record.id,themeCodes:task.fingerprint.split('|')},configRefs:{themeSweep:clone(task.themeSweep)}});
+   const payload=await window.GenreactrixCloudApi.themeReportDiagnostic({imageId:record.id,themes:task.themes,behavior:task.behavior,themeSweep:task.themeSweep,...source},window.GenreactrixCloudApi.getKey()),result=payload?.result||payload,full=clone(result?.diagnostic||null);
+   if(!full||typeof full!=='object')throw new Error('Theme report diagnostic returned no diagnostic');
+   const live=engine.get(record.id,{touch:false});if(!live||themeReportFingerprint(live.analysis?.ai?.components?.themes)!==task.fingerprint){if(attempt)await artifactEngine?.finishAttempt?.(attempt.id,{status:'complete',researchConfiguration:{discardedAsStale:true}});return;}
+   const ai=live.analysis?.ai||{},genre=ai.components?.genreReasons||{},decision=clone(genre.diagnostic||{}),completedAt=now();
+   const mergedDiagnostic={...full,decisionAudit:decision,reportingSidecar:{...(full.reportingSidecar||{}),status:'complete',protocol:'human-vote-reasoning-sidecar-v1',decisionFingerprint:task.fingerprint,queuedAt:task.queuedAt,completedAt}};
+   let nextHistory=ai.artifactHistory||null,artifact=null;
+   if(artifactEngine&&attempt){
+    const themeRef=ai.artifactHistory?.currentArtifacts?.themes||null;
+    artifact=await artifactEngine.createArtifact({imageId:live.id,kind:'theme-report-diagnostic',attemptId:attempt.id,payload:mergedDiagnostic,dependencies:{themeArtifact:themeRef},provider:{winningProvider:full.providerCycle?.winningProvider||null,providerCycle:clone(full.providerCycle||null)},mode:'background:theme-report-diagnostic'});
+    await artifactEngine.finishAttempt(attempt.id,{outputArtifactIds:[artifact.id],provider:{winningProvider:full.providerCycle?.winningProvider||null},researchConfiguration:{backgroundThemeReportDiagnostic:true,decisionFingerprint:task.fingerprint}});
+    const current=ai.artifactHistory||{schemaVersion:1,store:artifactEngine.dbName,currentArtifacts:{}};nextHistory={...current,currentArtifacts:{...(current.currentArtifacts||{}),'theme-report-diagnostic':{artifactId:artifact.id,kind:artifact.kind,version:artifact.version}}};
+   }
+   engine.update(live.id,{analysis:{ai:{...ai,components:{...(ai.components||{}),genreReasons:{...genre,diagnostic:mergedDiagnostic}},...(nextHistory?{artifactHistory:nextHistory}:{})}}},'ai-theme-report-diagnostic-completed');
+   await window.genreactrixHistoryEngine?.append?.({imageId:live.id,eventType:'ai-theme-report-diagnostic',actor:'ai',sourceEngine:'ai-analysis',jobId:task.jobId,summary:'Deferred Theme reporting diagnostic completed',payload:{attemptId:attempt?.id||null,artifactRef:artifact?{artifactId:artifact.id,kind:artifact.kind,version:artifact.version}:null,themeCodes:task.fingerprint.split('|'),providerCycle:clone(full.providerCycle||null)}}).catch(()=>{});
+  }catch(error){if(attempt)await artifactEngine?.failAttempt?.(attempt.id,error).catch(()=>{});await markThemeReportSidecarFailure(task,error);throw error;}
+ }
+ async function pumpThemeReportSidecars(){
+  if(themeReportSidecarPumpPromise)return themeReportSidecarPumpPromise;
+  themeReportSidecarPumpPromise=(async()=>{while(THEME_REPORT_SIDECAR_QUEUE.length){const task=THEME_REPORT_SIDECAR_QUEUE.shift();try{await runThemeReportSidecar(task)}catch(error){console.warn('Deferred Theme reporting diagnostic failed',task?.imageId,error)}finally{if(task?.key)THEME_REPORT_SIDECAR_KEYS.delete(task.key)}}})();
+  try{await themeReportSidecarPumpPromise}finally{themeReportSidecarPumpPromise=null;if(THEME_REPORT_SIDECAR_QUEUE.length)scheduleThemeReportSidecarPump()}
+ }
+ function resumePendingThemeReportSidecars(){
+  if(!window.GenreactrixCloudApi?.isConfigured?.())return 0;
+  const rows=window.genreactrixImageRecordEngine?.all?.()||[];let queued=0;
+  for(const record of rows){const ai=record?.analysis?.ai||{},genre=ai.components?.genreReasons,diagnostic=genre?.diagnostic;if(String(diagnostic?.reportingSidecar?.status||'')!=='pending')continue;const themes=Array.isArray(ai.components?.themes)?ai.components.themes:(Array.isArray(genre?.themes)?genre.themes:[]);if(enqueueThemeReportSidecar({imageId:record.id,jobId:ai.jobId||null,themes,behavior:'analyze',themeSweep:null}))queued++;}
+  if(queued)scheduleThemeReportSidecarPump();return queued;
+ }
+ const schedulePendingThemeReportResume=()=>setTimeout(()=>{try{resumePendingThemeReportSidecars()}catch(error){console.warn('Pending Theme report sidecar resume failed',error)}},0);
+ if(window.genreactrixSettingsEngine?.ready)schedulePendingThemeReportResume();else window.addEventListener('genreactrix:settings-ready',schedulePendingThemeReportResume,{once:true});
  async function createJob(config){config=clone(config||{});config.components=clone(config.components||{});if(config.components?.themes?.enabled){const behavior=config.components.themes.behavior||'analyze';config.components.genreReasons={enabled:true,behavior};}const selected=Object.entries(config.components||{}).filter(([,v])=>v.enabled);if(!selected.length)throw new Error('Choose at least one AI component');const selectedIds=selected.map(([id])=>id),reactionSources=config.reactionRerunSources&&typeof config.reactionRerunSources==='object'?config.reactionRerunSources:null,descriptionOnlyReaction=selectedIds.length===1&&selectedIds[0]==='reactions'&&reactionSources?.image===false&&reactionSources?.description===true;const existingItems=await all(ITEMS),activeImageIds=new Set(existingItems.filter(i=>['queued','processing'].includes(i.state)).map(i=>i.imageId));const candidates=applyQuantity(eligibleRecords(config).filter(r=>{if(activeImageIds.has(r.id))return false;if(config.skipFailed){const hasFailed=selected.some(([c])=>{const field=COMPONENTS.find(([id])=>id===c)?.[2];return field&&r.components?.[field]==='failed'});if(hasFailed)return false;}return selected.some(([c,v])=>shouldRun(r,c,v.behavior));}),config);const rows=[],sourceRejects=[];for(const record of candidates){const check=descriptionOnlyReaction?{ok:true,kind:'description-only'}:await validateAiSource(record);if(check.ok)rows.push(record);else sourceRejects.push({imageId:record.id,name:record.name||record.source?.originalFilename||record.id,mimeType:check.mimeType||record.storage?.mimeType||'',reason:check.reason});}if(!rows.length)return {id:null,schemaVersion:1,state:'completed',createdAt:now(),startedAt:null,completedAt:now(),config:clone(config),total:0,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`No queueable images · ${sourceRejects.length} unsupported or undecodable`:'No eligible images',stopRequested:false};const job={id:id('ai_job'),schemaVersion:1,state:'queued',createdAt:now(),startedAt:null,completedAt:null,config:clone(config),total:rows.length,completed:0,failed:0,skipped:sourceRejects.length,sourceRejects,processing:0,message:sourceRejects.length?`Queued · ${sourceRejects.length} unsupported/undecodable skipped`:'Queued',stopRequested:false};if(selectedIds.includes('themes')&&!job.config.themeSweep&&!job.config.themeRerun&&(job.config.target!=='selected'||job.config.themeSweepRequested===true)){const sweep=window.genreactrixThemeSweepEngine?.begin?.({jobId:job.id,imageIds:rows.map(r=>r.id)});if(sweep)job.config.themeSweep={managed:true,sweepId:sweep.id,pass:1,orderMode:'canonical',orderSeed:null,rootJobId:job.id,persistDescription:selectedIds.includes('description')};}await put(JOBS,job);const queueJob=await q()?.createJob?.({id:`queue_${job.id}`,type:'ai',ownerEngine:'ai-analysis',ownerJobId:job.id,label:`AI analysis · ${rows.length} image${rows.length===1?'':'s'}`,state:'queued',total:rows.length,imageIds:rows.map(r=>r.id),batchId:null,message:'Queued'});const queueRows=[];for(const [order,record] of rows.entries()){const item={id:id('ai_item'),jobId:job.id,imageId:record.id,order,state:'queued',attempts:0,error:'',themeRerunLifecycleGuard:isThemeRerunConfig(config)?themeRerunLifecycleGuardFor(record):null,components:selected.map(([component,settings])=>({component,behavior:settings.behavior,state:'queued'}))};await put(ITEMS,item);queueRows.push({id:`queue_${item.id}`,imageId:record.id,ownerItemId:item.id,order,type:'ai',state:'queued'})}if(queueJob)await q()?.addItems?.(queueJob.id,queueRows);emit();return clone(job)}
  async function updateJob(job,patch){Object.assign(job,patch);await put(JOBS,job);emit();return job}
  const liveProviderLabel=value=>LIVE_PROVIDER_LABELS[String(value||'').toLowerCase()]||String(value||'AI');
@@ -384,6 +435,12 @@
       if(result.components?.slopAssessment&&String(effectiveSlop?.assessmentId||'')===String(result.components.slopAssessment?.assessmentId||'')){metadataPatch.aiSlopAssessment=clone(result.components.slopAssessment);metadataPatch.aiSlopAssessmentAttemptId=artifactAttempt.id;metadataPatch.aiSlopAssessmentJobId=job.id;}
       if(Object.keys(metadataPatch).length)window.genreactrixImageRecordEngine.update(record.id,{metadata:{extended:metadataPatch}},rerunCompleted?'ai-tuned-metadata':'ai-slop-advisory-metadata');
       await window.genreactrixHistoryEngine.append({imageId:record.id,eventType:'ai-analysis',actor:'ai',sourceEngine:'ai-analysis',jobId:job.id,summary:`AI analyzed ${requested.join(' + ')}`,payload:{attemptId:artifactAttempt.id,artifactRefs:stored.artifacts.map(a=>({artifactId:a.id,kind:a.kind,version:a.version})),analysis:{components:{...returned,...(descriptionEdit!==null?{descriptionEdit}:{}),...(analysis.components?.reactionHybridDiagnostics?{reactions:analysis.components.reactions,reactionHybridDiagnostics:analysis.components.reactionHybridDiagnostics}: {})},provider:result.provider||{},model:analysis.model,promptVersions:result.promptVersions||{},requested,jobId:job.id,artifactHistory:stored.artifactHistory},componentUpdates,directorGuidance:guidance,reactionRerunSources:clone(job.config.reactionRerunSources||null),descriptionRerun:clone(descriptionRerun),themeRerun:clone(themeRerun),partial:false}});
+      if(String(returned.genreReasons?.diagnostic?.reportingSidecar?.status||'')==='pending'){
+        const sidecarThemes=Array.isArray(returned.themes)?returned.themes:(Array.isArray(returned.genreReasons?.themes)?returned.genreReasons.themes:[]);
+        if(enqueueThemeReportSidecar({imageId:record.id,jobId:job.id,themes:sidecarThemes,behavior:componentBehaviors.themes||componentBehaviors.genreReasons||'analyze',themeSweep:job.config.themeSweep||null})){
+          const live=LIVE_JOBS.get(job.id);if(live){liveRecent(live,'Full Theme report diagnostic queued in background');repaintLiveDetail(job.id)}
+        }
+      }
     }catch(error){
       const message=`${requested.join('+')}: ${String(error.message||error)}`;errors.push(message);
       if(artifactAttempt&&!artifactAttemptCompleted)await artifactEngine?.failAttempt?.(artifactAttempt.id,message).catch(()=>{});
@@ -429,7 +486,7 @@
     }
   }
   for(const c of pending.filter(c=>c.state==='processing')){const field=COMPONENTS.find(([id])=>id===c.component)?.[2];c.state='failed';window.genreactrixImageRecordEngine.setComponent(record.id,field,'failed')}
-  item.state=errors.length?'failed':'complete';item.error=errors.join(' | ');await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,item.state,{error:item.error});if(lifecycleIsolated)restoreThemeRerunLifecycle(item);else{window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId||`${item.id}:attempt:${item.attempts}`,error:item.error,globalFailure:isGlobalProviderFailure(item.error)});await window.genreactrixBundleEngine?.maybeAutoBundle?.();}finishLiveItem(job.id,item.state,item.error);return item.state;
+  item.state=errors.length?'failed':'complete';item.error=errors.join(' | ');await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,item.state,{error:item.error});if(lifecycleIsolated)restoreThemeRerunLifecycle(item);else{window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.currentAttemptId||`${item.id}:attempt:${item.attempts}`,error:item.error,globalFailure:isGlobalProviderFailure(item.error)});await window.genreactrixBundleEngine?.maybeAutoBundle?.();}finishLiveItem(job.id,item.state,item.error);scheduleThemeReportSidecarPump();return item.state;
  }
 
  function isGlobalProviderFailure(message){return /unauthorized|analysis access is not configured|ai worker url is not configured|failed to fetch|networkerror|load failed|workers ai binding ai is not configured|rate limit|quota|ai attempt\/artifact history|ai artifact transaction|indexeddb/i.test(String(message||''))}

@@ -56,6 +56,7 @@
   analyzeImageWithProgress:(specimen,key,onProgress)=>streamAnalyze(specimen,key,onProgress),
   analyzeImageWithRouting:(specimen,key,providerRouting)=>request('/api/genreactrix/analyze',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify({...specimen,providerRouting:providerRouting||null})}),
   analyzeImageWithRoutingProgress:(specimen,key,providerRouting,onProgress)=>streamAnalyze(specimen,key,onProgress,providerRouting),
+  themeReportDiagnostic:(specimen,key=storedKey())=>request('/api/genreactrix/theme-report-diagnostic',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
   ama:(specimen,key)=>request('/api/genreactrix/ama',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))}),
   promptDiagnostics:(specimen,key)=>request('/api/genreactrix/prompt-diagnostics',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify(withProviderRouting(specimen))})
  });
