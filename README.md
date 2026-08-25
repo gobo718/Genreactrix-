@@ -1,6 +1,27 @@
-# Genreactrix v0.9.40.174 — Hot Magenta OPEN cells
+# Genreactrix v0.9.40.175 — Smart cleanup
 
-Built from v0.9.40.173 with Worker 0.9.6.129-primfusion-consolidation.
+Built from v0.9.40.174 with Worker 0.9.6.130-smart-cleanup.
+
+Current taxonomy: **13 Prims / 66 assigned PrimFusion Themes / 12 OPEN pair slots**. Matrix identity remains **0.0.0.0**.
+
+## v0.9.40.175
+
+- PFM0608 🌀🌌: OPEN → Spirituality; prior PFM1113 👻🎉 Spirituality → OPEN.
+- PFM0307 😭🤬: Shame → Overstimulated; prior PFM0512 💥🧠 Overstimulated → OPEN.
+- PFM0310 😭🤢: Despair → Shame.
+- PFM0305 😭💥: Devastating → Despair; Despair absorbs useful Devastating ruin/aftermath/loss coverage.
+- PFM0412 🤣🧠: Witty → OPEN.
+- PFM0405 🤣💥: Cringe → Hilarious, using the prior Witty definition unchanged.
+- PFM0406 🤣🌀: Zany → Absurd.
+- PFM0408 🤣🌌: Absurd → Medicated; prior PFM0812 🌌🧠 Medicated → OPEN.
+- PFM1013 🤢🎉: OPEN → Excess; prior PFM1012 🤢🧠 Excess → OPEN.
+- PFM1011 🤢👻: Macabre → Foreboding.
+- PFM0311 😭👻: Foreboding → Paranoia; prior PFM1112 👻🧠 Paranoia → OPEN.
+- Goofy absorbs useful Zany comic-eccentric coverage while retaining a gate against ordinary clutter, incidental awkwardness, and merely unusual appearance.
+- Cringe, Witty, Devastating, Zany, and Macabre retire as standalone Theme names.
+- Prompt Diagnostics updates to 79 concepts: 13 Prims + 66 assigned PrimFusion Themes.
+- Existing Hot Magenta OPEN styling from v0.9.40.174 is preserved.
+- Theme/Description provider routing, independent per-Theme audit, deterministic Theme-derived Reactions, Matrix geometry, and Matrix version remain unchanged.
 
 ## Final approved Matrix revision
 
