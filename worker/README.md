@@ -1,9 +1,10 @@
-# Genreactrix AI Worker 0.9.6.128 — PrimFusion Theme relocations
+# Genreactrix AI Worker 0.9.6.129 — PrimFusion consolidation
 
-Current behavior: no AI Reaction scan. Reactions are derived 100% from the three selected Themes as six equal 1/6 Theme→Prim slots; duplicate Prims accumulate. Theme/Description provider routing remains Mistral → GPT-4.1 mini → Qwen 3.7 Plus.
+Current behavior: no AI Reaction scan. Reactions remain derived 100% from the three selected Themes as six equal 1/6 Theme→Prim slots; duplicate Prims accumulate. Theme/Description provider routing remains Mistral → GPT-4.1 mini → Qwen 3.7 Plus.
+
+Matrix identity remains 0.0.0.0. Active taxonomy: 13 Prims, 70 assigned PrimFusion Themes, 8 open pair slots. This release applies the final approved Matrix consolidation/relocations and synchronizes definitions and fixed Theme-order arrays.
 
 ---
-
 ## 0.9.6.121 — Qwen 3.7 Plus non-thinking
 
 - Fresh Theme acceptance now uses the compact `theme-decision-audit` stage: only the three delivered Themes are audited on the decision-critical path.
@@ -16,7 +17,7 @@ Current behavior: no AI Reaction scan. Reactions are derived 100% from the three
 
 # Genreactrix AI Worker
 
-Current bundled Worker: v0.9.6.128-theme-relocations.
+Current bundled Worker: v0.9.6.129-primfusion-consolidation.
 
 ## Historical bundled Worker notes
 
