@@ -1,23 +1,46 @@
-# Genreactrix v0.9.40.172 — PrimFusion Theme relocations
+# Genreactrix v0.9.40.173 — PrimFusion consolidation
 
-## v0.9.40.172 exact Matrix changes
-- ✨🌀 PFM0206: Psychedelic
-- 🌀🌌 PFM0608: Surreal
-- 🌀👻 PFM0611: Horror
-- 🤢👻 PFM1011: Macabre
-- 🌌🤢 PFM0810: Phantasmagoric
-- 🌌🤬 PFM0708: OPEN (removed from selectable Theme vocabulary)
+Built from accepted v0.9.40.172 with Worker 0.9.6.129-primfusion-consolidation.
 
-No other PrimFusion Theme locations were changed. Indulgent remains unchanged.
+## Final approved Matrix revision
 
-Built from v0.9.40.170.
+- PFM0203 ✨😭: Melancholic → Gloomy (same definition)
+- PFM0409 🤣🌶️: Ribaldry → Raunchy (same definition)
+- PFM0205 ✨💥: Majestic → Epic; Epic definition absorbs Majestic + prior Epic coverage
+- PFM0508 💥🌌: Epic → Ethereal
+- PFM0812 🌌🧠: Ethereal → Medicated
+- PFM0512 💥🧠: Medicated → Overstimulated
+- PFM1012 🤢🧠: Greed → Excess; definition absorbs visible Greed + Indulgent coverage
+- PFM1013 🤢🎉: Indulgent → OPEN
+- PFM0610 🌀🤢: Mutant → Strange; definition absorbs Mutant + Alien + Bizarre + Surreal coverage
+- PFM0608 🌀🌌: Surreal → OPEN
+- PFM0612 🌀🧠: Alien → OPEN
+- PFM0106 🧸🌀: Bizarre → Kawaii
+- PFM0109 🧸🌶️: Kawaii → OPEN
+- PFM0103 🧸😭: Pitiful → Poignant; definition absorbs Pitiful + prior Poignant coverage
+- PFM0312 😭🧠: Poignant → Mundane
+- PFM0712 🤬🧠: Mundane → OPEN
+- PFM0513 💥🎉: Pride → OPEN
+- PFM0912 🌶️🧠: Kinky → OPEN
+- PFM0708 🤬🌌: remains OPEN
 
-Changes:
-- Removes the independent AI Reaction scan from normal analysis.
-- Reactions are now 100% derived from the three selected Themes: six equal Theme→Prim slots at 100/6 each, with duplicate Prims accumulating.
-- Reaction-only recalculation is local/deterministic and does not call an AI provider.
-- Theme reruns automatically recalculate Reaction weights from the new Theme set.
-- Tuned now means explicit Director tuning context (guidance / Theme rerun / Description rerun), not automatic reruns or artifact version increments.
-- No historical cleanup/migration is included; current calibration workflow wipes packs between runs.
+Together with the pre-existing PFM0708 vacancy, the active taxonomy is now 13 Prims, 70 assigned PrimFusion Themes, and 8 open pair slots. Matrix identity remains 0.0.0.0.
 
-Worker baseline: 0.9.6.128-theme-relocations.
+## Definition changes
+
+- Gloomy keeps the former Melancholic definition unchanged.
+- Raunchy keeps the former Ribaldry definition unchanged.
+- Epic preserves the useful coverage of both prior Majestic and Epic.
+- Overstimulated is a new still-image-grounded definition centered on visible sensory/informational/social overload.
+- Excess is grounded in visible overabundance, accumulation, consumption, luxury, indulgence, or waste rather than invisible desire.
+- Strange consolidates the visible territory of Mutant, Alien, Bizarre, and Surreal while using concrete anomalous/impossible/transformed cues.
+- Poignant preserves both prior Poignant and Pitiful coverage.
+- Kawaii, Ethereal, Medicated, and Mundane retain their current runtime definitions when moved.
+
+## Dependent consistency updates
+
+- Removed/open PFM codes are excluded from both fixed Theme-order arrays and AI Theme vocabulary.
+- Prompt Diagnostics now reflects 83 total concepts: 13 Prims + 70 assigned PrimFusion Themes.
+- Theme recovery examples no longer reference an open PFM code.
+- The affected Matrix cells, Worker registry entries, bundled Worker source, and definition reference file are synchronized.
+- No AI Theme/Description routing, provider-lane behavior, deterministic Theme-derived Reaction logic, or Matrix versioning semantics were changed.
