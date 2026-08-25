@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.171";
+const GENREACTRIX_BUILD="v0.9.40.172";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -73,7 +73,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Beautiful|Tragic": "Melancholic",
   "Beautiful|Funny": "Camp",
   "Beautiful|Intense": "Majestic",
-  "Beautiful|Weird": "Surreal",
+  "Beautiful|Weird": "Psychedelic",
   "Beautiful|Dreamy": "Romance",
   "Beautiful|Zazzly": "Exposure",
   "Beautiful|Disgusting": "Grotesque",
@@ -124,20 +124,19 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Celebration|Intense": "Pride",
   "Angry|Intense": "Aggressive",
   "Weird|Weird": "Weird",
-  "Dreamy|Weird": "Psychedelic",
+  "Dreamy|Weird": "Surreal",
   "Weird|Zazzly": "FreakyDeaky",
   "Disgusting|Weird": "Mutant",
-  "Scary|Weird": "Macabre",
+  "Scary|Weird": "Horror",
   "Smart|Weird": "Alien",
   "Celebration|Weird": "Delirious",
   "Angry|Weird": "Monstrous",
   "Dreamy|Dreamy": "Dreamy",
   "Dreamy|Zazzly": "Seduction",
-  "Disgusting|Dreamy": "Putrid",
+  "Disgusting|Dreamy": "Phantasmagoric",
   "Dreamy|Scary": "Eerie",
   "Dreamy|Smart": "Ethereal",
   "Celebration|Dreamy": "Magical",
-  "Angry|Dreamy": "Phantasmagoric",
   "Zazzly|Zazzly": "Zazzly",
   "Disgusting|Zazzly": "Lewd",
   "Scary|Zazzly": "Exploitation",
@@ -145,7 +144,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Celebration|Zazzly": "Hedonism",
   "Angry|Zazzly": "Sadomasochism",
   "Disgusting|Disgusting": "Disgusting",
-  "Disgusting|Scary": "Horror",
+  "Disgusting|Scary": "Macabre",
   "Disgusting|Smart": "Greed",
   "Celebration|Disgusting": "Indulgent",
   "Angry|Disgusting": "Repulsive",
@@ -516,7 +515,7 @@ function currentAiRun(){ return currentAiRuns().at(-1); }
 function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
 function currentAiWeights(){ return currentAiRun().weights || {}; }
 
-/* v0.9.40.171 — whole-number presentation for six equal Theme→Prim slots.
+/* v0.9.40.172 — whole-number presentation for six equal Theme→Prim slots.
    Stored weights use exact 1/6 contributions; largest-remainder display keeps the
    visible vector at exactly 100 while preserving duplicate-Prim accumulation. */
 function displayReactionPercentages(source={}){
@@ -1515,7 +1514,7 @@ async function openTunedHistory(){
     const h=document.createElement('details');h.innerHTML=`<summary>Full image history timeline · ${timeline.length} events</summary><pre>${amaEsc(JSON.stringify(timeline,null,2))}</pre>`;body.append(h);
   }catch(error){body.innerHTML=`<p>AI history could not be loaded: ${amaEsc(error?.message||error)}</p>`}
 }
-function openSlopDecision(){const assessment=currentSlopAssessment(),kind=slopAssessmentKind(assessment);if(kind==='none')return;const reason=$('slopReason'),confidence=$('slopConfidence');if(reason)reason.textContent=assessment.reason||(kind==='warning'?'Theme analysis could not establish three defensible Themes; Director review is recommended.':'AI marked this image as possible SLOP.');if(confidence)confidence.textContent=kind==='warning'?`Slop Warning · ${Number(assessment.themeSurvivorCount)||0} defensible Theme${Number(assessment.themeSurvivorCount)===1?'':'s'} after ${Number(assessment.themeAuditedCount)||91} audited.`:`Slop Detected · AI advisory confidence: ${Number(assessment.confidence)||0}%`;safelyShowDialog($('slopDialog'))}
+function openSlopDecision(){const assessment=currentSlopAssessment(),kind=slopAssessmentKind(assessment);if(kind==='none')return;const reason=$('slopReason'),confidence=$('slopConfidence');if(reason)reason.textContent=assessment.reason||(kind==='warning'?'Theme analysis could not establish three defensible Themes; Director review is recommended.':'AI marked this image as possible SLOP.');if(confidence)confidence.textContent=kind==='warning'?`Slop Warning · ${Number(assessment.themeSurvivorCount)||0} defensible Theme${Number(assessment.themeSurvivorCount)===1?'':'s'} after ${Number(assessment.themeAuditedCount)||77} audited.`:`Slop Detected · AI advisory confidence: ${Number(assessment.confidence)||0}%`;safelyShowDialog($('slopDialog'))}
 async function applySlopDecision(decision){
   const record=currentImageRecord(),assessment=currentSlopAssessment();if(!record||!assessment)return;const at=new Date().toISOString();
   if(decision==='not-slop')window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{slopDirectorReview:{decision:'not-slop',assessmentId:assessment.assessmentId||null,at}}}},'slop-director-not-slop');
@@ -1660,7 +1659,7 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   root.innerHTML="";
 
   // Exact source of truth: PrimFusion_Interlocked_Matrix_Compact_Screenshot_Match.xlsm, B2:H14.
-  // Current 13-Prim / 78-Theme PrimFusion interlocked matrix. Ticket is retired; former P14 Angry now occupies P07.
+  // Current 13-Prim PrimFusion interlocked matrix: 77 assigned Themes and one open pair slot. Ticket is retired; former P14 Angry now occupies P07.
   const topSymbols=["🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠"];
   const bottomSymbols=["🌀", "🌌", "🤢", "👻", "💥", "🤬", "🧠"];
   const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "🌀", "🌌", "🤢", "👻", "💥", "🤬"];
@@ -1671,14 +1670,14 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
     [{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"ComedyHorror","tone":"lavender"},{"value":"Foreboding","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Spirituality","tone":"lavender"},{"value":"Paranoia","tone":"lavender"}],
     [{"value":"UglyCute","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Greed","tone":"lavender"}],
     [{"value":"Whimsical","tone":"lavender"},{"value":"Romance","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Nostalgia","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Magical","tone":"lavender"},{"value":"Ethereal","tone":"lavender"}],
-    [{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Zany","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Alien","tone":"lavender"}],
+    [{"value":"Bizarre","tone":"lavender"},{"value":"Psychedelic","tone":"lavender"},{"value":"Zany","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Alien","tone":"lavender"}],
     [{"value":"🧸","tone":"green"},{"value":"Cozy","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Playful","tone":"lavender"},{"value":"Innocence","tone":"lavender"}],
     [{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Camp","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Exposure","tone":"lavender"},{"value":"Festive","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],
-    [{"value":"Psychedelic","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Freakshow","tone":"lavender"},{"value":"Ribaldry","tone":"lavender"},{"value":"PartyTime","tone":"lavender"},{"value":"Witty","tone":"lavender"}],
-    [{"value":"Mutant","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],
-    [{"value":"Macabre","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Horror","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],
+    [{"value":"Surreal","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Freakshow","tone":"lavender"},{"value":"Ribaldry","tone":"lavender"},{"value":"PartyTime","tone":"lavender"},{"value":"Witty","tone":"lavender"}],
+    [{"value":"Mutant","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],
+    [{"value":"Horror","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Macabre","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],
     [{"value":"Chaotic","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Terror","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Glory","tone":"lavender"}],
-    [{"value":"Monstrous","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"},{"value":"🧠","tone":"green"}]
+    [{"value":"Monstrous","tone":"peach"},{"value":"OPEN","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"},{"value":"🧠","tone":"green"}]
   ];
 
   const primitiveForSymbol=symbol=>PRIMITIVES.find(p=>p.symbol===symbol);
