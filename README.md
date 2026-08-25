@@ -1,3 +1,14 @@
+# Genreactrix v0.9.40.178 — Smart matrix/cache repair
+
+- Replaces unsafe v0.9.40.177.
+- Visible build number and all local asset cache-busters now use v0.9.40.178.
+- Removes the 13 retired-Smart cells that incorrectly appeared as an OPEN far-right column in the interlocked matrix.
+- Active interlocked matrix is 13 rows × 6 columns with only 3 legitimate OPEN pair slots.
+- 12 active Prims; Celebration is P12; 63 assigned PrimFusion Themes.
+- Prompt Diagnostics remains 75 concepts / 5 batches and its batch-track geometry now matches.
+- Restores approved Goofy/Camp mapping in Worker and definitions: PFM0104 Goofy, PFM0204 Camp.
+- No direct AI Reaction scan is reintroduced.
+
 # Genreactrix v0.9.40.177 — P13 audit repair
 
 - Follow-up verification release built from v0.9.40.176.
