@@ -1,6 +1,9 @@
-# Genreactrix v0.9.40.169 — Fast Theme audit + deferred reporting sidecar
+# Genreactrix v0.9.40.170 — Qwen non-thinking live status
 
-Behavior/AI-engine release based on v0.9.40.168. Requires Worker v0.9.6.120.
+- Qwen 3.7 Plus now displays **non-thinking** in the live Selected job status when the Worker reports thinking mode disabled.
+- Bundled Worker updated to **0.9.6.121-qwen-non-thinking**.
+
+Behavior/AI-engine release based on v0.9.40.169. Requires Worker v0.9.6.121-qwen-non-thinking.
 
 ## Change
 - Fresh Theme acceptance now uses a compact **decision-critical audit** of only the three selected Themes.
@@ -13,7 +16,7 @@ Behavior/AI-engine release based on v0.9.40.168. Requires Worker v0.9.6.120.
 - No existing UI region is moved, resized, rearranged, or reflowed.
 
 ## Worker dependency
-- Worker v0.9.6.120 adds `/api/genreactrix/theme-report-diagnostic` for the deferred full reporting sidecar.
+- Worker v0.9.6.121 retains `/api/genreactrix/theme-report-diagnostic` and disables Qwen 3.7 Plus thinking mode for Genreactrix calls.
 - The ordinary `/api/genreactrix/analyze` and `/api/genreactrix/analyze-stream` paths remain available.
 - Provider order remains **Mistral → GPT-4.1 mini → Qwen 3.7 Plus**.
 - Worker v0.9.6.119's TransformStream compatibility repair is retained.
