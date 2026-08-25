@@ -8509,13 +8509,27 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .interlocked-cell.interlocked-open{background:#ff00a8!important;color:#17131b!important;}
 
 
-/* v0.9.40.178 — Smart retired / Celebration occupies P12.
+/* v0.9.40.179 — Smart retired / Celebration occupies P12.
    12 active Prims. Interlocked matrix is 13 rows × 6 columns: the retired-Smart
-   far-right column is removed; only the three genuinely unassigned pairs remain OPEN. */
+   far-right column is removed; all 66 surviving PrimFusion pairs are now assigned. */
 .interlocked-axis-top,.interlocked-axis-bottom{grid-template-columns:repeat(6,minmax(0,1fr))!important;}
 .interlocked-matrix-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important;grid-template-rows:repeat(13,minmax(0,1fr))!important;}
 .tablet-workbench-matrix .true-primfusion-grid{grid-template-columns:var(--true-pf-y-axis-width) repeat(12,minmax(0,1fr))!important;grid-template-rows:var(--true-pf-x-axis-height) repeat(12,minmax(0,1fr))!important;}
 .true-primfusion-grid{grid-template-columns:var(--true-pf-y-axis-width) repeat(12,minmax(0,1fr))!important;grid-template-rows:var(--true-pf-x-axis-height) repeat(12,minmax(0,1fr))!important;}
 @media (max-width:700px){.true-primfusion-grid{min-width:650px;}}
 .theme-rerun-prim-strip{grid-template-columns:repeat(12,calc(100% / 23))!important;column-gap:calc(100% / 23)!important;}
-.prompt-diagnostics-batch-track{grid-template-columns:repeat(5,1fr)!important;}
+.prompt-diagnostics-batch-track{grid-template-columns:repeat(6,1fr)!important;}
+
+
+/* v0.9.40.180 — preserve the canonical interlocked PrimFusion Matrix palette.
+   Billy's established matrix colors: very pale pastel lavender and peach,
+   commemorative green identity separator, and Hot Magenta for OPEN cells.
+   These terminal rules are intentionally authoritative so later landscape
+   geometry overrides cannot neutralize the matrix color regions. */
+.interlocked-cell.interlocked-lavender,
+.interlocked-cell.interlocked-upper{background:#d8c9e5!important;color:#17131b!important;}
+.interlocked-cell.interlocked-peach,
+.interlocked-cell.interlocked-lower{background:#f2cba8!important;color:#17131b!important;}
+.interlocked-cell.interlocked-green,
+.interlocked-cell.interlocked-diagonal{background:#a9dda5!important;color:#102313!important;}
+.interlocked-cell.interlocked-open{background:#ff00a8!important;color:#17131b!important;}

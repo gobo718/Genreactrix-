@@ -1,7 +1,23 @@
-# Genreactrix v0.9.40.178 — Smart matrix/cache repair
+# Genreactrix v0.9.40.180 — final three PrimFusion Themes + matrix colors
+
+- Fills all three remaining PrimFusion cells: PFM0109 Cheeky, PFM0708 Cursed, PFM1112 Halloween.
+- Matrix now has 12 Prims / 66 assigned PrimFusion Themes / 0 OPEN cells.
+- Restores and preserves the canonical lavender / peach / green-separator matrix palette.
+- Prompt Diagnostics updated to 78 concepts / 6 batches (15, 15, 15, 15, 15, 3).
+- Bundled Worker: 0.9.6.134-open-three-filled.
+
+---
+
+# Genreactrix v0.9.40.179 — Smart matrix/cache repair
+
+## Matrix palette restoration
+- Reasserts the established interlocked Matrix palette at final CSS precedence: very pale pastel lavender (`#d8c9e5`), very pale pastel peach (`#f2cba8`), green separator (`#a9dda5`), and Hot Magenta OPEN (`#ff00a8`).
+- No matrix geometry, Theme placement, Prim numbering, or Worker behavior changed from v0.9.40.178.
+- Bundled Worker remains v0.9.6.133.
+
 
 - Replaces unsafe v0.9.40.177.
-- Visible build number and all local asset cache-busters now use v0.9.40.178.
+- Visible build number and all local asset cache-busters now use v0.9.40.179.
 - Removes the 13 retired-Smart cells that incorrectly appeared as an OPEN far-right column in the interlocked matrix.
 - Active interlocked matrix is 13 rows × 6 columns with only 3 legitimate OPEN pair slots.
 - 12 active Prims; Celebration is P12; 63 assigned PrimFusion Themes.
