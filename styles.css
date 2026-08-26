@@ -8534,7 +8534,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .interlocked-cell.interlocked-diagonal{background:#a9dda5!important;color:#102313!important;}
 .interlocked-cell.interlocked-open{background:#ff00a8!important;color:#17131b!important;}
 
-/* v0.9.40.185 — checkpointed Failsafe Cleanup for large Reset All operations. */
+/* v0.9.40.186 — store-at-a-time Failsafe Cleanup for large Reset All operations. */
 .danger-zone-reset-review-skip{
   grid-column:1/-1;
   display:flex;

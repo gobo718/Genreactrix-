@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.186 — store-at-a-time authorized failsafe recovery
+
+This release replaces the 10-record cursor-delete loop with one native IndexedDB `objectStore.clear()` transaction per store. The failsafe checkpoints after every committed store, yields to the browser, and resumes from the first store not already checkpointed. It does not pre-count records, load values, or delete records one-by-one. Final verification remains a one-key probe per store.
+
+Interrupted Reset All authorization is now carried by the saved failsafe checkpoint. When a valid Reset All failsafe checkpoint exists, reopening Danger Zone goes directly to the recovery confirmation screen and offers Resume cleanup without re-entering the Danger Zone password, confirmation phrase, or acknowledgement. A brand-new Reset All still requires the normal confirmation once. The authorization checkpoint is removed only after the final integrity check passes.
+
+The Execute button is now hard-disabled while cleanup is running; confirmation-field changes can no longer visually re-enable it during an active transaction. Pause and Stop now act between committed store clears. Worker remains v0.9.6.136 and does not require re-upload.
+
+---
+
 # Genreactrix v0.9.40.185 — count-free progressive failsafe cleanup
 
 This release removes the per-store `count()` bottleneck from Reset All → Failsafe Cleanup. It also stops pre-opening every product database before deletion begins. The failsafe now opens one existing database at a time, discovers that database's targeted stores, and immediately deletes up to 10 records per committed cursor transaction until a zero-record bite proves that store is empty.
