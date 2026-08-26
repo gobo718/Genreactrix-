@@ -8521,7 +8521,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .prompt-diagnostics-batch-track{grid-template-columns:repeat(6,1fr)!important;}
 
 
-/* v0.9.40.180 — preserve the canonical interlocked PrimFusion Matrix palette.
+/* v0.9.40.181 — preserve the canonical interlocked PrimFusion Matrix palette.
    Billy's established matrix colors: very pale pastel lavender and peach,
    commemorative green identity separator, and Hot Magenta for OPEN cells.
    These terminal rules are intentionally authoritative so later landscape

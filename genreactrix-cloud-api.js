@@ -40,11 +40,25 @@
   }
   throw new Error(auth.error||`Worker connected · authentication probe failed (${authResponse.status})`);
  };
+
+ const serverJobPath=(jobId,suffix='')=>`/api/genreactrix/jobs/${encodeURIComponent(String(jobId||''))}${suffix}`;
+ const createServerJob=payload=>request('/api/genreactrix/jobs',{method:'POST',headers:{'x-analysis-key':storedKey()},body:JSON.stringify(payload||{})});
+ const serverJobStatus=jobId=>request(serverJobPath(jobId),{method:'GET',headers:{'x-analysis-key':storedKey()}});
+ const serverJobItem=(jobId,itemId)=>request(serverJobPath(jobId,`/items/${encodeURIComponent(String(itemId||''))}`),{method:'GET',headers:{'x-analysis-key':storedKey()}});
+ const startServerJob=jobId=>request(serverJobPath(jobId,'/start'),{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'});
+ const controlServerJob=(jobId,action)=>request(serverJobPath(jobId,'/control'),{method:'POST',headers:{'x-analysis-key':storedKey()},body:JSON.stringify({action:String(action||'')})});
+ const harvestServerJobItem=(jobId,itemId)=>request(serverJobPath(jobId,`/items/${encodeURIComponent(String(itemId||''))}/harvest`),{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'});
+ const uploadServerJobImage=async(jobId,itemId,blob)=>{
+  if(!base)throw new Error('AI Worker URL is not configured');
+  const response=await fetch(`${base}${serverJobPath(jobId,`/items/${encodeURIComponent(String(itemId||''))}/image`)}`,{method:'POST',headers:{'x-analysis-key':storedKey(),'content-type':'image/jpeg'},body:blob});
+  const payload=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(payload.error||`Server image handoff failed (${response.status})`);error.responsePayload=payload;throw error;}return payload;
+ };
  window.GenreactrixCloudApi=Object.freeze({
   configure(value){base=normalize(value);window.genreactrixSettingsEngine?.set?.('ai.worker.base',base);if(base)localStorage.setItem(BASE_KEY,base);else localStorage.removeItem(BASE_KEY);window.GENREACTRIX_AI_WORKER_BASE=base;return base;},
   getBaseUrl:()=>base,isConfigured:()=>Boolean(base),getKey:()=>storedKey(),setKey:value=>{const key=String(value||'');window.genreactrixSettingsEngine?.set?.('ai.worker.accessKey',key);if(key)localStorage.setItem(KEY_KEY,key);else localStorage.removeItem(KEY_KEY);return key;},
   reload(){base=normalize(window.genreactrixSettingsEngine?.get?.('ai.worker.base','')||localStorage.getItem(BASE_KEY)||window.GENREACTRIX_AI_WORKER_BASE||base||'');return base;},
   health:()=>request('/api/health',{method:'GET'}),verifyConnection,
+  createServerJob,serverJobStatus,serverJobItem,startServerJob,controlServerJob,harvestServerJobItem,uploadServerJobImage,getProviderRouting:()=>currentProviderRouting(),
   providerReadiness:()=>request('/api/genreactrix/provider-readiness',{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'}),
   fetchImage:async(imageUrl,key=storedKey())=>{
     if(!base)throw new Error('AI Worker URL is not configured');

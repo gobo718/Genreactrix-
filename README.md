@@ -1,3 +1,15 @@
+# Genreactrix v0.9.40.181 — durable server AI pass runner
+
+- Adds an optional durable server-side AI job runner for normal full AI passes.
+- Browser still owns canonical Image Records, artifact/history persistence, Director state, Theme Sweep evaluation, Bundling, and all interactive UI.
+- When the Worker reports D1 + Queue + R2 bindings available, eligible full AI passes are handed off once and continue without the browser remaining foregrounded.
+- The Worker Queue consumer reuses the existing `analyze()` pipeline unchanged; no prompt, provider-order, Theme, Description, audit, slop, or Theme-derived Reaction logic was replaced.
+- Browser-local images are normalized to the existing 1280px JPEG transport copy, uploaded temporarily to R2, and removed after a successful harvest/cancel. Linked HTTPS images stay URL-backed.
+- Server job state/results are durable in D1. Queue consumer concurrency is fixed at 1 for this first experiment, preserving the existing sequential image-job behavior.
+- If the new server bindings are absent, Genreactrix automatically keeps using the existing browser-orchestrated path.
+- Also fixes two pending matrix UI defects from v0.9.40.180: Cheeky uses the lavender region color, and the final right-axis box contains the Angry 🤬 Prim.
+- Bundled Worker: 0.9.6.135-server-job-runner.
+
 # Genreactrix v0.9.40.180 — final three PrimFusion Themes + matrix colors
 
 - Fills all three remaining PrimFusion cells: PFM0109 Cheeky, PFM0708 Cursed, PFM1112 Halloween.
