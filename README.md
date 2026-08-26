@@ -1,3 +1,16 @@
+# Genreactrix v0.9.40.183 — checkpointed Failsafe Cleanup
+
+- Adds a separate Failsafe Cleanup method for Reset All Product Data.
+- Failsafe deletes at most 10 IndexedDB records per committed transaction bite, then yields to the browser before continuing.
+- A checkpoint is written after every bite. Pause, Resume, and Stop after current bite are supported; a browser close/reload can resume from the remaining persistent data after normal Danger Zone confirmation.
+- Progress reports the active database/store, store number, records removed, and records remaining.
+- Each store is count-verified when emptied; the existing final reset verification remains count-only.
+- Existing v0.9.40.182 fast memory-safe Reset All remains available as the Fast cleanup option.
+- Reset All no longer renders every image thumbnail on the review screen. Large resets show a lightweight selected-image summary instead, avoiding the multi-hour thumbnail preload observed with very large packs.
+- Partial cleanup left by v0.9.40.181/.182 is safe input: already-empty stores are skipped and only remaining product data is removed.
+- Preservation boundaries are unchanged.
+- No Worker/AI behavior changes; bundled Worker remains 0.9.6.136-cloudflare-typecheck-fix.
+
 # Genreactrix v0.9.40.182 — memory-safe Danger Zone reset
 
 - Repairs Reset All Product Data after large browser-local runs.

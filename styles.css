@@ -8521,7 +8521,7 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .prompt-diagnostics-batch-track{grid-template-columns:repeat(6,1fr)!important;}
 
 
-/* v0.9.40.182 — preserve the canonical interlocked PrimFusion Matrix palette.
+/* v0.9.40.183 — preserve the canonical interlocked PrimFusion Matrix palette.
    Billy's established matrix colors: very pale pastel lavender and peach,
    commemorative green identity separator, and Hot Magenta for OPEN cells.
    These terminal rules are intentionally authoritative so later landscape
@@ -8533,3 +8533,44 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .interlocked-cell.interlocked-green,
 .interlocked-cell.interlocked-diagonal{background:#a9dda5!important;color:#102313!important;}
 .interlocked-cell.interlocked-open{background:#ff00a8!important;color:#17131b!important;}
+
+/* v0.9.40.183 — checkpointed Failsafe Cleanup for large Reset All operations. */
+.danger-zone-reset-review-skip{
+  grid-column:1/-1;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:14px;
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;
+  background:rgba(255,255,255,.04);
+}
+.danger-zone-reset-review-skip b{font-size:.92rem}
+.danger-zone-reset-review-skip span{font-size:.78rem;line-height:1.35;opacity:.86}
+.danger-zone-cleanup-method{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:10px;
+  background:rgba(255,255,255,.035);
+}
+.danger-zone-cleanup-method[hidden]{display:none!important}
+.danger-zone-cleanup-method>strong{font-size:.84rem}
+.danger-zone-cleanup-method>label{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:start;
+  gap:8px;
+  padding:7px 8px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:8px;
+}
+.danger-zone-cleanup-method>label>span{display:flex;flex-direction:column;gap:3px}
+.danger-zone-cleanup-method>label b{font-size:.8rem}
+.danger-zone-cleanup-method>label small{font-size:.69rem;line-height:1.3;opacity:.78}
+.danger-zone-cleanup-method>em{font-size:.7rem;line-height:1.3;opacity:.82;font-style:normal}
+.danger-zone-failsafe-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.danger-zone-failsafe-controls[hidden]{display:none!important}
+.danger-zone-failsafe-controls button{flex:1 1 145px;min-height:36px}
