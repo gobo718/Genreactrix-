@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.134-open-three-filled
+/* Genreactrix AI Worker v0.9.6.135-server-job-runner
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.134-open-three-filled';
+const API_VERSION = '0.9.6.135-server-job-runner';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -4436,7 +4436,7 @@ async function analyze(env,body){
   if(reactionFamilyRequested&&!themeFamilyRequested)throw new Error('AI Reaction scan is retired. Request Themes with Reactions, or recalculate Reactions locally from the current three Themes.');
   const needsImage = true;
   const imageInputStartedMs=Date.now();
-  const image = body.imageDataUrl ? dataUrlBytes(body.imageDataUrl) : await fetchBytes(body.imageUrl);
+  const image = body.imageDataUrl ? dataUrlBytes(body.imageDataUrl) : (body.imageObjectKey ? await serverJobImageBytes(env,body.imageObjectKey) : await fetchBytes(body.imageUrl));
   const imageInputEndedMs=Date.now();
 
   const model = env.WORKERS_AI_VISION_MODEL || DEFAULT_MODEL;
@@ -4451,7 +4451,7 @@ async function analyze(env,body){
     durationMs:null,
     execution:{reactionAiScan:false,reactionArchitecture:'theme-derived-six-equal-slots-v1',reactionThemeParallelEligible:false,reactionThemeRanInParallel:false,costOrderedProviderRouting:true,providerOrder:[...THEME_PROVIDER_CYCLE_ORDER]},
     families:{
-      imageInput:{startedAt:timingIso(imageInputStartedMs),endedAt:timingIso(imageInputEndedMs),durationMs:timingDurationMs(imageInputStartedMs,imageInputEndedMs),mode:needsImage?(body.imageDataUrl?'embedded-data-url':'remote-url'):'not-required',byteLength:image?Number(image.byteLength||image.length||0):0}
+      imageInput:{startedAt:timingIso(imageInputStartedMs),endedAt:timingIso(imageInputEndedMs),durationMs:timingDurationMs(imageInputStartedMs,imageInputEndedMs),mode:needsImage?(body.imageDataUrl?'embedded-data-url':(body.imageObjectKey?'server-r2-object':'remote-url')):'not-required',byteLength:image?Number(image.byteLength||image.length||0):0}
     },
     recoveryPolicy:{freshThemeWholeRunReplacement:true,freshSameProviderFinalRescan:false,rejectedFreshRunDataReused:false,rerunRecoveryPreserved:true,rollbackTelemetryOnly:true}
   };
@@ -4749,6 +4749,206 @@ async function runThemeReportingSidecarRequest(env,body={}){
   return{schemaVersion:1,protocol:'theme-reporting-diagnostic-background-v1',imageId:String(body.imageId||''),themeCodes:selections.map(row=>row.code),diagnostic};
 }
 
+
+/* --- Durable server-side AI job runner -----------------------------------
+   Browser responsibility ends after manifest + local-image handoff.
+   The Queue consumer reuses analyze() unchanged for each image request.
+   D1 stores durable job/item state and result envelopes; R2 is temporary
+   transport storage for browser-local normalized JPEGs only.
+*/
+let SERVER_JOB_SCHEMA_READY=false;
+const SERVER_JOB_TERMINAL_STATES=new Set(['completed','completed-with-failures','failed','cancelled']);
+const SERVER_JOB_ITEM_TERMINAL_STATES=new Set(['complete','failed','cancelled']);
+const serverJobBindings=env=>({db:Boolean(env?.GENREACTRIX_JOBS_DB),queue:Boolean(env?.GENREACTRIX_AI_JOB_QUEUE),images:Boolean(env?.GENREACTRIX_AI_IMAGES)});
+const serverJobBindingsReady=env=>{const b=serverJobBindings(env);return b.db&&b.queue&&b.images;};
+const serverJobIso=()=>new Date().toISOString();
+const serverJobJsonParse=(value,fallback=null)=>{try{return JSON.parse(String(value??''));}catch{return fallback;}};
+const serverJobId=prefix=>`${prefix}_${crypto.randomUUID().replace(/-/g,'')}`;
+
+async function ensureServerJobSchema(env){
+  if(SERVER_JOB_SCHEMA_READY)return;
+  if(!env?.GENREACTRIX_JOBS_DB)throw new Error('Server AI jobs require GENREACTRIX_JOBS_DB');
+  const db=env.GENREACTRIX_JOBS_DB;
+  await db.prepare(`CREATE TABLE IF NOT EXISTS ai_jobs (
+    id TEXT PRIMARY KEY,
+    client_job_id TEXT,
+    state TEXT NOT NULL,
+    total INTEGER NOT NULL DEFAULT 0,
+    completed INTEGER NOT NULL DEFAULT 0,
+    failed INTEGER NOT NULL DEFAULT 0,
+    cancelled INTEGER NOT NULL DEFAULT 0,
+    message TEXT NOT NULL DEFAULT '',
+    config_json TEXT,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    completed_at TEXT,
+    updated_at TEXT NOT NULL
+  )`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS ai_jobs_client_job_idx ON ai_jobs(client_job_id)`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS ai_job_items (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    client_item_id TEXT,
+    image_id TEXT NOT NULL,
+    order_index INTEGER NOT NULL DEFAULT 0,
+    state TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    source_kind TEXT NOT NULL,
+    source_ref TEXT,
+    request_json TEXT NOT NULL,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    completed_at TEXT,
+    harvested_at TEXT,
+    updated_at TEXT NOT NULL
+  )`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS ai_job_items_job_idx ON ai_job_items(job_id, order_index)`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS ai_job_items_state_idx ON ai_job_items(job_id, state)`).run();
+  SERVER_JOB_SCHEMA_READY=true;
+}
+
+async function serverJobImageBytes(env,key){
+  if(!env?.GENREACTRIX_AI_IMAGES)throw new Error('Server AI image storage is not configured');
+  const object=await env.GENREACTRIX_AI_IMAGES.get(String(key||''));
+  if(!object)throw new Error('Server AI image payload is unavailable');
+  const bytes=new Uint8Array(await object.arrayBuffer());
+  if(!bytes.length)throw new Error('Server AI image payload is empty');
+  if(bytes.length>6_000_000)throw new Error('Server AI image payload exceeds 6 MB');
+  return bytes;
+}
+
+async function serverJobRow(env,jobId){
+  await ensureServerJobSchema(env);
+  return env.GENREACTRIX_JOBS_DB.prepare('SELECT * FROM ai_jobs WHERE id=?').bind(String(jobId)).first();
+}
+async function serverJobItemRow(env,jobId,itemId){
+  await ensureServerJobSchema(env);
+  return env.GENREACTRIX_JOBS_DB.prepare('SELECT * FROM ai_job_items WHERE job_id=? AND id=?').bind(String(jobId),String(itemId)).first();
+}
+async function serverJobItems(env,jobId){
+  await ensureServerJobSchema(env);
+  const result=await env.GENREACTRIX_JOBS_DB.prepare('SELECT id,client_item_id,image_id,order_index,state,attempts,error,source_kind,started_at,completed_at,harvested_at,updated_at FROM ai_job_items WHERE job_id=? ORDER BY order_index ASC').bind(String(jobId)).all();
+  return result?.results||[];
+}
+async function refreshServerJobCounters(env,jobId){
+  const db=env.GENREACTRIX_JOBS_DB,summary=await db.prepare(`SELECT
+    COUNT(*) total,
+    SUM(CASE WHEN state='complete' THEN 1 ELSE 0 END) completed,
+    SUM(CASE WHEN state='failed' THEN 1 ELSE 0 END) failed,
+    SUM(CASE WHEN state='cancelled' THEN 1 ELSE 0 END) cancelled,
+    SUM(CASE WHEN state IN ('queued','processing') THEN 1 ELSE 0 END) active
+    FROM ai_job_items WHERE job_id=?`).bind(String(jobId)).first();
+  const job=await serverJobRow(env,jobId);if(!job)return null;
+  const total=Number(summary?.total)||0,completed=Number(summary?.completed)||0,failed=Number(summary?.failed)||0,cancelled=Number(summary?.cancelled)||0,active=Number(summary?.active)||0;
+  let state=String(job.state||'running'),message=String(job.message||'');let completedAt=job.completed_at||null;
+  if(!['paused','cancelled'].includes(state)&&active===0&&completed+failed+cancelled>=total){state=failed?'completed-with-failures':'completed';message=failed?`Completed with ${failed} failure(s)`:'Completed';completedAt=completedAt||serverJobIso();}
+  await db.prepare('UPDATE ai_jobs SET total=?,completed=?,failed=?,cancelled=?,state=?,message=?,completed_at=?,updated_at=? WHERE id=?').bind(total,completed,failed,cancelled,state,message,completedAt,serverJobIso(),String(jobId)).run();
+  return serverJobRow(env,jobId);
+}
+function serverJobPublic(row){if(!row)return null;return{id:row.id,clientJobId:row.client_job_id||null,state:row.state,total:Number(row.total)||0,completed:Number(row.completed)||0,failed:Number(row.failed)||0,cancelled:Number(row.cancelled)||0,message:row.message||'',createdAt:row.created_at||null,startedAt:row.started_at||null,completedAt:row.completed_at||null,updatedAt:row.updated_at||null};}
+function serverJobItemPublic(row){return{id:row.id,clientItemId:row.client_item_id||row.id,imageId:row.image_id,order:Number(row.order_index)||0,state:row.state,attempts:Number(row.attempts)||0,error:row.error||'',sourceKind:row.source_kind||'',startedAt:row.started_at||null,completedAt:row.completed_at||null,harvestedAt:row.harvested_at||null,updatedAt:row.updated_at||null};}
+
+async function createServerAiJob(env,body={}){
+  if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured (D1 + Queue + R2 required)');
+  await ensureServerJobSchema(env);
+  const rawItems=Array.isArray(body.items)?body.items:[];
+  if(!rawItems.length||rawItems.length>1000)throw new Error('Server AI job requires 1–1000 items');
+  const jobId=serverJobId('srvjob'),createdAt=serverJobIso(),clientJobId=String(body.clientJobId||'').slice(0,160)||null;
+  await env.GENREACTRIX_JOBS_DB.prepare('INSERT INTO ai_jobs(id,client_job_id,state,total,completed,failed,cancelled,message,config_json,created_at,updated_at) VALUES(?,?,?,?,0,0,0,?,?,?,?)').bind(jobId,clientJobId,'preparing',rawItems.length,'Waiting for image handoff',JSON.stringify(body.config||{}),createdAt,createdAt).run();
+  const statements=[];
+  for(const [index,raw] of rawItems.entries()){
+    const id=String(raw?.id||serverJobId('srvitem')).slice(0,220),imageId=String(raw?.imageId||'').slice(0,220),sourceKind=String(raw?.sourceKind||'').toLowerCase(),sourceRef=sourceKind==='url'?String(raw?.sourceRef||'').trim():null,request=raw?.request;
+    if(!imageId)throw new Error(`Server AI item ${index+1} is missing imageId`);
+    if(!['upload','url'].includes(sourceKind))throw new Error(`Server AI item ${index+1} has invalid sourceKind`);
+    if(sourceKind==='url'&&!/^https:\/\//i.test(sourceRef||''))throw new Error(`Server AI item ${index+1} requires an HTTPS source URL`);
+    if(!request||typeof request!=='object'||!Array.isArray(request.components)||!request.components.length)throw new Error(`Server AI item ${index+1} has no analysis request`);
+    statements.push(env.GENREACTRIX_JOBS_DB.prepare('INSERT INTO ai_job_items(id,job_id,client_item_id,image_id,order_index,state,attempts,error,source_kind,source_ref,request_json,created_at,updated_at) VALUES(?,?,?,?,?,\'queued\',0,\'\',?,?,?,?,?)').bind(id,jobId,String(raw?.clientItemId||id).slice(0,220),imageId,Number(raw?.order)||index,sourceKind,sourceRef,JSON.stringify(request),createdAt,createdAt));
+  }
+  for(let i=0;i<statements.length;i+=50)await env.GENREACTRIX_JOBS_DB.batch(statements.slice(i,i+50));
+  return{job:serverJobPublic(await serverJobRow(env,jobId)),items:await serverJobItems(env,jobId).then(rows=>rows.map(serverJobItemPublic))};
+}
+async function uploadServerAiJobImage(env,jobId,itemId,request){
+  if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
+  const item=await serverJobItemRow(env,jobId,itemId);if(!item)throw new Error('Server AI job item not found');
+  if(item.source_kind!=='upload')throw new Error('This server AI item does not accept an image upload');
+  const bytes=new Uint8Array(await request.arrayBuffer());if(!bytes.length)throw new Error('Image upload was empty');if(bytes.length>6_000_000)throw new Error('Image upload exceeds 6 MB');
+  const key=`jobs/${jobId}/${itemId}.jpg`;await env.GENREACTRIX_AI_IMAGES.put(key,bytes,{httpMetadata:{contentType:'image/jpeg'}});
+  await env.GENREACTRIX_JOBS_DB.prepare('UPDATE ai_job_items SET source_ref=?,updated_at=? WHERE job_id=? AND id=?').bind(key,serverJobIso(),String(jobId),String(itemId)).run();
+  return{ok:true,itemId,key,bytes:bytes.length};
+}
+async function sendServerJobMessages(env,jobId,itemIds){
+  const ids=[...new Set((itemIds||[]).map(String).filter(Boolean))];
+  for(let i=0;i<ids.length;i+=100){const batch=ids.slice(i,i+100).map(itemId=>({body:{jobId:String(jobId),itemId}}));await env.GENREACTRIX_AI_JOB_QUEUE.sendBatch(batch);}
+}
+async function startServerAiJob(env,jobId){
+  if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
+  await ensureServerJobSchema(env);const job=await serverJobRow(env,jobId);if(!job)throw new Error('Server AI job not found');
+  if(SERVER_JOB_TERMINAL_STATES.has(String(job.state)))return{job:serverJobPublic(job),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
+  const missing=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND source_kind='upload' AND (source_ref IS NULL OR source_ref='') LIMIT 1").bind(String(jobId)).first();
+  if(missing)throw new Error('Server AI job cannot start until every local image has been uploaded');
+  const queued=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id),startedAt=job.started_at||serverJobIso();
+  await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET state='running',message=?,started_at=?,completed_at=NULL,updated_at=? WHERE id=?").bind(`Running on server · ${ids.length} queued`,startedAt,serverJobIso(),String(jobId)).run();
+  if(ids.length)await sendServerJobMessages(env,jobId,ids);
+  return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
+}
+async function controlServerAiJob(env,jobId,action){
+  if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
+  const db=env.GENREACTRIX_JOBS_DB,job=await serverJobRow(env,jobId);if(!job)throw new Error('Server AI job not found');const at=serverJobIso();
+  if(action==='pause')await db.prepare("UPDATE ai_jobs SET state='paused',message='Paused after current server image',updated_at=? WHERE id=? AND state IN ('running','preparing')").bind(at,String(jobId)).run();
+  else if(action==='resume'){
+    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
+    await db.prepare("UPDATE ai_jobs SET state='running',message='Resuming on server',completed_at=NULL,updated_at=? WHERE id=? AND state='paused'").bind(at,String(jobId)).run();if(ids.length)await sendServerJobMessages(env,jobId,ids);
+  }else if(action==='cancel'){
+    await db.prepare("UPDATE ai_jobs SET state='cancelled',message='Cancelled',completed_at=?,updated_at=? WHERE id=?").bind(at,at,String(jobId)).run();
+    const uploads=await db.prepare("SELECT source_ref FROM ai_job_items WHERE job_id=? AND source_kind='upload' AND source_ref IS NOT NULL").bind(String(jobId)).all();
+    await db.prepare("UPDATE ai_job_items SET state='cancelled',error='Cancelled by user',completed_at=?,updated_at=? WHERE job_id=? AND state='queued'").bind(at,at,String(jobId)).run();
+    await Promise.all((uploads?.results||[]).map(row=>row.source_ref?env.GENREACTRIX_AI_IMAGES.delete(row.source_ref).catch(()=>{}):null));
+  }else if(action==='retry-failed'){
+    await db.prepare("UPDATE ai_job_items SET state='queued',error='',result_json=NULL,started_at=NULL,completed_at=NULL,harvested_at=NULL,updated_at=? WHERE job_id=? AND state='failed'").bind(at,String(jobId)).run();
+    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
+    await db.prepare("UPDATE ai_jobs SET state='running',message='Retrying failed server items',completed_at=NULL,updated_at=? WHERE id=?").bind(at,String(jobId)).run();if(ids.length)await sendServerJobMessages(env,jobId,ids);
+  }else throw new Error('Unknown server AI job control action');
+  return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
+}
+async function serverAiJobStatus(env,jobId){return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};}
+async function serverAiJobItemResult(env,jobId,itemId){
+  const item=await serverJobItemRow(env,jobId,itemId);if(!item)throw new Error('Server AI job item not found');return{item:serverJobItemPublic(item),envelope:serverJobJsonParse(item.result_json,null)};
+}
+async function markServerAiJobItemHarvested(env,jobId,itemId){await ensureServerJobSchema(env);const item=await serverJobItemRow(env,jobId,itemId),at=serverJobIso();await env.GENREACTRIX_JOBS_DB.prepare('UPDATE ai_job_items SET harvested_at=?,updated_at=? WHERE job_id=? AND id=?').bind(at,at,String(jobId),String(itemId)).run();if(item?.state!=='failed'&&item?.source_kind==='upload'&&item?.source_ref&&env.GENREACTRIX_AI_IMAGES)await env.GENREACTRIX_AI_IMAGES.delete(item.source_ref).catch(()=>{});return{ok:true,harvestedAt:at};}
+const freshServerRetryRecommended=error=>{const d=providerDiagnosticOf(error)||{};return d?.freshRequestRecommended===true&&String(d?.failureKind||'').toLowerCase()==='timeout';};
+const serverJobGlobalFailure=message=>/unauthorized|analysis access is not configured|workers ai binding ai is not configured|rate limit|quota|capacity|gateway|provider unavailable/i.test(String(message||''));
+async function runServerAiJobItem(env,jobId,itemId){
+  await ensureServerJobSchema(env);const db=env.GENREACTRIX_JOBS_DB;let job=await serverJobRow(env,jobId),item=await serverJobItemRow(env,jobId,itemId);if(!job||!item)return;
+  if(job.state==='paused'||job.state==='preparing')return;
+  if(job.state==='cancelled'||SERVER_JOB_ITEM_TERMINAL_STATES.has(String(item.state)))return;
+  const at=serverJobIso();await db.prepare("UPDATE ai_job_items SET state='processing',attempts=attempts+1,error='',started_at=COALESCE(started_at,?),updated_at=? WHERE job_id=? AND id=?").bind(at,at,String(jobId),String(itemId)).run();
+  item=await serverJobItemRow(env,jobId,itemId);const request=serverJobJsonParse(item.request_json,null);if(!request)throw new Error('Server AI item request is corrupt');
+  const specimen={...request,imageId:String(request.imageId||item.image_id)};if(item.source_kind==='url')specimen.imageUrl=item.source_ref;else specimen.imageObjectKey=item.source_ref;
+  let result=null,errorMessage='',technicalRetry=null;
+  try{
+    const routed=providerRoutingEnv(env,specimen);
+    try{result=await analyze(routed,specimen);}catch(firstError){if(!freshServerRetryRecommended(firstError))throw firstError;technicalRetry={at:serverJobIso(),type:'diagnostic-timeout-fresh-request',firstError:String(firstError?.message||firstError),providerDiagnostic:providerDiagnosticOf(firstError)||null};result=await analyze(providerRoutingEnv(env,specimen),specimen);if(result&&typeof result==='object'){result.researchConfiguration={...(result.researchConfiguration||{}),technicalRetryHistory:[...((result.researchConfiguration?.technicalRetryHistory)||[]),technicalRetry]};}}
+    job=await serverJobRow(env,jobId);if(job?.state==='cancelled'){await db.prepare("UPDATE ai_job_items SET state='cancelled',error='Cancelled by user',result_json=NULL,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(serverJobIso(),serverJobIso(),String(jobId),String(itemId)).run();return;}
+    const envelope={schemaVersion:1,serverJobId:String(jobId),serverItemId:String(itemId),imageId:item.image_id,requested:Array.isArray(request.components)?request.components:[],startedAt:item.started_at||at,completedAt:serverJobIso(),technicalRetry,result};
+    await db.prepare("UPDATE ai_job_items SET state='complete',error='',result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId)).run();
+  }catch(error){errorMessage=String(error?.message||error);const diagnostic=providerDiagnosticOf(error)||null,envelope={schemaVersion:1,serverJobId:String(jobId),serverItemId:String(itemId),imageId:item.image_id,requested:Array.isArray(request?.components)?request.components:[],startedAt:item.started_at||at,completedAt:serverJobIso(),error:errorMessage,providerDiagnostic:diagnostic};await db.prepare("UPDATE ai_job_items SET state='failed',error=?,result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(errorMessage,JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId)).run();if(serverJobGlobalFailure(errorMessage))await db.prepare("UPDATE ai_jobs SET state='paused',message=?,updated_at=? WHERE id=? AND state='running'").bind(`Paused after provider failure: ${errorMessage}`.slice(0,1800),serverJobIso(),String(jobId)).run();}
+  finally{await refreshServerJobCounters(env,jobId);}
+}
+async function consumeServerAiJobQueue(batch,env){
+  if(!serverJobBindingsReady(env)){for(const message of batch.messages)message.retry({delaySeconds:60});return;}
+  for(const message of batch.messages){
+    try{
+      const body=message.body||{},job=await serverJobRow(env,body.jobId),item=await serverJobItemRow(env,body.jobId,body.itemId);
+      if(!job||!item){message.ack();continue;}
+      if(job.state==='paused'||job.state==='preparing'){message.ack();continue;}
+      if(job.state==='cancelled'||SERVER_JOB_ITEM_TERMINAL_STATES.has(String(item.state))){message.ack();continue;}
+      await runServerAiJobItem(env,body.jobId,body.itemId);message.ack();
+    }catch(error){console.error('Server AI queue item failed unexpectedly',error);message.retry({delaySeconds:30});}
+  }
+}
+
 export default {
   async fetch(request,env={}){
     const url = new URL(request.url);
@@ -4776,11 +4976,31 @@ export default {
         customThemeGenerationEnabled:CUSTOM_THEME_GENERATION_ENABLED,
         providerRouting:{primaryProvider:'mistral-direct',primaryModel:mistralDescriptionModelFor(env),secondaryProvider:'openai-via-cloudflare-ai-gateway',secondaryModel:fallbackModelFor(env),thirdProvider:'cloudflare-workers-ai-qwen',thirdProviderModel:qwenThemeModelFor(env),thirdProviderThinkingMode:'disabled',themeWholeRunPolicy:THEME_WHOLE_RUN_POLICY,providerCyclePolicy:THEME_PROVIDER_CYCLE_POLICY,providerCycleOrder:[...THEME_PROVIDER_CYCLE_ORDER],providerRoster:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),gatewayId:aiGatewayIdFor(env),triggerCode:'3040',cooldownMinutes:15},
         themeAudit:{decisionStage:'theme-decision-audit',decisionProtocol:'selected-theme-decision-audit-v4-independent-per-theme-binary-unordered',reportingStage:'theme-reporting-diagnostic',reportingProtocol:'human-vote-reasoning-sidecar-v1',reportingEndpoint:'/api/genreactrix/theme-report-diagnostic',reportingDeferred:true},
-        promptDiagnostics:{enabled:true,conceptCount:PRIMFUSION_REGISTRY.themeChoices.length,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'}
+        promptDiagnostics:{enabled:true,conceptCount:PRIMFUSION_REGISTRY.themeChoices.length,batchSize:PROMPT_DIAGNOSTIC_BATCH_SIZE,batchCount:PROMPT_DIAGNOSTIC_BATCH_COUNT,waveSizes:{five:PROMPT_DIAGNOSTIC_FIVE_WAVE_SIZE,three:PROMPT_DIAGNOSTIC_THREE_WAVE_SIZE},componentChunkSize:PROMPT_DIAGNOSTIC_COMPONENT_CHUNK_SIZE,executionModes:['fifteen','five','three','compare'],responseProtocol:'numbered-flex-v4'},
+        serverJobs:{enabled:serverJobBindingsReady(env),bindings:serverJobBindings(env),protocol:'d1-r2-queue-v1',queueConsumerConcurrency:1,clientOwnsCanonicalRecords:true}
       });
     }
 
     try{
+      if (url.pathname === '/api/genreactrix/jobs' && request.method === 'POST'){
+        if(!env.ANALYSIS_KEY)return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        if(request.headers.get('x-analysis-key')!==env.ANALYSIS_KEY)return json({ok:false,error:'Unauthorized'},{status:401});
+        const body=await request.json().catch(()=>null);if(!body)return json({ok:false,error:'JSON body required'},{status:400});
+        return json({ok:true,result:await createServerAiJob(env,body)});
+      }
+      const serverJobPath=url.pathname.match(/^\/api\/genreactrix\/jobs\/([^/]+)(?:\/items\/([^/]+)(?:\/image|\/harvest)?)?(?:\/start|\/control)?$/);
+      if(serverJobPath){
+        if(!env.ANALYSIS_KEY)return json({ok:false,error:'Analysis access is not configured'},{status:503});
+        if(request.headers.get('x-analysis-key')!==env.ANALYSIS_KEY)return json({ok:false,error:'Unauthorized'},{status:401});
+        const jobId=decodeURIComponent(serverJobPath[1]),itemId=serverJobPath[2]?decodeURIComponent(serverJobPath[2]):null;
+        if(itemId&&url.pathname.endsWith('/image')&&request.method==='POST')return json({ok:true,result:await uploadServerAiJobImage(env,jobId,itemId,request)});
+        if(itemId&&url.pathname.endsWith('/harvest')&&request.method==='POST')return json({ok:true,result:await markServerAiJobItemHarvested(env,jobId,itemId)});
+        if(itemId&&request.method==='GET')return json({ok:true,result:await serverAiJobItemResult(env,jobId,itemId)});
+        if(url.pathname.endsWith('/start')&&request.method==='POST')return json({ok:true,result:await startServerAiJob(env,jobId)});
+        if(url.pathname.endsWith('/control')&&request.method==='POST'){const body=await request.json().catch(()=>({}));return json({ok:true,result:await controlServerAiJob(env,jobId,String(body?.action||''))});}
+        if(request.method==='GET')return json({ok:true,result:await serverAiJobStatus(env,jobId)});
+      }
+
       if (request.method === 'POST' && url.pathname === '/api/genreactrix/image'){
         if (!env.ANALYSIS_KEY){
           return json({ok:false,error:'Analysis access is not configured'},{status:503});
@@ -4895,6 +5115,9 @@ export default {
     }
 
     return json({ok:false,error:'Not found'},{status:404});
+  },
+  async queue(batch,env={},ctx){
+    await consumeServerAiJobQueue(batch,env,ctx);
   }
 };
 
