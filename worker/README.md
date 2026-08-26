@@ -1,3 +1,11 @@
+# Genreactrix AI Worker 0.9.6.135-server-job-runner
+
+- Adds durable AI pass orchestration using D1 (`GENREACTRIX_JOBS_DB`), R2 (`GENREACTRIX_AI_IMAGES`), and Queue (`GENREACTRIX_AI_JOB_QUEUE`).
+- The Queue consumer calls the existing `analyze()` function for each image; the AI pipeline itself is unchanged.
+- New authenticated `/api/genreactrix/jobs` endpoints create, upload, start, inspect, pause/resume/cancel/retry, and harvest server jobs.
+- `/api/health` reports `serverJobs.enabled` only when all three bindings are present.
+- The old synchronous `/api/genreactrix/analyze` and `/api/genreactrix/analyze-stream` paths remain unchanged and available.
+
 # Genreactrix AI Worker 0.9.6.134-open-three-filled — final three PrimFusion slots
 
 - Active taxonomy: 12 Prims / 66 assigned PrimFusion Themes / 0 open pair slots.
