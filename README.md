@@ -1,4 +1,8 @@
-# Genreactrix v0.9.40.184 — nonblocking Reset All impact
+# Genreactrix v0.9.40.185 — count-free progressive failsafe cleanup
+
+This release removes the per-store `count()` bottleneck from Reset All → Failsafe Cleanup. It also stops pre-opening every product database before deletion begins. The failsafe now opens one existing database at a time, discovers that database's targeted stores, and immediately deletes up to 10 records per committed cursor transaction until a zero-record bite proves that store is empty.
+
+Final Reset All verification is also count-free: it probes only the first key of each emptied store. Existing v0.9.40.183/.184 failsafe checkpoints remain readable; completed stores are skipped on resume. Fast cleanup and all non-Danger-Zone behavior are unchanged. Worker remains v0.9.6.136 and does not require re-upload.
 
 - Reset All no longer performs the full IndexedDB impact inventory before Step 4. The Impact screen opens immediately from the already-loaded Image Record count and fixed full-reset scope.
 - Detailed IndexedDB/store counts are intentionally deferred to Failsafe Cleanup instead of blocking before confirmation.
