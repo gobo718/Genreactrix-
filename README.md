@@ -1,3 +1,15 @@
+# Genreactrix v0.9.40.182 — memory-safe Danger Zone reset
+
+- Repairs Reset All Product Data after large browser-local runs.
+- Full-reset impact counting now uses IndexedDB `count()` rather than loading complete stores into JavaScript memory.
+- Full reset clears target stores directly, grouped by database, without reading rows first.
+- Integrity verification is count-only; it never uses `getAll()` / `getAllKeys()` for full-reset verification.
+- Cleanup yields between databases and reports visible clear/verify progress so mobile browsers can repaint.
+- Full reset is idempotent: an interrupted partial reset can be run again safely to finish remaining product data.
+- Preservation boundaries are unchanged: Customs, Prim/PrimFusion definitions, settings/credentials, code, report definitions/presets, storage configuration, and system history remain preserved.
+- AI/server-job behavior is unchanged from v0.9.40.181.
+- Bundled Worker synchronized to already-deployed 0.9.6.136-cloudflare-typecheck-fix; no new Worker behavior.
+
 # Genreactrix v0.9.40.181 — durable server AI pass runner
 
 - Adds an optional durable server-side AI job runner for normal full AI passes.
@@ -8,7 +20,7 @@
 - Server job state/results are durable in D1. Queue consumer concurrency is fixed at 1 for this first experiment, preserving the existing sequential image-job behavior.
 - If the new server bindings are absent, Genreactrix automatically keeps using the existing browser-orchestrated path.
 - Also fixes two pending matrix UI defects from v0.9.40.180: Cheeky uses the lavender region color, and the final right-axis box contains the Angry 🤬 Prim.
-- Bundled Worker: 0.9.6.135-server-job-runner.
+- Bundled Worker at the time of v0.9.40.181: 0.9.6.135-server-job-runner.
 
 # Genreactrix v0.9.40.180 — final three PrimFusion Themes + matrix colors
 
