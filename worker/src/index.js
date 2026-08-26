@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.135-server-job-runner
+/* Genreactrix AI Worker v0.9.6.136-cloudflare-typecheck-fix
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.135-server-job-runner';
+const API_VERSION = '0.9.6.136-cloudflare-typecheck-fix';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -4929,7 +4929,7 @@ async function runServerAiJobItem(env,jobId,itemId){
   let result=null,errorMessage='',technicalRetry=null;
   try{
     const routed=providerRoutingEnv(env,specimen);
-    try{result=await analyze(routed,specimen);}catch(firstError){if(!freshServerRetryRecommended(firstError))throw firstError;technicalRetry={at:serverJobIso(),type:'diagnostic-timeout-fresh-request',firstError:String(firstError?.message||firstError),providerDiagnostic:providerDiagnosticOf(firstError)||null};result=await analyze(providerRoutingEnv(env,specimen),specimen);if(result&&typeof result==='object'){result.researchConfiguration={...(result.researchConfiguration||{}),technicalRetryHistory:[...((result.researchConfiguration?.technicalRetryHistory)||[]),technicalRetry]};}}
+    try{result=await analyze(routed,specimen);}catch(firstError){if(!freshServerRetryRecommended(firstError))throw firstError;technicalRetry={at:serverJobIso(),type:'diagnostic-timeout-fresh-request',firstError:String(firstError?.message||firstError),providerDiagnostic:providerDiagnosticOf(firstError)||null};result=await analyze(providerRoutingEnv(env,specimen),specimen);if(result&&typeof result==='object'){const resultAny=/** @type {any} */(result),researchConfiguration=/** @type {any} */(resultAny.researchConfiguration||{});resultAny.researchConfiguration={...researchConfiguration,technicalRetryHistory:[...(Array.isArray(researchConfiguration.technicalRetryHistory)?researchConfiguration.technicalRetryHistory:[]),technicalRetry]};}}
     job=await serverJobRow(env,jobId);if(job?.state==='cancelled'){await db.prepare("UPDATE ai_job_items SET state='cancelled',error='Cancelled by user',result_json=NULL,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(serverJobIso(),serverJobIso(),String(jobId),String(itemId)).run();return;}
     const envelope={schemaVersion:1,serverJobId:String(jobId),serverItemId:String(itemId),imageId:item.image_id,requested:Array.isArray(request.components)?request.components:[],startedAt:item.started_at||at,completedAt:serverJobIso(),technicalRetry,result};
     await db.prepare("UPDATE ai_job_items SET state='complete',error='',result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId)).run();
@@ -5117,7 +5117,7 @@ export default {
     return json({ok:false,error:'Not found'},{status:404});
   },
   async queue(batch,env={},ctx){
-    await consumeServerAiJobQueue(batch,env,ctx);
+    await consumeServerAiJobQueue(batch,env);
   }
 };
 
