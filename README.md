@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.184 — nonblocking Reset All impact
+
+- Reset All no longer performs the full IndexedDB impact inventory before Step 4. The Impact screen opens immediately from the already-loaded Image Record count and fixed full-reset scope.
+- Detailed IndexedDB/store counts are intentionally deferred to Failsafe Cleanup instead of blocking before confirmation.
+- Failsafe Cleanup no longer performs one complete all-store inventory before deletion. It counts one store when it reaches that store, deletes in the existing 10-record committed bites, checkpoints, yields, verifies that store empty, then advances.
+- Progress reports store number/name, records remaining in the active store, and cumulative records removed. A legacy v0.9.40.183 checkpoint with a known global remaining count is still understood.
+- Reset All review continues to skip thumbnail rendering. Fast cleanup remains available and unchanged.
+- Preservation boundaries, selective cleanup paths, Worker/AI behavior, and the 10-record failsafe bite size are unchanged.
+- Bundled Worker remains 0.9.6.136-cloudflare-typecheck-fix; no Worker upload is required.
+
 # Genreactrix v0.9.40.183 — checkpointed Failsafe Cleanup
 
 - Adds a separate Failsafe Cleanup method for Reset All Product Data.
