@@ -1,3 +1,21 @@
+# Genreactrix v0.9.40.192 — ZazzlyParty
+
+PFM0912 (Zazzly + Celebration) is now **ZazzlyParty**. **Hedonism is retired.**
+
+ZazzlyParty means: sexy, provocative, sensual, revealing, flirtatious, or exhibitionistic presentation combined with celebration, partying, revelry, dancing, festive social energy, or a celebratory event. Both components must be visibly present: sexy or Zazzly presentation alone is not ZazzlyParty, and celebration alone is not ZazzlyParty.
+
+PFM0912 keeps its stable code and P09 + P12 Prim identity. The 66-Theme taxonomy count, PrimFusion Matrix geometry/colors, Theme ordering, server orchestration, Description behavior, and Theme-derived Reactions are unchanged. Companion Worker: v0.9.6.142-zazzlyparty.
+
+---
+
+# Genreactrix v0.9.40.191 — Schadenfreude / Freakshow Theme remap
+
+This taxonomy release keeps all 66 stable PFM codes and changes two current Theme identities. PFM0304 (Tragic + Funny) is now **Schadenfreude**, using the Director-supplied victim/observer, expression, context, and negative-sample definition. PFM0612 (Weird + Celebration) is now **Freakshow**, carrying forward the complete calibrated Freakshow definition and its existing public-nudity/transgression gate. **Delirious is retired.**
+
+The PrimFusion Matrix geometry and colors are unchanged. Theme selection, audit, Description v5/rerun behavior, provider order, server-job orchestration, Theme-derived Reactions, and the manual Bundle boundary are unchanged. Companion Worker: v0.9.6.141-schadenfreude-freakshow-swap.
+
+---
+
 # Genreactrix v0.9.40.190 — server-backed AI reruns + full 66-Theme rerun vocabulary
 
 This release moves Director Theme reruns and Description reruns onto the durable D1/R2/Queue server-job path when server jobs are available. The rerun request payload now carries the existing Theme Rerun / Description Rerun specification unchanged to the Worker; browser harvest preserves the same AI Attempt/Artifact history, Theme edit diagnostics, Description add/replace splice behavior, AI Tuned metadata, and Theme-rerun lifecycle isolation used by the prior local runner. The old browser runner remains fallback only when a job shape cannot be represented by one server request.
