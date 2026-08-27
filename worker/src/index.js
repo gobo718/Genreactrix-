@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.138-targeted-server-retry
+/* Genreactrix AI Worker v0.9.6.139-server-reruns-full66
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.138-targeted-server-retry';
+const API_VERSION = '0.9.6.139-server-reruns-full66';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -1097,10 +1097,16 @@ async function runThemeAdversarialDecisionPipeline(env,model,image,behavior='ana
 // v0.9.6.86 EXPERIMENT — one-variable continuation of v0.9.6.85.
 // Fresh normal Theme selection still uses the exact same raw human-vote prompt and
 // scoring objective. The only decision-input change is presentation order: the 66
-// currently assigned Theme definitions are supplied in this fixed shuffled order.
-const HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER = ["PFM0511","PFM0210","PFM0508","PFM0506","PFM0102","PFM0709","PFM0207","PFM0312","PFM0608","PFM0910","PFM1011","PFM0407","PFM0412","PFM0411","PFM0304","PFM0306","PFM0410","PFM0110","PFM0305","PFM0205","PFM0710","PFM0104","PFM0107","PFM0507","PFM0211","PFM0112","PFM0311","PFM0912","PFM0209","PFM0204","PFM0711","PFM0405","PFM0509","PFM0307","PFM0206","PFM0212","PFM1012","PFM0612","PFM0512","PFM0510","PFM0712","PFM0111","PFM0309","PFM0406","PFM0208","PFM0911","PFM0408","PFM0810","PFM0607","PFM0611","PFM0811","PFM0609","PFM0203","PFM0812","PFM0809","PFM0308","PFM0103","PFM0106","PFM0310","PFM0409","PFM0108","PFM0610","PFM0105"];
-const HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER = ["PFM0809","PFM0408","PFM0509","PFM0210","PFM0310","PFM0911","PFM0307","PFM0810","PFM0212","PFM0510","PFM0209","PFM0407","PFM0110","PFM0107","PFM0607","PFM0912","PFM0204","PFM0511","PFM0102","PFM0104","PFM0311","PFM0304","PFM0412","PFM0812","PFM1011","PFM0710","PFM0312","PFM0208","PFM0709","PFM0609","PFM0610","PFM0206","PFM0103","PFM0811","PFM0910","PFM0712","PFM0409","PFM0111","PFM0405","PFM0608","PFM0105","PFM1012","PFM0112","PFM0508","PFM0410","PFM0306","PFM0205","PFM0507","PFM0611","PFM0309","PFM0211","PFM0305","PFM0406","PFM0512","PFM0207","PFM0106","PFM0506","PFM0308","PFM0711","PFM0411","PFM0203","PFM0108","PFM0612"];
+// current 66 Theme definitions are supplied in this fixed shuffled order. Legacy Theme relative order is preserved; Cheeky, Cursed, and Halloween occupy previously missing gaps.
+const HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER = ["PFM0511","PFM0210","PFM0508","PFM0506","PFM0102","PFM0709","PFM0207","PFM0312","PFM0608","PFM0910","PFM1011","PFM0407","PFM0412","PFM0411","PFM0708","PFM0304","PFM0306","PFM0410","PFM0110","PFM0305","PFM0205","PFM0710","PFM0104","PFM0109","PFM0107","PFM0507","PFM0211","PFM0112","PFM0311","PFM0912","PFM0209","PFM0204","PFM0711","PFM0405","PFM0509","PFM0307","PFM0206","PFM0212","PFM1012","PFM0612","PFM0512","PFM0510","PFM0712","PFM0111","PFM0309","PFM0406","PFM1112","PFM0208","PFM0911","PFM0408","PFM0810","PFM0607","PFM0611","PFM0811","PFM0609","PFM0203","PFM0812","PFM0809","PFM0308","PFM0103","PFM0106","PFM0310","PFM0409","PFM0108","PFM0610","PFM0105"];
+const HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER = ["PFM1112","PFM0809","PFM0408","PFM0509","PFM0210","PFM0310","PFM0911","PFM0307","PFM0810","PFM0212","PFM0510","PFM0209","PFM0407","PFM0110","PFM0107","PFM0607","PFM0708","PFM0912","PFM0204","PFM0511","PFM0102","PFM0104","PFM0311","PFM0304","PFM0412","PFM0812","PFM1011","PFM0710","PFM0312","PFM0208","PFM0709","PFM0609","PFM0610","PFM0206","PFM0103","PFM0811","PFM0910","PFM0109","PFM0712","PFM0409","PFM0111","PFM0405","PFM0608","PFM0105","PFM1012","PFM0112","PFM0508","PFM0410","PFM0306","PFM0205","PFM0507","PFM0611","PFM0309","PFM0211","PFM0305","PFM0406","PFM0512","PFM0207","PFM0106","PFM0506","PFM0308","PFM0711","PFM0411","PFM0203","PFM0108","PFM0612"];
 const HUMAN_VOTE_FINAL_FIXED_SHUFFLE_SEED = 'description-final-v1';
+function assertCompleteFixedThemeOrder(label,codes){
+  const expected=PRIMFUSION_REGISTRY.aiThemeChoices.map(row=>row.code),seen=new Set(codes);
+  if(codes.length!==expected.length||seen.size!==expected.length||expected.some(code=>!seen.has(code)))throw new Error(`${label} must contain every current PrimFusion Theme exactly once (${expected.length} expected)`);
+}
+assertCompleteFixedThemeOrder('HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER',HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER);
+assertCompleteFixedThemeOrder('HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER',HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER);
 function themeSweepSeedHash(value){let h=2166136261>>>0;for(const ch of String(value||'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
 function themeSweepRandom(seed){let a=themeSweepSeedHash(seed)||0x9e3779b9;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 function shuffledThemeOrder(seed){const out=PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code),rand=themeSweepRandom(seed);for(let i=out.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
@@ -1108,11 +1114,11 @@ function resolveHumanVoteThemeOrder(themeSweep=null){
   const mode=String(themeSweep?.orderMode||'').toLowerCase();
   if(mode==='canonical')return{mode:'canonical',seed:null,codes:PRIMFUSION_REGISTRY.aiThemeChoices.map(t=>t.code)};
   if(mode==='shuffled'&&String(themeSweep?.orderSeed||'').trim())return{mode:'shuffled',seed:String(themeSweep.orderSeed),codes:shuffledThemeOrder(themeSweep.orderSeed)};
-  return{mode:'fixed-shuffled-v1',seed:null,codes:[...HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER]};
+  return{mode:'fixed-shuffled-v2-full-vocabulary',seed:null,codes:[...HUMAN_VOTE_FIXED_SHUFFLED_THEME_ORDER]};
 }
 function resolveThemeAssociationOrder(themeSweep=null,stage='preliminary'){
   if(stage==='final'&&!themeSweep){
-    return{mode:'fixed-shuffled-final-v1',seed:HUMAN_VOTE_FINAL_FIXED_SHUFFLE_SEED,codes:[...HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER]};
+    return{mode:'fixed-shuffled-final-v2-full-vocabulary',seed:HUMAN_VOTE_FINAL_FIXED_SHUFFLE_SEED,codes:[...HUMAN_VOTE_FINAL_FIXED_SHUFFLED_THEME_ORDER]};
   }
   return resolveHumanVoteThemeOrder(themeSweep);
 }
@@ -1825,7 +1831,7 @@ async function runThemeHumanVoteRerunExperiment(env,model,image,behavior,rerunIn
   return{
     rerun,selections:parsed.selections,
     diagnostics:{
-      schemaVersion:1,protocol:'human-vote-expected-score-raw-v1-fixed-shuffled-order-rerun',experimental:true,
+      schemaVersion:1,protocol:'human-vote-expected-score-raw-v2-full-vocabulary-fixed-shuffled-order-rerun',experimental:true,
       sourceExperimentWorker:'0.9.6.86-human-vote-shuffled-order-experiment',frozenControlWorker:'0.9.6.84-theme-exhaustion-slop-warning',
       themeDefinitionOrder:'fixed-shuffled-78-v1',imageAccess:true,descriptionContextUsed:rerun.includedDescriptions.length>0,includedDescriptionCount:rerun.includedDescriptions.length,
       reactionScoresUsed:false,selectionCallCount:cycle.recovery.attemptCount,providerCycle:cycle.recovery,
@@ -4480,7 +4486,7 @@ async function analyze(env,body){
           evidenceLedger:[],selectionSupportBySlot:{},auditRounds:[],
           constrainedRerunFallbackUsed:false
         };
-        promptVersions.themes='genreactrix-themes-pfm-v24-rerun-human-vote-raw-fixed-shuffled-order-experiment';
+        promptVersions.themes='genreactrix-themes-pfm-v25-rerun-human-vote-raw-full66-fixed-shuffled-order';
       }else{
         const rerunResult=await runThemeRerun(env,model,image,behavior,themeRerun);
         resolvedThemes=resolveThemes(rerunResult.selections).map((row,index)=>({...row,supportEvidenceIds:[...(rerunResult.selections[index]?.supportEvidenceIds||[])]}));
@@ -4590,7 +4596,7 @@ async function analyze(env,body){
       components.themeDecisionDiagnostics=freshChain.themeDecisionDiagnostics;
       components.__freshPipelineDescription=freshChain.description;
       components.__freshPipelineDescriptionDiagnostics=freshChain.descriptionDiagnostics;
-      promptVersions.themes='genreactrix-themes-pfm-v35-mistral-primary-whole-run-glory-freakshow-gates';
+      promptVersions.themes='genreactrix-themes-pfm-v36-mistral-primary-whole-run-full66-fixed-orders';
     }
     resolvedThemesForReactions=resolvedThemes.map(row=>({...row}));
     if (requested.includes('themes')) components.themes = resolvedThemes;
