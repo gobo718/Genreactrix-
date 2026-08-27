@@ -2,7 +2,7 @@
 
 - Cloudflare JavaScript type-check compatibility repair for the server-job Worker.
 - Preserves technical retry-history telemetry and corrects the Queue consumer call signature.
-- Runtime behavior remains the deployed 0.9.6.136 Cloudflare typecheck-fixed server-job runner; v0.9.40.186 changes only the site Danger Zone cleanup path; Worker behavior is unchanged.
+- Runtime behavior remains the deployed 0.9.6.136 Cloudflare typecheck-fixed server-job runner; v0.9.40.187 changes only the site Danger Zone cleanup path; Worker behavior is unchanged.
 
 # Genreactrix AI Worker 0.9.6.135-server-job-runner
 
