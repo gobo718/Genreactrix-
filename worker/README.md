@@ -1,3 +1,21 @@
+# Genreactrix AI Worker 0.9.6.142-zazzlyparty
+
+- PFM0912 (Zazzly + Celebration) is now **ZazzlyParty**; Hedonism is retired.
+- ZazzlyParty requires both visible Zazzly/sexy presentation and visible celebration/party context. Either component alone is insufficient.
+- PFM0912 keeps its stable code and P09 + P12 components.
+- Theme prompt telemetry advances only to mark the changed active taxonomy semantics.
+- All other Theme definitions, provider lanes, Description behavior, server-job orchestration, and six-slot Theme-derived Reactions are unchanged.
+- Companion site: v0.9.40.192.
+
+# Genreactrix AI Worker 0.9.6.141-schadenfreude-freakshow-swap
+
+- PFM0304 (Tragic + Funny) is now **Schadenfreude**, using the Director-supplied victim/observer, expression, contextual, and negative-sample definition.
+- PFM0612 (Weird + Celebration) is now **Freakshow**, preserving the full calibrated Freakshow definition and its public-nudity/transgression gate.
+- Delirious is retired. PFM codes, Prim components, 66-Theme count, fixed shuffled code orders, and six-slot Theme-derived Reactions remain unchanged.
+- Preserves Worker 0.9.6.140 unified Description rerun v5 behavior and all server-job/rerun orchestration.
+- Theme prompt telemetry advances only to mark the changed active taxonomy semantics.
+- Companion site: v0.9.40.191.
+
 # Genreactrix AI Worker 0.9.6.139-server-reruns-full66
 
 - Server-job Queue execution now accepts the existing Theme Rerun and Description Rerun request payloads unchanged; the Worker continues to execute the same `analyze()` rerun code paths.
