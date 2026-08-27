@@ -1,8 +1,23 @@
+# Genreactrix AI Worker 0.9.6.138-targeted-server-retry
+
+- Adds targeted `retry-failed` control for server jobs so the site can requeue only retryable failed item IDs.
+- Images already isolated to Quarantine/Defective are not requeued merely because another image in the same server job needs a retry.
+- Preserves the complete v0.9.6.137 Glory/Freakshow/Description calibration, provider order, Theme Sweep request semantics, and Theme-derived Reaction architecture.
+- Required companion Worker for site v0.9.40.189 automatic AI-to-manual-Bundle orchestration.
+
+# Genreactrix AI Worker 0.9.6.137-glory-freakshow-description-calibration
+
+- Current embedded Worker source synchronized with the deployed calibration build.
+- Glory requires independent achievement/honor/acclaim evidence; physique/confidence alone is insufficient.
+- Freakshow rejects public nudity/transgression alone as sufficient evidence.
+- Description performs an independent sexual-salience/body-display check.
+- v0.9.40.189 changes browser orchestration only: automatic retry/Theme Sweep continuation now runs to the manual Bundle boundary; Worker AI pipeline behavior is otherwise unchanged.
+
 # Genreactrix AI Worker 0.9.6.136-cloudflare-typecheck-fix
 
 - Cloudflare JavaScript type-check compatibility repair for the server-job Worker.
 - Preserves technical retry-history telemetry and corrects the Queue consumer call signature.
-- Runtime behavior remains the deployed 0.9.6.136 Cloudflare typecheck-fixed server-job runner; v0.9.40.187 changes only the site Danger Zone cleanup path; Worker behavior is unchanged.
+- Runtime behavior remains the deployed 0.9.6.136 Cloudflare typecheck-fixed server-job runner; v0.9.40.188 changes only the site Danger Zone cleanup path; Worker behavior is unchanged.
 
 # Genreactrix AI Worker 0.9.6.135-server-job-runner
 
