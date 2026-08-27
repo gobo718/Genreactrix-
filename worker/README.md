@@ -1,3 +1,13 @@
+# Genreactrix AI Worker 0.9.6.139-server-reruns-full66
+
+- Server-job Queue execution now accepts the existing Theme Rerun and Description Rerun request payloads unchanged; the Worker continues to execute the same `analyze()` rerun code paths.
+- Both fixed shuffled Theme-order catalogs now include the complete current 66-Theme vocabulary, including Cheeky, Cursed, and Halloween.
+- Existing 63-Theme relative ordering is preserved; only the three previously omitted Themes are inserted.
+- Worker module initialization asserts complete/unique fixed Theme catalogs so stale vocabulary cannot silently recur.
+- Fresh Theme telemetry advances to `genreactrix-themes-pfm-v36-mistral-primary-whole-run-full66-fixed-orders`; unconstrained Theme-rerun telemetry advances to `genreactrix-themes-pfm-v25-rerun-human-vote-raw-full66-fixed-shuffled-order`.
+- Glory/Freakshow/Description calibration, provider order, Theme-derived Reactions, and taxonomy are otherwise unchanged.
+- Companion site: v0.9.40.190.
+
 # Genreactrix AI Worker 0.9.6.138-targeted-server-retry
 
 - Adds targeted `retry-failed` control for server jobs so the site can requeue only retryable failed item IDs.
