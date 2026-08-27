@@ -1,3 +1,13 @@
+# Genreactrix v0.9.40.190 — server-backed AI reruns + full 66-Theme rerun vocabulary
+
+This release moves Director Theme reruns and Description reruns onto the durable D1/R2/Queue server-job path when server jobs are available. The rerun request payload now carries the existing Theme Rerun / Description Rerun specification unchanged to the Worker; browser harvest preserves the same AI Attempt/Artifact history, Theme edit diagnostics, Description add/replace splice behavior, AI Tuned metadata, and Theme-rerun lifecycle isolation used by the prior local runner. The old browser runner remains fallback only when a job shape cannot be represented by one server request.
+
+It also repairs the two stale fixed shuffled Theme-order catalogs that still contained only 63 Themes. Both now contain all 66 current PrimFusion Themes, including PFM0109 Cheeky, PFM0708 Cursed, and PFM1112 Halloween, while preserving the relative order of every pre-existing Theme. Worker startup now asserts that each fixed catalog contains every current Theme exactly once, preventing a future silent vocabulary omission.
+
+No Theme definitions, provider order, Theme-derived Reaction architecture, Prim taxonomy, Theme Sweep semantics, or manual Bundle boundary changed. Companion Worker: v0.9.6.139-server-reruns-full66.
+
+---
+
 # Genreactrix v0.9.40.189 — automatic AI to manual Bundle boundary
 
 This release removes routine manual intervention from the server-backed AI / Theme Sweep path while preserving Bundles as an intentional, trackable workflow boundary. A healthy run now automatically retries retryable AI failures until they resolve or reach the existing three-isolated-failure Quarantine boundary. Managed Theme Sweep runs then continue with the valid population, advance later passes automatically, and resume that recovery automatically when the site is reopened. Provider/configuration failures still pause because processing cannot safely continue, and user Pause/Stop remain authoritative.

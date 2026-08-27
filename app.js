@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.189";
+const GENREACTRIX_BUILD="v0.9.40.190";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -2948,7 +2948,7 @@ async function openBundlePicker(){
 }
 // Legacy entry point retained so older callers do not auto-push AI Output into Inbox.
 window.genreactrixAutoPushAiOutputToInbox=async function(){
-  // v0.9.40.189: Bundling is an intentional, trackable manual boundary.
+  // v0.9.40.190: Bundling is an intentional, trackable manual boundary.
   renderPortraitInboxControls();
   return null;
 };

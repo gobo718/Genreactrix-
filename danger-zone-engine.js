@@ -1,10 +1,10 @@
-/* Genreactrix Danger Zone Engine v3 — v0.9.40.189
+/* Genreactrix Danger Zone Engine v3 — v0.9.40.190
    Password-protected, preview-first administrative product-data cleanup.
    Product cleanup never edits Worker/site code, Customs, Prim/PrimFusion definitions,
    Matrix/version configuration, report definitions/presets, display settings, storage
    configuration, or system-history databases. */
 (()=>{'use strict';
-const BUILD='0.9.40.189';
+const BUILD='0.9.40.190';
 const FAILSAFE_KEY='genreactrix-danger-zone-failsafe-v1';
 const FAILSAFE_YIELD_MS=25;
 const AUTH_KEY='genreactrix-danger-zone-auth-v1';
