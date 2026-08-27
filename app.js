@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.187";
+const GENREACTRIX_BUILD="v0.9.40.189";
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -2948,7 +2948,7 @@ async function openBundlePicker(){
 }
 // Legacy entry point retained so older callers do not auto-push AI Output into Inbox.
 window.genreactrixAutoPushAiOutputToInbox=async function(){
-  await window.genreactrixBundleEngine?.maybeAutoBundle?.();
+  // v0.9.40.189: Bundling is an intentional, trackable manual boundary.
   renderPortraitInboxControls();
   return null;
 };
@@ -4234,7 +4234,8 @@ function createImageRecordEngine(){
   }
   function migrateScope(){const pid=window.genreactrixProjectRuntimeEngine?.projectId?.()||'',rid=window.genreactrixProjectRuntimeEngine?.runtimeId?.()||null;let changed=0;for(const record of records){if(!record.projectId&&pid){record.projectId=pid;changed++}if(record.schemaVersion<IMAGE_RECORD_SCHEMA_VERSION){record.schemaVersion=IMAGE_RECORD_SCHEMA_VERSION;changed++}if(!record.runtime)record.runtime={createdRuntimeId:null,lastProcessedRuntimeId:null};if(!record.runtime.lastProcessedRuntimeId&&rid&&record.createdAt===record.updatedAt){/* creation runtime for legacy records is unknowable; do not fabricate it */}}if(changed)persist();return{projectId:pid,runtimeId:rid,updated:changed};}
   function all(){return records.map(clone);}
-  return {create,get,update,setStage,setAttribute,setComponent,attachAI,attachDirector,setLocked,query,integrity,migrateScope,all,_mutable:mutable};
+  function clearAllInMemory(){const count=records.length;records.length=0;return count;}
+  return {create,get,update,setStage,setAttribute,setComponent,attachAI,attachDirector,setLocked,query,integrity,migrateScope,all,clearAllInMemory,_mutable:mutable};
 }
 window.genreactrixImageRecordEngine=createImageRecordEngine();
 

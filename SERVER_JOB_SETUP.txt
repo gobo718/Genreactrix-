@@ -2,7 +2,7 @@ GENREACTRIX SERVER AI JOB RUNNER — ONE-TIME CLOUDFLARE SETUP
 
 This release preserves the old browser-run path unless all three server-job bindings exist.
 
-Bindings expected by Worker 0.9.6.136:
+Bindings expected by Worker 0.9.6.138:
   D1 binding:   GENREACTRIX_JOBS_DB
   R2 binding:   GENREACTRIX_AI_IMAGES
   Queue binding: GENREACTRIX_AI_JOB_QUEUE

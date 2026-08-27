@@ -46,7 +46,7 @@
  const serverJobStatus=jobId=>request(serverJobPath(jobId),{method:'GET',headers:{'x-analysis-key':storedKey()}});
  const serverJobItem=(jobId,itemId)=>request(serverJobPath(jobId,`/items/${encodeURIComponent(String(itemId||''))}`),{method:'GET',headers:{'x-analysis-key':storedKey()}});
  const startServerJob=jobId=>request(serverJobPath(jobId,'/start'),{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'});
- const controlServerJob=(jobId,action)=>request(serverJobPath(jobId,'/control'),{method:'POST',headers:{'x-analysis-key':storedKey()},body:JSON.stringify({action:String(action||'')})});
+ const controlServerJob=(jobId,action,options={})=>request(serverJobPath(jobId,'/control'),{method:'POST',headers:{'x-analysis-key':storedKey()},body:JSON.stringify({action:String(action||''),...(options||{})})});
  const harvestServerJobItem=(jobId,itemId)=>request(serverJobPath(jobId,`/items/${encodeURIComponent(String(itemId||''))}/harvest`),{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'});
  const uploadServerJobImage=async(jobId,itemId,blob)=>{
   if(!base)throw new Error('AI Worker URL is not configured');

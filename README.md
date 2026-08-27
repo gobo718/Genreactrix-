@@ -1,3 +1,23 @@
+# Genreactrix v0.9.40.189 — automatic AI to manual Bundle boundary
+
+This release removes routine manual intervention from the server-backed AI / Theme Sweep path while preserving Bundles as an intentional, trackable workflow boundary. A healthy run now automatically retries retryable AI failures until they resolve or reach the existing three-isolated-failure Quarantine boundary. Managed Theme Sweep runs then continue with the valid population, advance later passes automatically, and resume that recovery automatically when the site is reopened. Provider/configuration failures still pause because processing cannot safely continue, and user Pause/Stop remain authoritative.
+
+Automatic AI flow now stops when the configured Bundle-size population is Staged. It never creates a Bundle or moves those images into Inbox automatically. `Bundle Staged` remains the deliberate action that creates a numbered Bundle and preserves membership/history. After that manual Bundle is created, automatic AI flow may resume filling the next Bundle. Legacy auto-bundle hooks are intentionally no-ops so there is no hidden path around the Bundle boundary.
+
+No AI prompts, Theme definitions, provider order, Theme-derived Reaction architecture, taxonomy, or Theme Sweep selection logic changed in this site release. Worker v0.9.6.138 accompanies this site release so automatic retry can target only retryable failed server items and never requeue images already isolated to Quarantine/Defective. It preserves all v0.9.6.137 Glory/Freakshow/Description calibration behavior and changes no prompts, provider order, taxonomy, or Reaction architecture.
+
+---
+
+# Genreactrix v0.9.40.188 — pressure-first failsafe cleanup
+
+This release changes Reset All → Failsafe Cleanup ordering so the browser sheds the heaviest live image workload first instead of following IndexedDB object-store/schema order. Immediately after authorization/resume, the failsafe removes the canonical Image Record / Inbox local product population, drops its in-memory Image Record and Danger Zone lists, revokes image object URLs, and rehydrates the live feed against zero records.
+
+The `genreactrix-image-engine` database is forced to the front of the IndexedDB pass. Within it, stores are explicitly ordered: `image-thumbnails` → `image-blobs` → `kept-images` → `kept-image-ids` → flag metadata → `history-events`. Remaining product databases then continue through the existing one-store-per-committed-transaction checkpointed cleanup. Existing authorized v0.9.40.183–.187 checkpoints remain compatible; already committed stores are skipped.
+
+Deletion scope, preservation boundaries, checkpoint authorization, pause/stop semantics, and committed-store-ledger finalization are unchanged. Worker remains v0.9.6.136 and does not require re-upload.
+
+---
+
 # Genreactrix v0.9.40.187 — committed-store ledger finalization
 
 This release removes the redundant post-clear IndexedDB readback verification from Reset All → Failsafe Cleanup only. A store is considered complete only after its native `objectStore.clear()` transaction fires `oncomplete`; that committed transaction plus the saved completed-store checkpoint is the proof of deletion. After the last committed store clear, the failsafe checks only its checkpoint ledger and product-localStorage boundary, then advances directly to Complete without reopening every IndexedDB store or probing cursors.
