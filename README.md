@@ -1,3 +1,11 @@
+# Genreactrix v0.9.40.187 — committed-store ledger finalization
+
+This release removes the redundant post-clear IndexedDB readback verification from Reset All → Failsafe Cleanup only. A store is considered complete only after its native `objectStore.clear()` transaction fires `oncomplete`; that committed transaction plus the saved completed-store checkpoint is the proof of deletion. After the last committed store clear, the failsafe checks only its checkpoint ledger and product-localStorage boundary, then advances directly to Complete without reopening every IndexedDB store or probing cursors.
+
+Existing v0.9.40.186 authorized checkpoints remain valid and resume without password/phrase/acknowledgement. Fast cleanup and all non-failsafe cleanup paths keep their existing verification behavior. Worker remains v0.9.6.136 and does not require re-upload.
+
+---
+
 # Genreactrix v0.9.40.186 — store-at-a-time authorized failsafe recovery
 
 This release replaces the 10-record cursor-delete loop with one native IndexedDB `objectStore.clear()` transaction per store. The failsafe checkpoints after every committed store, yields to the browser, and resumes from the first store not already checkpointed. It does not pre-count records, load values, or delete records one-by-one. Final verification remains a one-key probe per store.
