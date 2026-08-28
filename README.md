@@ -1,22 +1,9 @@
-# Genreactrix v0.9.40.194 — progressive server image handoff
+# Genreactrix v0.9.40.195 — Streaming server handoff
 
-This release removes the unrequested all-images-ready gate from server AI jobs.
-
-- A server AI job starts immediately after its manifest exists. It no longer waits for every local image to finish uploading.
-- HTTPS/URL images that are already source-ready can enter the Queue immediately.
-- Each local image becomes independently runnable as soon as that image finishes its R2 handoff; the remaining images can still be uploading while AI processing proceeds.
-- A failed or delayed image upload does not pause or block the rest of the job. Successful handoffs are persisted locally and only unfinished uploads are retried automatically while the server job continues.
-- Refresh/reconnect resumes unfinished image handoff without resubmitting completed local handoffs as normal operation.
-- Stale or duplicate Queue messages are harmless: a server item only begins work from the queued state and an upload item with no source payload cannot run.
-- The old `.193` pause message `Server AI job cannot start until every local image has been uploaded` is recognized and automatically recovered after this build loads with provider settings available.
-- User Pause/Resume/Stop, Quarantine behavior, and the manual Bundle boundary remain unchanged.
-- No AI prompts, Theme definitions, taxonomy, provider order, Description behavior, Theme Sweep semantics, or Theme-derived Reaction logic changed.
-
-Companion Worker: v0.9.6.144-progressive-image-handoff.
-
----
-
-# Genreactrix v0.9.40.193 — idempotent server handoff
+- v0.9.40.195 server handoff: a server job starts before all local uploads finish; each local image is queued for AI as soon as its own upload succeeds.
+- Server-job manifests are reconciled while preparing so rows outside the current manifest cannot block a fresh handoff.
+- Browser reload/resume rechecks server source readiness and continues any unfinished local-image handoff.
+- PFM0712 Badass plus the approved Hilarious, FreakyDeaky, and Shame definitions from v0.9.40.194 remain unchanged.
 
 This release fixes the D1 duplicate-handoff failure that could pause an AI job with `UNIQUE constraint failed: ai_job_items.id`.
 
@@ -27,7 +14,7 @@ This release fixes the D1 duplicate-handoff failure that could pause an AI job w
 - A job paused by the old `ai_job_items.id` duplicate-handoff bug is automatically re-queued once after this build loads with provider settings available; ordinary user-paused jobs remain paused.
 - No AI prompts, Theme definitions, taxonomy, provider order, Description behavior, Theme Sweep semantics, or Theme-derived Reaction logic changed.
 
-Companion Worker: v0.9.6.143-server-handoff-idempotency.
+Companion Worker: v0.9.6.145-streaming-server-handoff.
 
 ---
 

@@ -1,4 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.194";
+const GENREACTRIX_BUILD="v0.9.40.195";
+// v0.9.40.195 — Server AI handoff streams local images into processing as each upload becomes ready; current manifest is authoritative.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -144,7 +145,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Angry|Scary": "Wickedness",
   "Celebration|Scary": "Halloween",
   "Celebration|Celebration": "Celebration",
-  "Angry|Celebration": "Revenge",
+  "Angry|Celebration": "Badass",
   "Angry|Angry": "Angry"
 };
 
@@ -1656,7 +1657,7 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "🌀", "🌌", "🤢", "👻", "💥", "🤬"];
   const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🤬"];
   const matrixRows=[
-    [{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Mockery","tone":"lavender"},{"value":"Overstimulated","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Revenge","tone":"lavender"}],
+    [{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Mockery","tone":"lavender"},{"value":"Overstimulated","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Badass","tone":"lavender"}],
     [{"value":"Joy","tone":"lavender"},{"value":"Epic","tone":"lavender"},{"value":"Hilarious","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Glory","tone":"lavender"}],
     [{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"ComedyHorror","tone":"lavender"},{"value":"Paranoia","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Halloween","tone":"lavender"}],
     [{"value":"UglyCute","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Shame","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Excess","tone":"lavender"}],

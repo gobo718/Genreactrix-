@@ -464,17 +464,15 @@
   }
   return manifest.length?{manifest,uploads}:null;
  }
- async function uploadServerLocalImages(job,serverJobId,uploads){
-  const uploaded=new Set(Array.isArray(job.serverUploadedItemIds)?job.serverUploadedItemIds.map(String):[]),failures=[];let attempted=0,succeeded=0;
-  for(const row of uploads){
-   if(uploaded.has(String(row.item.id)))continue;
-   attempted++;
-   try{
-    const blob=await window.imageBlobGet?.(row.record.id).catch(()=>null);if(!blob)throw new Error(`Image source is unavailable for ${row.record.name||row.record.id}`);
-    const prepared=await normalizeAiImageBlob(blob);await window.GenreactrixCloudApi.uploadServerJobImage(serverJobId,row.item.id,prepared.blob);uploaded.add(String(row.item.id));succeeded++;job.serverUploadedItemIds=[...uploaded];job.message=`Handing images to server · ${uploaded.size}/${uploads.length}`;await put(JOBS,job);if(succeeded===1||succeeded%5===0||uploaded.size===uploads.length){emit();render();}
-   }catch(error){failures.push({itemId:String(row.item.id),imageId:String(row.record.id),error:String(error?.message||error)});}
+ async function uploadServerLocalImages(job,serverJobId,uploads,remoteItems=[]){
+  const readyIds=new Set((Array.isArray(remoteItems)?remoteItems:[]).filter(item=>item?.sourceReady===true).map(item=>String(item.id))),pending=(uploads||[]).filter(row=>!readyIds.has(String(row.item.id))),total=pending.length;
+  let index=0;if(!total)return 0;
+  for(const row of pending){
+   const blob=await window.imageBlobGet?.(row.record.id).catch(()=>null);if(!blob)throw new Error(`Image source is unavailable for ${row.record.name||row.record.id}`);
+   const prepared=await normalizeAiImageBlob(blob);await window.GenreactrixCloudApi.uploadServerJobImage(serverJobId,row.item.id,prepared.blob);index++;
+   if(index===1||index===total||index%5===0)await updateJob(job,{message:`Handing images to server · ${index}/${total} · processing as each arrives`});
   }
-  return{attempted,succeeded,uploaded:uploaded.size,total:uploads.length,failures};
+  return index;
  }
  async function markServerItemsInFlight(job){
   const lifecycleIsolated=isThemeRerunConfig(job.config),items=(await byIndex(ITEMS,'jobId',job.id)).sort((a,b)=>a.order-b.order);
@@ -532,42 +530,43 @@
   return'running';
  }
  async function monitorServerJob(jobId){
-  let lastUploadRetry=0;
-  while(true){let job=(await all(JOBS)).find(j=>j.id===jobId);if(!job||job.execution!=='server'||!job.serverJobId)return;if(job.state==='cancelled')return;try{
-    if(Date.now()-lastUploadRetry>=5000){const prepared=await prepareServerJobManifest(job);if(prepared?.uploads?.length)await uploadServerLocalImages(job,job.serverJobId,prepared.uploads);lastUploadRetry=Date.now();job=(await all(JOBS)).find(j=>j.id===jobId)||job;}
-    const state=await syncServerJobOnce(job);if(state!=='running')return;
-   }catch(error){job=(await all(JOBS)).find(j=>j.id===jobId)||job;job.message=`Server status unavailable · ${String(error?.message||error)}`;await put(JOBS,job);emit();render();}await new Promise(resolve=>setTimeout(resolve,SERVER_JOB_POLL_MS));}
+  while(true){let job=(await all(JOBS)).find(j=>j.id===jobId);if(!job||job.execution!=='server'||!job.serverJobId)return;if(job.state==='cancelled')return;try{const state=await syncServerJobOnce(job);if(state!=='running')return;}catch(error){job=(await all(JOBS)).find(j=>j.id===jobId)||job;job.message=`Server status unavailable · ${String(error?.message||error)}`;await put(JOBS,job);emit();render();}await new Promise(resolve=>setTimeout(resolve,SERVER_JOB_POLL_MS));}
  }
  async function runServerJobOnce(job){
   if(!window.GenreactrixCloudApi?.isConfigured?.())return false;
   const prepared=await prepareServerJobManifest(job);if(!prepared)return false;
   try{
-   let remoteState='';
+   let remoteState='',remoteItems=[];
    if(!job.serverJobId){
     await updateJob(job,{state:'queued',execution:'server-preparing',message:`Preparing server handoff · ${prepared.manifest.length} images`});
     const created=await window.GenreactrixCloudApi.createServerJob({clientJobId:job.id,config:{themeSweep:clone(job.config.themeSweep||null),themeRerun:clone(job.config.themeRerun||null),descriptionRerun:clone(job.config.descriptionRerun||null),components:clone(job.config.components||{}),siteBuild:window.GENREACTRIX_BUILD||null},items:prepared.manifest}),remote=created?.result||created,serverJobId=remote?.job?.id;
     if(!serverJobId)throw new Error('Worker did not return a server job id');
-    job.serverJobId=serverJobId;job.execution='server-preparing';remoteState=String(remote?.job?.state||'');await put(JOBS,job);
+    job.serverJobId=serverJobId;job.execution='server-preparing';remoteState=String(remote?.job?.state||'');remoteItems=Array.isArray(remote?.items)?remote.items:[];await put(JOBS,job);
    }else{
     const status=await window.GenreactrixCloudApi.serverJobStatus(job.serverJobId),remote=status?.result||status;
-    remoteState=String(remote?.job?.state||'');
+    remoteState=String(remote?.job?.state||'');remoteItems=Array.isArray(remote?.items)?remote.items:[];
    }
 
-   if(['completed','completed-with-failures','failed','cancelled'].includes(remoteState)){
-    job.execution='server';job.state='running';job.startedAt=job.startedAt||now();job.stopRequested=false;job.serverState=remoteState;job.message=`Reattached to server · ${remoteState}`;await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'running',job.message);await markServerItemsInFlight(job);emit();render();await syncServerJobOnce(job);return true;
+   if(['running','completed','completed-with-failures','failed','cancelled'].includes(remoteState)){
+    job.execution='server';job.state='running';job.startedAt=job.startedAt||now();job.stopRequested=false;job.serverState=remoteState;job.message=`Reattached to server · ${remoteState}`;await put(JOBS,job);
+    await q()?.setJobState?.(`queue_${job.id}`,'running',job.message);await markServerItemsInFlight(job);emit();render();
+    if(remoteState==='running')await uploadServerLocalImages(job,job.serverJobId,prepared.uploads,remoteItems);
+    const state=await syncServerJobOnce(job);if(state==='running')await monitorServerJob(job.id);return true;
    }
    if(remoteState==='paused'){
     job.execution='server';job.state='paused';job.serverState='paused';job.message='Server job is paused';await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'paused',job.message);emit();render();return true;
    }
 
-   if(remoteState!=='running'){
-    const started=await window.GenreactrixCloudApi.startServerJob(job.serverJobId),startedRemote=started?.result||started;remoteState=String(startedRemote?.job?.state||'running');
-   }
-   job.execution='server';job.state='running';job.startedAt=job.startedAt||now();job.stopRequested=false;job.serverState=remoteState;job.message=`Running on server · progressive image handoff`;await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'running','AI analysis running on server');await markServerItemsInFlight(job);emit();render();
-   await uploadServerLocalImages(job,job.serverJobId,prepared.uploads);
-   const state=await syncServerJobOnce((await all(JOBS)).find(j=>j.id===job.id)||job);if(state==='running')await monitorServerJob(job.id);return true;
+   const started=await window.GenreactrixCloudApi.startServerJob(job.serverJobId),startedRemote=started?.result||started;
+   remoteState=String(startedRemote?.job?.state||'running');remoteItems=Array.isArray(startedRemote?.items)?startedRemote.items:[];
+   job.execution='server';job.state='running';job.startedAt=job.startedAt||now();job.stopRequested=false;job.serverState=remoteState;job.message=prepared.uploads.length?`Running on server · handing ${prepared.uploads.length} local image${prepared.uploads.length===1?'':'s'}`:`Running on server · ${job.total} images`;await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'running','AI analysis running on server');await markServerItemsInFlight(job);emit();render();
+   await uploadServerLocalImages(job,job.serverJobId,prepared.uploads,remoteItems);
+   const state=await syncServerJobOnce(job);if(state==='running')await monitorServerJob(job.id);return true;
   }catch(error){
-   const attached=Boolean(job.serverJobId);job.execution=attached?'server-preparing':null;job.state='paused';job.message=`Server handoff failed · ${String(error?.message||error)}`;await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'paused',job.message);emit();render();throw error;
+   const attached=Boolean(job.serverJobId);
+   if(attached&&job.execution==='server')await window.GenreactrixCloudApi.controlServerJob(job.serverJobId,'pause').catch(()=>{});
+   job.execution=attached?'server':null;job.state='paused';job.message=`Server handoff failed · ${String(error?.message||error)}`;
+   await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'paused',job.message);emit();render();throw error;
   }
  }
  async function runServerJob(job){
@@ -578,7 +577,7 @@
  }
  async function run(jobId){
   let job=(await all(JOBS)).find(j=>j.id===jobId);if(!job)return;
-  if(job.execution==='server'&&job.serverJobId){if(job.state==='running')return monitorServerJob(job.id);if(job.state==='paused')return;}
+  if(job.execution==='server'&&job.serverJobId){if(job.state==='running')return runServerJob(job);if(job.state==='paused')return;}
   if(job.execution==='server-preparing'&&job.serverJobId){const capable=await serverJobCapability();if(capable)return runServerJob(job);}
   if(await serverJobCapability()){const prepared=await prepareServerJobManifest(job);if(prepared)return runServerJob(job);}
   return runLocal(jobId);
@@ -649,7 +648,7 @@
   if(!stopped&&!isThemeRerunConfig(job.config)){if(job.failed)setTimeout(()=>autoRecoverCompletedJob(job.id).catch(error=>markAiAutoRecoveryFailure(job.id,error)),0);else setTimeout(()=>maintainActiveMode().catch(console.warn),0);}
  }
  async function pause(id){const j=(await all(JOBS)).find(x=>x.id===id);if(j?.state==='running'){if(j.execution==='server'&&j.serverJobId)await window.GenreactrixCloudApi.controlServerJob(j.serverJobId,'pause');await updateJob(j,{state:'paused',message:j.execution==='server'?'Pausing server job after current image':'Paused safely'});await q()?.setJobState?.(`queue_${id}`,'paused',j.message)}}
- async function resume(id){const j=(await all(JOBS)).find(x=>x.id===id);if(j&&['paused','queued'].includes(j.state)){if(j.execution==='server'&&j.serverJobId){await window.GenreactrixCloudApi.controlServerJob(j.serverJobId,'resume');await updateJob(j,{state:'running',message:'Resuming on server'});await q()?.setJobState?.(`queue_${id}`,'running','Resuming on server');monitorServerJob(id);return;}await updateJob(j,{state:'queued',message:'Resuming'});await q()?.setJobState?.(`queue_${id}`,'queued','Resuming');run(id)}}
+ async function resume(id){const j=(await all(JOBS)).find(x=>x.id===id);if(j&&['paused','queued'].includes(j.state)){if(j.execution==='server'&&j.serverJobId){await window.GenreactrixCloudApi.controlServerJob(j.serverJobId,'resume');await updateJob(j,{state:'running',message:'Resuming on server'});await q()?.setJobState?.(`queue_${id}`,'running','Resuming on server');runServerJob(j).catch(console.warn);return;}await updateJob(j,{state:'queued',message:'Resuming'});await q()?.setJobState?.(`queue_${id}`,'queued','Resuming');run(id)}}
  async function stop(id){const j=(await all(JOBS)).find(x=>x.id===id);if(j&&['running','paused','queued'].includes(j.state)){if(j.execution==='server'&&j.serverJobId)await window.GenreactrixCloudApi.controlServerJob(j.serverJobId,'cancel').catch(()=>{});const items=await byIndex(ITEMS,'jobId',id);await updateJob(j,{stopRequested:true,state:'cancelled',message:'Stopped safely',completedAt:now()});for(const item of items.filter(item=>['queued','processing','failed'].includes(item.state))){item.state='cancelled';item.error='Stopped by user';for(const c of item.components||[])if(['queued','processing','failed'].includes(c.state))c.state='cancelled';await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'cancelled',{error:'Stopped by user'});if(isThemeRerunConfig(j.config))restoreThemeRerunLifecycle(item,'theme-rerun-lifecycle-guard-stopped');else window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:id,attemptId:item.currentAttemptId||item.id})}await q()?.setJobState?.(`queue_${id}`,'cancelled','Stopped safely')}}
  async function reconcileCancelledJobs(){const jobs=await all(JOBS);for(const job of jobs.filter(j=>j.state==='cancelled')){const items=await byIndex(ITEMS,'jobId',job.id);for(const item of items.filter(i=>['queued','processing'].includes(i.state))){item.state='cancelled';item.error='Recovered cancelled job';for(const c of item.components||[])if(['queued','processing'].includes(c.state))c.state='cancelled';await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'cancelled',{error:'Recovered cancelled job'})}await q()?.setJobState?.(`queue_${job.id}`,'cancelled','Stopped safely')}}
  async function recoverInterruptedAiJobs(){const jobs=await all(JOBS);let recovered=0;for(const job of jobs.filter(j=>j.state==='running'&&j.execution!=='server')){const items=await byIndex(ITEMS,'jobId',job.id);for(const item of items.filter(i=>i.state==='processing')){item.state='queued';item.error='Recovered after page reload';for(const c of item.components||[])if(c.state==='processing')c.state='queued';await put(ITEMS,item);await q()?.setItemState?.(`queue_${item.id}`,'queued',{error:'Recovered after page reload'});if(isThemeRerunConfig(job.config))restoreThemeRerunLifecycle(item,'theme-rerun-lifecycle-guard-reload');else window.genreactrixLifecycleEngine?.reconcileAfterAi?.(item.imageId,{jobId:job.id,attemptId:item.id});recovered++}job.state='queued';job.processing=0;job.stopRequested=false;job.message='Recovered after page reload';await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'queued','Recovered after page reload');recovered++}if(recovered)emit();return recovered}
@@ -690,7 +689,7 @@
   else setTimeout(()=>maintainActiveMode().catch(console.warn),0);
  }
  async function retryFailed(id){const items=await byIndex(ITEMS,'jobId',id),j=(await all(JOBS)).find(x=>x.id===id);if(j?.execution==='server'&&j.serverJobId){let queued=0;const retryItemIds=[];for(const item of items.filter(i=>i.state==='failed')){const record=window.genreactrixImageRecordEngine?.get?.(item.imageId,{touch:false});if(['quarantine','defective'].includes(String(record?.workflow?.stage||'')))continue;item.state='processing';item.error='';item.currentAttemptId=`${item.id}:server:${Math.max(1,(Number(item.attempts)||0)+1)}`;item.attempts=Math.max(1,(Number(item.attempts)||0)+1);item.components.forEach(c=>{if(c.state==='failed'){c.state='processing';const field=COMPONENTS.find(([id])=>id===c.component)?.[2];if(field&&record)window.genreactrixImageRecordEngine?.setComponent?.(record.id,field,'processing')}});if(record&&!isThemeRerunConfig(j.config))window.genreactrixLifecycleEngine?.markAiProcessing?.(item.imageId,{jobId:j.id,attemptId:item.currentAttemptId,execution:'server-retry'});await put(ITEMS,item);retryItemIds.push(item.id);queued++;}if(queued){await window.GenreactrixCloudApi.controlServerJob(j.serverJobId,'retry-failed',{itemIds:retryItemIds});j.state='running';j.failed=0;j.autoRecoveryError='';j.message='Retrying failed items on server';await put(JOBS,j);await q()?.setJobState?.(`queue_${id}`,'running',j.message);const sweep=j.config?.themeSweep;if(sweep?.managed&&sweep?.sweepId)window.genreactrixThemeSweepEngine?.markPassRetrying?.(sweep.sweepId,Math.max(1,Math.min(3,Number(sweep.pass)||1)));monitorServerJob(id);}else{j.message='No retryable failures · Quarantine requires manual investigation';await put(JOBS,j);render()}return;}let queued=0;for(const item of items.filter(i=>i.state==='failed')){const record=window.genreactrixImageRecordEngine?.get?.(item.imageId,{touch:false});if(['quarantine','defective'].includes(String(record?.workflow?.stage||'')))continue;item.state='queued';item.error='';item.components.forEach(c=>{if(c.state==='failed')c.state='queued'});await put(ITEMS,item);queued++}if(j&&queued){j.state='queued';j.failed=items.filter(i=>i.state==='failed').length;j.completed=items.filter(i=>i.state==='complete').length;j.autoRecoveryError='';j.message='Retry queued';await put(JOBS,j);const sweep=j.config?.themeSweep;if(sweep?.managed&&sweep?.sweepId)window.genreactrixThemeSweepEngine?.markPassRetrying?.(sweep.sweepId,Math.max(1,Math.min(3,Number(sweep.pass)||1)));run(id)}else if(j){j.message='No retryable failures · Quarantine requires manual investigation';await put(JOBS,j);render()}}
- async function resumeStrandedJobs(){window.GenreactrixCloudApi?.reload?.();if(!window.GenreactrixCloudApi?.isConfigured?.())return 0;const jobs=await all(JOBS);let resumed=0;for(const job of jobs){const duplicateHandoffFailure=job.state==='paused'&&/server handoff failed[\s\S]*unique constraint failed:\s*ai_job_items\.id/i.test(String(job.message||'')),oldAllUploadsGate=job.state==='paused'&&/server handoff failed[\s\S]*server ai job cannot start until every local image has been uploaded/i.test(String(job.message||''));if(duplicateHandoffFailure||oldAllUploadsGate){job.state='queued';job.execution=null;job.serverJobId=null;job.message=oldAllUploadsGate?'Recovering progressive image handoff':'Recovering duplicate server handoff';await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'queued',job.message);await run(job.id);resumed++;continue;}if(job.execution==='server'&&job.serverJobId&&job.state==='running'){monitorServerJob(job.id);resumed++;continue;}if(job.execution==='server-preparing'&&job.serverJobId&&['queued','paused'].includes(job.state)){run(job.id).catch(console.warn);resumed++;continue;}if(job.state==='queued'){await run(job.id);resumed++;continue;}if(job.state==='completed-with-failures'&&job.config?.autoOrchestration===true){const advanced=await autoRecoverCompletedJob(job.id).catch(error=>{markAiAutoRecoveryFailure(job.id,error);return false});if(advanced)resumed++;}}return resumed}
+ async function resumeStrandedJobs(){window.GenreactrixCloudApi?.reload?.();if(!window.GenreactrixCloudApi?.isConfigured?.())return 0;const jobs=await all(JOBS);let resumed=0;for(const job of jobs){const duplicateHandoffFailure=job.state==='paused'&&/server handoff failed[\s\S]*unique constraint failed:\s*ai_job_items\.id/i.test(String(job.message||''));if(duplicateHandoffFailure){job.state='queued';job.execution=null;job.serverJobId=null;job.message='Recovering duplicate server handoff';await put(JOBS,job);await q()?.setJobState?.(`queue_${job.id}`,'queued',job.message);await run(job.id);resumed++;continue;}if(job.execution==='server'&&job.serverJobId&&job.state==='running'){runServerJob(job).catch(console.warn);resumed++;continue;}if(job.execution==='server-preparing'&&job.serverJobId&&['queued','paused'].includes(job.state)){run(job.id).catch(console.warn);resumed++;continue;}if(job.state==='queued'){await run(job.id);resumed++;continue;}if(job.state==='completed-with-failures'&&job.config?.autoOrchestration===true){const advanced=await autoRecoverCompletedJob(job.id).catch(error=>{markAiAutoRecoveryFailure(job.id,error);return false});if(advanced)resumed++;}}return resumed}
  function automaticOutputs(){const defaults=window.genreactrixSettingsEngine?.get?.('ai.components.default',{})||{};return{reactions:true,themes:true,description:true,reactionReasons:Boolean(defaults.reactionReasons),genreReasons:true}}
  function automaticEligibleCount(){return eligibleRecords({target:'current',quantityMode:'all',order:'queue',components:{reactions:{enabled:true,behavior:'analyze'},themes:{enabled:true,behavior:'analyze'},description:{enabled:true,behavior:'analyze'}}}).filter(r=>['aiReactions','aiThemes','aiDescription'].some(key=>['missing','stale','failed','partial'].includes(r.components?.[key]||'missing'))).length}
  function bufferPolicy(){
