@@ -1,3 +1,14 @@
+# Genreactrix AI Worker 0.9.6.144-progressive-image-handoff
+
+- Removes the all-local-images-uploaded prerequisite from `startServerAiJob`.
+- Server jobs enter `running` immediately and dispatch only source-ready queued items.
+- Each successful local-image upload independently queues that item when the job is running.
+- URL items and previously uploaded items can begin before later local images arrive.
+- Resume and retry controls dispatch only source-ready items; source-missing items remain queued rather than failing or blocking the job.
+- Queue execution ignores stale duplicate messages, non-queued items, and upload items that do not yet have a source payload.
+- No AI prompt, Theme, taxonomy, provider, Description, Theme Sweep, or Reaction behavior changed.
+- Companion site: v0.9.40.194.
+
 # Genreactrix AI Worker 0.9.6.143-server-handoff-idempotency
 
 - Server job creation is now idempotent by `clientJobId` and requested item ids.
