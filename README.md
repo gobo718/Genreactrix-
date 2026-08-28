@@ -1,3 +1,18 @@
+# Genreactrix v0.9.40.193 — idempotent server handoff
+
+This release fixes the D1 duplicate-handoff failure that could pause an AI job with `UNIQUE constraint failed: ai_job_items.id`.
+
+- The browser now enforces one in-flight server handoff per local AI job. Duplicate `run()` calls for the same job share the same handoff promise instead of submitting the manifest twice.
+- Once a server job id has been obtained, a later upload/start/status failure no longer automatically cancels that remote job or throws away its id. The local job retains the attachment and can reconnect.
+- When a reconnect discovers that the remote job is already running or already terminal, the browser reattaches and harvests/monitors it instead of uploading the same images or starting a second server job.
+- Existing user Pause/Resume/Stop semantics are preserved. Manual Bundle remains the workflow boundary.
+- A job paused by the old `ai_job_items.id` duplicate-handoff bug is automatically re-queued once after this build loads with provider settings available; ordinary user-paused jobs remain paused.
+- No AI prompts, Theme definitions, taxonomy, provider order, Description behavior, Theme Sweep semantics, or Theme-derived Reaction logic changed.
+
+Companion Worker: v0.9.6.143-server-handoff-idempotency.
+
+---
+
 # Genreactrix v0.9.40.192 — ZazzlyParty
 
 PFM0912 (Zazzly + Celebration) is now **ZazzlyParty**. **Hedonism is retired.**
