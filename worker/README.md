@@ -1,3 +1,14 @@
+# Genreactrix AI Worker 0.9.6.143-server-handoff-idempotency
+
+- Server job creation is now idempotent by `clientJobId` and requested item ids.
+- Concurrent duplicate creates converge on the same server job instead of creating competing D1 jobs whose shared item ids collide.
+- `ai_job_items` inserts use insert-if-missing semantics and are followed by ownership verification.
+- Partial/competing historical handoffs for the same client job are consolidated onto the canonical job; duplicate server-job shells are marked superseded.
+- A previously cancelled duplicate handoff can be reopened when the same still-active local client job explicitly resubmits it; completed work is preserved.
+- Server-job creation validates the complete manifest before creating D1 state.
+- No AI prompt or taxonomy telemetry changed; this is orchestration/storage only.
+- Companion site: v0.9.40.193.
+
 # Genreactrix AI Worker 0.9.6.142-zazzlyparty
 
 - PFM0912 (Zazzly + Celebration) is now **ZazzlyParty**; Hedonism is retired.
