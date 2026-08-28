@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.143-server-handoff-idempotency
+/* Genreactrix AI Worker v0.9.6.144-progressive-image-handoff
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.143-server-handoff-idempotency';
+const API_VERSION = '0.9.6.144-progressive-image-handoff';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -4966,8 +4966,10 @@ async function uploadServerAiJobImage(env,jobId,itemId,request){
   if(item.source_kind!=='upload')throw new Error('This server AI item does not accept an image upload');
   const bytes=new Uint8Array(await request.arrayBuffer());if(!bytes.length)throw new Error('Image upload was empty');if(bytes.length>6_000_000)throw new Error('Image upload exceeds 6 MB');
   const key=`jobs/${jobId}/${itemId}.jpg`;await env.GENREACTRIX_AI_IMAGES.put(key,bytes,{httpMetadata:{contentType:'image/jpeg'}});
-  await env.GENREACTRIX_JOBS_DB.prepare('UPDATE ai_job_items SET source_ref=?,updated_at=? WHERE job_id=? AND id=?').bind(key,serverJobIso(),String(jobId),String(itemId)).run();
-  return{ok:true,itemId,key,bytes:bytes.length};
+  const at=serverJobIso();await env.GENREACTRIX_JOBS_DB.prepare('UPDATE ai_job_items SET source_ref=?,updated_at=? WHERE job_id=? AND id=?').bind(key,at,String(jobId),String(itemId)).run();
+  const job=await serverJobRow(env,jobId),updated=await serverJobItemRow(env,jobId,itemId);
+  if(String(job?.state||'')==='running'&&String(updated?.state||'')==='queued')await sendServerJobMessages(env,jobId,[itemId]);
+  return{ok:true,itemId,key,bytes:bytes.length,queued:String(job?.state||'')==='running'&&String(updated?.state||'')==='queued'};
 }
 async function sendServerJobMessages(env,jobId,itemIds){
   const ids=[...new Set((itemIds||[]).map(String).filter(Boolean))];
@@ -4977,10 +4979,9 @@ async function startServerAiJob(env,jobId){
   if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
   await ensureServerJobSchema(env);const job=await serverJobRow(env,jobId);if(!job)throw new Error('Server AI job not found');
   if(SERVER_JOB_TERMINAL_STATES.has(String(job.state)))return{job:serverJobPublic(job),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
-  const missing=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND source_kind='upload' AND (source_ref IS NULL OR source_ref='') LIMIT 1").bind(String(jobId)).first();
-  if(missing)throw new Error('Server AI job cannot start until every local image has been uploaded');
-  const queued=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id),startedAt=job.started_at||serverJobIso();
-  await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET state='running',message=?,started_at=?,completed_at=NULL,updated_at=? WHERE id=?").bind(`Running on server · ${ids.length} queued`,startedAt,serverJobIso(),String(jobId)).run();
+  const ready=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' AND (source_kind='url' OR (source_kind='upload' AND source_ref IS NOT NULL AND source_ref<>'')) ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(ready?.results||[]).map(row=>row.id),startedAt=job.started_at||serverJobIso();
+  const waiting=await env.GENREACTRIX_JOBS_DB.prepare("SELECT COUNT(*) AS n FROM ai_job_items WHERE job_id=? AND state='queued' AND source_kind='upload' AND (source_ref IS NULL OR source_ref='')").bind(String(jobId)).first(),waitingCount=Number(waiting?.n)||0;
+  const at=serverJobIso();await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET state='running',message=?,started_at=?,completed_at=NULL,updated_at=? WHERE id=?").bind(`Running on server · ${ids.length} ready${waitingCount?` · ${waitingCount} awaiting image handoff`:''}`,startedAt,at,String(jobId)).run();
   if(ids.length)await sendServerJobMessages(env,jobId,ids);
   return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
 }
@@ -4989,7 +4990,7 @@ async function controlServerAiJob(env,jobId,action,options={}){
   const db=env.GENREACTRIX_JOBS_DB,job=await serverJobRow(env,jobId);if(!job)throw new Error('Server AI job not found');const at=serverJobIso();
   if(action==='pause')await db.prepare("UPDATE ai_jobs SET state='paused',message='Paused after current server image',updated_at=? WHERE id=? AND state IN ('running','preparing')").bind(at,String(jobId)).run();
   else if(action==='resume'){
-    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
+    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' AND (source_kind='url' OR (source_kind='upload' AND source_ref IS NOT NULL AND source_ref<>'')) ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
     await db.prepare("UPDATE ai_jobs SET state='running',message='Resuming on server',completed_at=NULL,updated_at=? WHERE id=? AND state='paused'").bind(at,String(jobId)).run();if(ids.length)await sendServerJobMessages(env,jobId,ids);
   }else if(action==='cancel'){
     await db.prepare("UPDATE ai_jobs SET state='cancelled',message='Cancelled',completed_at=?,updated_at=? WHERE id=?").bind(at,at,String(jobId)).run();
@@ -5000,7 +5001,7 @@ async function controlServerAiJob(env,jobId,action,options={}){
     const requestedIds=[...new Set((Array.isArray(options?.itemIds)?options.itemIds:[]).map(value=>String(value||'').trim()).filter(Boolean))];
     if(requestedIds.length){const marks=requestedIds.map(()=>'?').join(',');await db.prepare(`UPDATE ai_job_items SET state='queued',error='',result_json=NULL,started_at=NULL,completed_at=NULL,harvested_at=NULL,updated_at=? WHERE job_id=? AND state='failed' AND id IN (${marks})`).bind(at,String(jobId),...requestedIds).run();}
     else await db.prepare("UPDATE ai_job_items SET state='queued',error='',result_json=NULL,started_at=NULL,completed_at=NULL,harvested_at=NULL,updated_at=? WHERE job_id=? AND state='failed'").bind(at,String(jobId)).run();
-    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
+    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' AND (source_kind='url' OR (source_kind='upload' AND source_ref IS NOT NULL AND source_ref<>'')) ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
     await db.prepare("UPDATE ai_jobs SET state='running',message=?,completed_at=NULL,updated_at=? WHERE id=?").bind(requestedIds.length?`Retrying ${ids.length} selected failed server item${ids.length===1?'':'s'}`:'Retrying failed server items',at,String(jobId)).run();if(ids.length)await sendServerJobMessages(env,jobId,ids);
   }else throw new Error('Unknown server AI job control action');
   return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
@@ -5016,7 +5017,10 @@ async function runServerAiJobItem(env,jobId,itemId){
   await ensureServerJobSchema(env);const db=env.GENREACTRIX_JOBS_DB;let job=await serverJobRow(env,jobId),item=await serverJobItemRow(env,jobId,itemId);if(!job||!item)return;
   if(job.state==='paused'||job.state==='preparing')return;
   if(job.state==='cancelled'||SERVER_JOB_ITEM_TERMINAL_STATES.has(String(item.state)))return;
-  const at=serverJobIso();await db.prepare("UPDATE ai_job_items SET state='processing',attempts=attempts+1,error='',started_at=COALESCE(started_at,?),updated_at=? WHERE job_id=? AND id=?").bind(at,at,String(jobId),String(itemId)).run();
+  if(String(item.state)!=='queued')return;
+  if(item.source_kind==='upload'&&!String(item.source_ref||'').trim())return;
+  const at=serverJobIso();await db.prepare("UPDATE ai_job_items SET state='processing',attempts=attempts+1,error='',started_at=COALESCE(started_at,?),updated_at=? WHERE job_id=? AND id=? AND state='queued'").bind(at,at,String(jobId),String(itemId)).run();
+  item=await serverJobItemRow(env,jobId,itemId);if(String(item?.state||'')!=='processing')return;
   item=await serverJobItemRow(env,jobId,itemId);const request=serverJobJsonParse(item.request_json,null);if(!request)throw new Error('Server AI item request is corrupt');
   const specimen={...request,imageId:String(request.imageId||item.image_id)};if(item.source_kind==='url')specimen.imageUrl=item.source_ref;else specimen.imageObjectKey=item.source_ref;
   let result=null,errorMessage='',technicalRetry=null;
