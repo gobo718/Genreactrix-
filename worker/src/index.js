@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.142-zazzlyparty
+/* Genreactrix AI Worker v0.9.6.143-server-handoff-idempotency
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.141-schadenfreude-freakshow-swap';
+const API_VERSION = '0.9.6.143-server-handoff-idempotency';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -4866,24 +4866,99 @@ async function refreshServerJobCounters(env,jobId){
 function serverJobPublic(row){if(!row)return null;return{id:row.id,clientJobId:row.client_job_id||null,state:row.state,total:Number(row.total)||0,completed:Number(row.completed)||0,failed:Number(row.failed)||0,cancelled:Number(row.cancelled)||0,message:row.message||'',createdAt:row.created_at||null,startedAt:row.started_at||null,completedAt:row.completed_at||null,updatedAt:row.updated_at||null};}
 function serverJobItemPublic(row){return{id:row.id,clientItemId:row.client_item_id||row.id,imageId:row.image_id,order:Number(row.order_index)||0,state:row.state,attempts:Number(row.attempts)||0,error:row.error||'',sourceKind:row.source_kind||'',startedAt:row.started_at||null,completedAt:row.completed_at||null,harvestedAt:row.harvested_at||null,updatedAt:row.updated_at||null};}
 
+async function serverJobExistingOwners(env,itemIds){
+  const ids=[...new Set((itemIds||[]).map(value=>String(value||'').trim()).filter(Boolean))],rows=[];
+  for(let i=0;i<ids.length;i+=80){
+    const chunk=ids.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
+    const found=await env.GENREACTRIX_JOBS_DB.prepare(`SELECT i.id,i.job_id,j.client_job_id,j.state,j.created_at FROM ai_job_items i LEFT JOIN ai_jobs j ON j.id=i.job_id WHERE i.id IN (${marks})`).bind(...chunk).all();
+    rows.push(...(found?.results||[]));
+  }
+  return rows;
+}
+async function serverJobByClientId(env,clientJobId){
+  if(!clientJobId)return null;
+  const result=await env.GENREACTRIX_JOBS_DB.prepare("SELECT * FROM ai_jobs WHERE client_job_id=? ORDER BY CASE WHEN state='cancelled' THEN 1 ELSE 0 END ASC, created_at ASC").bind(String(clientJobId)).all();
+  return (result?.results||[])[0]||null;
+}
+function deterministicServerJobId(clientJobId){
+  const clean=String(clientJobId||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,180);
+  return clean?`srvjob_${clean}`:serverJobId('srvjob');
+}
+async function consolidateDuplicateServerJobOwners(env,clientJobId,canonicalJobId,owners,itemIds){
+  const db=env.GENREACTRIX_JOBS_DB,ids=new Set((itemIds||[]).map(String)),otherJobs=[...new Set((owners||[]).filter(row=>row?.job_id&&row.job_id!==canonicalJobId&&ids.has(String(row.id))).map(row=>String(row.job_id)))];
+  for(const duplicateJobId of otherJobs){
+    const duplicate=await serverJobRow(env,duplicateJobId);
+    if(clientJobId&&String(duplicate?.client_job_id||'')!==String(clientJobId))throw new Error(`Server AI item id collision belongs to another client job (${duplicateJobId})`);
+    const ownedIds=(owners||[]).filter(row=>String(row.job_id)===duplicateJobId&&ids.has(String(row.id))).map(row=>String(row.id));
+    for(let i=0;i<ownedIds.length;i+=80){
+      const chunk=ownedIds.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
+      await db.prepare(`UPDATE ai_job_items SET job_id=?,updated_at=? WHERE job_id=? AND id IN (${marks})`).bind(String(canonicalJobId),serverJobIso(),duplicateJobId,...chunk).run();
+    }
+    await db.prepare("UPDATE ai_jobs SET state='cancelled',message='Superseded duplicate server handoff',completed_at=COALESCE(completed_at,?),updated_at=? WHERE id=?").bind(serverJobIso(),serverJobIso(),duplicateJobId).run();
+  }
+}
 async function createServerAiJob(env,body={}){
   if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured (D1 + Queue + R2 required)');
   await ensureServerJobSchema(env);
   const rawItems=Array.isArray(body.items)?body.items:[];
   if(!rawItems.length||rawItems.length>1000)throw new Error('Server AI job requires 1–1000 items');
-  const jobId=serverJobId('srvjob'),createdAt=serverJobIso(),clientJobId=String(body.clientJobId||'').slice(0,160)||null;
-  await env.GENREACTRIX_JOBS_DB.prepare('INSERT INTO ai_jobs(id,client_job_id,state,total,completed,failed,cancelled,message,config_json,created_at,updated_at) VALUES(?,?,?,?,0,0,0,?,?,?,?)').bind(jobId,clientJobId,'preparing',rawItems.length,'Waiting for image handoff',JSON.stringify(body.config||{}),createdAt,createdAt).run();
-  const statements=[];
+  const clientJobId=String(body.clientJobId||'').slice(0,160)||null,createdAt=serverJobIso(),normalized=[];
+  const seenIds=new Set();
   for(const [index,raw] of rawItems.entries()){
-    const id=String(raw?.id||serverJobId('srvitem')).slice(0,220),imageId=String(raw?.imageId||'').slice(0,220),sourceKind=String(raw?.sourceKind||'').toLowerCase(),sourceRef=sourceKind==='url'?String(raw?.sourceRef||'').trim():null,request=raw?.request;
+    const id=String(raw?.id||serverJobId('srvitem')).slice(0,220),imageId=String(raw?.imageId||'').slice(0,220),sourceKind=String(raw?.sourceKind||'').toLowerCase(),sourceRef=sourceKind==='url'?String(raw?.sourceRef||'').trim():null,request=raw?.request,clientItemId=String(raw?.clientItemId||id).slice(0,220);
+    if(!id)throw new Error(`Server AI item ${index+1} is missing id`);
+    if(seenIds.has(id))throw new Error(`Server AI job contains duplicate item id ${id}`);
+    seenIds.add(id);
     if(!imageId)throw new Error(`Server AI item ${index+1} is missing imageId`);
     if(!['upload','url'].includes(sourceKind))throw new Error(`Server AI item ${index+1} has invalid sourceKind`);
     if(sourceKind==='url'&&!/^https:\/\//i.test(sourceRef||''))throw new Error(`Server AI item ${index+1} requires an HTTPS source URL`);
     if(!request||typeof request!=='object'||!Array.isArray(request.components)||!request.components.length)throw new Error(`Server AI item ${index+1} has no analysis request`);
-    statements.push(env.GENREACTRIX_JOBS_DB.prepare('INSERT INTO ai_job_items(id,job_id,client_item_id,image_id,order_index,state,attempts,error,source_kind,source_ref,request_json,created_at,updated_at) VALUES(?,?,?,?,?,\'queued\',0,\'\',?,?,?,?,?)').bind(id,jobId,String(raw?.clientItemId||id).slice(0,220),imageId,Number(raw?.order)||index,sourceKind,sourceRef,JSON.stringify(request),createdAt,createdAt));
+    normalized.push({id,clientItemId,imageId,order:Number(raw?.order)||index,sourceKind,sourceRef,request});
   }
+
+  const itemIds=normalized.map(row=>row.id),owners=await serverJobExistingOwners(env,itemIds);
+  const foreignOwner=owners.find(row=>clientJobId&&String(row?.client_job_id||'')!==String(clientJobId));
+  if(foreignOwner)throw new Error(`Server AI item id ${foreignOwner.id} already belongs to another client job`);
+
+  let canonical=null;
+  if(owners.length){
+    const counts=new Map();
+    for(const row of owners)counts.set(String(row.job_id),(counts.get(String(row.job_id))||0)+1);
+    const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+    canonical=await serverJobRow(env,ranked[0][0]);
+  }
+  if(!canonical&&clientJobId)canonical=await serverJobByClientId(env,clientJobId);
+
+  let jobId=canonical?.id||deterministicServerJobId(clientJobId);
+  if(!canonical){
+    await env.GENREACTRIX_JOBS_DB.prepare('INSERT OR IGNORE INTO ai_jobs(id,client_job_id,state,total,completed,failed,cancelled,message,config_json,created_at,updated_at) VALUES(?,?,?,?,0,0,0,?,?,?,?)').bind(jobId,clientJobId,'preparing',normalized.length,'Waiting for image handoff',JSON.stringify(body.config||{}),createdAt,createdAt).run();
+    canonical=await serverJobRow(env,jobId);
+    if(!canonical)throw new Error('Server AI job could not be created');
+    if(clientJobId&&String(canonical.client_job_id||'')!==String(clientJobId))throw new Error('Deterministic server job id collision');
+  }
+
+  jobId=String(canonical.id);
+  if(owners.length)await consolidateDuplicateServerJobOwners(env,clientJobId,jobId,owners,itemIds);
+
+  if(String(canonical.state)==='cancelled'){
+    await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_job_items SET state=CASE WHEN state='complete' THEN 'complete' ELSE 'queued' END,error=CASE WHEN state='complete' THEN error ELSE '' END,result_json=CASE WHEN state='complete' THEN result_json ELSE NULL END,started_at=CASE WHEN state='complete' THEN started_at ELSE NULL END,completed_at=CASE WHEN state='complete' THEN completed_at ELSE NULL END,harvested_at=CASE WHEN state='complete' THEN harvested_at ELSE NULL END,updated_at=? WHERE job_id=?").bind(createdAt,jobId).run();
+    await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET state='preparing',completed=0,failed=0,cancelled=0,message='Resuming idempotent image handoff',config_json=?,completed_at=NULL,updated_at=? WHERE id=?").bind(JSON.stringify(body.config||{}),createdAt,jobId).run();
+  }
+
+  const statements=normalized.map(row=>env.GENREACTRIX_JOBS_DB.prepare('INSERT OR IGNORE INTO ai_job_items(id,job_id,client_item_id,image_id,order_index,state,attempts,error,source_kind,source_ref,request_json,created_at,updated_at) VALUES(?,?,?,?,?,\'queued\',0,\'\',?,?,?,?,?)').bind(row.id,jobId,row.clientItemId,row.imageId,row.order,row.sourceKind,row.sourceRef,JSON.stringify(row.request),createdAt,createdAt));
   for(let i=0;i<statements.length;i+=50)await env.GENREACTRIX_JOBS_DB.batch(statements.slice(i,i+50));
-  return{job:serverJobPublic(await serverJobRow(env,jobId)),items:await serverJobItems(env,jobId).then(rows=>rows.map(serverJobItemPublic))};
+
+  const verified=await serverJobExistingOwners(env,itemIds),byId=new Map(verified.map(row=>[String(row.id),row]));
+  for(const row of normalized){
+    const existing=byId.get(row.id);
+    if(!existing)throw new Error(`Server AI item ${row.id} was not persisted`);
+    if(String(existing.job_id)!==jobId)throw new Error(`Server AI item ${row.id} is owned by another server job`);
+  }
+
+  const liveJob=await serverJobRow(env,jobId),mutable=!SERVER_JOB_TERMINAL_STATES.has(String(liveJob?.state||''))&&String(liveJob?.state||'')!=='running';
+  if(mutable)await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET total=?,config_json=?,message=CASE WHEN state='preparing' THEN 'Waiting for image handoff' ELSE message END,updated_at=? WHERE id=?").bind(normalized.length,JSON.stringify(body.config||{}),serverJobIso(),jobId).run();
+
+  return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:await serverJobItems(env,jobId).then(rows=>rows.map(serverJobItemPublic)),idempotent:true};
 }
 async function uploadServerAiJobImage(env,jobId,itemId,request){
   if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
