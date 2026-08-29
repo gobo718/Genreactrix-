@@ -1,15 +1,10 @@
-# Genreactrix AI Worker 0.9.6.150-server-job-state-reconciliation
+# Genreactrix AI Worker 0.9.6.151-taxonomy-only-restoration
 
-This release preserves the v0.9.6.149 Queue/processing recovery behavior and the v0.9.6.146 taxonomy. It adds the server-side half of the AI job state-machine reconciliation used by companion site v0.9.40.197.
-
-- Failed server items expose whether their failure is automatically retryable.
-- `Invalid User Credentials`, invalid/rejected credentials, authentication failure, and unauthorized errors are non-retryable automatically.
-- Automatic `retry-failed` requests leave those provider/configuration failures terminal instead of resetting them to queued.
-- Manual/forced Retry Failed can still retry them after configuration is repaired.
-- If an automatic retry request contains no allowed failures, the Worker refreshes job counters instead of forcing the server job back to `running`.
-- Progressive per-image handoff, processing lease/heartbeat recovery, provider order, Theme/Description pipeline, independent Theme audit, and deterministic Theme-derived Reactions are otherwise unchanged.
-
-Companion site: **v0.9.40.197**.
+- Restores complete Worker behavior from v0.9.6.144-badass-theme-tuning / v0.9.6.143 idempotent server handoff.
+- Carries forward only the approved current PrimFusion registry, Theme names, Prim pair assignments, and Theme definitions from v0.9.6.146.
+- Does not include v0.9.6.145 streaming/progressive handoff behavior or any v0.9.6.147–.150 stall/recovery/reconciliation logic.
+- Provider routing, Queue execution, server-job state transitions, retries, Theme Sweep, Description pipeline, and deterministic Theme-derived Reactions otherwise match the restored baseline.
+- Companion site: v0.9.40.198-taxonomy-only-restoration.
 
 # Genreactrix AI Worker 0.9.6.143-server-handoff-idempotency
 
@@ -20,7 +15,7 @@ Companion site: **v0.9.40.197**.
 - A previously cancelled duplicate handoff can be reopened when the same still-active local client job explicitly resubmits it; completed work is preserved.
 - Server-job creation validates the complete manifest before creating D1 state.
 - No AI prompt or taxonomy telemetry changed; this is orchestration/storage only.
-- Companion site: v0.9.40.197.
+- Companion site: v0.9.40.194.
 
 # Genreactrix AI Worker 0.9.6.142-zazzlyparty
 
