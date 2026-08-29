@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.150-server-job-state-reconciliation
+/* Genreactrix AI Worker v0.9.6.151-taxonomy-only-restoration
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.150-server-job-state-reconciliation';
+const API_VERSION = '0.9.6.151-taxonomy-only-restoration';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -4845,7 +4845,7 @@ async function serverJobItemRow(env,jobId,itemId){
 }
 async function serverJobItems(env,jobId){
   await ensureServerJobSchema(env);
-  const result=await env.GENREACTRIX_JOBS_DB.prepare('SELECT id,client_item_id,image_id,order_index,state,attempts,error,source_kind,source_ref,started_at,completed_at,harvested_at,updated_at FROM ai_job_items WHERE job_id=? ORDER BY order_index ASC').bind(String(jobId)).all();
+  const result=await env.GENREACTRIX_JOBS_DB.prepare('SELECT id,client_item_id,image_id,order_index,state,attempts,error,source_kind,started_at,completed_at,harvested_at,updated_at FROM ai_job_items WHERE job_id=? ORDER BY order_index ASC').bind(String(jobId)).all();
   return result?.results||[];
 }
 async function refreshServerJobCounters(env,jobId){
@@ -4864,7 +4864,7 @@ async function refreshServerJobCounters(env,jobId){
   return serverJobRow(env,jobId);
 }
 function serverJobPublic(row){if(!row)return null;return{id:row.id,clientJobId:row.client_job_id||null,state:row.state,total:Number(row.total)||0,completed:Number(row.completed)||0,failed:Number(row.failed)||0,cancelled:Number(row.cancelled)||0,message:row.message||'',createdAt:row.created_at||null,startedAt:row.started_at||null,completedAt:row.completed_at||null,updatedAt:row.updated_at||null};}
-function serverJobItemPublic(row){const failed=String(row?.state||'')==='failed',retryable=failed?!/invalid user credentials|invalid credentials|credential(?:s)? (?:are )?(?:invalid|rejected)|authentication failed|unauthorized/i.test(String(row?.error||'')):null;return{id:row.id,clientItemId:row.client_item_id||row.id,imageId:row.image_id,order:Number(row.order_index)||0,state:row.state,attempts:Number(row.attempts)||0,error:row.error||'',retryable,sourceKind:row.source_kind||'',sourceReady:row.source_kind==='url'||Boolean(row.source_ref),startedAt:row.started_at||null,completedAt:row.completed_at||null,harvestedAt:row.harvested_at||null,updatedAt:row.updated_at||null};}
+function serverJobItemPublic(row){return{id:row.id,clientItemId:row.client_item_id||row.id,imageId:row.image_id,order:Number(row.order_index)||0,state:row.state,attempts:Number(row.attempts)||0,error:row.error||'',sourceKind:row.source_kind||'',startedAt:row.started_at||null,completedAt:row.completed_at||null,harvestedAt:row.harvested_at||null,updatedAt:row.updated_at||null};}
 
 async function serverJobExistingOwners(env,itemIds){
   const ids=[...new Set((itemIds||[]).map(value=>String(value||'').trim()).filter(Boolean))],rows=[];
@@ -4896,21 +4896,6 @@ async function consolidateDuplicateServerJobOwners(env,clientJobId,canonicalJobI
     }
     await db.prepare("UPDATE ai_jobs SET state='cancelled',message='Superseded duplicate server handoff',completed_at=COALESCE(completed_at,?),updated_at=? WHERE id=?").bind(serverJobIso(),serverJobIso(),duplicateJobId).run();
   }
-}
-
-async function reconcileServerJobManifest(env,jobId,normalized){
-  const db=env.GENREACTRIX_JOBS_DB,wanted=new Set((normalized||[]).map(row=>String(row.id))),at=serverJobIso();
-  const existing=await db.prepare("SELECT id,source_kind,source_ref,state FROM ai_job_items WHERE job_id=?").bind(String(jobId)).all(),rows=existing?.results||[],orphans=rows.filter(row=>!wanted.has(String(row.id)));
-  if(orphans.length){
-    if(env.GENREACTRIX_AI_IMAGES)await Promise.all(orphans.filter(row=>row.source_kind==='upload'&&row.source_ref).map(row=>env.GENREACTRIX_AI_IMAGES.delete(row.source_ref).catch(()=>{})));
-    const orphanIds=orphans.map(row=>String(row.id));
-    for(let i=0;i<orphanIds.length;i+=80){
-      const chunk=orphanIds.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
-      await db.prepare(`DELETE FROM ai_job_items WHERE job_id=? AND id IN (${marks})`).bind(String(jobId),...chunk).run();
-    }
-  }
-  const updates=(normalized||[]).map(row=>db.prepare("UPDATE ai_job_items SET client_item_id=?,image_id=?,order_index=?,source_ref=CASE WHEN ?='upload' AND source_kind='upload' THEN source_ref WHEN ?='upload' THEN NULL ELSE ? END,source_kind=?,request_json=?,updated_at=? WHERE job_id=? AND id=?").bind(row.clientItemId,row.imageId,row.order,row.sourceKind,row.sourceKind,row.sourceRef,row.sourceKind,JSON.stringify(row.request),at,String(jobId),row.id));
-  for(let i=0;i<updates.length;i+=50)await db.batch(updates.slice(i,i+50));
 }
 async function createServerAiJob(env,body={}){
   if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured (D1 + Queue + R2 required)');
@@ -4963,9 +4948,6 @@ async function createServerAiJob(env,body={}){
   const statements=normalized.map(row=>env.GENREACTRIX_JOBS_DB.prepare('INSERT OR IGNORE INTO ai_job_items(id,job_id,client_item_id,image_id,order_index,state,attempts,error,source_kind,source_ref,request_json,created_at,updated_at) VALUES(?,?,?,?,?,\'queued\',0,\'\',?,?,?,?,?)').bind(row.id,jobId,row.clientItemId,row.imageId,row.order,row.sourceKind,row.sourceRef,JSON.stringify(row.request),createdAt,createdAt));
   for(let i=0;i<statements.length;i+=50)await env.GENREACTRIX_JOBS_DB.batch(statements.slice(i,i+50));
 
-  const liveJobBeforeVerify=await serverJobRow(env,jobId),mutableBeforeVerify=!SERVER_JOB_TERMINAL_STATES.has(String(liveJobBeforeVerify?.state||''))&&String(liveJobBeforeVerify?.state||'')!=='running';
-  if(mutableBeforeVerify)await reconcileServerJobManifest(env,jobId,normalized);
-
   const verified=await serverJobExistingOwners(env,itemIds),byId=new Map(verified.map(row=>[String(row.id),row]));
   for(const row of normalized){
     const existing=byId.get(row.id);
@@ -4978,14 +4960,6 @@ async function createServerAiJob(env,body={}){
 
   return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:await serverJobItems(env,jobId).then(rows=>rows.map(serverJobItemPublic)),idempotent:true};
 }
-async function readyQueuedServerJobItemIds(env,jobId){
-  const queued=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' AND (source_kind='url' OR (source_kind='upload' AND source_ref IS NOT NULL AND source_ref<>'')) ORDER BY order_index ASC").bind(String(jobId)).all();
-  return(queued?.results||[]).map(row=>String(row.id));
-}
-async function waitingServerUploadCount(env,jobId){
-  const row=await env.GENREACTRIX_JOBS_DB.prepare("SELECT COUNT(*) count FROM ai_job_items WHERE job_id=? AND state='queued' AND source_kind='upload' AND (source_ref IS NULL OR source_ref='')").bind(String(jobId)).first();
-  return Number(row?.count)||0;
-}
 async function uploadServerAiJobImage(env,jobId,itemId,request){
   if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
   const item=await serverJobItemRow(env,jobId,itemId);if(!item)throw new Error('Server AI job item not found');
@@ -4993,9 +4967,7 @@ async function uploadServerAiJobImage(env,jobId,itemId,request){
   const bytes=new Uint8Array(await request.arrayBuffer());if(!bytes.length)throw new Error('Image upload was empty');if(bytes.length>6_000_000)throw new Error('Image upload exceeds 6 MB');
   const key=`jobs/${jobId}/${itemId}.jpg`;await env.GENREACTRIX_AI_IMAGES.put(key,bytes,{httpMetadata:{contentType:'image/jpeg'}});
   await env.GENREACTRIX_JOBS_DB.prepare('UPDATE ai_job_items SET source_ref=?,updated_at=? WHERE job_id=? AND id=?').bind(key,serverJobIso(),String(jobId),String(itemId)).run();
-  const liveJob=await serverJobRow(env,jobId),liveItem=await serverJobItemRow(env,jobId,itemId);
-  if(String(liveJob?.state||'')==='running'&&String(liveItem?.state||'')==='queued')await sendServerJobMessages(env,jobId,[itemId]);
-  return{ok:true,itemId,key,bytes:bytes.length,queuedForProcessing:String(liveJob?.state||'')==='running'&&String(liveItem?.state||'')==='queued'};
+  return{ok:true,itemId,key,bytes:bytes.length};
 }
 async function sendServerJobMessages(env,jobId,itemIds){
   const ids=[...new Set((itemIds||[]).map(String).filter(Boolean))];
@@ -5005,8 +4977,10 @@ async function startServerAiJob(env,jobId){
   if(!serverJobBindingsReady(env))throw new Error('Server AI jobs are not fully configured');
   await ensureServerJobSchema(env);const job=await serverJobRow(env,jobId);if(!job)throw new Error('Server AI job not found');
   if(SERVER_JOB_TERMINAL_STATES.has(String(job.state)))return{job:serverJobPublic(job),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
-  const ids=await readyQueuedServerJobItemIds(env,jobId),waiting=await waitingServerUploadCount(env,jobId),startedAt=job.started_at||serverJobIso(),message=waiting?`Running on server · ${ids.length} ready · ${waiting} awaiting upload`:`Running on server · ${ids.length} ready`;
-  await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET state='running',message=?,started_at=?,completed_at=NULL,updated_at=? WHERE id=?").bind(message,startedAt,serverJobIso(),String(jobId)).run();
+  const missing=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND source_kind='upload' AND (source_ref IS NULL OR source_ref='') LIMIT 1").bind(String(jobId)).first();
+  if(missing)throw new Error('Server AI job cannot start until every local image has been uploaded');
+  const queued=await env.GENREACTRIX_JOBS_DB.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id),startedAt=job.started_at||serverJobIso();
+  await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_jobs SET state='running',message=?,started_at=?,completed_at=NULL,updated_at=? WHERE id=?").bind(`Running on server · ${ids.length} queued`,startedAt,serverJobIso(),String(jobId)).run();
   if(ids.length)await sendServerJobMessages(env,jobId,ids);
   return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
 }
@@ -5015,7 +4989,7 @@ async function controlServerAiJob(env,jobId,action,options={}){
   const db=env.GENREACTRIX_JOBS_DB,job=await serverJobRow(env,jobId);if(!job)throw new Error('Server AI job not found');const at=serverJobIso();
   if(action==='pause')await db.prepare("UPDATE ai_jobs SET state='paused',message='Paused after current server image',updated_at=? WHERE id=? AND state IN ('running','preparing')").bind(at,String(jobId)).run();
   else if(action==='resume'){
-    const ids=await readyQueuedServerJobItemIds(env,jobId);
+    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
     await db.prepare("UPDATE ai_jobs SET state='running',message='Resuming on server',completed_at=NULL,updated_at=? WHERE id=? AND state='paused'").bind(at,String(jobId)).run();if(ids.length)await sendServerJobMessages(env,jobId,ids);
   }else if(action==='cancel'){
     await db.prepare("UPDATE ai_jobs SET state='cancelled',message='Cancelled',completed_at=?,updated_at=? WHERE id=?").bind(at,at,String(jobId)).run();
@@ -5023,94 +4997,37 @@ async function controlServerAiJob(env,jobId,action,options={}){
     await db.prepare("UPDATE ai_job_items SET state='cancelled',error='Cancelled by user',completed_at=?,updated_at=? WHERE job_id=? AND state='queued'").bind(at,at,String(jobId)).run();
     await Promise.all((uploads?.results||[]).map(row=>row.source_ref?env.GENREACTRIX_AI_IMAGES.delete(row.source_ref).catch(()=>{}):null));
   }else if(action==='retry-failed'){
-    const requestedIds=[...new Set((Array.isArray(options?.itemIds)?options.itemIds:[]).map(value=>String(value||'').trim()).filter(Boolean))],automatic=options?.automatic===true,force=options?.force===true;
-    const failedRows=await db.prepare("SELECT id,error FROM ai_job_items WHERE job_id=? AND state='failed'").bind(String(jobId)).all(),allowed=(failedRows?.results||[]).filter(row=>(!requestedIds.length||requestedIds.includes(String(row.id)))&&(!automatic||force||!/invalid user credentials|invalid credentials|credential(?:s)? (?:are )?(?:invalid|rejected)|authentication failed|unauthorized/i.test(String(row.error||'')))).map(row=>String(row.id));
-    if(allowed.length){const marks=allowed.map(()=>'?').join(',');await db.prepare(`UPDATE ai_job_items SET state='queued',error='',result_json=NULL,started_at=NULL,completed_at=NULL,harvested_at=NULL,updated_at=? WHERE job_id=? AND state='failed' AND id IN (${marks})`).bind(at,String(jobId),...allowed).run();}
-    const ids=await readyQueuedServerJobItemIds(env,jobId),retryIds=ids.filter(id=>allowed.includes(String(id)));
-    if(allowed.length){await db.prepare("UPDATE ai_jobs SET state='running',message=?,completed_at=NULL,updated_at=? WHERE id=?").bind(`Retrying ${allowed.length} failed server item${allowed.length===1?'':'s'}`,at,String(jobId)).run();if(retryIds.length)await sendServerJobMessages(env,jobId,retryIds);}else await refreshServerJobCounters(env,jobId);
+    const requestedIds=[...new Set((Array.isArray(options?.itemIds)?options.itemIds:[]).map(value=>String(value||'').trim()).filter(Boolean))];
+    if(requestedIds.length){const marks=requestedIds.map(()=>'?').join(',');await db.prepare(`UPDATE ai_job_items SET state='queued',error='',result_json=NULL,started_at=NULL,completed_at=NULL,harvested_at=NULL,updated_at=? WHERE job_id=? AND state='failed' AND id IN (${marks})`).bind(at,String(jobId),...requestedIds).run();}
+    else await db.prepare("UPDATE ai_job_items SET state='queued',error='',result_json=NULL,started_at=NULL,completed_at=NULL,harvested_at=NULL,updated_at=? WHERE job_id=? AND state='failed'").bind(at,String(jobId)).run();
+    const queued=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' ORDER BY order_index ASC").bind(String(jobId)).all(),ids=(queued?.results||[]).map(row=>row.id);
+    await db.prepare("UPDATE ai_jobs SET state='running',message=?,completed_at=NULL,updated_at=? WHERE id=?").bind(requestedIds.length?`Retrying ${ids.length} selected failed server item${ids.length===1?'':'s'}`:'Retrying failed server items',at,String(jobId)).run();if(ids.length)await sendServerJobMessages(env,jobId,ids);
   }else throw new Error('Unknown server AI job control action');
   return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};
 }
-async function serverAiJobStatus(env,jobId){await recoverStaleServerJobItems(env,jobId);const job=await serverJobRow(env,jobId);if(String(job?.state||'')==='running')await redriveReadyQueuedServerJobItems(env,jobId);return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};}
+async function serverAiJobStatus(env,jobId){return{job:serverJobPublic(await refreshServerJobCounters(env,jobId)),items:(await serverJobItems(env,jobId)).map(serverJobItemPublic)};}
 async function serverAiJobItemResult(env,jobId,itemId){
   const item=await serverJobItemRow(env,jobId,itemId);if(!item)throw new Error('Server AI job item not found');return{item:serverJobItemPublic(item),envelope:serverJobJsonParse(item.result_json,null)};
 }
 async function markServerAiJobItemHarvested(env,jobId,itemId){await ensureServerJobSchema(env);const item=await serverJobItemRow(env,jobId,itemId),at=serverJobIso();await env.GENREACTRIX_JOBS_DB.prepare('UPDATE ai_job_items SET harvested_at=?,updated_at=? WHERE job_id=? AND id=?').bind(at,at,String(jobId),String(itemId)).run();if(item?.state!=='failed'&&item?.source_kind==='upload'&&item?.source_ref&&env.GENREACTRIX_AI_IMAGES)await env.GENREACTRIX_AI_IMAGES.delete(item.source_ref).catch(()=>{});return{ok:true,harvestedAt:at};}
 const freshServerRetryRecommended=error=>{const d=providerDiagnosticOf(error)||{};return d?.freshRequestRecommended===true&&String(d?.failureKind||'').toLowerCase()==='timeout';};
-const SERVER_JOB_PROCESSING_STALE_MS=15*60*1000;
-const SERVER_JOB_PROCESSING_MAX_MS=20*60*1000;
-const SERVER_JOB_PROCESSING_HEARTBEAT_MS=60*1000;
-const SERVER_JOB_QUEUE_REDRIVE_MS=2*60*1000;
-const serverJobErrorText=error=>{const d=providerDiagnosticOf(error)||{};return `${String(error?.message||error||'')} ${String(d?.errorMessage||'')} ${String(d?.provider||'')}`.trim();};
-const serverJobProviderCredentialFailure=error=>/invalid user credentials|invalid credentials|credential(?:s)? (?:are )?(?:invalid|rejected)|authentication failed/i.test(serverJobErrorText(error));
-const serverJobGlobalFailure=error=>!serverJobProviderCredentialFailure(error)&&/unauthorized|analysis access is not configured|workers ai binding ai is not configured|rate limit|quota|capacity|gateway|provider unavailable/i.test(serverJobErrorText(error));
-const serverJobItemProcessingStale=item=>{
-  if(String(item?.state||'')!=='processing')return false;
-  const updated=Date.parse(String(item?.updated_at||'')),started=Date.parse(String(item?.started_at||'')),now=Date.now();
-  return (Number.isFinite(updated)&&now-updated>=SERVER_JOB_PROCESSING_STALE_MS)||(Number.isFinite(started)&&now-started>=SERVER_JOB_PROCESSING_MAX_MS);
-};
-async function redriveReadyQueuedServerJobItems(env,jobId){
-  await ensureServerJobSchema(env);
-  const db=env.GENREACTRIX_JOBS_DB,cutoff=new Date(Date.now()-SERVER_JOB_QUEUE_REDRIVE_MS).toISOString(),at=serverJobIso();
-  const waiting=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='queued' AND (source_kind='url' OR (source_kind='upload' AND source_ref IS NOT NULL AND source_ref<>'')) AND (updated_at IS NULL OR updated_at<=?) ORDER BY order_index ASC").bind(String(jobId),cutoff).all();
-  const ids=(waiting?.results||[]).map(row=>String(row.id));
-  if(!ids.length)return[];
-  await sendServerJobMessages(env,jobId,ids);
-  for(let i=0;i<ids.length;i+=80){
-    const chunk=ids.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
-    await db.prepare(`UPDATE ai_job_items SET updated_at=? WHERE job_id=? AND state='queued' AND id IN (${marks})`).bind(at,String(jobId),...chunk).run();
-  }
-  return ids;
-}
-function startServerJobItemHeartbeat(db,jobId,itemId,attempt){
-  let stopped=false,inFlight=false;
-  const beat=async()=>{
-    if(stopped||inFlight)return;
-    inFlight=true;
-    try{
-      const at=serverJobIso(),result=await db.prepare("UPDATE ai_job_items SET updated_at=? WHERE job_id=? AND id=? AND state='processing' AND attempts=?").bind(at,String(jobId),String(itemId),Number(attempt)||0).run();
-      if(Number(result?.meta?.changes||0)!==1)stopped=true;
-    }catch(error){console.warn('Server AI processing heartbeat failed',String(error?.message||error));}
-    finally{inFlight=false;}
-  };
-  const timer=setInterval(()=>{void beat();},SERVER_JOB_PROCESSING_HEARTBEAT_MS);
-  return()=>{stopped=true;clearInterval(timer);};
-}
-async function recoverStaleServerJobItems(env,jobId){
-  await ensureServerJobSchema(env);
-  const db=env.GENREACTRIX_JOBS_DB,heartbeatCutoff=new Date(Date.now()-SERVER_JOB_PROCESSING_STALE_MS).toISOString(),absoluteCutoff=new Date(Date.now()-SERVER_JOB_PROCESSING_MAX_MS).toISOString(),at=serverJobIso();
-  const stale=await db.prepare("SELECT id FROM ai_job_items WHERE job_id=? AND state='processing' AND (updated_at<=? OR (started_at IS NOT NULL AND started_at<=?)) ORDER BY order_index ASC").bind(String(jobId),heartbeatCutoff,absoluteCutoff).all(),ids=(stale?.results||[]).map(row=>String(row.id));
-  if(!ids.length)return[];
-  for(let i=0;i<ids.length;i+=80){
-    const chunk=ids.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
-    await db.prepare(`UPDATE ai_job_items SET state='queued',error='Recovered expired server processing attempt',result_json=NULL,started_at=NULL,completed_at=NULL,updated_at=? WHERE job_id=? AND state='processing' AND (updated_at<=? OR (started_at IS NOT NULL AND started_at<=?)) AND id IN (${marks})`).bind(at,String(jobId),heartbeatCutoff,absoluteCutoff,...chunk).run();
-  }
-  const ready=await readyQueuedServerJobItemIds(env,jobId),recovered=ready.filter(id=>ids.includes(String(id)));
-  const job=await serverJobRow(env,jobId);if(String(job?.state||'')==='running'&&recovered.length)await sendServerJobMessages(env,jobId,recovered);
-  return recovered;
-}
+const serverJobGlobalFailure=message=>/unauthorized|analysis access is not configured|workers ai binding ai is not configured|rate limit|quota|capacity|gateway|provider unavailable/i.test(String(message||''));
 async function runServerAiJobItem(env,jobId,itemId){
   await ensureServerJobSchema(env);const db=env.GENREACTRIX_JOBS_DB;let job=await serverJobRow(env,jobId),item=await serverJobItemRow(env,jobId,itemId);if(!job||!item)return;
   if(job.state==='paused'||job.state==='preparing')return;
   if(job.state==='cancelled'||SERVER_JOB_ITEM_TERMINAL_STATES.has(String(item.state)))return;
-  if(item.source_kind==='upload'&&!item.source_ref)return;
-  const at=serverJobIso(),claim=await db.prepare("UPDATE ai_job_items SET state='processing',attempts=attempts+1,error='',started_at=?,updated_at=? WHERE job_id=? AND id=? AND state='queued'").bind(at,at,String(jobId),String(itemId)).run();
-  if(Number(claim?.meta?.changes||0)!==1)return;
-  item=await serverJobItemRow(env,jobId,itemId);const claimAttempt=Number(item?.attempts)||0,stopHeartbeat=startServerJobItemHeartbeat(db,jobId,itemId,claimAttempt);
-  let request=null,result=null,errorMessage='',technicalRetry=null;
+  const at=serverJobIso();await db.prepare("UPDATE ai_job_items SET state='processing',attempts=attempts+1,error='',started_at=COALESCE(started_at,?),updated_at=? WHERE job_id=? AND id=?").bind(at,at,String(jobId),String(itemId)).run();
+  item=await serverJobItemRow(env,jobId,itemId);const request=serverJobJsonParse(item.request_json,null);if(!request)throw new Error('Server AI item request is corrupt');
+  const specimen={...request,imageId:String(request.imageId||item.image_id)};if(item.source_kind==='url')specimen.imageUrl=item.source_ref;else specimen.imageObjectKey=item.source_ref;
+  let result=null,errorMessage='',technicalRetry=null;
   try{
-    request=serverJobJsonParse(item.request_json,null);if(!request)throw new Error('Server AI item request is corrupt');
-    const specimen={...request,imageId:String(request.imageId||item.image_id)};if(item.source_kind==='url')specimen.imageUrl=item.source_ref;else specimen.imageObjectKey=item.source_ref;
     const routed=providerRoutingEnv(env,specimen);
     try{result=await analyze(routed,specimen);}catch(firstError){if(!freshServerRetryRecommended(firstError))throw firstError;technicalRetry={at:serverJobIso(),type:'diagnostic-timeout-fresh-request',firstError:String(firstError?.message||firstError),providerDiagnostic:providerDiagnosticOf(firstError)||null};result=await analyze(providerRoutingEnv(env,specimen),specimen);if(result&&typeof result==='object'){const resultAny=/** @type {any} */(result),researchConfiguration=/** @type {any} */(resultAny.researchConfiguration||{});resultAny.researchConfiguration={...researchConfiguration,technicalRetryHistory:[...(Array.isArray(researchConfiguration.technicalRetryHistory)?researchConfiguration.technicalRetryHistory:[]),technicalRetry]};}}
-    job=await serverJobRow(env,jobId);if(job?.state==='cancelled'){await db.prepare("UPDATE ai_job_items SET state='cancelled',error='Cancelled by user',result_json=NULL,completed_at=?,updated_at=? WHERE job_id=? AND id=? AND state='processing' AND attempts=?").bind(serverJobIso(),serverJobIso(),String(jobId),String(itemId),claimAttempt).run();return;}
+    job=await serverJobRow(env,jobId);if(job?.state==='cancelled'){await db.prepare("UPDATE ai_job_items SET state='cancelled',error='Cancelled by user',result_json=NULL,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(serverJobIso(),serverJobIso(),String(jobId),String(itemId)).run();return;}
     const envelope={schemaVersion:1,serverJobId:String(jobId),serverItemId:String(itemId),imageId:item.image_id,requested:Array.isArray(request.components)?request.components:[],startedAt:item.started_at||at,completedAt:serverJobIso(),technicalRetry,result};
-    await db.prepare("UPDATE ai_job_items SET state='complete',error='',result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=? AND state='processing' AND attempts=?").bind(JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId),claimAttempt).run();
-  }catch(error){
-    errorMessage=String(error?.message||error);const diagnostic=providerDiagnosticOf(error)||null,envelope={schemaVersion:1,serverJobId:String(jobId),serverItemId:String(itemId),imageId:item.image_id,requested:Array.isArray(request?.components)?request.components:[],startedAt:item.started_at||at,completedAt:serverJobIso(),error:errorMessage,providerDiagnostic:diagnostic};
-    const failed=await db.prepare("UPDATE ai_job_items SET state='failed',error=?,result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=? AND state='processing' AND attempts=?").bind(errorMessage,JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId),claimAttempt).run();
-    if(Number(failed?.meta?.changes||0)===1&&serverJobGlobalFailure(error))await db.prepare("UPDATE ai_jobs SET state='paused',message=?,updated_at=? WHERE id=? AND state='running'").bind(`Paused after provider failure: ${errorMessage}`.slice(0,1800),serverJobIso(),String(jobId)).run();
-  }finally{stopHeartbeat();await refreshServerJobCounters(env,jobId);}
+    await db.prepare("UPDATE ai_job_items SET state='complete',error='',result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId)).run();
+  }catch(error){errorMessage=String(error?.message||error);const diagnostic=providerDiagnosticOf(error)||null,envelope={schemaVersion:1,serverJobId:String(jobId),serverItemId:String(itemId),imageId:item.image_id,requested:Array.isArray(request?.components)?request.components:[],startedAt:item.started_at||at,completedAt:serverJobIso(),error:errorMessage,providerDiagnostic:diagnostic};await db.prepare("UPDATE ai_job_items SET state='failed',error=?,result_json=?,completed_at=?,updated_at=? WHERE job_id=? AND id=?").bind(errorMessage,JSON.stringify(envelope),envelope.completedAt,envelope.completedAt,String(jobId),String(itemId)).run();if(serverJobGlobalFailure(errorMessage))await db.prepare("UPDATE ai_jobs SET state='paused',message=?,updated_at=? WHERE id=? AND state='running'").bind(`Paused after provider failure: ${errorMessage}`.slice(0,1800),serverJobIso(),String(jobId)).run();}
+  finally{await refreshServerJobCounters(env,jobId);}
 }
 async function consumeServerAiJobQueue(batch,env){
   if(!serverJobBindingsReady(env)){for(const message of batch.messages)message.retry({delaySeconds:60});return;}
@@ -5120,11 +5037,6 @@ async function consumeServerAiJobQueue(batch,env){
       if(!job||!item){message.ack();continue;}
       if(job.state==='paused'||job.state==='preparing'){message.ack();continue;}
       if(job.state==='cancelled'||SERVER_JOB_ITEM_TERMINAL_STATES.has(String(item.state))){message.ack();continue;}
-      if(String(item.state)==='processing'){
-        if(!serverJobItemProcessingStale(item)){message.retry({delaySeconds:60});continue;}
-        const heartbeatCutoff=new Date(Date.now()-SERVER_JOB_PROCESSING_STALE_MS).toISOString(),absoluteCutoff=new Date(Date.now()-SERVER_JOB_PROCESSING_MAX_MS).toISOString(),at=serverJobIso(),reclaimed=await env.GENREACTRIX_JOBS_DB.prepare("UPDATE ai_job_items SET state='queued',error='Recovered expired server processing attempt',result_json=NULL,started_at=NULL,completed_at=NULL,updated_at=? WHERE job_id=? AND id=? AND state='processing' AND (updated_at<=? OR (started_at IS NOT NULL AND started_at<=?))").bind(at,String(body.jobId),String(body.itemId),heartbeatCutoff,absoluteCutoff).run();
-        if(Number(reclaimed?.meta?.changes||0)!==1){message.retry({delaySeconds:60});continue;}
-      }
       await runServerAiJobItem(env,body.jobId,body.itemId);message.ack();
     }catch(error){console.error('Server AI queue item failed unexpectedly',error);message.retry({delaySeconds:30});}
   }
