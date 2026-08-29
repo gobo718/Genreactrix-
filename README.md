@@ -1,21 +1,19 @@
-# Genreactrix v0.9.40.196 — PrimFusion taxonomy refresh
+# Genreactrix v0.9.40.197 — AI job state-machine reconciliation
 
-- v0.9.40.196 taxonomy refresh: applies the approved PrimFusion replacements/moves and updated definitions, including Scandalarious, Corrupted, Cringe, Paranoia, and expanded Lewd.
-- Server handoff behavior from v0.9.40.195 is preserved unchanged.
-- Server-job manifests are reconciled while preparing so rows outside the current manifest cannot block a fresh handoff.
-- Browser reload/resume rechecks server source readiness and continues any unfinished local-image handoff.
-- PFM0712 Badass plus the approved Hilarious, FreakyDeaky, and Shame definitions from v0.9.40.194 remain unchanged.
+This release preserves the v0.9.40.196 taxonomy and the v0.9.40.195 progressive per-item server handoff. It fixes the browser/server orchestration faults exposed by the 66-image rerun without changing Theme definitions, provider order, Description behavior, deterministic Theme-derived Reactions, Bundle policy, or visual layout.
 
-This release fixes the D1 duplicate-handoff failure that could pause an AI job with `UNIQUE constraint failed: ai_job_items.id`.
+- **Provider configuration failures stop auto-looping.** Errors such as `Qwen AI failed: 2021: Invalid User Credentials` are classified as provider/configuration failures. They are held for manual retry after configuration is repaired instead of being repeatedly requeued as if the image were bad.
+- **Provider failures no longer falsely quarantine images.** Existing `three-isolated-ai-failures` quarantines whose evidence consists only of provider/global failures are repaired on startup and marked provider-blocked instead of problem-image.
+- **Automatic flow cannot create fresh jobs for provider-blocked images.** Manual Retry Failed remains available and explicitly clears the block.
+- **Theme Sweep results are pass/job scoped.** A pass now accepts only Theme results written by that exact AI job; an older `current` Theme result cannot satisfy a new pass. Pass 1 stores its job id, and passes 2–3 use their attached job ids.
+- **Theme Sweep finalization is idempotent.** If a pass has already completed or a later pass has advanced, a duplicate completion cannot create another pass job. Obsolete active work from an earlier pass is cancelled and terminalized locally.
+- **Server monitoring is single-flight per local job.** Reload, retry, and normal monitoring share one monitor loop instead of racing multiple finalize/recovery paths.
+- **Browser/server state is reconciled on startup.** A server-backed job is checked whenever its local items are still active even if the local job row already looks terminal. Conversely, if the browser has no active items but the attached remote job still says running, the stale remote work is cancelled because the browser remains the canonical lifecycle owner.
+- **Server retry is server-first.** Local failed items are not changed to processing until the Worker confirms those exact remote items were actually accepted for retry.
+- **AI job allocation is serialized.** Two browser triggers cannot concurrently select and reserve the same image population before either has written its item rows.
+- **Automatic recovery establishes the retry before startup flow resumes.** A reload cannot see a terminal failed job, start a new automatic job for those images, and then fire the old job’s delayed retry a moment later.
 
-- The browser now enforces one in-flight server handoff per local AI job. Duplicate `run()` calls for the same job share the same handoff promise instead of submitting the manifest twice.
-- Once a server job id has been obtained, a later upload/start/status failure no longer automatically cancels that remote job or throws away its id. The local job retains the attachment and can reconnect.
-- When a reconnect discovers that the remote job is already running or already terminal, the browser reattaches and harvests/monitors it instead of uploading the same images or starting a second server job.
-- Existing user Pause/Resume/Stop semantics are preserved. Manual Bundle remains the workflow boundary.
-- A job paused by the old `ai_job_items.id` duplicate-handoff bug is automatically re-queued once after this build loads with provider settings available; ordinary user-paused jobs remain paused.
-- No AI prompts, Theme definitions, taxonomy, provider order, Description behavior, Theme Sweep semantics, or Theme-derived Reaction logic changed.
-
-Companion Worker: v0.9.6.146-theme-taxonomy-refresh.
+Companion Worker: **v0.9.6.150-server-job-state-reconciliation**.
 
 ---
 

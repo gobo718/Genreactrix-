@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.196";
-// v0.9.40.196 — Approved PrimFusion taxonomy refresh and Theme-definition updates; server handoff behavior preserved from v0.9.40.195.
+const GENREACTRIX_BUILD="v0.9.40.197";
+// v0.9.40.197 — AI job state-machine reconciliation: non-retryable provider failures, Theme Sweep provenance, stale-pass cleanup, and single-flight server monitoring.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
