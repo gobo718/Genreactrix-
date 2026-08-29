@@ -1,6 +1,7 @@
-# Genreactrix v0.9.40.195 — Streaming server handoff
+# Genreactrix v0.9.40.196 — PrimFusion taxonomy refresh
 
-- v0.9.40.195 server handoff: a server job starts before all local uploads finish; each local image is queued for AI as soon as its own upload succeeds.
+- v0.9.40.196 taxonomy refresh: applies the approved PrimFusion replacements/moves and updated definitions, including Scandalarious, Corrupted, Cringe, Paranoia, and expanded Lewd.
+- Server handoff behavior from v0.9.40.195 is preserved unchanged.
 - Server-job manifests are reconciled while preparing so rows outside the current manifest cannot block a fresh handoff.
 - Browser reload/resume rechecks server source readiness and continues any unfinished local-image handoff.
 - PFM0712 Badass plus the approved Hilarious, FreakyDeaky, and Shame definitions from v0.9.40.194 remain unchanged.
@@ -14,7 +15,7 @@ This release fixes the D1 duplicate-handoff failure that could pause an AI job w
 - A job paused by the old `ai_job_items.id` duplicate-handoff bug is automatically re-queued once after this build loads with provider settings available; ordinary user-paused jobs remain paused.
 - No AI prompts, Theme definitions, taxonomy, provider order, Description behavior, Theme Sweep semantics, or Theme-derived Reaction logic changed.
 
-Companion Worker: v0.9.6.145-streaming-server-handoff.
+Companion Worker: v0.9.6.146-theme-taxonomy-refresh.
 
 ---
 
