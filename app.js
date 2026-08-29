@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.197";
-// v0.9.40.197 — AI job state-machine reconciliation: non-retryable provider failures, Theme Sweep provenance, stale-pass cleanup, and single-flight server monitoring.
+const GENREACTRIX_BUILD="v0.9.40.198";
+// v0.9.40.198 — Clean restoration of v0.9.40.194 behavior with only the approved current PrimFusion taxonomy/matrix/definition changes carried forward.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.

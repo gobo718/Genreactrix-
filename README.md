@@ -1,19 +1,10 @@
-# Genreactrix v0.9.40.197 — AI job state-machine reconciliation
+# Genreactrix v0.9.40.198 — taxonomy-only restoration
 
-This release preserves the v0.9.40.196 taxonomy and the v0.9.40.195 progressive per-item server handoff. It fixes the browser/server orchestration faults exposed by the 66-image rerun without changing Theme definitions, provider order, Description behavior, deterministic Theme-derived Reactions, Bundle policy, or visual layout.
+This build restores the complete site behavior of v0.9.40.194-badass-theme-tuning (which preserves the v0.9.40.193 idempotent server-job behavior) and carries forward only the approved current PrimFusion taxonomy, matrix labels, and Theme definitions from v0.9.40.196.
 
-- **Provider configuration failures stop auto-looping.** Errors such as `Qwen AI failed: 2021: Invalid User Credentials` are classified as provider/configuration failures. They are held for manual retry after configuration is repaired instead of being repeatedly requeued as if the image were bad.
-- **Provider failures no longer falsely quarantine images.** Existing `three-isolated-ai-failures` quarantines whose evidence consists only of provider/global failures are repaired on startup and marked provider-blocked instead of problem-image.
-- **Automatic flow cannot create fresh jobs for provider-blocked images.** Manual Retry Failed remains available and explicitly clears the block.
-- **Theme Sweep results are pass/job scoped.** A pass now accepts only Theme results written by that exact AI job; an older `current` Theme result cannot satisfy a new pass. Pass 1 stores its job id, and passes 2–3 use their attached job ids.
-- **Theme Sweep finalization is idempotent.** If a pass has already completed or a later pass has advanced, a duplicate completion cannot create another pass job. Obsolete active work from an earlier pass is cancelled and terminalized locally.
-- **Server monitoring is single-flight per local job.** Reload, retry, and normal monitoring share one monitor loop instead of racing multiple finalize/recovery paths.
-- **Browser/server state is reconciled on startup.** A server-backed job is checked whenever its local items are still active even if the local job row already looks terminal. Conversely, if the browser has no active items but the attached remote job still says running, the stale remote work is cancelled because the browser remains the canonical lifecycle owner.
-- **Server retry is server-first.** Local failed items are not changed to processing until the Worker confirms those exact remote items were actually accepted for retry.
-- **AI job allocation is serialized.** Two browser triggers cannot concurrently select and reserve the same image population before either has written its item rows.
-- **Automatic recovery establishes the retry before startup flow resumes.** A reload cannot see a terminal failed job, start a new automatic job for those images, and then fire the old job’s delayed retry a moment later.
+No progressive/streaming server-handoff changes from v0.9.40.195 and no later job-state recovery/reconciliation changes are included. AI orchestration, Queue/Theme Sweep behavior, lifecycle transitions, Staged/Landscape behavior, storage behavior, and server-job state handling are restored to the v0.9.40.194 baseline.
 
-Companion Worker: **v0.9.6.150-server-job-state-reconciliation**.
+Companion Worker: v0.9.6.151-taxonomy-only-restoration, restored from v0.9.6.144 behavior with only the current PrimFusion registry/definitions carried forward.
 
 ---
 

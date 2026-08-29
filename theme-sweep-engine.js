@@ -16,16 +16,16 @@
  function holdMany(ids,sweepId,pass,reason='theme-sweep'){for(const id of ids||[])setHold(id,true,sweepId,pass,{reason});}
  function releaseMany(ids,sweepId,pass){for(const id of ids||[])setHold(id,false,sweepId,pass);}
  function themeRows(r){const rows=r?.analysis?.ai?.components?.themes;return Array.isArray(rows)?rows.slice(0,3):[]}
- function triplet(r,expectedJobId=null){
-  if(String(r?.components?.aiThemes||'')!=='current')return null;if(expectedJobId&&String(r?.analysis?.ai?.jobId||'')!==String(expectedJobId))return null;
+ function triplet(r){
+  if(String(r?.components?.aiThemes||'')!=='current')return null;
   const rows=themeRows(r),codes=rows.map(row=>String(row?.code||row?.id||row?.value||'').trim().toUpperCase()).filter(Boolean);
   if(codes.length!==3||new Set(codes).size!==3||codes.some(code=>!/^PFM\d{4}$/.test(code)))return null;
   const labels=rows.map((row,index)=>String(row?.name||row?.label||codes[index]));
   return{key:codes.join('|'),codes,labels};
  }
- function evaluate(imageIds,pass,expectedJobId=null){
+ function evaluate(imageIds,pass){
   const successful=[],failed=[];
-  for(const id of imageIds||[]){const r=record(id),t=triplet(r,expectedJobId);if(t)successful.push({imageId:String(id),...t});else failed.push(String(id));}
+  for(const id of imageIds||[]){const r=record(id),t=triplet(r);if(t)successful.push({imageId:String(id),...t});else failed.push(String(id));}
   if(Number(pass)>=3)return{pass:Number(pass),analyzed:(imageIds||[]).length,successful:successful.length,failedIds:failed,releaseIds:successful.map(row=>row.imageId),holdIds:[...failed],triplet:null};
   const counts=new Map(),firstIndex=new Map();successful.forEach((row,index)=>{counts.set(row.key,(counts.get(row.key)||0)+1);if(!firstIndex.has(row.key))firstIndex.set(row.key,index)});
   let winner=null;
@@ -39,7 +39,7 @@
   const pass=Math.max(1,Math.min(3,Number(current.currentPass)||1)),key=String(pass),currentPass=current.passes?.[key]||current.passes?.[pass];
   if(currentPass?.state!=='blocked'||currentPass?.residualRecoveryApplied)return current;
   const residualIds=[...new Set((currentPass.imageIds||[]).map(String))];if(!residualIds.length)return current;
-  const residualOutcome=evaluate(residualIds,pass,currentPass?.jobId||(pass===1?current.rootJobId:null));
+  const residualOutcome=evaluate(residualIds,pass);
   // This migration is only for a stranded residual job: all images in the new, smaller
   // sweep still fail, while an earlier sweep contains those same failed images plus
   // valid siblings from the original pass.
@@ -48,7 +48,7 @@
   const candidates=read().filter(row=>row.id!==current.id&&(!projectId||!row.projectId||String(row.projectId)===projectId)&&String(row.createdAt||'')<=createdAt).map(row=>{
     const candidatePass=row.passes?.[key]||row.passes?.[pass],ids=[...new Set((candidatePass?.imageIds||row.imageIds||[]).map(String))];
     if(ids.length<=residualIds.length||!residualIds.every(id=>ids.includes(id)))return null;
-    const outcome=evaluate(ids,pass,candidatePass?.jobId||(pass===1?row.rootJobId:null)),failedSet=new Set(outcome.failedIds.map(String));
+    const outcome=evaluate(ids,pass),failedSet=new Set(outcome.failedIds.map(String));
     if(outcome.successful<=0||outcome.failedIds.length!==residualIds.length||!residualIds.every(id=>failedSet.has(id)))return null;
     return{row,candidatePass,ids,outcome};
   }).filter(Boolean).sort((a,b)=>String(b.row.createdAt||'').localeCompare(String(a.row.createdAt||''))||b.ids.length-a.ids.length);
@@ -61,7 +61,7 @@
  function makeSeed(sweepId,pass){const rnd=crypto.getRandomValues?.(new Uint32Array(2));return `${sweepId}:pass${pass}:${rnd?`${rnd[0].toString(16)}${rnd[1].toString(16)}`:`${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`}`}
  function begin({jobId,imageIds}){
   const ids=[...new Set((imageIds||[]).map(String))];if(!ids.length)return null;
-  const sweep={id:uid(),schemaVersion:1,projectId:window.genreactrixProjectRuntimeEngine?.projectId?.()||'',state:'running',createdAt:now(),updatedAt:now(),rootJobId:String(jobId||''),imageIds:ids,currentPass:1,passes:{1:{pass:1,state:'running',jobId:String(jobId||''),orderMode:'canonical',orderSeed:null,imageIds:ids,startedAt:now()},2:{pass:2,state:'waiting',orderMode:'shuffled',orderSeed:null,imageIds:[]},3:{pass:3,state:'waiting',orderMode:'shuffled',orderSeed:null,imageIds:[]}}};
+  const sweep={id:uid(),schemaVersion:1,projectId:window.genreactrixProjectRuntimeEngine?.projectId?.()||'',state:'running',createdAt:now(),updatedAt:now(),rootJobId:String(jobId||''),imageIds:ids,currentPass:1,passes:{1:{pass:1,state:'running',orderMode:'canonical',orderSeed:null,imageIds:ids,startedAt:now()},2:{pass:2,state:'waiting',orderMode:'shuffled',orderSeed:null,imageIds:[]},3:{pass:3,state:'waiting',orderMode:'shuffled',orderSeed:null,imageIds:[]}}};
   const rows=read();rows.push(sweep);write(rows);holdMany(ids,sweep.id,1,'theme-sweep-pass-1');return clone(sweep);
  }
  function attachPassJob(sweepId,pass,jobId,imageIds,orderSeed=null){const sweep=get(sweepId);if(!sweep)return null;const passes=clone(sweep.passes||{}),key=String(pass);passes[key]={...(passes[key]||{}),pass:Number(pass),state:'running',jobId:String(jobId||''),imageIds:[...new Set((imageIds||[]).map(String))],orderMode:Number(pass)===1?'canonical':'shuffled',orderSeed:orderSeed||passes[key]?.orderSeed||null,startedAt:passes[key]?.startedAt||now()};return updateSweep(sweepId,{currentPass:Number(pass),passes,state:'running'});}
