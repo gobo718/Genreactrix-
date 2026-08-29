@@ -1,17 +1,15 @@
-# Genreactrix AI Worker 0.9.6.146-theme-taxonomy-refresh
+# Genreactrix AI Worker 0.9.6.150-server-job-state-reconciliation
 
-- v0.9.6.146 applies the approved 12-Prim / 66-Theme taxonomy and definition refresh. Matrix version remains 0.0.0.0.
+This release preserves the v0.9.6.149 Queue/processing recovery behavior and the v0.9.6.146 taxonomy. It adds the server-side half of the AI job state-machine reconciliation used by companion site v0.9.40.197.
 
+- Failed server items expose whether their failure is automatically retryable.
+- `Invalid User Credentials`, invalid/rejected credentials, authentication failure, and unauthorized errors are non-retryable automatically.
+- Automatic `retry-failed` requests leave those provider/configuration failures terminal instead of resetting them to queued.
+- Manual/forced Retry Failed can still retry them after configuration is repaired.
+- If an automatic retry request contains no allowed failures, the Worker refreshes job counters instead of forcing the server job back to `running`.
+- Progressive per-image handoff, processing lease/heartbeat recovery, provider order, Theme/Description pipeline, independent Theme audit, and deterministic Theme-derived Reactions are otherwise unchanged.
 
-- Server jobs can start while local-image uploads are still arriving.
-- Each uploaded image is queued immediately when its own R2 source becomes ready.
-- Only ready queued items are dispatched; duplicate queue deliveries use an atomic queued→processing claim.
-- During preparing/idempotent creation, the submitted manifest is authoritative and orphan rows are removed.
-- PFM0712 (Angry + Celebration) is now **Badass**; Revenge is retired. Stable code and Prim components are unchanged.
-- Applies the approved Hilarious, FreakyDeaky, and Shame definition tuning.
-- PrimFusion Matrix styling and geometry are unchanged by companion site v0.9.40.196.
-- Provider lanes, server-job orchestration, independent Theme audit, Description pipeline, and deterministic Theme-derived Reactions are otherwise unchanged.
-- Companion site: v0.9.40.196.
+Companion site: **v0.9.40.197**.
 
 # Genreactrix AI Worker 0.9.6.143-server-handoff-idempotency
 
@@ -22,7 +20,7 @@
 - A previously cancelled duplicate handoff can be reopened when the same still-active local client job explicitly resubmits it; completed work is preserved.
 - Server-job creation validates the complete manifest before creating D1 state.
 - No AI prompt or taxonomy telemetry changed; this is orchestration/storage only.
-- Companion site: v0.9.40.196.
+- Companion site: v0.9.40.197.
 
 # Genreactrix AI Worker 0.9.6.142-zazzlyparty
 
