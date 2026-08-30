@@ -4,7 +4,7 @@
 - Carries forward only the approved current PrimFusion registry, Theme names, Prim pair assignments, and Theme definitions from v0.9.6.146.
 - Does not include v0.9.6.145 streaming/progressive handoff behavior or any v0.9.6.147–.150 stall/recovery/reconciliation logic.
 - Provider routing, Queue execution, server-job state transitions, retries, Theme Sweep, Description pipeline, and deterministic Theme-derived Reactions otherwise match the restored baseline.
-- Companion site: v0.9.40.198-taxonomy-only-restoration.
+- Companion site: v0.9.40.199-taxonomy-registry-correction.
 
 # Genreactrix AI Worker 0.9.6.143-server-handoff-idempotency
 
