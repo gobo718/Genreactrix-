@@ -8654,3 +8654,6 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 @media (orientation:landscape), (min-width:600px) and (min-height:500px){
   .content-rating-panel{display:grid!important;}
 }
+
+/* v0.9.40.204 binary AI content-rating explanation dialog; no classification-layout geometry changes. */
+.content-rating-reason-dialog{width:min(460px,92vw)}.content-rating-reason-shell>p{margin:0}.content-rating-reason-body{white-space:pre-wrap;color:var(--muted);font-size:11px;line-height:1.35}

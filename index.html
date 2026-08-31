@@ -52,15 +52,15 @@
   try{screen.orientation?.addEventListener?.("change",()=>setTimeout(routeIfUnfolded,160));}catch(_){}
 })();
 </script>
-<title>Genreactrix v0.9.40.203</title>
-<link href="styles.css?v=0.9.40.203" rel="stylesheet"/>
+<title>Genreactrix v0.9.40.204</title>
+<link href="styles.css?v=0.9.40.204" rel="stylesheet"/>
 </head>
 <body>
 <main class="app-shell" id="app">
 <nav aria-label="Image navigation" class="console nav-console">
 <div class="brand">
 <strong>Genreactrix</strong>
-<span>v0.9.40.203</span>
+<span>v0.9.40.204</span>
 </div>
 <div class="nav-actions">
 <button aria-label="Previous image" class="nav-icon-button nav-caret" id="prevBtn" title="Previous image">‹</button>
@@ -88,7 +88,7 @@
 </nav>
 <section aria-label="Director Control Station" class="portrait-control-station" id="portraitControlStation">
 <header class="portrait-station-header">
-<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.203</span></strong>
+<strong class="portrait-title">Genreactrix <span class="portrait-build-version">v0.9.40.204</span></strong>
 <div class="portrait-header-actions">
 <button aria-label="Research dashboard" class="portrait-icon-button" id="portraitDashboardBtn" title="Research dashboard" type="button">▦</button>
 <button aria-label="Live event log" class="portrait-icon-button portrait-event-log-button" id="portraitEventLogBtn" title="Live event log" type="button">&gt;_</button>
@@ -601,9 +601,9 @@
 </div>
 <div class="content-rating-panel" id="contentRatingPanel" aria-label="Content ratings">
 <span class="content-rating-corner" aria-hidden="true"></span><span class="content-rating-column-label">AI</span><span class="content-rating-column-label">Dir</span>
-<span class="content-rating-row-label">W</span><button id="contentRatingAiWork" class="content-rating-cell content-rating-ai" type="button" data-size="" disabled aria-label="AI Not Safe for Work rating">—</button><select id="contentRatingDirWork" class="content-rating-cell content-rating-director" data-axis="work" data-size="" aria-label="Director Not Safe for Work rating"><option value="" hidden>—</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option></select>
-<span class="content-rating-row-label">L</span><button id="contentRatingAiLunch" class="content-rating-cell content-rating-ai" type="button" data-size="" disabled aria-label="AI Not Safe for Lunch rating">—</button><select id="contentRatingDirLunch" class="content-rating-cell content-rating-director" data-axis="lunch" data-size="" aria-label="Director Not Safe for Lunch rating"><option value="" hidden>—</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option></select>
-<span class="content-rating-row-label">C</span><button id="contentRatingAiCivility" class="content-rating-cell content-rating-ai" type="button" data-size="" disabled aria-label="AI Not Safe for Civility rating">—</button><select id="contentRatingDirCivility" class="content-rating-cell content-rating-director" data-axis="civility" data-size="" aria-label="Director Not Safe for Civility rating"><option value="" hidden>—</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option></select>
+<span class="content-rating-row-label">W</span><button id="contentRatingAiWork" class="content-rating-cell content-rating-ai" type="button" data-axis="work" data-size="" aria-label="AI Not Safe for Work rating; tap for reasoning">—</button><select id="contentRatingDirWork" class="content-rating-cell content-rating-director" data-axis="work" data-size="" aria-label="Director Not Safe for Work rating"><option value="" hidden>—</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option></select>
+<span class="content-rating-row-label">L</span><button id="contentRatingAiLunch" class="content-rating-cell content-rating-ai" type="button" data-axis="lunch" data-size="" aria-label="AI Not Safe for Lunch rating; tap for reasoning">—</button><select id="contentRatingDirLunch" class="content-rating-cell content-rating-director" data-axis="lunch" data-size="" aria-label="Director Not Safe for Lunch rating"><option value="" hidden>—</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option></select>
+<span class="content-rating-row-label">C</span><button id="contentRatingAiCivility" class="content-rating-cell content-rating-ai" type="button" data-axis="civility" data-size="" aria-label="AI Not Safe for Civility rating; tap for reasoning">—</button><select id="contentRatingDirCivility" class="content-rating-cell content-rating-director" data-axis="civility" data-size="" aria-label="Director Not Safe for Civility rating"><option value="" hidden>—</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option></select>
 </div>
 <div class="description-rerun-workspace" id="tabletDescriptionRerunWorkspace" hidden aria-label="AI Description rerun guidance">
 <textarea id="tabletDescriptionRerunGuidance" aria-label="AI Description rerun guidance" placeholder="Tap here to write rerun guidance"></textarea>
@@ -618,7 +618,7 @@
 <button aria-pressed="false" id="tabletAiThemesBtn" type="button">AI Themes</button>
 <button aria-pressed="false" id="tabletAiDescriptionBtn" type="button">AI Description</button>
 <button aria-pressed="false" id="tabletCustomsBtn" type="button">Customs</button>
-<button class="ai-rerun-action" id="tabletAiRerunReactionsBtn" type="button" disabled>Recalculate Reactions</button>
+<button class="ai-rerun-action" id="tabletAiRerunReactionsBtn" type="button" disabled>Rerun AI Safety</button>
 <button class="ai-rerun-action" id="tabletAiRerunThemesBtn" type="button" disabled>AI Rerun Themes</button>
 <button class="ai-rerun-action" id="tabletAiRerunDescriptionBtn" type="button" disabled>AI Rerun Description</button>
 <button aria-pressed="true" class="ai-rerun-lock" id="tabletAiRerunLockBtn" type="button">AI Rerun Lock</button>
@@ -1334,6 +1334,12 @@
 <div class="slop-actions"><button data-slop-action="review" type="button">Yellow</button><button data-slop-action="delete" type="button">Red</button><button data-slop-action="reject" type="button">Hot Magenta</button><button data-slop-action="not-slop" type="button">NOT SLOP</button></div>
 </div>
 </dialog>
+<dialog class="theme-rerun-dialog content-rating-reason-dialog" id="contentRatingReasonDialog">
+<div class="theme-rerun-dialog-shell content-rating-reason-shell">
+<header><strong id="contentRatingReasonTitle">AI Content Rating</strong><button type="button" id="contentRatingReasonClose">Return</button></header>
+<p id="contentRatingReasonSummary"></p><p id="contentRatingReasonBody" class="content-rating-reason-body"></p>
+</div>
+</dialog>
 <dialog class="theme-rerun-dialog theme-rerun-preview-dialog" id="themeRerunPreviewDialog">
 <div class="theme-rerun-dialog-shell">
 <header><strong>Preview Request</strong><button type="button" data-theme-rerun-close="themeRerunPreviewDialog">Return</button></header>
@@ -1382,7 +1388,7 @@ window.grxOpenCustomDialog=function(dialogId){
 <script src="lifecycle-engine.js?v=0.9.40.193"></script>
 <script src="bundle-engine.js?v=0.9.40.193"></script>
 <script src="ama-engine.js?v=0.9.40.193"></script>
-<script src="app.js?v=0.9.40.203"></script>
+<script src="app.js?v=0.9.40.205"></script>
 <script src="danger-zone-engine.js?v=0.9.40.193"></script>
 <script src="images-console.js?v=0.9.40.193"></script>
 

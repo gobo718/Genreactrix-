@@ -1,4 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.203";
+const GENREACTRIX_BUILD="v0.9.40.205";
+// v0.9.40.204 — Add first-pass binary AI W/L/C content ratings from Cloudflare Llama Guard; tap AI ratings for stored reasoning. Director five-size overrides remain unchanged.
 // v0.9.40.203 — Add compact always-visible W/L/C content-rating controls; Director values are editable and persisted, AI values remain display-only placeholders.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
@@ -1499,8 +1500,8 @@ const CONTENT_RATING_SIZES=new Set(["XS","S","M","L","XL"]);
 const CONTENT_RATING_AXES=["work","lunch","civility"];
 function normalizedContentRatingSize(value){const size=String(value||"").toUpperCase();return CONTENT_RATING_SIZES.has(size)?size:""}
 function imageContentRatings(record=currentImageRecord()){
-  const raw=record?.metadata?.extended?.contentRatings||{};
-  return{schemaVersion:1,ai:{work:normalizedContentRatingSize(raw.ai?.work),lunch:normalizedContentRatingSize(raw.ai?.lunch),civility:normalizedContentRatingSize(raw.ai?.civility)},director:{work:normalizedContentRatingSize(raw.director?.work),lunch:normalizedContentRatingSize(raw.director?.lunch),civility:normalizedContentRatingSize(raw.director?.civility)}};
+  const raw=record?.metadata?.extended?.contentRatings||{},reasons=raw.aiReasons&&typeof raw.aiReasons==='object'?raw.aiReasons:{};
+  return{schemaVersion:Number(raw.schemaVersion)||1,ai:{work:normalizedContentRatingSize(raw.ai?.work),lunch:normalizedContentRatingSize(raw.ai?.lunch),civility:normalizedContentRatingSize(raw.ai?.civility)},aiReasons:{work:String(reasons.work||''),lunch:String(reasons.lunch||''),civility:String(reasons.civility||'')},aiDetails:raw.aiDetails&&typeof raw.aiDetails==='object'?raw.aiDetails:null,director:{work:normalizedContentRatingSize(raw.director?.work),lunch:normalizedContentRatingSize(raw.director?.lunch),civility:normalizedContentRatingSize(raw.director?.civility)}};
 }
 function setContentRatingCell(node,size){if(!node)return;const normalized=normalizedContentRatingSize(size);node.dataset.size=normalized;if(node.tagName==='SELECT')node.value=normalized;else node.textContent=normalized||'—'}
 function renderContentRatings(){
@@ -1512,8 +1513,34 @@ function setDirectorContentRating(axis,value){
   if(!CONTENT_RATING_AXES.includes(axis))return;const size=normalizedContentRatingSize(value);if(!size)return;
   const record=currentImageRecord();if(!record||state.feedEmpty)return;
   const current=imageContentRatings(record);
-  window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{contentRatings:{schemaVersion:1,ai:{...current.ai},director:{...current.director,[axis]:size}}}}},'director-content-rating-changed');
+  window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{contentRatings:{schemaVersion:Math.max(2,current.schemaVersion||1),ai:{...current.ai},aiReasons:{...current.aiReasons},...(current.aiDetails?{aiDetails:current.aiDetails}:{}),director:{...current.director,[axis]:size}}}}},'director-content-rating-changed');
   renderContentRatings();
+}
+const CONTENT_RATING_AXIS_LABELS={work:'Not Safe for Work',lunch:'Not Safe for Lunch',civility:'Not Safe for Civility'};
+function openAiContentRatingReason(axis){
+  if(!CONTENT_RATING_AXES.includes(axis))return;const record=currentImageRecord();if(!record||state.feedEmpty)return;const ratings=imageContentRatings(record),size=ratings.ai[axis],reason=ratings.aiReasons[axis];
+  const title=$('contentRatingReasonTitle'),summary=$('contentRatingReasonSummary'),body=$('contentRatingReasonBody');
+  if(title)title.textContent=`AI ${CONTENT_RATING_AXIS_LABELS[axis]||axis}`;
+  if(summary)summary.textContent=size?`AI rating: ${size}`:'AI rating has not been generated yet.';
+  if(body)body.textContent=reason||(size?'No stored explanation is available for this rating.':'Run the image through the AI bundle to generate the first-pass content rating.');
+  safelyShowDialog($('contentRatingReasonDialog'));
+}
+async function rerunCurrentAiSafety(){
+  if(aiRerunInFlight)return;
+  const record=currentImageRecord();if(!record||state.feedEmpty)return;
+  const description=String(record.analysis?.ai?.components?.description||record.analysis?.ai?.description||currentDescription()||'').trim();
+  if(!description||/^No AI description is stored/i.test(description)){alert('A completed AI Description is required before rerunning AI Safety.');return;}
+  if(!window.GenreactrixCloudApi?.isConfigured?.()){alert('AI Worker is not configured.');return;}
+  aiRerunInFlight=true;syncTabletAiRerunControls();setDirectorStatus('Rerunning AI Safety…');
+  try{
+    const payload=await window.GenreactrixCloudApi.contentGate(description),result=payload?.result||payload;
+    if(!result?.ai)throw new Error(result?.error||'AI Safety returned no rating.');
+    const current=imageContentRatings(record);
+    window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{contentRatings:{schemaVersion:Math.max(2,current.schemaVersion||1),ai:{...result.ai},aiReasons:{...(result.reasons||{})},aiDetails:{protocol:result.protocol||'',model:result.model||'',mode:result.mode||'',overall:result.overall||'',codes:[...(result.codes||[])],generatedAt:result.generatedAt||'',raw:result.raw||''},director:{...current.director}}}}},'ai-content-rating-rerun');
+    renderContentRatings();
+    setDirectorStatus('AI Safety rerun complete.');
+  }catch(error){const message=String(error?.message||error);console.error('AI Safety rerun failed',error);setDirectorStatus(`AI Safety rerun failed: ${message}`);alert(`AI Safety rerun failed: ${message}`);}
+  finally{aiRerunInFlight=false;syncTabletAiRerunControls();}
 }
 async function openTunedHistory(){
   const record=currentImageRecord();if(!record)return;const body=$('tunedHistoryBody');if(!body)return;body.innerHTML='<p>Loading AI history…</p>';$('tunedHistoryDialog')?.showModal();
@@ -3454,7 +3481,7 @@ $("reactionRerunUseImage")?.addEventListener("change",event=>{if(!reactionRerunW
 $("reactionRerunUseDescription")?.addEventListener("change",event=>{if(!reactionRerunWorkspace.active)return;reactionRerunWorkspace.useDescription=event.target.checked;renderReactionRerunChrome();});
 $("reactionRerunSubmitBtn")?.addEventListener("click",()=>submitReactionRerun());
 $("reactionRerunReturnBtn")?.addEventListener("click",()=>closeReactionRerunWorkspace());
-$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>recalculateCurrentReactions());
+$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>rerunCurrentAiSafety());
 $("tabletAiRerunThemesBtn")?.addEventListener("click",()=>openThemeRerunWorkspace().catch(error=>{console.error("Theme rerun workspace could not open",error);alert(error.message||String(error));}));
 $("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>openDescriptionRerunWorkspace().catch(error=>{console.error("Description rerun workspace could not open",error);alert(error.message||String(error));}));
 syncTabletAiRerunControls();
@@ -3486,6 +3513,8 @@ $("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
 $("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
 $("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());
 document.querySelectorAll(".content-rating-director[data-axis]").forEach(control=>control.addEventListener("change",()=>{try{setDirectorContentRating(control.dataset.axis,control.value)}catch(error){console.error("Director content rating update failed",error);renderContentRatings();alert(error?.message||String(error));}}));
+document.querySelectorAll(".content-rating-ai[data-axis]").forEach(control=>control.addEventListener("click",()=>openAiContentRatingReason(control.dataset.axis)));
+$('contentRatingReasonClose')?.addEventListener('click',()=>$('contentRatingReasonDialog')?.close());
 $("slopClose")?.addEventListener("click",()=>$("slopDialog")?.close());
 document.querySelectorAll("[data-slop-action]").forEach(button=>button.addEventListener("click",()=>applySlopDecision(button.dataset.slopAction).catch(error=>{console.error("SLOP Director disposition failed",error);alert(error?.message||String(error));})));
 $("themeRerunAmaBtn")?.addEventListener("click",()=>openAmaMenu().catch(error=>console.warn("AI AMA menu failed",error)));

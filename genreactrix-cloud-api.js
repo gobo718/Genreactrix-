@@ -60,6 +60,7 @@
   health:()=>request('/api/health',{method:'GET'}),verifyConnection,
   createServerJob,serverJobStatus,serverJobItem,startServerJob,controlServerJob,harvestServerJobItem,uploadServerJobImage,getProviderRouting:()=>currentProviderRouting(),
   providerReadiness:()=>request('/api/genreactrix/provider-readiness',{method:'POST',headers:{'x-analysis-key':storedKey()},body:'{}'}),
+  contentGate:(description,key=storedKey())=>request('/api/genreactrix/content-gate',{method:'POST',headers:{'x-analysis-key':String(key||'')},body:JSON.stringify({description:String(description||'')})}),
   fetchImage:async(imageUrl,key=storedKey())=>{
     if(!base)throw new Error('AI Worker URL is not configured');
     const response=await fetch(`${base}/api/genreactrix/image`,{method:'POST',headers:{'content-type':'application/json','x-analysis-key':String(key||'')},body:JSON.stringify({imageUrl:String(imageUrl||'')})});

@@ -1,20 +1,22 @@
-# Genreactrix v0.9.40.203 — Director content-rating controls
+# Genreactrix v0.9.40.205 — Binary AI content ratings
 
-## v0.9.40.203
+## v0.9.40.205
 
-- Adds a compact, absolute-positioned 2×3 content-rating block in the unused right side of the fixed reaction header.
-- Columns are AI and Dir; rows are W (Work), L (Lunch), and C (Civility).
-- Director values are editable as XS / S / M / L / XL and persist per image.
-- AI values are display-only placeholders for later Content Gate Engine integration.
-- The block is out of layout flow and does not change reaction positions, surrounding geometry, drawer sizing, or AI pipeline behavior.
-- Companion Worker remains v0.9.6.155 unchanged.
+- Keeps the v0.9.40.203 2×3 AI/Dir W/L/C layout exactly in place; no reaction/header geometry is moved or expanded.
+- Adds the first AI Content Gate pass using Cloudflare Workers AI `@cf/meta/llama-guard-3-8b` against the completed Genreactrix Description.
+- AI ratings are intentionally binary in this first pass: XS when no matching axis hazard is flagged, XL when Llama Guard flags a matching axis hazard.
+- W maps sex-related / child-sexual-exploitation / sexual-content flags; L maps violent-crime / self-harm flags; C maps non-violent-crime / defamation / hate / election flags.
+- Tapping an AI W/L/C button opens the stored explanation for that axis.
+- Director W/L/C remains independently editable with the full XS / S / M / L / XL scale and is never overwritten by AI.
+- Content-gate failure is non-fatal: the normal Genreactrix analysis still completes and the AI rating remains unrated rather than defaulting to safe.
+- Companion Worker is v0.9.6.157-safety-rerun.
 
 
-This build preserves the complete v0.9.40.201 site behavior and current PrimFusion taxonomy/definitions. The bundled Worker source is synchronized exactly to the already-current standalone Worker v0.9.6.155-freakydeaky-definition, removing the stale embedded .151 copy and its older Qwen transport path.
+This build preserves v0.9.40.203 behavior except for the bounded Content Gate additions above. The bundled Worker source is synchronized to standalone Worker v0.9.6.157-safety-rerun.
 
-No AI pipeline, provider order, Queue behavior, lifecycle transitions, storage ownership, Theme selection logic, Reaction architecture, UI layout, or taxonomy behavior is changed by this site cleanup release.
+No Theme-selection, Description-generation, provider-order, Queue/lifecycle, Reaction, SLOP, taxonomy, or surrounding layout behavior is changed.
 
-Companion Worker: v0.9.6.155-freakydeaky-definition. No new standalone Worker upload is required for this site-only cleanup.
+Companion Worker: v0.9.6.157-safety-rerun.
 
 ---
 
