@@ -1,10 +1,10 @@
-# Genreactrix v0.9.40.201 — taxonomy-only restoration
+# Genreactrix v0.9.40.202 — conservative code cleanup
 
-This build restores the complete site behavior of v0.9.40.194-badass-theme-tuning (which preserves the v0.9.40.193 idempotent server-job behavior) and carries forward only the approved current PrimFusion taxonomy, matrix labels, and Theme definitions from v0.9.40.196.
+This build preserves the complete v0.9.40.201 site behavior and current PrimFusion taxonomy/definitions. The bundled Worker source is synchronized exactly to the already-current standalone Worker v0.9.6.155-freakydeaky-definition, removing the stale embedded .151 copy and its older Qwen transport path.
 
-No progressive/streaming server-handoff changes from v0.9.40.195 and no later job-state recovery/reconciliation changes are included. AI orchestration, Queue/Theme Sweep behavior, lifecycle transitions, Staged/Landscape behavior, storage behavior, and server-job state handling are restored to the v0.9.40.194 baseline.
+No AI pipeline, provider order, Queue behavior, lifecycle transitions, storage ownership, Theme selection logic, Reaction architecture, UI layout, or taxonomy behavior is changed by this site cleanup release.
 
-Companion Worker: v0.9.6.151-taxonomy-only-restoration, restored from v0.9.6.144 behavior with only the current PrimFusion registry/definitions carried forward.
+Companion Worker: v0.9.6.155-freakydeaky-definition. No new standalone Worker upload is required for this site-only cleanup.
 
 ---
 
