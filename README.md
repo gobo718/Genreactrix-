@@ -1,4 +1,12 @@
-# Genreactrix v0.9.40.211 — PrimFusion taxonomy update
+# Genreactrix v0.9.40.212 — PrimFusion taxonomy update
+
+## v0.9.40.212 — Stacked safety filter panels
+
+- Stacked AI Safety above Dir Safety in the right-hand area instead of placing them side by side.
+- Status remains in the left column and spans the full safety-panel height.
+- Selected safety size buttons now use a strong solid teal fill, bright text, and bright inset border so selection is unmistakable against the dark background.
+- No filter logic, matching semantics, Worker, AI pipeline, Content Gate execution, Theme logic, Reaction logic, Queue, Bundle, or lifecycle behavior changed.
+
 
 ## v0.9.40.211 — Safety filter alignment correction
 
