@@ -1,10 +1,11 @@
-# Genreactrix AI Worker 0.9.6.151-taxonomy-only-restoration
+# Genreactrix AI Worker 0.9.6.155-freakydeaky-definition
 
 - Restores complete Worker behavior from v0.9.6.144-badass-theme-tuning / v0.9.6.143 idempotent server handoff.
 - Carries forward only the approved current PrimFusion registry, Theme names, Prim pair assignments, and Theme definitions from v0.9.6.146.
 - Does not include v0.9.6.145 streaming/progressive handoff behavior or any v0.9.6.147–.150 stall/recovery/reconciliation logic.
 - Provider routing, Queue execution, server-job state transitions, retries, Theme Sweep, Description pipeline, and deterministic Theme-derived Reactions otherwise match the restored baseline.
-- Companion site: v0.9.40.201-freakydeaky-definition.
+- Current bundled source matches standalone Worker v0.9.6.155 exactly, including explicit AI Gateway routing for Qwen readiness/Theme calls and the current Freakshow/FreakyDeaky definitions.
+- Companion site: v0.9.40.202-conservative-code-cleanup.
 
 # Genreactrix AI Worker 0.9.6.143-server-handoff-idempotency
 
