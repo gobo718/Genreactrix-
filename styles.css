@@ -8993,3 +8993,130 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
     grid-area:auto;
   }
 }
+
+
+/* v0.9.40.211 — safety filter alignment + visible selected fill */
+@media (orientation:landscape){
+  .landscape-filter-dialog{
+    width:min(900px,calc(100vw - 12px));
+    max-width:calc(100vw - 12px);
+  }
+
+  .landscape-filter-columns{
+    grid-template-columns:minmax(210px,.8fr) minmax(280px,1.1fr) minmax(280px,1.1fr);
+    gap:7px;
+  }
+
+  .landscape-filter-safety-panel{
+    overflow:hidden;
+  }
+
+  .landscape-safety-axis-row{
+    display:grid;
+    grid-template-columns:18px minmax(0,1fr) minmax(0,1fr);
+    gap:6px;
+    align-items:center;
+    margin:7px 0;
+  }
+
+  .landscape-safety-axis-name{
+    font-size:.72rem;
+    text-align:center;
+    color:#e7feff;
+  }
+
+  .landscape-safety-side{
+    min-width:0;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    gap:5px;
+    align-items:center;
+  }
+
+  .landscape-safety-side-exclude{
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+
+  .landscape-safety-side small{
+    font-size:.58rem;
+    color:#a7d9dd;
+    white-space:nowrap;
+  }
+
+  .landscape-safety-side-exclude small{
+    order:2;
+  }
+
+  .landscape-safety-side-exclude .landscape-safety-buttons{
+    order:1;
+  }
+
+  .landscape-safety-buttons{
+    min-width:0;
+    display:grid;
+    grid-template-columns:repeat(5,minmax(28px,1fr));
+    gap:3px;
+  }
+
+  .landscape-safety-cell{
+    position:relative;
+    display:grid;
+    place-items:center;
+    height:24px;
+    min-width:0;
+    border:1px solid #315b5f;
+    border-radius:5px;
+    background:#12191c;
+    overflow:hidden;
+  }
+
+  .landscape-safety-cell input{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    margin:0;
+    opacity:0;
+    cursor:pointer;
+    z-index:2;
+  }
+
+  .landscape-safety-cell span{
+    position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    font-size:.58rem;
+    font-weight:800;
+    background:#12191c;
+    color:#f2f2f2;
+    pointer-events:none;
+    z-index:1;
+  }
+
+  .landscape-safety-cell input:checked + span{
+    background:#24565b;
+    color:#ffffff;
+    box-shadow:inset 0 0 0 2px #65d2dc;
+  }
+
+  .landscape-safety-cell:focus-within{
+    outline:1px solid #65d2dc;
+    outline-offset:1px;
+  }
+
+  .landscape-filter-status-panel h3,
+  .landscape-filter-safety-panel h3{
+    margin-bottom:4px;
+  }
+}
+
+@media (orientation:landscape) and (max-height:650px) and (min-width:760px){
+  .landscape-filter-dialog{
+    width:min(900px,calc(100vw - 12px));
+    max-width:calc(100vw - 12px);
+  }
+  .landscape-safety-axis-row{
+    margin:5px 0;
+  }
+}

@@ -1,4 +1,14 @@
-# Genreactrix v0.9.40.210 — PrimFusion taxonomy update
+# Genreactrix v0.9.40.211 — PrimFusion taxonomy update
+
+## v0.9.40.211 — Safety filter alignment correction
+
+- Reworked each AI/Dir safety axis so Include sits on the left and Exclude on the right, matching the established Filter visual language.
+- W, L, and C now each get their own horizontal row instead of forcing all three axes into one overflowing row.
+- Reduced overall dialog width to keep the right edge inside the landscape viewport.
+- Fixed safety-size selected-state styling using `input:checked + span`, so selected buttons visibly fill even where `:has()` support is unreliable.
+- No filter logic or matching semantics changed.
+- Worker and all AI/Theme/Reaction/Queue/Bundle/lifecycle behavior remain unchanged.
+
 
 ## v0.9.40.210 — Compact landscape Filter correction
 
