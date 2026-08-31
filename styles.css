@@ -8574,3 +8574,83 @@ button:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .danger-zone-failsafe-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
 .danger-zone-failsafe-controls[hidden]{display:none!important}
 .danger-zone-failsafe-controls button{flex:1 1 145px;min-height:36px}
+
+/* v0.9.40.203 — compact W/L/C content-rating controls.
+   Absolute placement consumes only the already-unused right side of the
+   fixed reaction header; it does not alter reaction geometry or layout flow. */
+:root{
+  --content-rating-xs:#2e9d50;
+  --content-rating-s:#9acd32;
+  --content-rating-m:#ffd43b;
+  --content-rating-l:#f28c28;
+  --content-rating-xl:#d93636;
+}
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .content-rating-panel{
+    position:absolute!important;
+    top:2px!important;
+    right:4px!important;
+    z-index:9!important;
+    display:grid!important;
+    grid-template-columns:8px repeat(2,30px)!important;
+    grid-template-rows:9px repeat(3,16px)!important;
+    column-gap:3px!important;
+    row-gap:2px!important;
+    width:max-content!important;
+    height:max-content!important;
+    margin:0!important;
+    padding:0!important;
+    pointer-events:auto!important;
+  }
+  .content-rating-column-label,.content-rating-row-label{
+    display:grid!important;
+    place-items:center!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    color:var(--muted)!important;
+    font-size:7px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    white-space:nowrap!important;
+  }
+  .content-rating-cell{
+    box-sizing:border-box!important;
+    width:30px!important;
+    min-width:30px!important;
+    max-width:30px!important;
+    height:16px!important;
+    min-height:16px!important;
+    max-height:16px!important;
+    margin:0!important;
+    padding:0 2px!important;
+    border:1px solid #555!important;
+    border-radius:4px!important;
+    background:#17141e!important;
+    color:#fff!important;
+    font:700 8px/1 Arial,sans-serif!important;
+    text-align:center!important;
+    text-align-last:center!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    appearance:none!important;
+    -webkit-appearance:none!important;
+    box-shadow:none!important;
+  }
+  .content-rating-ai:disabled{opacity:1!important;cursor:default!important;}
+  .content-rating-director{cursor:pointer!important;}
+  .content-rating-director:disabled{opacity:.45!important;cursor:default!important;}
+  .content-rating-cell[data-size="XS"]{background:var(--content-rating-xs)!important;border-color:#6bc981!important;color:#fff!important;}
+  .content-rating-cell[data-size="S"]{background:var(--content-rating-s)!important;border-color:#c3e56e!important;color:#111!important;}
+  .content-rating-cell[data-size="M"]{background:var(--content-rating-m)!important;border-color:#ffe579!important;color:#111!important;}
+  .content-rating-cell[data-size="L"]{background:var(--content-rating-l)!important;border-color:#ffb15f!important;color:#111!important;}
+  .content-rating-cell[data-size="XL"]{background:var(--content-rating-xl)!important;border-color:#ef7070!important;color:#fff!important;}
+}
+
+/* Keep the compact rating panel out of flow on narrow portrait layouts where
+   the fixed reaction-header placement is not active. */
+.content-rating-panel{display:none;}
+@media (orientation:landscape), (min-width:600px) and (min-height:500px){
+  .content-rating-panel{display:grid!important;}
+}

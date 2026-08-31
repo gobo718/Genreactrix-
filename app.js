@@ -1,5 +1,5 @@
-const GENREACTRIX_BUILD="v0.9.40.202";
-// v0.9.40.202 — Conservative code-cleanup release: site behavior remains the v0.9.40.201 baseline; bundled Worker source is synchronized to companion Worker v0.9.6.155.
+const GENREACTRIX_BUILD="v0.9.40.203";
+// v0.9.40.203 — Add compact always-visible W/L/C content-rating controls; Director values are editable and persisted, AI values remain display-only placeholders.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
 // v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
 // v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
@@ -1495,6 +1495,26 @@ function renderAiStatusTags(){
   if(tuned)tuned.hidden=!has||!recordIsTuned(record);
   if(slop){slop.hidden=!showSlop;slop.textContent='SLOP?';slop.classList.toggle('slop-warning-status',showSlop&&kind==='warning');slop.classList.toggle('slop-detected-status',showSlop&&kind==='detected');slop.title=showSlop?(kind==='warning'?'SLOP? · Slop Warning':'SLOP? · Slop Detected'):'';slop.setAttribute('aria-label',showSlop?(kind==='warning'?'SLOP? Slop Warning':'SLOP? Slop Detected'):'SLOP?');}
 }
+const CONTENT_RATING_SIZES=new Set(["XS","S","M","L","XL"]);
+const CONTENT_RATING_AXES=["work","lunch","civility"];
+function normalizedContentRatingSize(value){const size=String(value||"").toUpperCase();return CONTENT_RATING_SIZES.has(size)?size:""}
+function imageContentRatings(record=currentImageRecord()){
+  const raw=record?.metadata?.extended?.contentRatings||{};
+  return{schemaVersion:1,ai:{work:normalizedContentRatingSize(raw.ai?.work),lunch:normalizedContentRatingSize(raw.ai?.lunch),civility:normalizedContentRatingSize(raw.ai?.civility)},director:{work:normalizedContentRatingSize(raw.director?.work),lunch:normalizedContentRatingSize(raw.director?.lunch),civility:normalizedContentRatingSize(raw.director?.civility)}};
+}
+function setContentRatingCell(node,size){if(!node)return;const normalized=normalizedContentRatingSize(size);node.dataset.size=normalized;if(node.tagName==='SELECT')node.value=normalized;else node.textContent=normalized||'—'}
+function renderContentRatings(){
+  const record=currentImageRecord(),has=Boolean(record)&&!state.feedEmpty,ratings=imageContentRatings(record),locked=Boolean(record?.attributes?.locked);
+  const ids={work:['contentRatingAiWork','contentRatingDirWork'],lunch:['contentRatingAiLunch','contentRatingDirLunch'],civility:['contentRatingAiCivility','contentRatingDirCivility']};
+  for(const axis of CONTENT_RATING_AXES){const [aiId,dirId]=ids[axis],ai=$(aiId),dir=$(dirId);setContentRatingCell(ai,ratings.ai[axis]);setContentRatingCell(dir,ratings.director[axis]);if(dir)dir.disabled=!has||locked;}
+}
+function setDirectorContentRating(axis,value){
+  if(!CONTENT_RATING_AXES.includes(axis))return;const size=normalizedContentRatingSize(value);if(!size)return;
+  const record=currentImageRecord();if(!record||state.feedEmpty)return;
+  const current=imageContentRatings(record);
+  window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{contentRatings:{schemaVersion:1,ai:{...current.ai},director:{...current.director,[axis]:size}}}}},'director-content-rating-changed');
+  renderContentRatings();
+}
 async function openTunedHistory(){
   const record=currentImageRecord();if(!record)return;const body=$('tunedHistoryBody');if(!body)return;body.innerHTML='<p>Loading AI history…</p>';$('tunedHistoryDialog')?.showModal();
   try{
@@ -1878,6 +1898,7 @@ function renderTabletWorkbench(){
   if(!root) return;
   const hasImage=!state.feedEmpty;
   renderAiStatusTags();
+  renderContentRatings();
   if(hasImage){
     $("landscapeFeedEmpty")?.setAttribute("hidden","");
     if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
@@ -3464,6 +3485,7 @@ $("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeR
 $("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
 $("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
 $("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());
+document.querySelectorAll(".content-rating-director[data-axis]").forEach(control=>control.addEventListener("change",()=>{try{setDirectorContentRating(control.dataset.axis,control.value)}catch(error){console.error("Director content rating update failed",error);renderContentRatings();alert(error?.message||String(error));}}));
 $("slopClose")?.addEventListener("click",()=>$("slopDialog")?.close());
 document.querySelectorAll("[data-slop-action]").forEach(button=>button.addEventListener("click",()=>applySlopDecision(button.dataset.slopAction).catch(error=>{console.error("SLOP Director disposition failed",error);alert(error?.message||String(error));})));
 $("themeRerunAmaBtn")?.addEventListener("click",()=>openAmaMenu().catch(error=>console.warn("AI AMA menu failed",error)));

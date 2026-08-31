@@ -1,4 +1,14 @@
-# Genreactrix v0.9.40.202 — conservative code cleanup
+# Genreactrix v0.9.40.203 — Director content-rating controls
+
+## v0.9.40.203
+
+- Adds a compact, absolute-positioned 2×3 content-rating block in the unused right side of the fixed reaction header.
+- Columns are AI and Dir; rows are W (Work), L (Lunch), and C (Civility).
+- Director values are editable as XS / S / M / L / XL and persist per image.
+- AI values are display-only placeholders for later Content Gate Engine integration.
+- The block is out of layout flow and does not change reaction positions, surrounding geometry, drawer sizing, or AI pipeline behavior.
+- Companion Worker remains v0.9.6.155 unchanged.
+
 
 This build preserves the complete v0.9.40.201 site behavior and current PrimFusion taxonomy/definitions. The bundled Worker source is synchronized exactly to the already-current standalone Worker v0.9.6.155-freakydeaky-definition, removing the stale embedded .151 copy and its older Qwen transport path.
 
