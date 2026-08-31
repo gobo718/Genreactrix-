@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.205";
+const GENREACTRIX_BUILD="v0.9.40.207";
 // v0.9.40.204 — Add first-pass binary AI W/L/C content ratings from Cloudflare Llama Guard; tap AI ratings for stored reasoning. Director five-size overrides remain unchanged.
 // v0.9.40.203 — Add compact always-visible W/L/C content-rating controls; Director values are editable and persisted, AI values remain display-only placeholders.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.

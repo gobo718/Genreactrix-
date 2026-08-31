@@ -1,6 +1,10 @@
-# Genreactrix v0.9.40.205 — Binary AI content ratings
+# Genreactrix v0.9.40.207 — Visible version metadata correction
 
-## v0.9.40.205
+## v0.9.40.207
+
+- Corrects the visible page/build version to v0.9.40.207 after the .205/.206 display metadata was not advanced.
+- No functional, layout, Worker, AI Safety, Theme, Reaction, or pipeline changes.
+
 
 - Keeps the v0.9.40.203 2×3 AI/Dir W/L/C layout exactly in place; no reaction/header geometry is moved or expanded.
 - Adds the first AI Content Gate pass using Cloudflare Workers AI `@cf/meta/llama-guard-3-8b` against the completed Genreactrix Description.
