@@ -1,4 +1,14 @@
-# Genreactrix v0.9.40.208 — PrimFusion taxonomy update
+# Genreactrix v0.9.40.209 — PrimFusion taxonomy update
+
+## v0.9.40.209 — Landscape Filter safety search
+
+- Rebuilt the landscape Filter to use three dense columns instead of wasting horizontal space.
+- Removed the redundant generic `SLOP?` filter row; Slop Warning and Slop Detected remain independently searchable.
+- Added AI and Director safety filtering for W / L / C at XS / S / M / L / XL, with separate Include and Exclude controls.
+- Preserves the Filter's existing Include/Exclude matching semantics; no new OR/AND behavior was introduced.
+- Portrait Filter layout was not redesigned.
+- Worker, AI pipeline, Content Gate execution, Theme logic, Reaction logic, lifecycle, Queue, and Bundle behavior are unchanged.
+
 
 ## v0.9.40.208
 

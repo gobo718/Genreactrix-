@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.208";
+const GENREACTRIX_BUILD="v0.9.40.209";
 // v0.9.40.204 — Add first-pass binary AI W/L/C content ratings from Cloudflare Llama Guard; tap AI ratings for stored reasoning. Director five-size overrides remain unchanged.
 // v0.9.40.203 — Add compact always-visible W/L/C content-rating controls; Director values are editable and persisted, AI values remain display-only placeholders.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
@@ -229,25 +229,28 @@ const state = {
 };
 
 // Queue owns AI-complete images as Staged until the Bundle Engine moves them into Inbox.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v6";
-const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v5","genreactrix-landscape-filter-v4","genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v7";
+const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v6","genreactrix-landscape-filter-v5","genreactrix-landscape-filter-v4","genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
 const LEGACY_SIDELINE_FILTER_KEY=["par","ked"].join("");
-const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen","tuned","slop","slopWarning","slopDetected"];
+const FILTER_STATUS_CATEGORIES=["review","rejection","reject","kept","depot","seen","tuned","slopWarning","slopDetected"];
+const FILTER_SAFETY_SOURCES=["ai","director"];
+const FILTER_SAFETY_AXES=["work","lunch","civility"];
+const FILTER_SAFETY_SIZES=["XS","S","M","L","XL"];
+const FILTER_SAFETY_CATEGORIES=FILTER_SAFETY_SOURCES.flatMap(source=>FILTER_SAFETY_AXES.flatMap(axis=>FILTER_SAFETY_SIZES.map(size=>`safety_${source}_${axis}_${size}`)));
+const FILTER_CATEGORIES=[...FILTER_STATUS_CATEGORIES,...FILTER_SAFETY_CATEGORIES];
 const SORT_MODES=new Set(["bundle","newest","oldest","filename","random"]);
-const defaultLandscapeFilter=()=>({
-  all:false,
-  feed:true,
-  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false,slopWarning:false,slopDetected:false},
-  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false,tuned:false,slop:false,slopWarning:false,slopDetected:false},
-  bundleId:null,
-  sort:"bundle",
-  randomSeed:0
-});
+const defaultLandscapeFilter=()=>{
+  const include={},exclude={};
+  FILTER_CATEGORIES.forEach(key=>{include[key]=false;exclude[key]=false;});
+  return{all:false,feed:true,include,exclude,bundleId:null,sort:"bundle",randomSeed:0};
+};
 function normalizeLandscapeFilter(value,{legacy=false}={}){
   const base=defaultLandscapeFilter(), input=value&&typeof value==="object"?value:{};
   if(Object.prototype.hasOwnProperty.call(input,"all"))base.all=Boolean(input.all);
   if(Object.prototype.hasOwnProperty.call(input,"feed"))base.feed=Boolean(input.feed);
   FILTER_CATEGORIES.forEach(key=>{base.include[key]=Boolean(input.include?.[key]);base.exclude[key]=Boolean(input.exclude?.[key]);});
+  if(input.include?.slop){base.include.slopWarning=true;base.include.slopDetected=true;}
+  if(input.exclude?.slop){base.exclude.slopWarning=true;base.exclude.slopDetected=true;}
   if(legacy){
     // The superseded sidelining state behaved as Review, never as Depot.
     if(input.include?.[LEGACY_SIDELINE_FILTER_KEY])base.include.review=true;
@@ -312,6 +315,12 @@ function recordMatchesFilterCategory(record,key){
   if(key==="slop")return recordHasSlopSuggestion(record);
   if(key==="slopWarning")return recordHasSlopSuggestion(record,'warning');
   if(key==="slopDetected")return recordHasSlopSuggestion(record,'detected');
+  if(key.startsWith("safety_")){
+    const parts=key.split("_"),source=parts[1],axis=parts[2],size=parts[3];
+    if(!["ai","director"].includes(source)||!["work","lunch","civility"].includes(axis)||!["XS","S","M","L","XL"].includes(size))return false;
+    const ratings=imageContentRatings(record);
+    return ratings[source]?.[axis]===size;
+  }
   return false;
 }
 function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage==="inbox-working";}
