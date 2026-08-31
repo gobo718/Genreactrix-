@@ -1,4 +1,4 @@
-const GENREACTRIX_BUILD="v0.9.40.207";
+const GENREACTRIX_BUILD="v0.9.40.208";
 // v0.9.40.204 — Add first-pass binary AI W/L/C content ratings from Cloudflare Llama Guard; tap AI ratings for stored reasoning. Director five-size overrides remain unchanged.
 // v0.9.40.203 — Add compact always-visible W/L/C content-rating controls; Director values are editable and persisted, AI values remain display-only placeholders.
 // v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
@@ -77,7 +77,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Beautiful|Intense": "Epic",
   "Beautiful|Weird": "Psychedelic",
   "Beautiful|Dreamy": "Satisfying",
-  "Beautiful|Zazzly": "Romance",
+  "Beautiful|Zazzly": "Fleshy",
   "Beautiful|Disgusting": "Grotesque",
   "Beautiful|Scary": "Vulnerable",
   "Beautiful|Celebration": "Festive",
@@ -86,8 +86,8 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Adorable|Tragic": "Poignant",
   "Adorable|Funny": "Goofy",
   "Adorable|Intense": "Joy",
-  "Adorable|Weird": "Kawaii",
-  "Adorable|Dreamy": "Whimsical",
+  "Adorable|Weird": "Whimsical",
+  "Adorable|Dreamy": "Romance",
   "Adorable|Zazzly": "Cheeky",
   "Adorable|Disgusting": "UglyCute",
   "Adorable|Scary": "CreepyCute",
@@ -134,7 +134,7 @@ const CANONICAL_PRIMFUSION_LABELS = {
   "Celebration|Dreamy": "Magical",
   "Zazzly|Zazzly": "Zazzly",
   "Disgusting|Zazzly": "Lewd",
-  "Scary|Zazzly": "Exploitation",
+  "Scary|Zazzly": "Zazzploitation",
   "Celebration|Zazzly": "ZazzlyParty",
   "Angry|Zazzly": "Sadomasochism",
   "Disgusting|Disgusting": "Disgusting",
@@ -1706,12 +1706,12 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   const matrixRows=[
     [{"value":"Sassy","tone":"lavender"},{"value":"Bougie","tone":"lavender"},{"value":"Mockery","tone":"lavender"},{"value":"Overstimulated","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Badass","tone":"lavender"}],
     [{"value":"Joy","tone":"lavender"},{"value":"Epic","tone":"lavender"},{"value":"Hilarious","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Exposure","tone":"lavender"},{"value":"Glory","tone":"lavender"}],
-    [{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"Scandalarious","tone":"lavender"},{"value":"Cringe","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Halloween","tone":"lavender"}],
+    [{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"Scandalarious","tone":"lavender"},{"value":"Cringe","tone":"lavender"},{"value":"Zazzploitation","tone":"lavender"},{"value":"Halloween","tone":"lavender"}],
     [{"value":"UglyCute","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Shame","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Excess","tone":"lavender"}],
-    [{"value":"Whimsical","tone":"lavender"},{"value":"Satisfying","tone":"lavender"},{"value":"Medicated","tone":"lavender"},{"value":"Nostalgia","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Magical","tone":"lavender"}],
-    [{"value":"Kawaii","tone":"lavender"},{"value":"Psychedelic","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Freakshow","tone":"lavender"}],
+    [{"value":"Romance","tone":"lavender"},{"value":"Satisfying","tone":"lavender"},{"value":"Medicated","tone":"lavender"},{"value":"Nostalgia","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Magical","tone":"lavender"}],
+    [{"value":"Whimsical","tone":"lavender"},{"value":"Psychedelic","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Freakshow","tone":"lavender"}],
     [{"value":"🧸","tone":"green"},{"value":"Cozy","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Poignant","tone":"lavender"},{"value":"Cheeky","tone":"lavender"},{"value":"Playful","tone":"lavender"}],
-    [{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Camp","tone":"lavender"},{"value":"Mundane","tone":"lavender"},{"value":"Romance","tone":"lavender"},{"value":"Festive","tone":"lavender"}],
+    [{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Camp","tone":"lavender"},{"value":"Mundane","tone":"lavender"},{"value":"Fleshy","tone":"lavender"},{"value":"Festive","tone":"lavender"}],
     [{"value":"Spirituality","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Schadenfreude","tone":"lavender"},{"value":"Raunchy","tone":"lavender"},{"value":"PartyTime","tone":"lavender"}],
     [{"value":"Strange","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"}],
     [{"value":"Horror","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Foreboding","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"ZazzlyParty","tone":"lavender"}],

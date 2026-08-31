@@ -1,4 +1,15 @@
-# Genreactrix v0.9.40.207 — Visible version metadata correction
+# Genreactrix v0.9.40.208 — PrimFusion taxonomy update
+
+## v0.9.40.208
+
+- PFM0106 Adorable + Weird: Kawaii → Whimsical.
+- PFM0108 Adorable + Dreamy: Whimsical → Romance.
+- PFM0209 Beautiful + Zazzly: Romance → Fleshy.
+- PFM0911 Zazzly + Scary: Exploitation → Zazzploitation.
+- Kawaii is retired from the active 66-theme matrix.
+- Matrix identity/version remains 0.0.0.0.
+- No Content Gate, provider, lifecycle, Queue, Bundle, Reaction formula, or layout behavior changes.
+- Companion Worker: v0.9.6.158-theme-taxonomy-update.
 
 ## v0.9.40.207
 
@@ -13,14 +24,14 @@
 - Tapping an AI W/L/C button opens the stored explanation for that axis.
 - Director W/L/C remains independently editable with the full XS / S / M / L / XL scale and is never overwritten by AI.
 - Content-gate failure is non-fatal: the normal Genreactrix analysis still completes and the AI rating remains unrated rather than defaulting to safe.
-- Companion Worker is v0.9.6.157-safety-rerun.
+- Companion Worker is v0.9.6.158-theme-taxonomy-update.
 
 
-This build preserves v0.9.40.203 behavior except for the bounded Content Gate additions above. The bundled Worker source is synchronized to standalone Worker v0.9.6.157-safety-rerun.
+This build preserves v0.9.40.203 behavior except for the bounded Content Gate additions above. The bundled Worker source is synchronized to standalone Worker v0.9.6.158-theme-taxonomy-update.
 
 No Theme-selection, Description-generation, provider-order, Queue/lifecycle, Reaction, SLOP, taxonomy, or surrounding layout behavior is changed.
 
-Companion Worker: v0.9.6.157-safety-rerun.
+Companion Worker: v0.9.6.158-theme-taxonomy-update.
 
 ---
 
