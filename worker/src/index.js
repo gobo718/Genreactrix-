@@ -1,4 +1,4 @@
-/* Genreactrix AI Worker v0.9.6.151-taxonomy-only-restoration
+/* Genreactrix AI Worker v0.9.6.155-freakydeaky-definition
    Preserves the accepted Theme/Description pipeline, provider lanes, and deterministic Theme-derived reactions.
    Fresh Theme provider order: Mistral Primary -> GPT-4.1 mini Secondary -> Qwen 3.7 Plus Third.
    Each fresh Theme run remains Image -> Preliminary Themes -> Theme-aware Description -> Description-only Final Themes.
@@ -7,7 +7,7 @@
    Preliminary-vs-Final comparison telemetry is recorded so the preliminary pass can be evaluated for future removal.
    Reactions are deterministic: the three selected Themes contribute six equal 1/6 Prim slots; no AI Reaction scan runs.
 */
-const API_VERSION = '0.9.6.151-taxonomy-only-restoration';
+const API_VERSION = '0.9.6.155-freakydeaky-definition';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 // Legacy Reaction model constant retained for historical diagnostics only; normal analysis never invokes a Reaction scan.
 const DEFAULT_REACTION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
@@ -158,7 +158,7 @@ const providerReadinessProbe = async (env,{timeoutMs=12000}={}) => {
   const primary=await runMistral();
   const secondary=await runWorkers({provider:'openai-via-cloudflare-ai-gateway',model:fallbackModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0},options:{gateway:{id:gatewayId}}});
   secondary.gatewayId=gatewayId;
-  const third=await runWorkers({provider:'cloudflare-workers-ai-qwen',model:qwenModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0,enable_thinking:false}});
+  const third=await runWorkers({provider:'cloudflare-workers-ai-qwen',model:qwenModel,request:{messages:[{role:'user',content:'Reply with READY only.'}],max_tokens:8,temperature:0,enable_thinking:false},options:{gateway:{id:gatewayId}}});
   third.thinkingMode='disabled';
   // Compatibility aliases remain for the existing readiness UI while Theme roles are explicit.
   return{primary,secondary,third,fallback:secondary,mistral:primary,qwen:third,themeProviderOrder:themeProviderRoster(env,env.WORKERS_AI_VISION_MODEL||DEFAULT_MODEL),probedAt:new Date().toISOString(),cooldownStateChanged:false};
@@ -2555,7 +2555,7 @@ async function runStructured(env, model, image, prompt, schema, maxTokens=2600, 
       payload={response:mistral.text};
     }else if(forcedProvider==='qwen'){
       if(responseMode!=='text')throw diagnosticError('Qwen Theme provider routing currently supports text-output Theme stages only.',{phase:'provider-call',provider:'cloudflare-workers-ai-qwen',model:qwenThemeModelFor(env),failureKind:'unsupported-response-mode',responseMode});
-      payload=await timedRun(qwenThemeModelFor(env),qwenRequest(),'cloudflare-workers-ai-qwen');
+      payload=await timedRun(qwenThemeModelFor(env),qwenRequest(),'cloudflare-workers-ai-qwen',gatewayId);
     }else if(shouldUseFallback){
       payload=await timedRun(fallbackModel,fallbackRequest(),'openai-via-cloudflare-ai-gateway',gatewayId);
     }else{
