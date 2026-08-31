@@ -1,4 +1,14 @@
-# Genreactrix v0.9.40.209 — PrimFusion taxonomy update
+# Genreactrix v0.9.40.210 — PrimFusion taxonomy update
+
+## v0.9.40.210 — Compact landscape Filter correction
+
+- Reduced the Filter heading to a thin header and moved All / Feed into the same header area.
+- Reworked AI Safety and Dir Safety so each uses one long Include row and one long Exclude row, matching the Filter's existing left/right Include/Exclude feel.
+- Narrowed the overall modal so it stays within the landscape viewport.
+- Tightened Status spacing so Tuned, Slop Warning, and Slop Detected remain visible.
+- Increased the selected-state fill of safety size buttons so active selections are visibly colored.
+- No filter semantics, Worker, AI pipeline, Content Gate execution, Theme logic, Reaction logic, Queue, Bundle, or lifecycle changes.
+
 
 ## v0.9.40.209 — Landscape Filter safety search
 
