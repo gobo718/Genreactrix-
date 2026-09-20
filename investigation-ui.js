@@ -16,10 +16,17 @@ function imageRecord(id){return window.genreactrixImageRecordEngine?.get?.(Strin
 async function loadDimensions(url){if(!url)return null;return new Promise(resolve=>{const img=new Image(),done=()=>resolve(img.naturalWidth&&img.naturalHeight?{width:img.naturalWidth,height:img.naturalHeight}:null);img.onload=done;img.onerror=()=>resolve(null);img.src=url;if(img.complete)queueMicrotask(done)})}
 async function visualForRecord(record){
   if(!record)return{url:'',quality:'none',dimensions:null};
-  const e=window.genreactrixImagesEngine;let blob=await e?.fullBlobForOriginCheck?.(record.id).catch?.(()=>null)||null,quality='full';
+  const e=window.genreactrixImagesEngine;
+  const display=await e?.displayFile?.(record.id,{allowRecovery:false,reuseCached:true}).catch?.(()=>null)||null;
+  if(display?.url&&!display.isMissingAsset){
+    const quality=display.isThumbnail?'thumbnail':display.isRemoteSource?'linked':'full',dimensions=await loadDimensions(display.url);
+    return{url:display.url,quality,dimensions,blob:null,sharedDisplay:true};
+  }
+  let blob=await e?.fullBlobForOriginCheck?.(record.id).catch?.(()=>null)||null,quality='full';
   if(!blob){blob=await e?.thumbnailBlobGet?.(record.storage?.thumbnailKey||record.id).catch?.(()=>null)||null;quality=blob?'thumbnail':'none'}
   let url=blob?urlForBlob(blob):'';
   if(!url){url=record.storage?.hyperlink||record.source?.originalUrl||'';quality=url?'linked':'none'}
+  if(!url&&display?.url){url=display.url;quality='placeholder'}
   const dimensions=await loadDimensions(url);
   return{url,quality,dimensions,blob};
 }

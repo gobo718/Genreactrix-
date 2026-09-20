@@ -1,4 +1,13 @@
-const GENREACTRIX_BUILD="v0.9.40.58";
+const GENREACTRIX_BUILD="v0.9.40.212";
+// v0.9.40.204 — Add first-pass binary AI W/L/C content ratings from Cloudflare Llama Guard; tap AI ratings for stored reasoning. Director five-size overrides remain unchanged.
+// v0.9.40.203 — Add compact always-visible W/L/C content-rating controls; Director values are editable and persisted, AI values remain display-only placeholders.
+// v0.9.40.148 — Theme reasoning diagnostic capture; Themes Info auto-paired with Theme analysis.
+// v0.9.40.146 — selected completed-job Theme Sweep recovery; targeted Bundle retraction.
+// v0.9.40.144 — Theme Sweep current-pack recovery + selected-target registration.
+ // AI Console manual Theme analysis now registers as Pass 1 even when target=selected.
+ // Current Staged results can be processed in place as completed Pass 1 with no rerun:
+ // non-common triplets release to Bundling and only the most-common repeated triplet enters shuffled Pass 2.
+ // Home layout unchanged.
 window.GENREACTRIX_BUILD=GENREACTRIX_BUILD;
 const PRIMFUSION_LABEL_FIT = Object.freeze({ preferredPx: 9, stepPx: 0.25, allowedShrinkRatio: 0.15, individualMinimumPx: 1 });
 function setDirectorStatus(message){
@@ -13,22 +22,27 @@ const PRIMITIVES = [
   {id:"P04",name:"Funny",symbol:"🤣"},
   {id:"P05",name:"Intense",symbol:"💥"},
   {id:"P06",name:"Weird",symbol:"🌀"},
-  {id:"P07",name:"Ticket",symbol:"🎟️"},
   {id:"P08",name:"Dreamy",symbol:"🌌"},
   {id:"P09",name:"Zazzly",symbol:"🌶️"},
   {id:"P10",name:"Disgusting",symbol:"🤢"},
   {id:"P11",name:"Scary",symbol:"👻"},
-  {id:"P12",name:"Smart",symbol:"🧠"},
-  {id:"P13",name:"Celebration",symbol:"🎉"},
-  {id:"P14",name:"Angry",symbol:"🤬"}
+  {id:"P12",name:"Celebration",symbol:"🎉"},
+  {id:"P07",name:"Angry",symbol:"🤬"}
 ];
 const PRIMITIVE_BY_ID = Object.fromEntries(PRIMITIVES.map(p=>[p.id,p]));
 const PRIMITIVE_BY_NAME = Object.fromEntries(PRIMITIVES.map(p=>[p.name,p]));
+// Director reaction selections historically persist numeric slots. Ticket's old numeric
+// slot remains legacy-only; active P07 is Angry and keeps the historical Angry slot.
+// Smart is retired; active P12 is Celebration and keeps the historical Celebration slot,
+// so existing Director classifications do not shift physical storage positions.
+const LEGACY_REACTION_SLOT_BY_PRIM_ID = Object.freeze({P01:0,P02:1,P03:2,P04:3,P05:4,P06:5,P07:13,P08:7,P09:8,P10:9,P11:10,P12:12});
+const primitiveSelectionToken=primitive=>LEGACY_REACTION_SLOT_BY_PRIM_ID[primitive?.id];
 // Cloud Worker / PrimFusion Matrix canonical IDs keep Adorable=P01 and Beautiful=P02.
 // The local reaction display order historically stores those two in the opposite P slots,
 // so AI payload lookup must resolve by canonical semantic identity rather than local slot ID.
-const AI_CANONICAL_PRIM_ID_BY_NAME = Object.freeze({Beautiful:"P02",Adorable:"P01",Tragic:"P03",Funny:"P04",Intense:"P05",Weird:"P06",Ticket:"P07",Dreamy:"P08",Zazzly:"P09",Disgusting:"P10",Scary:"P11",Smart:"P12",Celebration:"P13",Angry:"P14"});
+const AI_CANONICAL_PRIM_ID_BY_NAME = Object.freeze({Beautiful:"P02",Adorable:"P01",Tragic:"P03",Funny:"P04",Intense:"P05",Weird:"P06",Angry:"P07",Dreamy:"P08",Zazzly:"P09",Disgusting:"P10",Scary:"P11",Celebration:"P12"});
 const AI_CANONICAL_PRIM_NAME_BY_ID = Object.freeze(Object.fromEntries(Object.entries(AI_CANONICAL_PRIM_ID_BY_NAME).map(([name,id])=>[id,name])));
+const LEGACY_AI_PRIM_ID_ALIASES = Object.freeze({P07:Object.freeze(["P07"])});
 
 const CUSTOM_REACTION_LIBRARY_KEY="genreactrix-custom-reactions-v1";
 const CUSTOM_THEME_LIBRARY_KEY="genreactrix-custom-themes-v2";
@@ -58,108 +72,81 @@ const primFusionCellId=(a,b)=>`CELL:${primitivePairId(a,b)}`;
 const CANONICAL_PRIMFUSION_LABELS = {
   "Beautiful|Beautiful": "Beautiful",
   "Adorable|Beautiful": "Cozy",
-  "Beautiful|Tragic": "Melancholic",
-  "Beautiful|Funny": "Charming",
-  "Beautiful|Intense": "Majestic",
-  "Beautiful|Weird": "Surreal",
-  "Beautiful|Ticket": "Irreverent",
-  "Beautiful|Dreamy": "Romance",
-  "Beautiful|Zazzly": "Exposure",
+  "Beautiful|Tragic": "Mundane",
+  "Beautiful|Funny": "Camp",
+  "Beautiful|Intense": "Epic",
+  "Beautiful|Weird": "Psychedelic",
+  "Beautiful|Dreamy": "Satisfying",
+  "Beautiful|Zazzly": "Fleshy",
   "Beautiful|Disgusting": "Grotesque",
   "Beautiful|Scary": "Vulnerable",
-  "Beautiful|Smart": "Elegant",
   "Beautiful|Celebration": "Festive",
-  "Angry|Beautiful": "Pretentious",
+  "Angry|Beautiful": "Bougie",
   "Adorable|Adorable": "Adorable",
-  "Adorable|Tragic": "Pitiful",
+  "Adorable|Tragic": "Poignant",
   "Adorable|Funny": "Goofy",
   "Adorable|Intense": "Joy",
-  "Adorable|Weird": "Bizarre",
-  "Adorable|Ticket": "Camp",
-  "Adorable|Dreamy": "Whimsical",
-  "Adorable|Zazzly": "Kawaii",
-  "Adorable|Disgusting": "Grimy",
+  "Adorable|Weird": "Whimsical",
+  "Adorable|Dreamy": "Romance",
+  "Adorable|Zazzly": "Cheeky",
+  "Adorable|Disgusting": "UglyCute",
   "Adorable|Scary": "CreepyCute",
-  "Adorable|Smart": "Innocence",
   "Adorable|Celebration": "Playful",
-  "Adorable|Angry": "Saccharine",
+  "Adorable|Angry": "Sassy",
   "Tragic|Tragic": "Tragic",
-  "Funny|Tragic": "Ironic",
-  "Intense|Tragic": "Devastating",
+  "Funny|Tragic": "Schadenfreude",
+  "Intense|Tragic": "Despair",
   "Tragic|Weird": "Nightmarish",
-  "Ticket|Tragic": "Shame",
-  "Dreamy|Tragic": "Liminal",
+  "Dreamy|Tragic": "Nostalgia",
   "Tragic|Zazzly": "Humiliation",
-  "Disgusting|Tragic": "Despair",
-  "Scary|Tragic": "Foreboding",
-  "Smart|Tragic": "Poignant",
+  "Disgusting|Tragic": "Shame",
+  "Scary|Tragic": "Cringe",
   "Celebration|Tragic": "Bittersweet",
-  "Angry|Tragic": "Dysphoria",
+  "Angry|Tragic": "Overstimulated",
   "Funny|Funny": "Funny",
-  "Funny|Intense": "Cringe",
-  "Funny|Weird": "Zany",
-  "Funny|Ticket": "Satirical",
-  "Dreamy|Funny": "Absurd",
-  "Funny|Zazzly": "Ribaldry",
+  "Funny|Intense": "Hilarious",
+  "Funny|Weird": "Absurd",
+  "Dreamy|Funny": "Medicated",
+  "Funny|Zazzly": "Raunchy",
   "Disgusting|Funny": "Grossout",
-  "Funny|Scary": "Comedy Horror",
-  "Funny|Smart": "Witty",
+  "Funny|Scary": "Scandalarious",
   "Celebration|Funny": "PartyTime",
-  "Angry|Funny": "Trolling",
+  "Angry|Funny": "Mockery",
   "Intense|Intense": "Intense",
   "Intense|Weird": "Chaotic",
-  "Intense|Ticket": "Outrageous",
-  "Dreamy|Intense": "Epic",
-  "Intense|Zazzly": "Lust",
-  "Disgusting|Intense": "Brutal",
-  "Intense|Scary": "Terror",
-  "Intense|Smart": "Brilliant",
-  "Celebration|Intense": "Pride",
+  "Dreamy|Intense": "Ethereal",
+  "Intense|Zazzly": "Exposure",
+  "Disgusting|Intense": "Collapse",
+  "Intense|Scary": "Corrupted",
+  "Celebration|Intense": "Glory",
   "Angry|Intense": "Aggressive",
+  "Angry|Dreamy": "Cursed",
   "Weird|Weird": "Weird",
-  "Ticket|Weird": "Freakshow",
-  "Dreamy|Weird": "Psychedelic",
   "Weird|Zazzly": "FreakyDeaky",
-  "Disgusting|Weird": "Mutant",
-  "Scary|Weird": "Macabre",
-  "Smart|Weird": "Alien",
-  "Celebration|Weird": "Delirious",
+  "Disgusting|Weird": "Strange",
+  "Scary|Weird": "Horror",
+  "Celebration|Weird": "Freakshow",
   "Angry|Weird": "Monstrous",
-  "Ticket|Ticket": "Ticket",
-  "Dreamy|Ticket": "Medicated",
-  "Ticket|Zazzly": "Exploitation",
-  "Disgusting|Ticket": "Tasteless",
-  "Scary|Ticket": "Execrable",
-  "Smart|Ticket": "Parodic",
-  "Celebration|Ticket": "Snarky",
-  "Angry|Ticket": "Wickedness",
   "Dreamy|Dreamy": "Dreamy",
-  "Dreamy|Zazzly": "Limerence",
-  "Disgusting|Dreamy": "Putrid",
+  "Dreamy|Zazzly": "Seduction",
+  "Disgusting|Dreamy": "Phantasmagoric",
   "Dreamy|Scary": "Eerie",
-  "Dreamy|Smart": "Ethereal",
   "Celebration|Dreamy": "Magical",
-  "Angry|Dreamy": "Phantasmagoric",
   "Zazzly|Zazzly": "Zazzly",
   "Disgusting|Zazzly": "Lewd",
-  "Scary|Zazzly": "Seduction",
-  "Smart|Zazzly": "Kinky",
-  "Celebration|Zazzly": "Hedonism",
+  "Scary|Zazzly": "Zazzploitation",
+  "Celebration|Zazzly": "ZazzlyParty",
   "Angry|Zazzly": "Sadomasochism",
   "Disgusting|Disgusting": "Disgusting",
-  "Disgusting|Scary": "Horror",
-  "Disgusting|Smart": "Greed",
-  "Celebration|Disgusting": "Indulgent",
-  "Angry|Disgusting": "Repulsive",
+  "Disgusting|Scary": "Foreboding",
+  "Celebration|Disgusting": "Excess",
+  "Angry|Disgusting": "Outrage",
   "Scary|Scary": "Scary",
-  "Scary|Smart": "Paranoia",
-  "Celebration|Scary": "Spirituality",
-  "Angry|Scary": "Violated",
-  "Smart|Smart": "Smart",
-  "Celebration|Smart": "Glory",
-  "Angry|Smart": "Obsessive",
+  "Dreamy|Weird": "Spirituality",
+  "Angry|Scary": "Paranoia",
+  "Celebration|Scary": "Halloween",
   "Celebration|Celebration": "Celebration",
-  "Angry|Celebration": "Revenge",
+  "Angry|Celebration": "Badass",
   "Angry|Angry": "Angry"
 };
 
@@ -168,7 +155,10 @@ function canonicalPrimFusionLabel(firstName, secondName){
   return CANONICAL_PRIMFUSION_LABELS[key] || (firstName===secondName ? firstName : `${firstName} + ${secondName}`);
 }
 
-// v0.9.39.69 — expose current 91 non-diagonal Theme labels to the reporting engine.
+// v0.9.40.166 — fresh independent Reaction and Theme/Description Worker requests now launch concurrently; local commits remain serialized.
+// v0.9.40.165 — linked-image display fallback: if a direct linked URL cannot render, resolve it through the existing Worker image proxy without changing linked storage semantics.
+// v0.9.40.164 — PrimFusion Matrix bottom-right heading restored with Smart 🧠. Geometry and taxonomy unchanged.
+// v0.9.40.163 — Goofy/Camp swap. PFM0104 (Adorable + Funny) is now Goofy and PFM0204 (Beautiful + Funny) is now Camp. Charming remains retired. Active Prim IDs are P01-P12 with Angry at P07 and Celebration at P12.
 window.genreactrixCurrentFusionThemes = Object.freeze([...new Set(
   Object.entries(CANONICAL_PRIMFUSION_LABELS)
     .filter(([pair])=>{const [a,b]=pair.split("|");return a!==b;})
@@ -187,19 +177,19 @@ const DEMOS = [
     src: svgData("MUTOSIS","🦄","🦥"),
     description:"A dreamy creature mashup combining a unicorn with a sloth. The composition is whimsical, gentle, and intentionally improbable.",
     aiThemes:[["Fantasy",96],["Cute",82],["Nature",59]],
-    aiWeights:{P01:79,P02:72,P03:4,P04:18,P05:12,P06:42,P07:0,P08:88,P09:5,P10:0,P11:8,P12:34,P13:21,P14:0}
+    aiWeights:{P01:79,P02:72,P03:4,P04:18,P05:12,P06:42,P08:88,P09:5,P10:0,P11:8,P12:21,P07:0}
   },
   {
     src: svgData("MUTOSIS","🐙","🫖"),
     description:"An octopus–teapot hybrid with domestic and aquatic visual cues. The humor comes from treating an object as a living creature.",
     aiThemes:[["Aquatic",93],["Comedy",77],["Domestic",65]],
-    aiWeights:{P01:18,P02:12,P03:2,P04:91,P05:20,P06:85,P07:4,P08:27,P09:9,P10:5,P11:15,P12:72,P13:33,P14:0}
+    aiWeights:{P01:18,P02:12,P03:2,P04:91,P05:20,P06:85,P08:27,P09:9,P10:5,P11:15,P12:33,P07:0}
   },
   {
     src: svgData("MUTOSIS","🐈","🌙"),
     description:"A cat merged with a crescent moon. The image reads as nocturnal fantasy with celestial and magical themes.",
     aiThemes:[["Celestial",94],["Magic",89],["Fantasy",86]],
-    aiWeights:{P01:88,P02:64,P03:3,P04:9,P05:17,P06:39,P07:0,P08:92,P09:4,P10:0,P11:31,P12:44,P13:16,P14:0}
+    aiWeights:{P01:88,P02:64,P03:3,P04:9,P05:17,P06:39,P08:92,P09:4,P10:0,P11:31,P12:16,P07:0}
   }
 ];
 
@@ -239,25 +229,28 @@ const state = {
 };
 
 // Queue owns AI-complete images as Staged until the Bundle Engine moves them into Inbox.
-const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v4";
-const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
+const LANDSCAPE_FILTER_KEY="genreactrix-landscape-filter-v7";
+const LANDSCAPE_FILTER_LEGACY_KEYS=["genreactrix-landscape-filter-v6","genreactrix-landscape-filter-v5","genreactrix-landscape-filter-v4","genreactrix-landscape-filter-v3","genreactrix-landscape-filter-v2","genreactrix-landscape-filter-v1"];
 const LEGACY_SIDELINE_FILTER_KEY=["par","ked"].join("");
-const FILTER_CATEGORIES=["review","rejection","reject","kept","depot","seen"];
+const FILTER_STATUS_CATEGORIES=["review","rejection","reject","kept","depot","seen","tuned","slopWarning","slopDetected"];
+const FILTER_SAFETY_SOURCES=["ai","director"];
+const FILTER_SAFETY_AXES=["work","lunch","civility"];
+const FILTER_SAFETY_SIZES=["XS","S","M","L","XL"];
+const FILTER_SAFETY_CATEGORIES=FILTER_SAFETY_SOURCES.flatMap(source=>FILTER_SAFETY_AXES.flatMap(axis=>FILTER_SAFETY_SIZES.map(size=>`safety_${source}_${axis}_${size}`)));
+const FILTER_CATEGORIES=[...FILTER_STATUS_CATEGORIES,...FILTER_SAFETY_CATEGORIES];
 const SORT_MODES=new Set(["bundle","newest","oldest","filename","random"]);
-const defaultLandscapeFilter=()=>({
-  all:false,
-  feed:true,
-  include:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
-  exclude:{review:false,rejection:false,reject:false,kept:false,depot:false,seen:false},
-  bundleId:null,
-  sort:"bundle",
-  randomSeed:0
-});
+const defaultLandscapeFilter=()=>{
+  const include={},exclude={};
+  FILTER_CATEGORIES.forEach(key=>{include[key]=false;exclude[key]=false;});
+  return{all:false,feed:true,include,exclude,bundleId:null,sort:"bundle",randomSeed:0};
+};
 function normalizeLandscapeFilter(value,{legacy=false}={}){
   const base=defaultLandscapeFilter(), input=value&&typeof value==="object"?value:{};
   if(Object.prototype.hasOwnProperty.call(input,"all"))base.all=Boolean(input.all);
   if(Object.prototype.hasOwnProperty.call(input,"feed"))base.feed=Boolean(input.feed);
   FILTER_CATEGORIES.forEach(key=>{base.include[key]=Boolean(input.include?.[key]);base.exclude[key]=Boolean(input.exclude?.[key]);});
+  if(input.include?.slop){base.include.slopWarning=true;base.include.slopDetected=true;}
+  if(input.exclude?.slop){base.exclude.slopWarning=true;base.exclude.slopDetected=true;}
   if(legacy){
     // The superseded sidelining state behaved as Review, never as Depot.
     if(input.include?.[LEGACY_SIDELINE_FILTER_KEY])base.include.review=true;
@@ -305,6 +298,12 @@ function aiOutputRecords(){return (window.genreactrixImagesEngine?.allRecords?.(
 function currentAiFailureRecords(){return (window.genreactrixImagesEngine?.allRecords?.()||[]).filter(record=>recordHasPrimaryAiFailure(record)&&!['quarantine','defective'].includes(String(record.workflow?.stage||''))&&!record.attributes?.inRecycleBin&&!record.attributes?.rejected&&!record.attributes?.archived&&!recordAlreadyInInbox(record));}
 window.genreactrixInboxAiOutputRecords=()=>aiOutputRecords().map(record=>structuredClone(record));
 window.genreactrixCurrentAiFailureRecords=()=>currentAiFailureRecords().map(record=>structuredClone(record));
+function recordIsTuned(record){
+  const ext=record?.metadata?.extended||{};return ext.aiTuned===true;
+}
+function recordSlopAssessment(record){return record?.metadata?.extended?.aiSlopAssessment||record?.analysis?.ai?.components?.slopAssessment||null}
+function slopAssessmentKind(assessment){if(assessment?.detected)return'detected';if(assessment?.warning===true||String(assessment?.status||'').toLowerCase()==='warning'||String(assessment?.kind||'').toLowerCase()==='warning')return'warning';return'none'}
+function recordHasSlopSuggestion(record,kind=null){const assessment=recordSlopAssessment(record),actual=slopAssessmentKind(assessment);if(actual==='none'||(kind&&actual!==kind))return false;const review=record?.metadata?.extended?.slopDirectorReview||null;if(review?.decision==='not-slop'&&String(review.assessmentId||'')===String(assessment.assessmentId||''))return false;return true}
 function recordMatchesFilterCategory(record,key){
   if(key==="review")return Boolean(record.attributes?.flagged);
   if(key==="rejection")return Boolean(record.attributes?.rejectionFlagged);
@@ -312,6 +311,16 @@ function recordMatchesFilterCategory(record,key){
   if(key==="kept")return Boolean(record.attributes?.saved);
   if(key==="depot")return Boolean(record.attributes?.depot);
   if(key==="seen")return Boolean(record.attributes?.seen);
+  if(key==="tuned")return recordIsTuned(record);
+  if(key==="slop")return recordHasSlopSuggestion(record);
+  if(key==="slopWarning")return recordHasSlopSuggestion(record,'warning');
+  if(key==="slopDetected")return recordHasSlopSuggestion(record,'detected');
+  if(key.startsWith("safety_")){
+    const parts=key.split("_"),source=parts[1],axis=parts[2],size=parts[3];
+    if(!["ai","director"].includes(source)||!["work","lunch","civility"].includes(axis)||!["XS","S","M","L","XL"].includes(size))return false;
+    const ratings=imageContentRatings(record);
+    return ratings[source]?.[axis]===size;
+  }
   return false;
 }
 function recordEligibleForLandscapeBase(record){return Boolean(record)&&!record.attributes?.inRecycleBin&&record.workflow?.stage==="inbox-working";}
@@ -383,13 +392,39 @@ function requestCurrentLandscapeAsset(){
   // Inbox population remains fully available without materializing every asset.
   queueMicrotask(()=>hydrateLandscapeWindow(generation,state.index).catch(error=>console.warn("Landscape prefetch window failed",error)));
 }
-function markLandscapeAssetUnavailable(imageId,failedSrc,message="Image source could not be displayed."){
+async function markLandscapeAssetUnavailable(imageId,failedSrc,message="Image source could not be displayed."){
   const id=String(imageId||"");if(!id)return;
-  const index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
-  const live=state.files[index];
+  let index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
+  let live=state.files[index];
   if(live?.isMissingAsset||String(live?.url||"")!==String(failedSrc||""))return;
   const record=live.imageRecord||window.genreactrixImagesEngine?.recordById?.(id)||null;
-  const missing=window.genreactrixImagesEngine?.missingAssetPlaceholder?.(record,message);
+
+  // v0.9.40.165 — A linked source may be a webpage (for example a Wikimedia
+  // Commons File: page) rather than directly decodable image bytes. Do not
+  // mutate the Image Record or convert linked storage into a local copy. Only
+  // after the browser proves the direct <img> source cannot render, ask the
+  // existing Worker image proxy for display bytes and use a temporary object URL.
+  if(record?.storage?.mode==="linked"&&!record?.attributes?.saved&&!live?.isResolvedRemoteSource){
+    try{
+      const imagesEngine=/** @type {any} */(window).genreactrixImagesEngine;
+      const resolved=await imagesEngine?.resolveLinkedDisplay?.(id,{failedSrc});
+      index=state.files.findIndex(file=>String(file.id)===id);if(index<0)return;
+      live=state.files[index];
+      // Navigation or another hydration may have replaced this source while the
+      // proxy request was in flight. Never overwrite newer display state.
+      if(String(live?.url||"")!==String(failedSrc||""))return;
+      if(resolved?.url){
+        state.files[index]={...resolved,id,imageRecord:resolved.imageRecord||record,isHydratingAsset:false,isResolvedRemoteSource:true};
+        if(index===state.index){renderImage();renderTabletWorkbench();}
+        return;
+      }
+    }catch(error){
+      message=`${message} Worker display fallback failed: ${String(error?.message||error)}`;
+    }
+  }
+
+  const imagesEngine=/** @type {any} */(window).genreactrixImagesEngine;
+  const missing=imagesEngine?.missingAssetPlaceholder?.(record,message);
   if(!missing)return;
   state.files[index]={...missing,id,imageRecord:missing.imageRecord||record,isHydratingAsset:false};
   if(index===state.index){renderImage();renderTabletWorkbench();}
@@ -398,7 +433,7 @@ function canonicalAiRunFromRecord(record){
   const ai=record?.analysis?.ai;if(!ai)return null;
   const components=ai.components||{};
   const normalizeAiKey=value=>String(value??"").trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g,"");
-  const reactionAliases={P12:["Smart","Brain","Intelligence","Mind"]};
+  const reactionAliases={};
   let rawReactions=components.reactions??components.aiReactions??ai.reactions??ai.aiReactions??ai.weights??null;
   if(rawReactions&&typeof rawReactions==="object"&&!Array.isArray(rawReactions)&&rawReactions.reactions&&typeof rawReactions.reactions==="object")rawReactions=rawReactions.reactions;
   const reactionRows=Array.isArray(rawReactions)?rawReactions:[];
@@ -406,7 +441,7 @@ function canonicalAiRunFromRecord(record){
   const reactionObjectByKey=new Map(Object.entries(reactionObject).map(([key,value])=>[normalizeAiKey(key),value]));
   const weights=Object.fromEntries(PRIMITIVES.map(p=>{
     const canonicalAiId=AI_CANONICAL_PRIM_ID_BY_NAME[p.name]||p.id;
-    const aliases=[canonicalAiId,p.name,...(reactionAliases[canonicalAiId]||reactionAliases[p.id]||[])];
+    const aliases=[canonicalAiId,...(LEGACY_AI_PRIM_ID_ALIASES[canonicalAiId]||[]),p.name,...(reactionAliases[canonicalAiId]||reactionAliases[p.id]||[])];
     let row=null;
     for(const alias of aliases){const hit=reactionObjectByKey.get(normalizeAiKey(alias));if(hit!==undefined){row=hit;break;}}
     if(row==null&&reactionRows.length){
@@ -479,10 +514,9 @@ function currentAiRun(){ return currentAiRuns().at(-1); }
 function currentAiThemes(){ return currentAiRun().themes.map(t=>[t.label,t.weight]); }
 function currentAiWeights(){ return currentAiRun().weights || {}; }
 
-/* v0.9.40.12 — whole-number presentation for the 60/40 hybrid.
-   Stored hybrid evidence may contain decimal tenths from the direct-AI × .4 share.
-   Largest-remainder presentation keeps the displayed vector at exactly 100 without
-   changing the stored 60/40 calculation. Existing integer 100-point vectors remain unchanged. */
+/* v0.9.40.173 — whole-number presentation for six equal Theme→Prim slots.
+   Stored weights use exact 1/6 contributions; largest-remainder display keeps the
+   visible vector at exactly 100 while preserving duplicate-Prim accumulation. */
 function displayReactionPercentages(source={}){
   const rows=PRIMITIVES.map((p,index)=>({id:p.id,index,value:Math.max(0,Number(source?.[p.id])||0)}));
   const total=rows.reduce((sum,row)=>sum+row.value,0);
@@ -605,7 +639,7 @@ function emptyClassification(){
   return {selectedReactions:[],themes:[null,null,null],flagged:false,writeIn:"",retention:"keep"};
 }
 function applyAiDrawerLoadDefaults(){
-  if(descriptionRerunWorkspace?.active||themeRerunWorkspace?.active){tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;return;}
+  if(reactionRerunWorkspace?.active||descriptionRerunWorkspace?.active||themeRerunWorkspace?.active){tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;return;}
   const directorThemesComplete=state.themes.length>=3&&state.themes.slice(0,3).every(theme=>Boolean(normalizeTheme(theme)));
   const hasDirectorReaction=state.selectedReactions.length>0;
   const selected=directorThemesComplete&&hasDirectorReaction;
@@ -735,7 +769,7 @@ function renderReactions(){
   const records=allReactionRecords();
   records.forEach((record,index)=>{
     const canonical=record.type==="canonical";
-    const token=canonical?PRIMITIVES.findIndex(p=>p.id===record.id):customReactionSelectionToken(record.id);
+    const token=canonical?primitiveSelectionToken(PRIMITIVE_BY_ID[record.id]):customReactionSelectionToken(record.id);
     const make=()=>{
       const b=document.createElement("button");
       b.className="reaction-button"+(state.selectedReactions.includes(token)?" selected":"")+(canonical?"":" custom-reaction-button");
@@ -824,10 +858,11 @@ function renderFlag(){
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(hasImage&&state.retention==="keep"));
   $("tabletDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
+  $("landscapeImageViewDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
   // Filter highlight reflects actual record filtering only. Base population and sort order are not "on" states.
   const customFilter=Boolean(landscapeFilter.bundleId)||FILTER_CATEGORIES.some(k=>landscapeFilter.include[k]||landscapeFilter.exclude[k]);
   $("tabletFilterBtn")?.setAttribute("aria-pressed",String(customFilter));
-  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletDepotBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
+  ["tabletPrevBtn","tabletNextBtn","tabletUndoBtn","tabletRedoBtn","tabletFlagBtn","tabletSaveBtn","tabletDepotBtn","landscapeImageViewDepotBtn"].forEach(id=>{if($(id))$(id).disabled=!hasImage;});
   $("landscapeFeedEmpty")?.toggleAttribute("hidden",hasImage);
 }
 function renderDirectorFields(){
@@ -860,7 +895,7 @@ function renderPrimitiveWeights(target, {showDirector=false}={}){
   const weights=displayReactionPercentages(currentAiWeights());
   PRIMITIVES.forEach((p,index)=>{
     const item=document.createElement("div");
-    item.className="primitive-weight-item"+(showDirector && state.selectedReactions.includes(index)?" director-selected":"");
+    item.className="primitive-weight-item"+(showDirector && state.selectedReactions.includes(primitiveSelectionToken(p))?" director-selected":"");
     item.innerHTML=`<span class="primitive-weight-symbol" title="${p.name}">${p.symbol}</span><small>${weights[p.id]>0?`${Math.round(weights[p.id])}%`:"-%"}</small>`;
     target.appendChild(item);
   });
@@ -963,6 +998,14 @@ const AI_RERUN_LOCK_KEY="genreactrix-ai-rerun-lock-v1";
 const AI_RERUN_COMPONENTS=["reactions","themes","description"];
 let tabletAiRerunLocked=localStorage.getItem(AI_RERUN_LOCK_KEY)!=="0";
 let aiRerunInFlight=false;
+const reactionRerunWorkspace={active:false,useImage:true,useDescription:true,preDrawer:null};
+function reactionRerunDescriptionText(){const text=String(currentAiRun()?.description||currentDescription()||'').trim();return /^No AI description is stored/i.test(text)?'':text}
+function reactionRerunSources(){return{image:Boolean(reactionRerunWorkspace.useImage),description:Boolean(reactionRerunWorkspace.useDescription)}}
+function renderReactionRerunChrome(){const active=reactionRerunWorkspace.active,drawer=$("tabletSlidingDrawer"),controls=$("tabletReactionRerunControls"),image=$("reactionRerunUseImage"),description=$("reactionRerunUseDescription"),submit=$("reactionRerunSubmitBtn");drawer?.classList.toggle("reaction-rerun-active",active);if(controls)controls.hidden=!active;if(image)image.checked=Boolean(reactionRerunWorkspace.useImage);if(description)description.checked=Boolean(reactionRerunWorkspace.useDescription);if(submit){const noSource=!reactionRerunWorkspace.useImage&&!reactionRerunWorkspace.useDescription,missingDescription=reactionRerunWorkspace.useDescription&&!reactionRerunDescriptionText();submit.disabled=aiRerunInFlight||noSource||missingDescription;submit.setAttribute("aria-busy",String(aiRerunInFlight));}}
+function openReactionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight||reactionRerunWorkspace.active)return;if(descriptionRerunWorkspace?.active)closeDescriptionRerunWorkspace();if(themeRerunWorkspace?.active)closeThemeRerunWorkspace();reactionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};reactionRerunWorkspace.active=true;reactionRerunWorkspace.useImage=true;reactionRerunWorkspace.useDescription=true;tabletLandscapeView.face="judgment";tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=false;tabletLandscapeView.aiDescription=true;renderTabletWorkbench()}
+function closeReactionRerunWorkspace(){if(!reactionRerunWorkspace.active)return;reactionRerunWorkspace.active=false;const prior=reactionRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);reactionRerunWorkspace.preDrawer=null;renderTabletWorkbench()}
+async function recalculateCurrentReactions(){if(aiRerunInFlight)return;setDirectorStatus('Recalculating Reactions from the current three Themes…');try{await runCurrentAiRerun(['reactions']);tabletLandscapeView.aiReactions=true;setDirectorStatus('Reactions recalculated from Themes · no AI Reaction scan.');}catch(error){const message=String(error?.message||error);console.error('Theme-derived Reaction recalculation failed',error);setDirectorStatus(`Reaction recalculation failed: ${message}`);alert(`Reaction recalculation failed: ${message}`)}}
+async function submitReactionRerun(){return recalculateCurrentReactions()}
 function syncTabletAiRerunControls(){
   const lock=$("tabletAiRerunLockBtn");
   lock?.setAttribute("aria-pressed",String(tabletAiRerunLocked));
@@ -970,6 +1013,7 @@ function syncTabletAiRerunControls(){
   const full=$("rerunAiBtn");
   if(full){full.disabled=aiRerunInFlight;full.setAttribute("aria-busy",String(aiRerunInFlight));}
   ["aiGuidedDescriptionRerunBtn","aiThemeFailsafeBtn"].forEach(id=>{const b=$(id);if(b){b.disabled=aiRerunInFlight;b.setAttribute("aria-busy",String(aiRerunInFlight));}});
+  renderReactionRerunChrome();
 }
 
 
@@ -981,33 +1025,43 @@ const THEME_RERUN_CURRENT_KEY='genreactrix-theme-rerun-current-v1';
 const THEME_RERUN_THEME_STATES=Object.freeze(['neutral','replace','preserve']);
 const THEME_RERUN_PRIM_STATES=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden']);
 const THEME_RERUN_PRIM_CYCLE=Object.freeze(['mandatory','preferred','optional','discouraged','forbidden',null]);
-const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:14},(_,index)=>`P${String(index+1).padStart(2,'0')}`));
+const THEME_RERUN_PRIM_ORDER=Object.freeze(Array.from({length:12},(_,index)=>`P${String(index+1).padStart(2,'0')}`));
 function themeRerunPfmCode(firstCode,secondCode){const nums=[firstCode,secondCode].map(code=>Number(String(code).replace(/\D/g,''))||0).sort((a,b)=>a-b);return`PFM${String(nums[0]).padStart(2,'0')}${String(nums[1]).padStart(2,'0')}`}
-const THEME_RERUN_FUSION_CATALOG=Object.freeze((()=>{const rows=[];for(let first=1;first<=14;first++)for(let second=first+1;second<=14;second++){const firstCode=`P${String(first).padStart(2,'0')}`,secondCode=`P${String(second).padStart(2,'0')}`,code=themeRerunPfmCode(firstCode,secondCode),firstName=AI_CANONICAL_PRIM_NAME_BY_ID[firstCode]||firstCode,secondName=AI_CANONICAL_PRIM_NAME_BY_ID[secondCode]||secondCode;rows.push(Object.freeze({code,primitiveCodes:Object.freeze([firstCode,secondCode]),label:canonicalPrimFusionLabel(firstName,secondName)}));}return rows;})());
+const THEME_RERUN_FUSION_CATALOG=Object.freeze((()=>{const rows=[],activeIds=Object.keys(AI_CANONICAL_PRIM_NAME_BY_ID).sort((a,b)=>Number(a.slice(1))-Number(b.slice(1)));for(let first=0;first<activeIds.length;first++)for(let second=first+1;second<activeIds.length;second++){const firstCode=activeIds[first],secondCode=activeIds[second],code=themeRerunPfmCode(firstCode,secondCode),firstName=AI_CANONICAL_PRIM_NAME_BY_ID[firstCode]||firstCode,secondName=AI_CANONICAL_PRIM_NAME_BY_ID[secondCode]||secondCode;rows.push(Object.freeze({code,primitiveCodes:Object.freeze([firstCode,secondCode]),label:canonicalPrimFusionLabel(firstName,secondName)}));}return rows;})());
 const THEME_RERUN_FUSION_BY_CODE=Object.freeze(Object.fromEntries(THEME_RERUN_FUSION_CATALOG.map(row=>[row.code,row])));
+const LEGACY_ANGRY_PFM_CODE_TO_CURRENT=Object.freeze({"PFM0114":"PFM0107","PFM0214":"PFM0207","PFM0314":"PFM0307","PFM0414":"PFM0407","PFM0514":"PFM0507","PFM0614":"PFM0607","PFM0814":"PFM0708","PFM0914":"PFM0709","PFM1014":"PFM0710","PFM1114":"PFM0711","PFM1314":"PFM0712"});
+const LEGACY_SMART_RETIREMENT_PFM_CODE_TO_CURRENT=Object.freeze({"PFM0113":"PFM0112","PFM0213":"PFM0212","PFM0313":"PFM0312","PFM0413":"PFM0412","PFM0613":"PFM0612","PFM0813":"PFM0812","PFM0913":"PFM0912","PFM1013":"PFM1012","PFM0713":"PFM0712","PFM0312":"PFM0203","PFM1213":"PFM0512"});
 const themeRerunWorkspace={active:false,pickerOpen:false,imageId:null,current:null,preDrawer:null,pendingScopeChange:null,longPressTimer:null,longPressFired:false,longPressTarget:null,exclusionQuery:'',descriptionCatalog:[],descriptionsLongPress:false,descriptionsTimer:null,themeHistoryCatalog:[]};
-const emptyThemeRerunCurrent=()=>({schemaVersion:1,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},excludedThemeCodes:[],includedDescriptionIds:[],populatedDescriptionId:null,descriptionContextInitialized:false,updatedAt:null});
+const emptyThemeRerunCurrent=()=>({schemaVersion:3,themeStates:{1:'neutral',2:'neutral',3:'neutral'},primScopes:{theme1:{},theme2:{},theme3:{},general:{}},excludedThemeCodes:[],includedDescriptionIds:[],populatedDescriptionId:null,descriptionContextInitialized:false,explainChanges:true,updatedAt:null});
 function themeRerunStorageKey(){return window.genreactrixProjectRuntimeEngine?.projectKey?.(THEME_RERUN_CURRENT_KEY)||THEME_RERUN_CURRENT_KEY}
 function readThemeRerunMap(){try{const raw=localStorage.getItem(themeRerunStorageKey());const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch{return {}}}
 function writeThemeRerunMap(map){try{localStorage.setItem(themeRerunStorageKey(),JSON.stringify(map||{}));return true}catch(error){console.warn('Theme rerun Current state could not be stored',error);return false}}
 function normalizeThemeRerunCurrent(value){
   const source=value&&typeof value==='object'?value:{},themeStates={},primScopes={};
   for(let slot=1;slot<=3;slot++){const raw=String(source.themeStates?.[slot]||'neutral');themeStates[slot]=THEME_RERUN_THEME_STATES.includes(raw)?raw:'neutral';}
+  const sourceSchema=Number(source.schemaVersion)||1;
   for(const scope of ['theme1','theme2','theme3','general']){
     const clean={};const raw=source.primScopes?.[scope];
-    if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [code,state] of Object.entries(raw))if(THEME_RERUN_PRIM_ORDER.includes(code)&&THEME_RERUN_PRIM_STATES.includes(state))clean[code]=state;
+    if(raw&&typeof raw==='object'&&!Array.isArray(raw))for(const [rawCode,state] of Object.entries(raw)){
+      let code=String(rawCode);
+      if(sourceSchema<2){if(code==='P07')continue;if(code==='P14')code='P07';}
+      else if(code==='P14')code='P07';
+      if(sourceSchema<3){if(code==='P12')continue;if(code==='P13')code='P12';}
+      else if(code==='P13')code='P12';
+      if(THEME_RERUN_PRIM_ORDER.includes(code)&&THEME_RERUN_PRIM_STATES.includes(state))clean[code]=state;
+    }
     primScopes[scope]=clean;
   }
-  const excludedThemeCodes=[...new Set((Array.isArray(source.excludedThemeCodes)?source.excludedThemeCodes:[]).map(String).filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code])))];
+  const excludedThemeCodes=[...new Set((Array.isArray(source.excludedThemeCodes)?source.excludedThemeCodes:[]).map(String).map(code=>sourceSchema<3?(LEGACY_SMART_RETIREMENT_PFM_CODE_TO_CURRENT[code]||LEGACY_ANGRY_PFM_CODE_TO_CURRENT[code]||code):(LEGACY_ANGRY_PFM_CODE_TO_CURRENT[code]||code)).filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code])))];
   const includedDescriptionIds=[...new Set((Array.isArray(source.includedDescriptionIds)?source.includedDescriptionIds:[]).filter(Boolean).map(String))];
-  return{schemaVersion:1,themeStates,primScopes,excludedThemeCodes,includedDescriptionIds,populatedDescriptionId:source.populatedDescriptionId?String(source.populatedDescriptionId):null,descriptionContextInitialized:Boolean(source.descriptionContextInitialized),updatedAt:source.updatedAt||null};
+  return{schemaVersion:3,themeStates,primScopes,excludedThemeCodes,includedDescriptionIds,populatedDescriptionId:source.populatedDescriptionId?String(source.populatedDescriptionId):null,descriptionContextInitialized:Boolean(source.descriptionContextInitialized),explainChanges:source.explainChanges!==false,updatedAt:source.updatedAt||null};
 }
 function loadThemeRerunCurrent(imageId=currentKey()){const map=readThemeRerunMap();return normalizeThemeRerunCurrent(map[String(imageId)]||emptyThemeRerunCurrent())}
 function saveThemeRerunCurrent(){if(!themeRerunWorkspace.imageId||!themeRerunWorkspace.current)return false;themeRerunWorkspace.current.updatedAt=new Date().toISOString();const map=readThemeRerunMap();map[String(themeRerunWorkspace.imageId)]=normalizeThemeRerunCurrent(themeRerunWorkspace.current);return writeThemeRerunMap(map)}
 function themeRerunPrimPresentation(code){const name=AI_CANONICAL_PRIM_NAME_BY_ID[code]||PRIMITIVE_BY_ID[code]?.name||code;const semantic=PRIMITIVES.find(item=>item.name===name);return{code,name,symbol:semantic?.symbol||PRIMITIVE_BY_ID[code]?.symbol||'•'}}
 function themeRerunAiThemeSnapshot(slot){const sorted=(currentAiRun()?.themes||[]).map(row=>({id:row?.id||null,label:String(row?.label||''),weight:Number(row?.weight)||0})).sort((a,b)=>b.weight-a.weight).slice(0,3);return sorted[slot-1]||null}
 function themeRerunFusionFromLabel(label){const wanted=String(label||'').trim().toLowerCase();return THEME_RERUN_FUSION_CATALOG.find(row=>row.label.toLowerCase()===wanted)||null}
-function themeRerunCurrentThemeFusion(slot){const snapshot=themeRerunAiThemeSnapshot(slot),code=String(snapshot?.id||'').trim().toUpperCase();return THEME_RERUN_FUSION_BY_CODE[code]||themeRerunFusionFromLabel(snapshot?.label||'')}
+function themeRerunCurrentThemeFusion(slot){const snapshot=themeRerunAiThemeSnapshot(slot),labelMatch=themeRerunFusionFromLabel(snapshot?.label||''),rawCode=String(snapshot?.id||'').trim().toUpperCase(),code=LEGACY_ANGRY_PFM_CODE_TO_CURRENT[rawCode]||rawCode;return labelMatch||THEME_RERUN_FUSION_BY_CODE[code]||null}
 function themeRerunExcludedCodes(){return themeRerunWorkspace.current?.excludedThemeCodes||[]}
 function themeRerunIsExcluded(code){return themeRerunExcludedCodes().includes(code)}
 function themeRerunProtectedSlotsForCode(code){const slots=[];for(let slot=1;slot<=3;slot++)if(themeRerunWorkspace.current?.themeStates?.[slot]==='preserve'&&themeRerunCurrentThemeFusion(slot)?.code===code)slots.push(slot);return slots}
@@ -1054,7 +1108,17 @@ function buildThemeRerunPreviewSpec(){
   const primPicker=activeScopes.map(scope=>themeRerunPrimScopeSpec(scope,current));
   const excludedThemeCodes=[...new Set(current.excludedThemeCodes||[])].filter(code=>Boolean(THEME_RERUN_FUSION_BY_CODE[code]));
   const includedDescriptions=[...new Set(current.includedDescriptionIds||[])].map(id=>themeRerunDescriptionCatalogItem(id)).filter(Boolean).map(item=>({artifactId:item.artifactId||null,id:String(item.id),version:Number(item.version)||0,createdAt:item.createdAt||'',text:String(item.text||'')}));
-  return{schemaVersion:1,image:{id:imageId,name:image.name||imageId,alwaysIncluded:true},themeSlots,primPicker,excludedThemeCodes,includedDescriptions};
+  const explainChanges=current.explainChanges!==false;
+  const currentThemeArtifactId=String(themeRerunHistoryCurrentArtifactId(imageId)||'');
+  const editLog=explainChanges?{
+    schemaVersion:5,
+    evidenceProtocol:'frozen-ledger-support-refs-v2',
+    token:`theme_edit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,
+    imageId,
+    beforeThemeArtifactId:currentThemeArtifactId||null,
+    beforeThemes:themeSlots.map(row=>({slot:row.slot,code:row.currentThemeCode||null,label:row.currentThemeLabel||`Theme ${row.slot}`,weight:row.weight??null}))
+  }:null;
+  return{schemaVersion:1,image:{id:imageId,name:image.name||imageId,alwaysIncluded:true},themeSlots,primPicker,excludedThemeCodes,includedDescriptions,explainChanges,editLog};
 }
 function previewThemeRerunRequest(spec){
   const lines=[];
@@ -1084,6 +1148,8 @@ function previewThemeRerunRequest(spec){
   lines.push('Theme Exclusions:');
   if(spec.excludedThemeCodes.length)for(const code of spec.excludedThemeCodes){const row=THEME_RERUN_FUSION_BY_CODE[code];if(row)lines.push(`- ${row.label}`);}else lines.push('No themes excluded.');
   lines.push('');
+  lines.push(`Theme Edit Log: ${spec.explainChanges!==false?'ON — save frozen-evidence reasoning for changed Themes.':'OFF'}`);
+  lines.push('');
   lines.push('Included descriptions:');
   if(spec.includedDescriptions.length)spec.includedDescriptions.forEach((row,index)=>{lines.push(`\n[${index+1}] ${formatDescriptionRerunDate(row.createdAt)}${row.version?` · v${row.version}`:''}`);lines.push(row.text)});else lines.push('No descriptions included.');
   lines.push('');
@@ -1106,7 +1172,8 @@ function themeRerunHistoryThemeFromRaw(raw,index=0){
   if(fusion)code=fusion.code;
   const label=fusion?.label||rawLabel||`Theme ${index+1}`;
   const weightRaw=typeof raw==='string'?null:(source.percentage??source.confidence??source.score??source.weight??source.value??null),weight=weightRaw==null?null:Number(weightRaw);
-  return{slot:index+1,code:code||null,label,weight:Number.isFinite(weight)?Math.max(0,Math.min(100,weight)):null};
+  const rationale=String(typeof raw==='string'?'':(source.rationale??source.reason??source.evidence??'')).trim();
+  return{slot:index+1,code:code||null,label,weight:Number.isFinite(weight)?Math.max(0,Math.min(100,weight)):null,rationale};
 }
 function themeRerunHistoryTriplet(payload){const raw=Array.isArray(payload)?payload:(Array.isArray(payload?.themes)?payload.themes:[]);return raw.slice(0,3).map((row,index)=>themeRerunHistoryThemeFromRaw(row,index));}
 function themeRerunHistoryThemeKey(row){return row?.code?`code:${row.code}`:`label:${String(row?.label||'').trim().toLowerCase()}`}
@@ -1140,6 +1207,108 @@ async function loadThemeRerunThemeHistory(){
   for(let index=0;index<entries.length;index++){entries[index].previous=index?entries[index-1]:null;entries[index].changes=themeRerunHistoryChanges(entries[index].previous,entries[index]);}
   if(!entries.length){const run=currentAiRun(),themes=(run?.themes||[]).slice(0,3).map((row,index)=>themeRerunHistoryThemeFromRaw(row,index));if(themes.length)entries.push({artifact:null,artifactId:null,version:0,createdAt:run?.createdAt||new Date().toISOString(),themes,attempt:null,current:true,previous:null,changes:[],projection:true});}
   themeRerunWorkspace.themeHistoryCatalog=entries.reverse();return themeRerunWorkspace.themeHistoryCatalog;
+}
+
+// v0.9.40.112 — persisted Landscape Theme-change reasoning. The immutable Theme
+// artifact already stores the Worker rationale; this cache only maps the latest
+// rerun's changed PFM codes onto the confidence-sorted Landscape display.
+const themeChangeReasoningCache=new Map();
+const themeChangeReasoningLoading=new Map();
+// v0.9.40.113 — one guarded refresh may follow a stale artifact mapping.
+// A refresh may re-render only when it actually loaded the artifact currently
+// attached to the image; stale data can never recursively schedule itself.
+const themeChangeReasoningRenderRefreshPending=new Set();
+function themeChangeReasoningContext(entry){return entry?.attempt?.inputRefs?.themeRerun||entry?.attempt?.configRefs?.themeRerun||null}
+function cleanThemeEditLogReason(raw,{slot=null,code=''}={}){
+  let text=String(raw||'').replace(/\r/g,'').trim();if(!text)return'';
+  const lines=text.split('\n').map(line=>line.trim()).filter(Boolean);
+  const codeUpper=String(code||'').toUpperCase();
+  for(const line of lines){
+    if(codeUpper&&!line.toUpperCase().includes(codeUpper))continue;
+    const cleaned=line.replace(/^\s*[-*•]+\s*/,'').replace(/^\|\s*/,'').replace(/\s*\|$/,'').trim();
+    if(!cleaned.includes('|'))continue;
+    const parts=cleaned.split('|').map(part=>part.trim()),codeIndex=parts.findIndex(part=>new RegExp(`\\b${codeUpper||'PFM\\d{4}'}\\b`,'i').test(part));
+    if(codeIndex<0)continue;
+    let tail=parts.slice(codeIndex+1);
+    if(tail.length&&/^(?:100|[1-9]?\d(?:\.\d+)?)\s*%?$/.test(tail[0]))tail=tail.slice(1);
+    else if(tail.length&&/^(?:0\s*[-–—]\s*100|CONFIDENCE(?:_0_TO_100)?)$/i.test(tail[0]))tail=tail.slice(1);
+    const candidate=tail.join('|').trim();if(candidate)text=candidate;
+    break;
+  }
+  text=text.replace(/^\*{0,2}\s*(?:Theme\s*[123]|Slot\s*[123]|Rank\s*[123])\s*[:\-–—]\s*/i,'')
+    .replace(/^Reason\s*[:=\-–—]\s*/i,'').replace(/\*{1,2}/g,'').trim();
+  if(slot!=null)text=text.replace(new RegExp(`^${Number(slot)}\\s*\\|\\s*matrix\\s*\\|\\s*PFM\\d{4}\\s*\\|\\s*(?:100|[1-9]?\\d(?:\\.\\d+)?|0\\s*[-–—]\\s*100|CONFIDENCE(?:_0_TO_100)?)\\s*\\|\\s*`,'i'),'').trim();
+  return text.slice(0,1000);
+}
+function themeEditLogComparativeReasonValid(reason,before,after){
+  const text=String(reason||'').trim().toLowerCase(),beforeLabel=String(before?.label||'').trim().toLowerCase(),afterLabel=String(after?.label||'').trim().toLowerCase(),beforeCode=String(before?.code||'').trim().toLowerCase(),afterCode=String(after?.code||'').trim().toLowerCase();
+  if(!text||(!beforeLabel&&!beforeCode)||(!afterLabel&&!afterCode))return false;
+  const mentionsBefore=(beforeLabel&&text.includes(beforeLabel))||(beforeCode&&text.includes(beforeCode)),mentionsAfter=(afterLabel&&text.includes(afterLabel))||(afterCode&&text.includes(afterCode));
+  return Boolean(mentionsBefore&&mentionsAfter&&/\bE\d{1,2}\b/i.test(text)&&/\b(?:better|stronger|closer|more|less|rather|instead|over|than|whereas|while|compared|outweigh|replace|replacement|fit|fits|fitting|support|supported)\b/i.test(text));
+}
+function themeChangeReasoningEmpty(imageId,artifactId=null){return{imageId:String(imageId||''),byCode:new Map(),artifactId:artifactId?String(artifactId):null}}
+function themeChangeReasoningBuild(imageId,entries){
+  const key=String(imageId||''),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),current=(entries||[]).find(entry=>entry.current)||null;
+  if(!current||String(current.artifactId||'')!==currentArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
+  const artifact=current.artifact,attempt=current.attempt,ctx=themeChangeReasoningContext(current),editLog=ctx?.editLog;
+  if(!artifact||!attempt||!ctx||ctx.explainChanges===false||!editLog||Number(editLog.schemaVersion)<5||String(editLog.evidenceProtocol||'')!=='frozen-ledger-support-refs-v2'||!String(editLog.token||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  const artifactImageId=String(artifact.imageId||''),attemptImageId=String(attempt.imageId||''),contextImageId=String(ctx.image?.id||''),editImageId=String(editLog.imageId||'');
+  if([artifactImageId,attemptImageId,contextImageId,editImageId].some(id=>id!==key))return themeChangeReasoningEmpty(key,currentArtifactId);
+  if(String(artifact.attemptId||'')!==String(attempt.id||''))return themeChangeReasoningEmpty(key,currentArtifactId);
+  const priorThemeArtifactId=String(attempt.inputRefs?.priorArtifacts?.themes?.artifactId||''),capturedBeforeArtifactId=String(editLog.beforeThemeArtifactId||'');
+  if(priorThemeArtifactId!==capturedBeforeArtifactId)return themeChangeReasoningEmpty(key,currentArtifactId);
+  const beforeBySlot=new Map((Array.isArray(editLog.beforeThemes)?editLog.beforeThemes:[]).map(row=>[Number(row?.slot),themeRerunHistoryThemeFromRaw({code:row?.code,label:row?.label,confidence:row?.weight},Number(row?.slot)-1)]));
+  if(beforeBySlot.size!==3)return themeChangeReasoningEmpty(key,currentArtifactId);
+  const byCode=new Map();
+  for(let slot=1;slot<=3;slot++){
+    const before=beforeBySlot.get(slot)||null,after=current.themes?.[slot-1]||null;
+    if(!before||!after||themeRerunHistoryThemeKey(before)===themeRerunHistoryThemeKey(after))continue;
+    const reason=cleanThemeEditLogReason(after.rationale,{slot,code:after.code});if(!after.code||!reason||!themeEditLogComparativeReasonValid(reason,before,after))continue;
+    const evidence=['Image'];
+    const descriptions=Array.isArray(ctx.includedDescriptions)?ctx.includedDescriptions:[];if(descriptions.length)evidence.push(`AI Description${descriptions.length===1?'':`s (${descriptions.length})`}`);
+    const slotSpec=Array.isArray(ctx.themeSlots)?ctx.themeSlots.find(row=>Number(row?.slot)===slot):null;
+    if(slotSpec?.state==='replace')evidence.push('Director Replace instruction');else if(slotSpec?.state==='neutral')evidence.push('Neutral rerun slot');
+    const scopeName=slotSpec?.primScope||null;if(scopeName)evidence.push(scopeName==='general'?'General PrimPicker':'Theme-specific PrimPicker');
+    if(Array.isArray(ctx.excludedThemeCodes)&&ctx.excludedThemeCodes.length)evidence.push('Theme Exclusions');
+    byCode.set(after.code,{imageId:key,slot,before,after,reason,evidence:[...new Set(evidence)],createdAt:current.createdAt,artifactId:currentArtifactId,attemptId:String(attempt.id),editLogToken:String(editLog.token)});
+  }
+  return{imageId:key,byCode,artifactId:currentArtifactId};
+}
+async function refreshThemeChangeReasoning(imageId=currentKey(),{force=false}={}){
+  const key=String(imageId||'');if(!key)return null;if(!force&&themeChangeReasoningCache.has(key))return themeChangeReasoningCache.get(key);if(themeChangeReasoningLoading.has(key))return themeChangeReasoningLoading.get(key);
+  const task=(async()=>{
+    const priorImage=themeRerunWorkspace.imageId,priorCatalog=themeRerunWorkspace.themeHistoryCatalog;
+    try{themeRerunWorkspace.imageId=key;const entries=await loadThemeRerunThemeHistory();const built=themeChangeReasoningBuild(key,entries);themeChangeReasoningCache.set(key,built);return built;}
+    finally{themeRerunWorkspace.imageId=priorImage;themeRerunWorkspace.themeHistoryCatalog=priorCatalog;}
+  })().finally(()=>themeChangeReasoningLoading.delete(key));
+  themeChangeReasoningLoading.set(key,task);return task;
+}
+function themeChangeReasoningForDisplaySlot(slot){
+  const key=String(currentKey()),data=themeChangeReasoningCache.get(key),currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||'');
+  if(!data||String(data.imageId||'')!==key||String(data.artifactId||'')!==currentArtifactId)return null;
+  const snapshot=themeRerunAiThemeSnapshot(slot),code=String(snapshot?.id||'').trim().toUpperCase(),item=code&&data?.byCode?.get(code)||null;
+  if(!item||String(item.imageId||'')!==key||String(item.artifactId||'')!==currentArtifactId||String(item.after?.code||'').toUpperCase()!==code)return null;
+  return item;
+}
+function renderThemeChangeReasoningDialog(item){
+  if(!item)return false;const before=item.before||{},after=item.after||{};
+  $('themeChangeReasoningBefore').textContent=before.label||'—';$('themeChangeReasoningBeforePct').textContent=before.weight!=null?`${before.weight}%`:'';
+  $('themeChangeReasoningAfter').textContent=after.label||'—';$('themeChangeReasoningAfterPct').textContent=after.weight!=null?`${after.weight}%`:'';
+  $('themeChangeReasoningWhy').textContent=item.reason||'No saved reasoning is available.';$('themeChangeReasoningEvidence').textContent=(item.evidence||[]).join(' · ')||'Image';
+  $('themeChangeReasoningDialog')?.showModal();return true;
+}
+async function openThemeChangeReasoningForDisplaySlot(slot){
+  if(themeRerunWorkspace.active||descriptionRerunWorkspace.active||reactionRerunWorkspace.active)return false;let item=themeChangeReasoningForDisplaySlot(slot);if(!item){await refreshThemeChangeReasoning(currentKey(),{force:true}).catch(()=>null);item=themeChangeReasoningForDisplaySlot(slot);}return renderThemeChangeReasoningDialog(item);
+}
+function scheduleThemeChangeReasoningRefresh(){
+  const key=String(currentKey()||'');if(!key||state.feedEmpty||themeChangeReasoningRenderRefreshPending.has(key))return;
+  const expectedArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),cached=themeChangeReasoningCache.get(key);
+  if(cached&&String(cached.imageId||'')===key&&String(cached.artifactId||'')===expectedArtifactId)return;
+  themeChangeReasoningRenderRefreshPending.add(key);
+  refreshThemeChangeReasoning(key,{force:true}).then(data=>{
+    const sameImage=String(currentKey())===key,currentArtifactId=String(themeRerunHistoryCurrentArtifactId(key)||''),actuallyRefreshed=String(data?.imageId||'')===key&&String(data?.artifactId||'')===currentArtifactId;
+    if(sameImage&&actuallyRefreshed)renderThemeRerunChrome();
+  }).catch(error=>console.warn('Theme Edit Log could not be loaded',error)).finally(()=>themeChangeReasoningRenderRefreshPending.delete(key));
 }
 function renderThemeRerunHistoryDialog(){
   const list=$('themeRerunHistoryList');if(!list)return;list.innerHTML='';const entries=themeRerunWorkspace.themeHistoryCatalog||[];
@@ -1198,15 +1367,276 @@ function requestThemeRerunThemeState(slot){
 function applyPendingThemeRerunScopeChange(){const pending=themeRerunWorkspace.pendingScopeChange;if(!pending)return;for(const scope of pending.removed||[])themeRerunWorkspace.current.primScopes[scope]={};themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close();applyThemeRerunThemeState(pending.slot,pending.nextState)}
 function cancelPendingThemeRerunScopeChange(){themeRerunWorkspace.pendingScopeChange=null;$('themeRerunScopeConfirmDialog')?.close()}
 function clearThemeRerunPrimData(){if(!themeRerunWorkspace.active)return;for(const scope of ['theme1','theme2','theme3','general'])themeRerunWorkspace.current.primScopes[scope]={};saveThemeRerunCurrent();renderThemeRerunPrimPicker();setDirectorStatus('PrimPicker cleared. Theme selections retained.');}
+function clearThemeRerunSelections(){
+  if(!themeRerunWorkspace.active||!themeRerunWorkspace.current)return;
+  const preservedThemeStates={1:themeRerunWorkspace.current.themeStates?.[1]||'neutral',2:themeRerunWorkspace.current.themeStates?.[2]||'neutral',3:themeRerunWorkspace.current.themeStates?.[3]||'neutral'};
+  themeRerunWorkspace.current.themeStates=preservedThemeStates;
+  themeRerunWorkspace.current.primScopes={theme1:{},theme2:{},theme3:{},general:{}};
+  themeRerunWorkspace.current.excludedThemeCodes=[];
+  themeRerunWorkspace.current.includedDescriptionIds=[];
+  // Keep the displayed Description and initialization marker. Clear removes selections/context inclusion;
+  // it does not erase Description history or cause the default Description to be auto-included again.
+  themeRerunWorkspace.current.descriptionContextInitialized=true;
+  themeRerunWorkspace.exclusionQuery='';
+  themeRerunWorkspace.pendingScopeChange=null;
+  saveThemeRerunCurrent();
+  renderThemeRerunPrimPicker();
+  renderThemeRerunExclusions();
+  renderThemeRerunDescriptionsDialog();
+  renderThemeRerunChrome();
+  setDirectorStatus('Theme rerun options cleared. Red / Green / Neutral Theme states retained.');
+}
+function remapThemeRerunCurrentAfterSubmit(){
+  if(!themeRerunWorkspace.current)return;
+  const output=(currentAiRun()?.themes||[]).slice(0,3).map((row,index)=>({logicalSlot:index+1,weight:Number(row?.weight)||0}));
+  if(output.length!==3)return;
+  const display=[...output].sort((a,b)=>b.weight-a.weight),displaySlotByLogical=new Map(display.map((row,index)=>[row.logicalSlot,index+1]));
+  const prior=normalizeThemeRerunCurrent(themeRerunWorkspace.current),next=normalizeThemeRerunCurrent(prior);
+  next.themeStates={1:'neutral',2:'neutral',3:'neutral'};
+  next.primScopes={theme1:{},theme2:{},theme3:{},general:structuredClone(prior.primScopes?.general||{})};
+  for(let logicalSlot=1;logicalSlot<=3;logicalSlot++){
+    const displaySlot=displaySlotByLogical.get(logicalSlot)||logicalSlot;
+    next.themeStates[displaySlot]=prior.themeStates?.[logicalSlot]||'neutral';
+    next.primScopes[`theme${displaySlot}`]=structuredClone(prior.primScopes?.[`theme${logicalSlot}`]||{});
+  }
+  themeRerunWorkspace.current=next;saveThemeRerunCurrent();
+}
+
+async function submitThemeRerun(){
+  if(!themeRerunWorkspace.active||aiRerunInFlight)return;
+  let spec;
+  try{spec=buildThemeRerunPreviewSpec();}
+  catch(error){alert(error.message||String(error));return;}
+  const dynamicSlots=spec.themeSlots.filter(row=>row.state!=='preserve');
+  if(!dynamicSlots.length){const message='All three Themes are preserved. There is nothing for AI to rerun.';setDirectorStatus(message);alert(message);return;}
+  for(const row of spec.themeSlots){
+    if(['preserve','replace'].includes(row.state)&&!row.currentThemeCode){const message=`Theme ${row.slot} cannot be ${row.state==='preserve'?'preserved':'replaced'} because its PFM code could not be resolved.`;setDirectorStatus(message);alert(message);return;}
+  }
+  const button=$('themeRerunSubmitBtn'),originalLabel=button?.textContent||'Submit';
+  if(button){button.disabled=true;button.textContent='Submitting…';}
+  setDirectorStatus(`Rerunning AI Themes · ${dynamicSlots.length} Theme${dynamicSlots.length===1?'':'s'} open to change…`);
+  try{
+    await runCurrentAiRerun(['themes'],{themeRerun:spec});
+    remapThemeRerunCurrentAfterSubmit();
+    themeRerunWorkspace.themeHistoryCatalog=[];
+    await loadThemeRerunThemeHistory().catch(()=>[]);
+    await refreshThemeChangeReasoning(themeRerunWorkspace.imageId,{force:true}).catch(()=>null);
+    renderTabletWorkbench();
+    setDirectorStatus('AI Theme rerun complete. Reactions were recalculated 100% from the new three Themes.');
+  }catch(error){
+    const message=String(error?.message||error);
+    console.error('AI Theme rerun failed',error);
+    setDirectorStatus(`AI Theme rerun failed: ${message}`);
+    alert(`AI Theme rerun failed: ${message}`);
+  }finally{
+    if(button){button.disabled=false;button.textContent=originalLabel;}
+  }
+}
+
 function renderThemeRerunChrome(){
-  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls'),descriptionInclude=$('themeRerunPopulatedInclude'),descriptionIncludeCheck=$('themeRerunPopulatedIncludeCheck');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));const exclusions=$('themeRerunExclusionsBtn'),exclusionCount=active?themeRerunExcludedCodes().length:0;if(exclusions){exclusions.classList.toggle('has-data',Boolean(exclusionCount));exclusions.setAttribute('aria-label',exclusionCount?`Theme Exclusions, ${exclusionCount} selected`:'Theme Exclusions');}const displayedDescription=active?themeRerunDisplayedDescriptionItem():null,descriptionCount=active?themeRerunIncludedDescriptionCount():0,descriptionsBtn=$('themeRerunDescriptionsBtn');if(descriptionInclude){descriptionInclude.hidden=!active||!displayedDescription;if(descriptionIncludeCheck)descriptionIncludeCheck.checked=Boolean(displayedDescription&&(themeRerunWorkspace.current?.includedDescriptionIds||[]).includes(String(displayedDescription.id)));}if(descriptionsBtn){descriptionsBtn.classList.toggle('has-data',Boolean(descriptionCount));descriptionsBtn.setAttribute('aria-label',descriptionCount?`Descriptions, ${descriptionCount} included`:'Descriptions');}
-  for(let slot=1;slot<=3;slot++){const cell=$(`tabletWorkbenchAiTheme${slot}`)?.closest('.tablet-theme-cell');if(!cell)continue;const state=active?(themeRerunWorkspace.current?.themeStates?.[slot]||'neutral'):'neutral';cell.classList.toggle('theme-rerun-replace',active&&state==='replace');cell.classList.toggle('theme-rerun-preserve',active&&state==='preserve');cell.dataset.themeRerunState=active?state:'';if(active){cell.tabIndex=0;cell.setAttribute('role','button');const theme=themeRerunAiThemeSnapshot(slot);cell.setAttribute('aria-label',`Theme ${slot}${theme?.label?` ${theme.label}`:''}: ${state==='replace'?'replace':state==='preserve'?'preserve':'neutral'}. Tap to cycle.`);}else if(!descriptionRerunWorkspace.active){cell.tabIndex=-1;cell.setAttribute('role','group');cell.removeAttribute('aria-label');}}
+  const active=themeRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletThemeRerunWorkspace'),controls=$('tabletThemeRerunControls'),descriptionInclude=$('themeRerunPopulatedInclude'),descriptionIncludeCheck=$('themeRerunPopulatedIncludeCheck'),explain=$('themeRerunExplainChanges'),explainCheck=$('themeRerunExplainChangesCheck');drawer?.classList.toggle('theme-rerun-active',active);root?.classList.toggle('theme-rerun-active',active);if(workspace)workspace.hidden=!active||!themeRerunWorkspace.pickerOpen;if(controls)controls.hidden=!active;$('themeRerunPrimPickerBtn')?.setAttribute('aria-pressed',String(active&&themeRerunWorkspace.pickerOpen));const exclusions=$('themeRerunExclusionsBtn'),exclusionCount=active?themeRerunExcludedCodes().length:0;if(exclusions){exclusions.classList.toggle('has-data',Boolean(exclusionCount));exclusions.setAttribute('aria-label',exclusionCount?`Theme Exclusions, ${exclusionCount} selected`:'Theme Exclusions');}const displayedDescription=active?themeRerunDisplayedDescriptionItem():null,descriptionCount=active?themeRerunIncludedDescriptionCount():0,descriptionsBtn=$('themeRerunDescriptionsBtn');if(descriptionInclude){descriptionInclude.hidden=!active||!displayedDescription;if(descriptionIncludeCheck)descriptionIncludeCheck.checked=Boolean(displayedDescription&&(themeRerunWorkspace.current?.includedDescriptionIds||[]).includes(String(displayedDescription.id)));}if(explain){explain.hidden=!active;if(explainCheck)explainCheck.checked=themeRerunWorkspace.current?.explainChanges!==false;}const amaButton=$('themeRerunAmaBtn');if(amaButton){const aiCount=amaAiThemes().length,directorCount=amaDirectorThemes().length;amaButton.hidden=!active;amaButton.disabled=!active||aiCount!==3||directorCount<1;amaButton.title=directorCount<1?'AI AMA requires at least one Director Theme.':aiCount!==3?'AI AMA requires the current three AI Themes.':'Interview AI about the current AI-versus-Director Theme snapshot.';}if(descriptionsBtn){descriptionsBtn.classList.toggle('has-data',Boolean(descriptionCount));descriptionsBtn.setAttribute('aria-label',descriptionCount?`Descriptions, ${descriptionCount} included`:'Descriptions');}
+  for(let slot=1;slot<=3;slot++){const cell=$(`tabletWorkbenchAiTheme${slot}`)?.closest('.tablet-theme-cell');if(!cell)continue;const state=active?(themeRerunWorkspace.current?.themeStates?.[slot]||'neutral'):'neutral';cell.classList.toggle('theme-rerun-replace',active&&state==='replace');cell.classList.toggle('theme-rerun-preserve',active&&state==='preserve');const changeReason=!active&&!descriptionRerunWorkspace.active&&!reactionRerunWorkspace.active?themeChangeReasoningForDisplaySlot(slot):null;cell.classList.toggle('theme-change-reasoning-available',Boolean(changeReason));cell.dataset.themeRerunState=active?state:'';if(active){cell.tabIndex=0;cell.setAttribute('role','button');const theme=themeRerunAiThemeSnapshot(slot);cell.setAttribute('aria-label',`Theme ${slot}${theme?.label?` ${theme.label}`:''}: ${state==='replace'?'replace':state==='preserve'?'preserve':'neutral'}. Tap to cycle.`);}else if(changeReason&&!descriptionRerunWorkspace.active){cell.tabIndex=0;cell.setAttribute('role','button');cell.setAttribute('aria-label',`${changeReason.after?.label||`Theme ${slot}`} changed in the latest Theme rerun. Tap for reasoning.`);}else if(!descriptionRerunWorkspace.active){cell.tabIndex=-1;cell.setAttribute('role','group');cell.removeAttribute('aria-label');}}
+  if(!active&&!descriptionRerunWorkspace.active&&!reactionRerunWorkspace.active){const key=String(currentKey()),cached=themeChangeReasoningCache.get(key),artifactId=String(themeRerunHistoryCurrentArtifactId(key)||'');if(!cached||String(cached.artifactId||'')!==artifactId)scheduleThemeChangeReasoningRefresh();}
   if(active&&themeRerunWorkspace.pickerOpen)renderThemeRerunPrimPicker();
 }
 async function activateThemeRerunImage(){if(!themeRerunWorkspace.active)return;themeRerunWorkspace.imageId=currentKey();themeRerunWorkspace.current=loadThemeRerunCurrent(themeRerunWorkspace.imageId);themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.descriptionCatalog=[];await loadThemeRerunDescriptionCatalog();renderTabletWorkbench()}
-async function openThemeRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(themeRerunWorkspace.active)return;if(descriptionRerunWorkspace.active)closeDescriptionRerunWorkspace();themeRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};themeRerunWorkspace.active=true;themeRerunWorkspace.pickerOpen=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateThemeRerunImage()}
+async function openThemeRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(themeRerunWorkspace.active)return;if(reactionRerunWorkspace.active)closeReactionRerunWorkspace();if(descriptionRerunWorkspace.active)closeDescriptionRerunWorkspace();themeRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};themeRerunWorkspace.active=true;themeRerunWorkspace.pickerOpen=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateThemeRerunImage()}
 function closeThemeRerunWorkspace(){if(!themeRerunWorkspace.active)return;saveThemeRerunCurrent();themeRerunWorkspace.active=false;themeRerunWorkspace.pickerOpen=false;themeRerunWorkspace.pendingScopeChange=null;clearTimeout(themeRerunWorkspace.longPressTimer);clearTimeout(themeRerunWorkspace.descriptionsTimer);const prior=themeRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);themeRerunWorkspace.preDrawer=null;themeRerunWorkspace.imageId=null;themeRerunWorkspace.current=null;themeRerunWorkspace.descriptionCatalog=[];themeRerunWorkspace.themeHistoryCatalog=[];themeRerunWorkspace.descriptionsLongPress=false;renderTabletWorkbench()}
 window.genreactrixThemeRerunWorkspace={open:openThemeRerunWorkspace,close:closeThemeRerunWorkspace,isActive:()=>themeRerunWorkspace.active};
+
+
+// v0.9.40.132 — Theme adversarial decision pipeline; literal evidence -> broad candidates -> adversarial audit -> final rank; PrimFusion definitions unchanged.
+// v0.9.40.130 — AI AMA provider slot prompts; canonical Q IDs hidden from provider; 3-to-1 execution retained.
+const AMA_UI_COLOR='#EF806C';
+const amaUiState={reportId:null,runId:null,running:false,statusTimer:null,statusStartedAt:0,statusBase:''};
+function amaEsc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function amaBlockRange(run,blockIndex){const expected=Math.max(1,Number(run?.questionCount)||68),size=Math.max(1,Number(run?.blockSize)||3),start=Math.max(1,Number(blockIndex)*size+1),end=Math.min(expected,start+size-1);return{start,end,label:`Q${start}–Q${end}`}}
+function amaQuestionNumberFromId(id){const m=String(id||'').toUpperCase().match(/^Q(\d+)$/);return m?Number(m[1]):Number.MAX_SAFE_INTEGER}
+function amaQuestionIdsLabel(ids=[]){const nums=[...new Set((ids||[]).map(amaQuestionNumberFromId).filter(Number.isFinite).filter(n=>n<Number.MAX_SAFE_INTEGER))].sort((a,b)=>a-b);if(!nums.length)return'questions';if(nums.length===1)return`Q${nums[0]}`;const contiguous=nums.every((n,i)=>i===0||n===nums[i-1]+1);return contiguous?`Q${nums[0]}–Q${nums.at(-1)}`:nums.map(n=>`Q${n}`).join(', ')}
+function amaBlockQuestionIds(run,blockIndex){const fromPlan=Array.isArray(run?.questionBlocks)?run.questionBlocks.find(row=>Number(row?.index)===Number(blockIndex))?.questionIds:null;if(Array.isArray(fromPlan)&&fromPlan.length)return fromPlan.map(id=>String(id).toUpperCase());const range=amaBlockRange(run,blockIndex),ids=[];for(let n=range.start;n<=range.end;n++)ids.push(`Q${n}`);return ids}
+function amaMissingQuestionIds(run,blockIndex){const saved=new Set((run?.questions||[]).filter(q=>amaClientAnswerValidation(q?.answer).valid).map(q=>String(q?.id||'').toUpperCase()).filter(Boolean));return amaBlockQuestionIds(run,blockIndex).filter(id=>!saved.has(id))}
+function amaThreeQuestionPlan(questionCount=68){const count=Math.max(1,Number(questionCount)||68),blocks=[];for(let start=1,index=0;start<=count;start+=3,index++){const questionIds=[];for(let n=start;n<=Math.min(count,start+2);n++)questionIds.push(`Q${n}`);blocks.push({index,questionIds})}return{questionCount:count,blockSize:3,blockCount:blocks.length,blocks}}
+function amaThreeQuestionPlanMatches(run){const plan=amaThreeQuestionPlan(run?.questionCount||68);if(Number(run?.blockSize)!==3||Number(run?.blockCount)!==plan.blockCount)return false;const existing=Array.isArray(run?.questionBlocks)?run.questionBlocks:[];if(existing.length!==plan.blocks.length)return false;return plan.blocks.every((block,i)=>Number(existing[i]?.index)===block.index&&JSON.stringify((existing[i]?.questionIds||[]).map(id=>String(id).toUpperCase()))===JSON.stringify(block.questionIds))}
+async function amaNormalizeThreeQuestionRun(engine,run){
+  if(!run)return run;
+  const plan=amaThreeQuestionPlan(run?.questionCount||68),rawQuestions=Array.isArray(run?.questions)?run.questions:[],safeQuestions=rawQuestions.filter(q=>amaClientAnswerValidation(q?.answer).valid),saved=new Set(safeQuestions.map(q=>String(q?.id||'').toUpperCase()).filter(Boolean)),completed=plan.blocks.filter(block=>block.questionIds.every(id=>saved.has(id))).map(block=>block.index),currentCompleted=[...new Set((run?.completedBlockIndexes||[]).map(Number).filter(Number.isInteger))].sort((a,b)=>a-b),needsScrub=safeQuestions.length!==rawQuestions.length||JSON.stringify(currentCompleted)!==JSON.stringify(completed)||!amaThreeQuestionPlanMatches(run)||run.executionStrategy!=='3-to-1-strict-validation';
+  if(!needsScrub)return run;
+  return engine.checkpointRun(run.id,{questions:safeQuestions,questionCount:plan.questionCount,blockSize:3,blockCount:plan.blockCount,questionBlocks:plan.blocks,completedBlockIndexes:completed,executionStrategy:'3-to-1-strict-validation'});
+}
+function amaStageLabel(stage,blockIndex,run,meta={}){if(stage==='visual')return'Reading image';if(stage==='candidates')return'Auditing candidate Themes';if(stage==='questions'){const blockCount=Math.max(1,Number(run?.blockCount)||Math.ceil((Number(run?.questionCount)||68)/3)),ids=Array.isArray(meta?.questionIds)&&meta.questionIds.length?meta.questionIds:null,range=ids?{label:amaQuestionIdsLabel(ids)}:amaBlockRange(run,blockIndex),recovery=meta?.recoveryLevel==='single-question recovery'?' · single-question recovery':'';return`Interview step ${Number(blockIndex)+1}/${blockCount} · ${range.label}${recovery}`}if(stage==='finalize')return'Finalizing report';return'AI AMA'}
+function amaCompactError(error){return String(error?.message||error||'Unknown AMA error').replace(/\s+/g,' ').trim().slice(0,420)}
+function amaClientAnswerValidation(answer){
+  const value=String(answer||'').replace(/\r/g,'').trim();if(!value)return{valid:false,reason:'empty answer'};
+  if(!/[A-Za-z0-9]/.test(value))return{valid:false,reason:'answer contains no substantive text'};
+  const compact=value.replace(/\s+/g,' ').trim();if(/^(?:nswer|answer|response|n\/?a|unknown|unavailable)$/i.test(compact))return{valid:false,reason:'answer is a placeholder/corrupted fragment'};
+  const sentences=compact.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(x=>x.length>=36);if(sentences.length>=3){const counts=new Map();for(const sentence of sentences){const key=sentence.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();counts.set(key,(counts.get(key)||0)+1)}if([...counts.values()].some(count=>count>=3))return{valid:false,reason:'answer contains a repeated sentence loop'};if(sentences.length>=8&&counts.size/sentences.length<0.62)return{valid:false,reason:'answer is dominated by repeated prose'}}
+  if(/(?:^|\s)(?:\*\*|__)?(?:Q\s*0*\d{1,4}|Question\s*0*\d{1,4})\s*(?::|[-–—.]|\)|\])/im.test(value))return{valid:false,reason:'answer contains another question-ID marker'};
+  const questionMarks=(compact.match(/\?/g)||[]).length,lead=compact.replace(/^[\s"'“”'‘’()[\]{}*_-]+/,'').replace(/^\d+\s*:\s*/,'').trim(),interrogative=/^(?:what|which|why|how|when|where|who|whom|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|has|have|had|may|might)\b/i;
+  if(questionMarks>=3)return{valid:false,reason:'response appears to generate questions instead of answering'};
+  if(questionMarks>=1&&/[?]\s*$/.test(compact)&&interrogative.test(lead))return{valid:false,reason:'response is a question rather than an answer'};
+  if(/^\d+\s*:\s*(?:what|which|why|how|is|are|was|were|do|does|did|can|could|would|should|has|have|had)\b/i.test(compact)&&/[?]\s*$/.test(compact))return{valid:false,reason:'response is a generated question'};
+  return{valid:true,reason:''};
+}
+function amaStopStatusClock(){if(amaUiState.statusTimer){clearInterval(amaUiState.statusTimer);amaUiState.statusTimer=null}amaUiState.statusStartedAt=0;amaUiState.statusBase=''}
+function amaStartStatusClock(base,{sameSizeRetryPossible=true}={}){amaStopStatusClock();amaUiState.statusStartedAt=Date.now();amaUiState.statusBase=String(base||'AI AMA');const render=()=>{const elapsed=Math.max(0,Math.floor((Date.now()-amaUiState.statusStartedAt)/1000));let hint='waiting for Worker / AI provider';if(elapsed>=91)hint=sameSizeRetryPossible?'first 90s provider window passed; Worker retry may be active':'90s provider window reached; this chunk will return/fail without a same-size retry';setAmaRunProgress(`${amaUiState.statusBase} · ${elapsed}s · ${hint}`)};render();amaUiState.statusTimer=setInterval(render,1000)}
+function amaDirectorThemes(){return(state.themes||[]).map((theme,index)=>{if(!theme)return null;const label=themeLabel(theme),fusion=themeRerunFusionFromLabel(label),rawId=String(theme?.id||'');return{slot:index+1,code:fusion?.code||(rawId.toUpperCase().startsWith('PFM')?rawId.toUpperCase():null),label,kind:theme?.kind||'director'};}).filter(Boolean)}
+function amaAiThemes(){return(currentAiRun()?.themes||[]).map((row,index)=>({slot:Number(row?.rank)||index+1,code:String(row?.id||row?.code||'').toUpperCase()||null,label:String(row?.label||row?.name||''),confidence:Number(row?.weight??row?.confidence)||0})).sort((a,b)=>b.confidence-a.confidence).slice(0,3)}
+function currentSlopAssessment(){return recordSlopAssessment(currentImageRecord())}
+function buildAmaSnapshot(){
+  const record=currentImageRecord();if(!record)throw new Error('No current image is available.');
+  const aiThemes=amaAiThemes(),directorThemes=amaDirectorThemes();
+  if(aiThemes.length!==3)throw new Error('AI AMA requires the current three AI Themes.');
+  if(directorThemes.length<1)throw new Error('AI AMA requires at least one Director Theme.');
+  let rerunContext=null;try{if(themeRerunWorkspace.active)rerunContext=buildThemeRerunPreviewSpec()}catch{}
+  const ai=record.analysis?.ai||{};
+  return{schemaVersion:1,imageId:String(record.id),filename:record.source?.originalFilename||record.name||record.id,createdAt:record.createdAt||'',siteVersion:GENREACTRIX_BUILD,aiThemes,directorThemes,aiDescription:String(currentAiRun()?.description||currentDescription()||''),slopAssessment:currentSlopAssessment(),directorReactions:[...state.selectedReactions],rerunContext,aiContext:{provider:ai.provider||{},model:ai.model||'',promptVersions:ai.promptVersions||{},recordedAt:ai.recordedAt||'',jobId:ai.jobId||null,artifactHistory:ai.artifactHistory||null}};
+}
+function amaBlobDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)})}
+async function amaPreparedImageInput(record){
+  const remote=record?.storage?.hyperlink||record?.source?.originalUrl||'';if(record?.storage?.mode==='linked'&&/^https:\/\//i.test(remote))return{imageUrl:remote};
+  let blob=await imageBlobGet(record.id).catch(()=>null);if(!blob&&/^https:\/\//i.test(remote))return{imageUrl:remote};if(!blob)return{};
+  try{
+    if(blob.size<=3_800_000)return{imageDataUrl:await amaBlobDataUrl(blob)};
+    const bitmap=await createImageBitmap(blob),max=1600,scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();const reduced=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.88));return{imageDataUrl:await amaBlobDataUrl(reduced||blob)};
+  }catch{return{imageDataUrl:await amaBlobDataUrl(blob)}}
+}
+function renderAiStatusTags(){
+  const record=currentImageRecord(),tuned=$('landscapeTunedBtn'),slop=$('landscapeSlopBtn'),has=Boolean(record)&&!state.feedEmpty,assessment=recordSlopAssessment(record),kind=slopAssessmentKind(assessment),showSlop=has&&recordHasSlopSuggestion(record);
+  if(tuned)tuned.hidden=!has||!recordIsTuned(record);
+  if(slop){slop.hidden=!showSlop;slop.textContent='SLOP?';slop.classList.toggle('slop-warning-status',showSlop&&kind==='warning');slop.classList.toggle('slop-detected-status',showSlop&&kind==='detected');slop.title=showSlop?(kind==='warning'?'SLOP? · Slop Warning':'SLOP? · Slop Detected'):'';slop.setAttribute('aria-label',showSlop?(kind==='warning'?'SLOP? Slop Warning':'SLOP? Slop Detected'):'SLOP?');}
+}
+const CONTENT_RATING_SIZES=new Set(["XS","S","M","L","XL"]);
+const CONTENT_RATING_AXES=["work","lunch","civility"];
+function normalizedContentRatingSize(value){const size=String(value||"").toUpperCase();return CONTENT_RATING_SIZES.has(size)?size:""}
+function imageContentRatings(record=currentImageRecord()){
+  const raw=record?.metadata?.extended?.contentRatings||{},reasons=raw.aiReasons&&typeof raw.aiReasons==='object'?raw.aiReasons:{};
+  return{schemaVersion:Number(raw.schemaVersion)||1,ai:{work:normalizedContentRatingSize(raw.ai?.work),lunch:normalizedContentRatingSize(raw.ai?.lunch),civility:normalizedContentRatingSize(raw.ai?.civility)},aiReasons:{work:String(reasons.work||''),lunch:String(reasons.lunch||''),civility:String(reasons.civility||'')},aiDetails:raw.aiDetails&&typeof raw.aiDetails==='object'?raw.aiDetails:null,director:{work:normalizedContentRatingSize(raw.director?.work),lunch:normalizedContentRatingSize(raw.director?.lunch),civility:normalizedContentRatingSize(raw.director?.civility)}};
+}
+function setContentRatingCell(node,size){if(!node)return;const normalized=normalizedContentRatingSize(size);node.dataset.size=normalized;if(node.tagName==='SELECT')node.value=normalized;else node.textContent=normalized||'—'}
+function renderContentRatings(){
+  const record=currentImageRecord(),has=Boolean(record)&&!state.feedEmpty,ratings=imageContentRatings(record),locked=Boolean(record?.attributes?.locked);
+  const ids={work:['contentRatingAiWork','contentRatingDirWork'],lunch:['contentRatingAiLunch','contentRatingDirLunch'],civility:['contentRatingAiCivility','contentRatingDirCivility']};
+  for(const axis of CONTENT_RATING_AXES){const [aiId,dirId]=ids[axis],ai=$(aiId),dir=$(dirId);setContentRatingCell(ai,ratings.ai[axis]);setContentRatingCell(dir,ratings.director[axis]);if(dir)dir.disabled=!has||locked;}
+}
+function setDirectorContentRating(axis,value){
+  if(!CONTENT_RATING_AXES.includes(axis))return;const size=normalizedContentRatingSize(value);if(!size)return;
+  const record=currentImageRecord();if(!record||state.feedEmpty)return;
+  const current=imageContentRatings(record);
+  window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{contentRatings:{schemaVersion:Math.max(2,current.schemaVersion||1),ai:{...current.ai},aiReasons:{...current.aiReasons},...(current.aiDetails?{aiDetails:current.aiDetails}:{}),director:{...current.director,[axis]:size}}}}},'director-content-rating-changed');
+  renderContentRatings();
+}
+const CONTENT_RATING_AXIS_LABELS={work:'Not Safe for Work',lunch:'Not Safe for Lunch',civility:'Not Safe for Civility'};
+function openAiContentRatingReason(axis){
+  if(!CONTENT_RATING_AXES.includes(axis))return;const record=currentImageRecord();if(!record||state.feedEmpty)return;const ratings=imageContentRatings(record),size=ratings.ai[axis],reason=ratings.aiReasons[axis];
+  const title=$('contentRatingReasonTitle'),summary=$('contentRatingReasonSummary'),body=$('contentRatingReasonBody');
+  if(title)title.textContent=`AI ${CONTENT_RATING_AXIS_LABELS[axis]||axis}`;
+  if(summary)summary.textContent=size?`AI rating: ${size}`:'AI rating has not been generated yet.';
+  if(body)body.textContent=reason||(size?'No stored explanation is available for this rating.':'Run the image through the AI bundle to generate the first-pass content rating.');
+  safelyShowDialog($('contentRatingReasonDialog'));
+}
+async function rerunCurrentAiSafety(){
+  if(aiRerunInFlight)return;
+  const record=currentImageRecord();if(!record||state.feedEmpty)return;
+  const description=String(record.analysis?.ai?.components?.description||record.analysis?.ai?.description||currentDescription()||'').trim();
+  if(!description||/^No AI description is stored/i.test(description)){alert('A completed AI Description is required before rerunning AI Safety.');return;}
+  if(!window.GenreactrixCloudApi?.isConfigured?.()){alert('AI Worker is not configured.');return;}
+  aiRerunInFlight=true;syncTabletAiRerunControls();setDirectorStatus('Rerunning AI Safety…');
+  try{
+    const payload=await window.GenreactrixCloudApi.contentGate(description),result=payload?.result||payload;
+    if(!result?.ai)throw new Error(result?.error||'AI Safety returned no rating.');
+    const current=imageContentRatings(record);
+    window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{contentRatings:{schemaVersion:Math.max(2,current.schemaVersion||1),ai:{...result.ai},aiReasons:{...(result.reasons||{})},aiDetails:{protocol:result.protocol||'',model:result.model||'',mode:result.mode||'',overall:result.overall||'',codes:[...(result.codes||[])],generatedAt:result.generatedAt||'',raw:result.raw||''},director:{...current.director}}}}},'ai-content-rating-rerun');
+    renderContentRatings();
+    setDirectorStatus('AI Safety rerun complete.');
+  }catch(error){const message=String(error?.message||error);console.error('AI Safety rerun failed',error);setDirectorStatus(`AI Safety rerun failed: ${message}`);alert(`AI Safety rerun failed: ${message}`);}
+  finally{aiRerunInFlight=false;syncTabletAiRerunControls();}
+}
+async function openTunedHistory(){
+  const record=currentImageRecord();if(!record)return;const body=$('tunedHistoryBody');if(!body)return;body.innerHTML='<p>Loading AI history…</p>';$('tunedHistoryDialog')?.showModal();
+  try{
+    await window.genreactrixAiArtifactEngine?.ensureImageReady?.(record.id).catch(()=>{});
+    const [attempts,artifacts,timeline]=await Promise.all([window.genreactrixAiArtifactEngine?.attemptsForImage?.(record.id)||[],window.genreactrixAiArtifactEngine?.artifactsForImage?.(record.id)||[],window.genreactrixHistoryEngine?.timeline?.(record.id)||[]]);
+    const byAttempt=new Map();for(const artifact of artifacts){const key=String(artifact.attemptId||'unlinked');if(!byAttempt.has(key))byAttempt.set(key,[]);byAttempt.get(key).push(artifact)}
+    body.innerHTML='';const intro=document.createElement('details');intro.open=true;intro.innerHTML=`<summary>Current AI projection</summary><pre>${amaEsc(JSON.stringify(record.analysis?.ai||{},null,2))}</pre>`;body.append(intro);
+    attempts.sort((a,b)=>String(a.startedAt||'').localeCompare(String(b.startedAt||''))).forEach((attempt,index)=>{const d=document.createElement('details'),rerun=/rerun/i.test(String(attempt.mode||''))||Object.values(attempt.componentBehaviors||{}).some(x=>x==='reanalyze');const linked=byAttempt.get(String(attempt.id))||[];d.innerHTML=`<summary>${index===0?'Origin AI scan':rerun?'AI rerun':'AI analysis'} · ${amaEsc(new Date(attempt.startedAt||Date.now()).toLocaleString())} · ${amaEsc((attempt.components||[]).join(' + '))}</summary><pre>${amaEsc(JSON.stringify({attempt,artifacts:linked},null,2))}</pre>`;body.append(d)});
+    const h=document.createElement('details');h.innerHTML=`<summary>Full image history timeline · ${timeline.length} events</summary><pre>${amaEsc(JSON.stringify(timeline,null,2))}</pre>`;body.append(h);
+  }catch(error){body.innerHTML=`<p>AI history could not be loaded: ${amaEsc(error?.message||error)}</p>`}
+}
+function openSlopDecision(){const assessment=currentSlopAssessment(),kind=slopAssessmentKind(assessment);if(kind==='none')return;const reason=$('slopReason'),confidence=$('slopConfidence');if(reason)reason.textContent=assessment.reason||(kind==='warning'?'Theme analysis could not establish three defensible Themes; Director review is recommended.':'AI marked this image as possible SLOP.');if(confidence)confidence.textContent=kind==='warning'?`Slop Warning · ${Number(assessment.themeSurvivorCount)||0} defensible Theme${Number(assessment.themeSurvivorCount)===1?'':'s'} after ${Number(assessment.themeAuditedCount)||77} audited.`:`Slop Detected · AI advisory confidence: ${Number(assessment.confidence)||0}%`;safelyShowDialog($('slopDialog'))}
+async function applySlopDecision(decision){
+  const record=currentImageRecord(),assessment=currentSlopAssessment();if(!record||!assessment)return;const at=new Date().toISOString();
+  if(decision==='not-slop')window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{slopDirectorReview:{decision:'not-slop',assessmentId:assessment.assessmentId||null,at}}}},'slop-director-not-slop');
+  else{const updated=await window.genreactrixImagesEngine?.setFlagSeverity?.(record.id,decision);state.flagged=Boolean(updated?.attributes?.flagged);window.genreactrixImageRecordEngine?.update?.(record.id,{metadata:{extended:{slopDirectorReview:{decision,assessmentId:assessment.assessmentId||null,at}}}},'slop-director-disposition');}
+  $('slopDialog')?.close();landscapeFeedDirty=true;await rehydrateLandscapeFeed().catch(()=>{});renderAll();renderTabletWorkbench();
+}
+function amaRunProgressText(run){if(!run)return'';const progress=window.genreactrixAmaEngine?.runProgress?.(run)||{answered:(run.questions||[]).length,expected:Number(run.questionCount)||68};return`${progress.answered}/${progress.expected} core Q&A saved`;}
+function setAmaRunProgress(text=''){const node=$('amaRunProgress');if(node)node.textContent=String(text||'')}
+async function refreshAmaRunMenu(){
+  const button=$('amaRunBtn'),record=currentImageRecord(),engine=window.genreactrixAmaEngine;if(!button||!record||!engine)return null;
+  let pending=await engine.latestIncompleteRun(record.id);if(pending){pending=await amaNormalizeThreeQuestionRun(engine,pending);const progress=engine.runProgress(pending),err=pending.lastError||null;button.disabled=false;button.textContent='Resume AI AMA';button.title='Resume the saved incomplete AMA from its first unfinished step.';if(err){const stage=amaStageLabel(err.stage,err.blockIndex,pending,err),when=err.at?new Date(err.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}):'';setAmaRunProgress(`Paused at ${stage} · ${progress.answered}/${progress.expected} saved · ${amaCompactError(err.message)}${when?` · ${when}`:''} · Resume restarts only the unfinished step.`)}else setAmaRunProgress(`Incomplete AMA · ${progress.answered}/${progress.expected} saved · resume available`);return pending}
+  const directorCount=amaDirectorThemes().length,aiCount=amaAiThemes().length;button.disabled=directorCount<1||aiCount!==3;button.textContent='Run AI AMA?';button.title=directorCount<1?'Select at least one Director Theme first.':aiCount!==3?'Three AI Themes are required.':'';setAmaRunProgress('');return null;
+}
+async function openAmaMenu(){safelyShowDialog($('amaMenuDialog'));try{await refreshAmaRunMenu()}catch(error){console.warn('AMA resume state could not be loaded',error)}}
+function amaPriorTranscript(bundle){const report=bundle?.report;if(!report)return'';const core=(report.interview?.questions||[]).map(q=>`Q: ${q.question}\nA: ${q.answer}`).join('\n\n'),follow=(bundle.followups||[]).map(q=>`Q: ${q.question}\nA: ${q.answer}`).join('\n\n');return(core+'\n\n'+follow).slice(0,18000)}
+async function runAmaCurrent(){
+  if(amaUiState.running)return;const record=currentImageRecord(),engine=window.genreactrixAmaEngine,api=window.GenreactrixCloudApi;if(!record||!engine)throw new Error('AMA Engine is unavailable.');if(!api?.isConfigured?.())throw new Error('AI Worker is not configured.');
+  let run=await engine.latestIncompleteRun(record.id),currentStage='created',currentBlock=null,currentQuestionIds=[],currentRecoveryLevel='normal';
+  if(run)run=await amaNormalizeThreeQuestionRun(engine,run);
+  if(!run){const snapshot=buildAmaSnapshot();run=await engine.createRun({imageId:record.id,snapshot,siteVersion:GENREACTRIX_BUILD})}
+  amaUiState.runId=run.id;amaUiState.running=true;const runBtn=$('amaRunBtn');if(runBtn){runBtn.disabled=true;runBtn.textContent='Starting AMA…'};
+  const key=api.getKey();
+  try{
+    if(!String(run.visualRead||'').trim()){
+      currentStage='visual';currentQuestionIds=[];currentRecoveryLevel='normal';setAmaRunProgress('Preparing image for AI visual read… · 0/68 saved');setDirectorStatus('AI AMA · preparing image…');if(runBtn)runBtn.textContent='Reading image…';
+      const imageInput=await amaPreparedImageInput(record);amaStartStatusClock('Reading image · 0/68 saved');
+      const payload=await api.ama({mode:'visual',snapshot:run.snapshot,...imageInput},key),result=payload.result||payload;amaStopStatusClock();if(!String(result?.visualRead||'').trim())throw new Error('AI AMA visual read returned no result.');
+      run=await engine.checkpointRun(run.id,{stage:'visual',visualRead:result.visualRead,workerVersion:result.workerVersion||run.workerVersion,matrixVersion:result.matrixVersion||run.matrixVersion,model:result.model||run.model,questionCount:Number(result.questionCount)||68,blockSize:Number(result.blockSize)||3,blockCount:Number(result.blockCount)||0,questionBlocks:result.blocks||run.questionBlocks||[],executionStrategy:'3-to-1-strict-validation',lastError:null});
+      run=await amaNormalizeThreeQuestionRun(engine,run);
+    }
+    if(!run.candidatesReady){
+      currentStage='candidates';currentQuestionIds=[];currentRecoveryLevel='normal';if(runBtn)runBtn.textContent='Auditing Themes…';amaStartStatusClock(`Auditing candidate Themes · ${amaRunProgressText(run)}`);setDirectorStatus('AI AMA · visual read saved · auditing candidate Themes…');
+      const payload=await api.ama({mode:'candidates',snapshot:run.snapshot,visualRead:run.visualRead},key),result=payload.result||payload;amaStopStatusClock();
+      run=await engine.checkpointRun(run.id,{stage:'candidates',candidatesReady:true,candidateThemeCodes:Array.isArray(result.candidateThemeCodes)?result.candidateThemeCodes:[],themeDefinitions:Array.isArray(result.themeDefinitions)?result.themeDefinitions:[],workerVersion:result.workerVersion||run.workerVersion,matrixVersion:result.matrixVersion||run.matrixVersion,model:result.model||run.model,questionCount:Number(result.questionCount)||run.questionCount||68,blockSize:Number(result.blockSize)||3,blockCount:Number(result.blockCount)||run.blockCount||0,questionBlocks:result.blocks||run.questionBlocks||[],executionStrategy:'3-to-1-strict-validation',lastError:null});
+      run=await amaNormalizeThreeQuestionRun(engine,run);
+    }
+    const blockCount=Number(run.blockCount)||Math.ceil((Number(run.questionCount)||68)/3);
+    for(let blockIndex=0;blockIndex<blockCount;blockIndex++){
+      if((run.completedBlockIndexes||[]).includes(blockIndex))continue;currentStage='questions';currentBlock=blockIndex;const blockIds=amaBlockQuestionIds(run,blockIndex),range=amaBlockRange(run,blockIndex);
+      let missing=amaMissingQuestionIds(run,blockIndex);if(!missing.length){run=await engine.saveQuestionBlock(run.id,{blockIndex,complete:true,meta:{lastError:null}});continue}
+      const callChunk=async(ids,recoveryLevel)=>{
+        const requested=[...ids];currentQuestionIds=requested;currentRecoveryLevel=recoveryLevel;const progress=engine.runProgress(run),label=amaQuestionIdsLabel(requested),levelText=recoveryLevel==='normal'?'3-question step':'single-question recovery';
+        if(runBtn)runBtn.textContent=`Running ${label}…`;amaStartStatusClock(`Step ${blockIndex+1}/${blockCount} · ${label} · ${progress.answered}/${progress.expected} saved · ${levelText}`,{sameSizeRetryPossible:false});setDirectorStatus(`AI AMA · step ${blockIndex+1}/${blockCount} · ${label} · ${levelText} · ${progress.answered}/${progress.expected} saved…`);
+        try{
+          const payload=await api.ama({mode:'question-block',snapshot:run.snapshot,visualRead:run.visualRead,candidateThemeCodes:run.candidateThemeCodes||[],blockIndex,questionIds:requested},key),result=payload.result||payload;amaStopStatusClock();
+          const incoming=Array.isArray(result.questions)?result.questions:[],accepted=[],clientRejected=[];for(const q of incoming){const validation=amaClientAnswerValidation(q?.answer);if(validation.valid)accepted.push(q);else clientRejected.push({id:String(q?.id||'').toUpperCase(),reason:validation.reason,preview:String(q?.answer||'').replace(/\s+/g,' ').slice(0,500)})}
+          run=await engine.saveQuestionBlock(run.id,{questions:accepted,blockIndex,complete:false,meta:{workerVersion:result.workerVersion||run.workerVersion,matrixVersion:result.matrixVersion||run.matrixVersion,model:result.model||run.model,questionCount:Number(result.questionCount)||run.questionCount||68,blockSize:3,blockCount:Number(result.blockCount)||run.blockCount||blockCount,questionBlocks:result.blocks||run.questionBlocks||[],executionStrategy:'3-to-1-strict-validation',lastError:null}});
+          const after=engine.runProgress(run),missingSet=new Set(amaMissingQuestionIds(run,blockIndex)),stillMissing=requested.filter(id=>missingSet.has(id)),rejectNote=clientRejected.length?` · rejected malformed ${clientRejected.map(row=>row.id||'answer').join(', ')}`:'';if(stillMissing.length)setAmaRunProgress(`${label} returned partial/invalid results · ${after.answered}/${after.expected} saved · missing ${stillMissing.join(', ')}${rejectNote} · switching only the missing question(s) to single-question recovery.`);else setAmaRunProgress(`${label} saved · ${after.answered}/${after.expected} core Q&A saved.`);
+          return{result,missing:stillMissing,clientRejected};
+        }catch(error){amaStopStatusClock();throw error}
+      };
+      const priorSingleRecovery=run.lastError?.stage==='questions'&&Number(run.lastError?.blockIndex)===blockIndex&&run.lastError?.recoveryLevel==='single-question recovery';
+      if(missing.length===blockIds.length&&missing.length>1&&!priorSingleRecovery){
+        try{await callChunk(missing,'normal')}catch(error){const progress=engine.runProgress(run);setAmaRunProgress(`${amaQuestionIdsLabel(missing)} failed as a 3-question step · ${progress.answered}/${progress.expected} saved · switching only this step to single-question recovery. ${amaCompactError(error)}`);setDirectorStatus(`AI AMA · ${range.label} failed · switching to single questions.`)}
+      }else if(missing.length<blockIds.length||priorSingleRecovery){const progress=engine.runProgress(run);setAmaRunProgress(`${range.label} is already in recovery · ${progress.answered}/${progress.expected} saved · continuing only the missing question(s) one at a time.`)}
+      missing=amaMissingQuestionIds(run,blockIndex);
+      for(const id of missing){const single=await callChunk([id],'single-question recovery');if(single.missing.length){const progress=engine.runProgress(run),preview=String(single.result?.rawResponsePreview||'').trim(),workerReject=Array.isArray(single.result?.rejectedAnswers)?single.result.rejectedAnswers.find(row=>String(row?.id||'').toUpperCase()===id):null,clientReject=Array.isArray(single.clientRejected)?single.clientRejected.find(row=>String(row?.id||'').toUpperCase()===id):null,reject=workerReject||clientReject,why=reject?.reason?` Rejected because: ${reject.reason}.`:'',detail=preview?` Provider response preview: ${preview}`:(reject?.preview?` Provider response preview: ${reject.preview}`:'');throw new Error(`AI AMA ${id} returned no validated answer.${why}${detail} ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}}
+      missing=amaMissingQuestionIds(run,blockIndex);if(missing.length){const progress=engine.runProgress(run);throw new Error(`AI AMA step ${blockIndex+1}/${blockCount} (${range.label}) is still incomplete. Missing ${missing.join(', ')}. ${progress.answered}/${progress.expected} answers were saved and can be resumed.`)}
+      run=await engine.saveQuestionBlock(run.id,{questions:[],blockIndex,complete:true,meta:{lastError:null,executionStrategy:'3-to-1-strict-validation'}});const progress=engine.runProgress(run);setAmaRunProgress(`Step ${blockIndex+1}/${blockCount} complete · ${progress.answered}/${progress.expected} core Q&A saved.`);
+    }
+    const progress=engine.runProgress(run);if(progress.answered!==progress.expected)throw new Error(`AI AMA stopped with ${progress.answered}/${progress.expected} core answers saved.`);
+    currentStage='finalize';currentQuestionIds=[];currentRecoveryLevel='normal';if(runBtn)runBtn.textContent='Finalizing…';setAmaRunProgress(`Finalizing immutable report · ${progress.answered}/${progress.expected} saved`);const report=await engine.finalizeRun(run.id);amaUiState.runId=null;$('amaMenuDialog')?.close();await openAmaReport(report.id);setDirectorStatus(`AI AMA ${report.sequence} complete · ${progress.answered}/${progress.expected} saved.`);
+  }catch(error){
+    amaStopStatusClock();await engine.recordRunError(run.id,error,{stage:currentStage,blockIndex:currentBlock,questionIds:currentQuestionIds,recoveryLevel:currentRecoveryLevel}).catch(()=>{});const saved=await engine.getRun(run.id).catch(()=>run),progress=engine.runProgress(saved),stage=amaStageLabel(currentStage,currentBlock,saved,{questionIds:currentQuestionIds,recoveryLevel:currentRecoveryLevel}),message=amaCompactError(error);setAmaRunProgress(`Paused at ${stage} · ${progress.answered}/${progress.expected} saved · ${message} · Resume begins with the first actually missing question(s); saved answers are not rerun.`);setDirectorStatus(`AI AMA paused at ${stage} · ${progress.answered}/${progress.expected} saved · ${message}`);throw error;
+  }finally{amaStopStatusClock();amaUiState.running=false;await refreshAmaRunMenu().catch(()=>{if(runBtn){runBtn.disabled=false;runBtn.textContent='Resume AI AMA'}})}
+}
+async function renderAmaHistory(){const list=$('amaHistoryList'),engine=window.genreactrixAmaEngine,record=currentImageRecord();if(!list||!engine||!record)return;list.innerHTML='<p>Loading AMA History…</p>';const reports=await engine.reportsForImage(record.id);list.innerHTML='';if(!reports.length){list.innerHTML='<p>No saved AMAs for this image.</p>';return}for(const report of [...reports].reverse()){const bundle=await engine.getReportBundle(report.id),row=document.createElement('div');row.className='ama-history-row';const b=document.createElement('button');b.type='button';b.innerHTML=`<strong>${amaEsc(report.title)}</strong><small>${report.interview?.questionCount||report.interview?.questions?.length||0} core Q&amp;A${bundle?.followups?.length?` · ${bundle.followups.length} follow-up${bundle.followups.length===1?'':'s'}`:''}</small>`;b.addEventListener('click',()=>openAmaReport(report.id));const outcome=document.createElement('span');outcome.className='ama-history-outcome';const last=bundle?.outcomes?.at(-1);outcome.textContent=last?(last.verdict==='agreement'?'Post-Batch: Agreement':'Post-Batch: Director final'):'';row.append(b,outcome);list.append(row)}}
+function amaThemeListHtml(rows=[],withConfidence=false){return rows.length?`<ul>${rows.map(row=>`<li>${amaEsc(row.label||row.name||row.code||'—')}${withConfidence&&Number.isFinite(Number(row.confidence))?` · ${Number(row.confidence)}%`:''}</li>`).join('')}</ul>`:'<p>—</p>'}
+async function amaReportHtml(bundle,{standalone=false}={}){const report=bundle.report,snapshot=report.snapshot||{},questions=report.interview?.questions||[],sections=[];for(const q of questions){let sec=sections.find(x=>x.name===q.section);if(!sec){sec={name:q.section||'Interview',rows:[]};sections.push(sec)}sec.rows.push(q)}const outcome=bundle.outcomes?.at(-1),styles=standalone?'<style>body{font-family:system-ui;background:#fff;color:#111;max-width:900px;margin:auto;padding:24px}h1{font-size:22px}.qa{border-top:1px solid #bbb;padding:10px 0}.q{font-weight:800}.a{white-space:pre-wrap}.snapshot{display:grid;grid-template-columns:1fr 1fr;gap:16px}.meta{color:#555;font-size:12px}@media print{button{display:none}}</style>':'';return`${styles}<article class="ama-export"><h1>${amaEsc(report.title)}</h1><p class="meta">Site ${amaEsc(report.siteVersion)} · Worker ${amaEsc(report.worker?.version||report.interview?.workerVersion||'')} · Matrix ${amaEsc(report.matrixVersion)}</p><div class="snapshot"><section><h2>AI Themes</h2>${amaThemeListHtml(snapshot.aiThemes||[],true)}</section><section><h2>Director Themes</h2>${amaThemeListHtml(snapshot.directorThemes||[],false)}</section></div>${outcome?`<section><h2>Post-Batch outcome</h2><p>${outcome.verdict==='agreement'?'AI and final Director Theme sets agreed.':'Director final Theme set differed from the AMA AI Theme set.'}</p>${amaThemeListHtml(outcome.finalDirectorThemes||[],false)}</section>`:''}${sections.map(sec=>`<section><h2>${amaEsc(sec.name)}</h2>${sec.rows.map(q=>`<div class="qa"><div class="q">Q: ${amaEsc(q.question)}</div><div class="a">A: ${amaEsc(q.answer)}</div></div>`).join('')}</section>`).join('')}${bundle.followups?.length?`<section><h2>Follow-up AMA</h2>${bundle.followups.map(q=>`<div class="qa"><div class="q">Q: ${amaEsc(q.question)}</div><div class="a">A: ${amaEsc(q.answer)}</div></div>`).join('')}</section>`:''}</article>`}
+async function renderAmaReport(bundle){const report=bundle.report,body=$('amaReportBody');if(!body)return;$('amaReportHeading').textContent=`AI AMA ${report.sequence}`;$('amaReportSubheading').textContent=report.title;const snapshot=report.snapshot||{},questions=report.interview?.questions||[],sections=[];for(const q of questions){let sec=sections.find(x=>x.name===q.section);if(!sec){sec={name:q.section||'Interview',rows:[]};sections.push(sec)}sec.rows.push(q)}body.innerHTML=`<div class="ama-report-snapshot"><section><h4>AI Themes</h4>${amaThemeListHtml(snapshot.aiThemes||[],true)}</section><section><h4>Director Themes</h4>${amaThemeListHtml(snapshot.directorThemes||[],false)}</section></div>${bundle.outcomes?.length?`<section class="ama-outcome-card"><h4>Post-Batch outcome</h4><p>${bundle.outcomes.at(-1).verdict==='agreement'?'Agreement — final Director Theme set matches the AMA AI Theme set.':'Director final — final Director Theme set differs from the AMA AI Theme set.'}</p>${amaThemeListHtml(bundle.outcomes.at(-1).finalDirectorThemes||[],false)}</section>`:''}${sections.map(sec=>`<section class="ama-report-section"><h3 class="ama-report-section-title">${amaEsc(sec.name)}</h3>${sec.rows.map(q=>`<div class="ama-qa"><div class="q">${amaEsc(q.question)}</div><div class="a">${amaEsc(q.answer)}</div></div>`).join('')}</section>`).join('')}${bundle.followups?.length?`<section class="ama-report-section"><h3 class="ama-report-section-title">Follow-up AMA</h3>${bundle.followups.map(q=>`<div class="ama-followup-row"><div class="q">Q: ${amaEsc(q.question)}</div><div class="a">A: ${amaEsc(q.answer)}</div></div>`).join('')}</section>`:''}`}
+async function openAmaReport(reportId){const engine=window.genreactrixAmaEngine,bundle=await engine?.getReportBundle?.(reportId);if(!bundle)return;amaUiState.reportId=reportId;await renderAmaReport(bundle);$('amaHistoryDialog')?.close();safelyShowDialog($('amaReportDialog'))}
+function amaDownloadText(text,filename,type){const blob=new Blob([text],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1200)}
+async function currentAmaBundle(){return amaUiState.reportId?window.genreactrixAmaEngine?.getReportBundle?.(amaUiState.reportId):null}
+async function askAmaFollowup(){const bundle=await currentAmaBundle(),question=String($('amaFollowupQuestion')?.value||'').trim();if(!bundle||!question)return;const status=$('amaFollowupStatus'),btn=$('amaFollowupAskBtn');if(btn)btn.disabled=true;if(status)status.textContent='Asking AI…';try{const payload=await window.GenreactrixCloudApi.ama({mode:'followup',snapshot:bundle.report.snapshot,visualRead:bundle.report.interview?.visualRead||'',candidateThemeCodes:bundle.report.interview?.candidateThemeCodes||[],priorTranscript:amaPriorTranscript(bundle),question},window.GenreactrixCloudApi.getKey()),result=payload.result||payload;await window.genreactrixAmaEngine.addFollowup(bundle.report.id,question,result.answer,{workerVersion:result.workerVersion||''});$('amaFollowupQuestion').value='';if(status)status.textContent='Follow-up saved.';await renderAmaReport(await currentAmaBundle());}catch(error){if(status)status.textContent=`Follow-up failed: ${error?.message||error}`}finally{if(btn)btn.disabled=false}}
 
 // v0.9.40.49 — AI Description rerun workstation.
 // The Reaction rectangle is temporarily repurposed as the guidance surface.
@@ -1264,7 +1694,7 @@ function captureDescriptionRerunTarget(){if(!descriptionRerunWorkspace.active)re
 function restoreDescriptionRerunSelection(){if(!descriptionRerunWorkspace.active)return;const root=$('tabletWorkbenchAiDescription'),t=descriptionRerunWorkspace.current?.target||{};if(!root||!t.armed||!root.firstChild)return;const text=root.textContent||'',start=Math.max(0,Math.min(text.length,Number(t.start)||0)),end=Math.max(start,Math.min(text.length,Number(t.end)||0)),walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node,pos=0,startNode=null,startOffset=0,endNode=null,endOffset=0;while((node=walker.nextNode())){const len=node.nodeValue.length;if(startNode===null&&start<=pos+len){startNode=node;startOffset=start-pos}if(endNode===null&&end<=pos+len){endNode=node;endOffset=end-pos;break}pos+=len}if(!startNode||!endNode)return;const range=document.createRange();range.setStart(startNode,startOffset);range.setEnd(endNode,endOffset);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range)}
 function renderDescriptionRerunChrome(){const active=descriptionRerunWorkspace.active,drawer=$('tabletSlidingDrawer'),root=$('tabletWorkbench'),workspace=$('tabletDescriptionRerunWorkspace'),controls=$('tabletDescriptionRerunControls'),guidance=$('tabletDescriptionRerunGuidance'),description=$('tabletWorkbenchAiDescription'),include=$('descriptionRerunPopulatedInclude'),includeCheck=$('descriptionRerunPopulatedIncludeCheck');drawer?.classList.toggle('description-rerun-active',active);root?.classList.toggle('description-rerun-active',active);if(workspace)workspace.hidden=!active||descriptionRerunWorkspace.reviewHeld;if(controls)controls.hidden=!active;if(active&&guidance&&guidance.value!==String(descriptionRerunWorkspace.current?.guidance||''))guidance.value=String(descriptionRerunWorkspace.current?.guidance||'');if(description){description.classList.toggle('rerun-targeting',active&&['add','replace'].includes(descriptionRerunOperation()));if(active){description.setAttribute('contenteditable','true');description.setAttribute('inputmode','none');description.setAttribute('role','textbox');description.setAttribute('aria-readonly','true');description.spellcheck=false;}else{description.removeAttribute('contenteditable');description.removeAttribute('inputmode');description.removeAttribute('role');description.removeAttribute('aria-readonly');description.classList.remove('rerun-targeting')}}const displayed=active?descriptionRerunDisplayedItem():null;if(include){include.hidden=!active||!displayed;if(includeCheck)includeCheck.checked=Boolean(displayed&&descriptionRerunWorkspace.current?.includedDescriptionIds?.includes(String(displayed.id)))}for(let i=1;i<=3;i++){document.querySelector(`[data-tablet-workbench-slot="${i}"]`)?.classList.toggle('rerun-context-selected',active&&descriptionRerunSelectedTheme(`director:${i}`));const aiCell=$(`tabletWorkbenchAiTheme${i}`)?.closest('.tablet-theme-cell');aiCell?.classList.toggle('rerun-context-selected',active&&descriptionRerunSelectedTheme(`ai:${i}`));if(aiCell){aiCell.dataset.rerunAiThemeSlot=String(i);aiCell.tabIndex=active?0:-1;aiCell.setAttribute('role',active?'button':'group')}}if(active){$('descriptionRerunSubmit')?.toggleAttribute('disabled',aiRerunInFlight);$('descriptionRerunSaveDraft')?.toggleAttribute('disabled',aiRerunInFlight)}}
 async function activateDescriptionRerunImage({preferLatest=false}={}){if(!descriptionRerunWorkspace.active)return;descriptionRerunWorkspace.imageId=currentKey();descriptionRerunWorkspace.current=loadDescriptionRerunCurrent(descriptionRerunWorkspace.imageId);descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];await loadDescriptionRerunCatalog({preferLatest});renderTabletWorkbench();updateUndoRedo()}
-async function openDescriptionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(descriptionRerunWorkspace.active)return;if(themeRerunWorkspace.active)closeThemeRerunWorkspace();descriptionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};descriptionRerunWorkspace.active=true;descriptionRerunWorkspace.reviewHeld=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateDescriptionRerunImage();}
+async function openDescriptionRerunWorkspace(){if(tabletAiRerunLocked||aiRerunInFlight)return;if(descriptionRerunWorkspace.active)return;if(reactionRerunWorkspace.active)closeReactionRerunWorkspace();if(themeRerunWorkspace.active)closeThemeRerunWorkspace();descriptionRerunWorkspace.preDrawer={face:tabletLandscapeView.face,aiReactions:tabletLandscapeView.aiReactions,aiThemes:tabletLandscapeView.aiThemes,aiDescription:tabletLandscapeView.aiDescription,customs:tabletLandscapeView.customs};descriptionRerunWorkspace.active=true;descriptionRerunWorkspace.reviewHeld=false;tabletLandscapeView.face='judgment';tabletLandscapeView.customs=false;tabletLandscapeView.aiReactions=true;tabletLandscapeView.aiThemes=true;tabletLandscapeView.aiDescription=true;await activateDescriptionRerunImage();}
 function closeDescriptionRerunWorkspace(){if(!descriptionRerunWorkspace.active)return;saveDescriptionRerunCurrent();descriptionRerunWorkspace.active=false;descriptionRerunWorkspace.reviewHeld=false;const prior=descriptionRerunWorkspace.preDrawer;if(prior)Object.assign(tabletLandscapeView,prior);descriptionRerunWorkspace.preDrawer=null;descriptionRerunWorkspace.imageId=null;descriptionRerunWorkspace.catalog=[];descriptionRerunWorkspace.undo=[];descriptionRerunWorkspace.future=[];renderTabletWorkbench();updateUndoRedo()}
 function renderDescriptionRerunDraftDialog(){const list=$('descriptionRerunDraftList');if(!list)return;const drafts=[...descriptionRerunDraftsFor(descriptionRerunWorkspace.imageId)].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));list.innerHTML='';if(!drafts.length){list.textContent='No saved drafts.';return}for(const draft of drafts){const row=document.createElement('div');row.className='description-rerun-list-row no-checkbox';const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.title='Tap to restore. Long-press to delete.';button.innerHTML=`<strong>AI Desc Rerun Draft · ${formatDescriptionRerunDate(draft.createdAt)}</strong><small>${String(draft.state?.guidance||'').trim().slice(0,180)||'No text guidance'}</small>`;let holdTimer=0,longPressed=false;button.addEventListener('pointerdown',event=>{if(event.button!==undefined&&event.button!==0)return;longPressed=false;clearTimeout(holdTimer);holdTimer=setTimeout(()=>{longPressed=true;navigator.vibrate?.(25);const when=formatDescriptionRerunDate(draft.createdAt);if(confirm(`Delete AI Desc Rerun Draft from ${when}?`)){const deleted=deleteDescriptionRerunDraft(descriptionRerunWorkspace.imageId,draft.id);if(deleted){renderDescriptionRerunDraftDialog();setDirectorStatus(`AI Desc Rerun Draft deleted · ${when}.`)}}},520)});const cancelHold=()=>clearTimeout(holdTimer);button.addEventListener('pointerup',cancelHold);button.addEventListener('pointercancel',()=>{cancelHold();longPressed=false});button.addEventListener('pointerleave',cancelHold);button.addEventListener('contextmenu',event=>event.preventDefault());button.addEventListener('click',event=>{if(longPressed){longPressed=false;event.preventDefault();return}pushDescriptionRerunUndo();descriptionRerunWorkspace.current=normalizeDescriptionRerunCurrent(draft.state);saveDescriptionRerunCurrent();$('descriptionRerunDraftDialog')?.close();renderTabletWorkbench();requestAnimationFrame(restoreDescriptionRerunSelection)});row.append(button);list.append(row)}}
 function renderDescriptionRerunClassicsDialog(){const list=$('descriptionRerunClassicsList');if(!list)return;list.innerHTML='';if(!descriptionRerunWorkspace.catalog.length){list.textContent='No Description history is available.';return}for(const item of descriptionRerunWorkspace.catalog){const row=document.createElement('div');row.className='description-rerun-list-row';const check=document.createElement('input');check.type='checkbox';check.checked=descriptionRerunWorkspace.current.includedDescriptionIds.includes(item.id);check.setAttribute('aria-label',`Include Description from ${formatDescriptionRerunDate(item.createdAt)}`);check.addEventListener('change',()=>toggleDescriptionRerunIncludedDescription(item.id,check.checked));const button=document.createElement('button');button.type='button';button.className='description-rerun-list-main';button.innerHTML=`<strong>${formatDescriptionRerunDate(item.createdAt)}${item.current?' · Current':''}${item.version?` · v${item.version}`:''}</strong><small>${item.text.slice(0,220)}</small>`;button.addEventListener('click',()=>{$('descriptionRerunClassicsDialog')?.close();populateDescriptionRerunDescription(item.id)});row.append(check,button);list.append(row)}}
@@ -1276,12 +1706,27 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
   if(!root) return;
   root.innerHTML="";
 
-  // Exact source of truth: PrimFusion_Interlocked_Matrix_Compact_Screenshot_Match.xlsm, B2:H14.
-  const topSymbols=["🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠"];
-  const bottomSymbols=["🌀", "🎟️", "🌌", "🤢", "👻", "💥", "🧠"];
-  const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🎟️", "🌀", "🧸", "🌀", "🎟️", "🌌", "🤢", "👻", "💥", "🤬"];
-  const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🎟️", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🧠", "🤬"];
-  const matrixRows=[[{"value":"Saccharine","tone":"lavender"},{"value":"Pretentious","tone":"lavender"},{"value":"Trolling","tone":"lavender"},{"value":"Dysphoria","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Revenge","tone":"lavender"},{"value":"Obsessive","tone":"lavender"}],[{"value":"Joy","tone":"lavender"},{"value":"Majestic","tone":"lavender"},{"value":"Cringe","tone":"lavender"},{"value":"Devastating","tone":"lavender"},{"value":"Lust","tone":"lavender"},{"value":"Pride","tone":"lavender"},{"value":"Brilliant","tone":"lavender"}],[{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"Comedy Horror","tone":"lavender"},{"value":"Foreboding","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Spirituality","tone":"lavender"},{"value":"Paranoia","tone":"lavender"}],[{"value":"Grimy","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Indulgent","tone":"lavender"},{"value":"Greed","tone":"lavender"}],[{"value":"Whimsical","tone":"lavender"},{"value":"Romance","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Liminal","tone":"lavender"},{"value":"Limerence","tone":"lavender"},{"value":"Magical","tone":"lavender"},{"value":"Ethereal","tone":"lavender"}],[{"value":"Camp","tone":"lavender"},{"value":"Irreverent","tone":"lavender"},{"value":"Satirical","tone":"lavender"},{"value":"Shame","tone":"lavender"},{"value":"Exploitation","tone":"lavender"},{"value":"Snarky","tone":"lavender"},{"value":"Parodic","tone":"lavender"}],[{"value":"Bizarre","tone":"lavender"},{"value":"Surreal","tone":"lavender"},{"value":"Zany","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Delirious","tone":"lavender"},{"value":"Alien","tone":"lavender"}],[{"value":"🧸","tone":"green"},{"value":"Cozy","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Pitiful","tone":"lavender"},{"value":"Kawaii","tone":"lavender"},{"value":"Playful","tone":"lavender"},{"value":"Innocence","tone":"lavender"}],[{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Charming","tone":"lavender"},{"value":"Melancholic","tone":"lavender"},{"value":"Exposure","tone":"lavender"},{"value":"Festive","tone":"lavender"},{"value":"Elegant","tone":"lavender"}],[{"value":"Freakshow","tone":"peach"},{"value":"🎟️","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Ironic","tone":"lavender"},{"value":"Ribaldry","tone":"lavender"},{"value":"PartyTime","tone":"lavender"},{"value":"Witty","tone":"lavender"}],[{"value":"Psychedelic","tone":"peach"},{"value":"Medicated","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"},{"value":"Poignant","tone":"lavender"}],[{"value":"Mutant","tone":"peach"},{"value":"Tasteless","tone":"peach"},{"value":"Putrid","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"Hedonism","tone":"lavender"},{"value":"Kinky","tone":"lavender"}],[{"value":"Macabre","tone":"peach"},{"value":"Execrable","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Horror","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🎉","tone":"green"},{"value":"Glory","tone":"lavender"}],[{"value":"Chaotic","tone":"peach"},{"value":"Outrageous","tone":"peach"},{"value":"Epic","tone":"peach"},{"value":"Brutal","tone":"peach"},{"value":"Terror","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🧠","tone":"green"}],[{"value":"Monstrous","tone":"peach"},{"value":"Wickedness","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"Repulsive","tone":"peach"},{"value":"Violated","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"}]];
+  // Interlocked geometry remains derived from the canonical PrimFusion matrix; the retired Smart column is removed.
+  // Current 12-Prim PrimFusion interlocked matrix: 66 assigned Themes and 0 open pair slots. Ticket and Smart are retired; former P14 Angry occupies P07 and Celebration occupies P12.
+  const topSymbols=["🧸", "✨", "🤣", "😭", "🌶️", "🎉"];
+  const bottomSymbols=["🌀", "🌌", "🤢", "👻", "💥", "🤬"];
+  const leftSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "🌀", "🌌", "🤢", "👻", "💥", "🤬"];
+  const rightSymbols=["🤬", "💥", "👻", "🤢", "🌌", "🌀", "🧸", "✨", "🤣", "😭", "🌶️", "🎉", "🤬"];
+  const matrixRows=[
+    [{"value":"Sassy","tone":"lavender"},{"value":"Bougie","tone":"lavender"},{"value":"Mockery","tone":"lavender"},{"value":"Overstimulated","tone":"lavender"},{"value":"Sadomasochism","tone":"lavender"},{"value":"Badass","tone":"lavender"}],
+    [{"value":"Joy","tone":"lavender"},{"value":"Epic","tone":"lavender"},{"value":"Hilarious","tone":"lavender"},{"value":"Despair","tone":"lavender"},{"value":"Exposure","tone":"lavender"},{"value":"Glory","tone":"lavender"}],
+    [{"value":"CreepyCute","tone":"lavender"},{"value":"Vulnerable","tone":"lavender"},{"value":"Scandalarious","tone":"lavender"},{"value":"Cringe","tone":"lavender"},{"value":"Zazzploitation","tone":"lavender"},{"value":"Halloween","tone":"lavender"}],
+    [{"value":"UglyCute","tone":"lavender"},{"value":"Grotesque","tone":"lavender"},{"value":"Grossout","tone":"lavender"},{"value":"Shame","tone":"lavender"},{"value":"Lewd","tone":"lavender"},{"value":"Excess","tone":"lavender"}],
+    [{"value":"Romance","tone":"lavender"},{"value":"Satisfying","tone":"lavender"},{"value":"Medicated","tone":"lavender"},{"value":"Nostalgia","tone":"lavender"},{"value":"Seduction","tone":"lavender"},{"value":"Magical","tone":"lavender"}],
+    [{"value":"Whimsical","tone":"lavender"},{"value":"Psychedelic","tone":"lavender"},{"value":"Absurd","tone":"lavender"},{"value":"Nightmarish","tone":"lavender"},{"value":"FreakyDeaky","tone":"lavender"},{"value":"Freakshow","tone":"lavender"}],
+    [{"value":"🧸","tone":"green"},{"value":"Cozy","tone":"lavender"},{"value":"Goofy","tone":"lavender"},{"value":"Poignant","tone":"lavender"},{"value":"Cheeky","tone":"lavender"},{"value":"Playful","tone":"lavender"}],
+    [{"value":"🌀","tone":"green"},{"value":"✨","tone":"green"},{"value":"Camp","tone":"lavender"},{"value":"Mundane","tone":"lavender"},{"value":"Fleshy","tone":"lavender"},{"value":"Festive","tone":"lavender"}],
+    [{"value":"Spirituality","tone":"peach"},{"value":"🌌","tone":"green"},{"value":"🤣","tone":"green"},{"value":"Schadenfreude","tone":"lavender"},{"value":"Raunchy","tone":"lavender"},{"value":"PartyTime","tone":"lavender"}],
+    [{"value":"Strange","tone":"peach"},{"value":"Phantasmagoric","tone":"peach"},{"value":"🤢","tone":"green"},{"value":"😭","tone":"green"},{"value":"Humiliation","tone":"lavender"},{"value":"Bittersweet","tone":"lavender"}],
+    [{"value":"Horror","tone":"peach"},{"value":"Eerie","tone":"peach"},{"value":"Foreboding","tone":"peach"},{"value":"👻","tone":"green"},{"value":"🌶️","tone":"green"},{"value":"ZazzlyParty","tone":"lavender"}],
+    [{"value":"Chaotic","tone":"peach"},{"value":"Ethereal","tone":"peach"},{"value":"Collapse","tone":"peach"},{"value":"Corrupted","tone":"peach"},{"value":"💥","tone":"green"},{"value":"🎉","tone":"green"}],
+    [{"value":"Monstrous","tone":"peach"},{"value":"Cursed","tone":"peach"},{"value":"Outrage","tone":"peach"},{"value":"Paranoia","tone":"peach"},{"value":"Aggressive","tone":"peach"},{"value":"🤬","tone":"green"}]
+  ];
 
   const primitiveForSymbol=symbol=>PRIMITIVES.find(p=>p.symbol===symbol);
   const pairForLabel=(label)=>{
@@ -1326,6 +1771,7 @@ function renderLandscapeInterlockedMatrix(targetId="tabletWorkbenchMatrix"){
       const cell=document.createElement("button");
       cell.type="button";
       cell.className=`interlocked-cell interlocked-${entry.tone}`;
+      if(entry.value==="OPEN") cell.classList.add("interlocked-open");
       if(entry.tone==="green"){
         const nextIsGreen=row[columnIndex+1]?.tone==="green";
         const bottomRightAngry=rowIndex===matrixRows.length-1 && columnIndex===row.length-1 && entry.value==="🤬";
@@ -1487,6 +1933,8 @@ function renderTabletWorkbench(){
   const root=$("tabletWorkbench");
   if(!root) return;
   const hasImage=!state.feedEmpty;
+  renderAiStatusTags();
+  renderContentRatings();
   if(hasImage){
     $("landscapeFeedEmpty")?.setAttribute("hidden","");
     if(state.canonicalFeedActive&&window.matchMedia?.("(orientation: landscape)")?.matches){
@@ -1510,20 +1958,20 @@ function renderTabletWorkbench(){
   /* v0.9.39.49 — explicit canonical Judgment order by stable primitive ID.
      Avoid symbol matching so variation-selector differences can never create
      empty slots or shift later canonical/custom reactions. */
-  const judgmentReactionOrder=["P02","P01","P03","P04","P09","P13","P12","P05","P11","P10","P08","P07","P06","P14"];
+  const judgmentReactionOrder=["P02","P01","P03","P04","P09","P12","P05","P11","P10","P08","P06","P07"];
   judgmentReactionOrder.forEach(primitiveId=>{
-    const primitiveIndex=PRIMITIVES.findIndex(item=>item.id===primitiveId);
-    const p=PRIMITIVES[primitiveIndex];
+    const p=PRIMITIVE_BY_ID[primitiveId];
     if(!p) return;
+    const selectionToken=primitiveSelectionToken(p);
     const b=document.createElement("button");
     b.type="button";
-    b.className="tablet-prim-button"+(state.selectedReactions.includes(primitiveIndex)?" selected":"");
+    b.className="tablet-prim-button"+(state.selectedReactions.includes(selectionToken)?" selected":"");
     b.title=p.name;
-    b.setAttribute("aria-pressed",String(state.selectedReactions.includes(primitiveIndex)));
+    b.setAttribute("aria-pressed",String(state.selectedReactions.includes(selectionToken)));
     const pctText=`${Number(weights[p.id])||0}%`;
     b.classList.toggle("ai-percentage-hidden",!tabletLandscapeView.aiReactions);
     b.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${p.symbol}</span></span><span class="pct" aria-hidden="${String(!tabletLandscapeView.aiReactions)}">${pctText}</span>`;
-    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(primitiveIndex);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(primitiveIndex);saveCurrent("director-reaction-auto");renderAll();});
+    b.addEventListener("click",()=>{pushHistory();const n=state.selectedReactions.indexOf(selectionToken);if(n>=0)state.selectedReactions.splice(n,1);else state.selectedReactions.push(selectionToken);saveCurrent("director-reaction-auto");renderAll();});
     prims.appendChild(b);
   });
 
@@ -1565,7 +2013,7 @@ function renderTabletWorkbench(){
   root.classList.toggle("face-judgment",tabletLandscapeView.face==="judgment");
   $("tabletMatrixFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="matrix"));
   $("tabletJudgmentFace")?.setAttribute("aria-hidden",String(tabletLandscapeView.face!=="judgment"));
-  const rerunWorkspaceActive=descriptionRerunWorkspace.active||themeRerunWorkspace.active;
+  const rerunWorkspaceActive=reactionRerunWorkspace.active||descriptionRerunWorkspace.active||themeRerunWorkspace.active;
   $("tabletAiThemesPanel").hidden=rerunWorkspaceActive?false:(!tabletLandscapeView.aiThemes || tabletLandscapeView.customs);
   $("tabletWorkbenchAiDescription").hidden=rerunWorkspaceActive?false:(!tabletLandscapeView.aiDescription || tabletLandscapeView.customs);
   $("tabletCustomsDrawer").hidden=!tabletLandscapeView.customs;
@@ -1582,6 +2030,7 @@ function renderTabletWorkbench(){
   const keepOn=hasImage&&state.retention==="keep";
   $("tabletSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
   $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(keepOn));
+  renderReactionRerunChrome();
   renderDescriptionRerunChrome();
   renderThemeRerunChrome();
   syncTabletAiRerunControls();
@@ -1612,8 +2061,12 @@ function renderTabletWorkbench(){
       const panelTop=Math.max(0,stackRect.top-drawerRect.top);
       const descriptionInclude=$("descriptionRerunPopulatedInclude");
       const themeInclude=$("themeRerunPopulatedInclude");
+      const themeExplain=$("themeRerunExplainChanges");
+      const themeAma=$("themeRerunAmaBtn");
       if(descriptionInclude)descriptionInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
       if(themeInclude)themeInclude.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
+      if(themeExplain)themeExplain.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
+      if(themeAma)themeAma.style.setProperty("--ai-theme-panel-top",`${panelTop}px`);
 
       /* v0.9.40.58 — mirrored Include reserve must be recalculated from the
          real baseline on every render. Clear the prior dynamic reserve first;
@@ -1766,7 +2219,7 @@ function renderPrimFusionMatrix(filter, targetId="primFusionMatrix"){
   const singleGrid=targetId==="tabletPrimFusionMatrix" || targetId==="tabletWorkbenchMatrix" || landscapeSingleGrid;
   const bands=singleGrid
     ? [PRIMITIVES.map((_,index)=>index)]
-    : [[0,1,2,3],[4,5,6,7,8],[9,10,11,12,13]];
+    : [[0,1,2,3],[4,5,6,7],[8,9,10,11]];
 
   bands.forEach((columnIndexes,bandIndex)=>{
     const section=document.createElement("section");
@@ -2100,7 +2553,7 @@ document.addEventListener("click",e=>{
   }
 });
 
-$("openAiBtn").addEventListener("click",()=>{ if(!isTabletWorkspace()){ $("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); } });
+$("openAiBtn").addEventListener("click",()=>{ if(!isTabletWorkspace()){ const record=currentImageRecord();if(record)appendHistory({imageId:record.id,eventType:"director-ai-viewed",actor:"director",sourceEngine:"director-ui",summary:"Director opened AI Analysis",payload:{workspace:"aiWorkspace"}});$("aiWorkspace").showModal(); scheduleWorkspaceDescriptionFits(); } });
 $("directorPrimFusionBtn").addEventListener("click",()=>{
   if($("directorWorkspace").open) $("directorWorkspace").close();
   openThemeWorkspace(state.targetSlot || 1);
@@ -2202,7 +2655,35 @@ $("clearCurrentBtn").addEventListener("click",()=>{
 $("directorUndoBtn").addEventListener("click",undo);
 $("directorRedoBtn").addEventListener("click",redo);
 
-async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false,descriptionRerun=null}={}){
+const AI_DIRECTOR_RERUN_WAIT_MS=90000;
+const aiDirectorRerunDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function waitForDirectorRerunImageIdle(engine,imageId,{timeoutMs=AI_DIRECTOR_RERUN_WAIT_MS}={}){
+  const started=Date.now();
+  while(true){
+    const snapshot=await engine.snapshot?.();
+    const active=(snapshot?.items||[]).filter(item=>String(item.imageId)===String(imageId)&&["queued","processing"].includes(item.state));
+    if(!active.length)return snapshot;
+    const activeJobIds=[...new Set(active.map(item=>item.jobId).filter(Boolean))];
+    for(const jobId of activeJobIds){
+      const job=(snapshot?.jobs||[]).find(row=>row.id===jobId);
+      if(job?.state==="queued")Promise.resolve(engine.run(jobId)).catch(error=>console.warn("Could not advance existing AI job before Director rerun",error));
+    }
+    if(Date.now()-started>=timeoutMs)throw new Error("Current image still has AI work in progress. Wait for that job to finish, then submit the rerun again.");
+    await aiDirectorRerunDelay(250);
+  }
+}
+async function waitForDirectorRerunJob(engine,jobId,{timeoutMs=AI_DIRECTOR_RERUN_WAIT_MS}={}){
+  const terminal=new Set(["completed","completed-with-failures","cancelled","paused"]),started=Date.now();
+  while(true){
+    const snapshot=await engine.snapshot?.(),job=snapshot?.jobs?.find(row=>row.id===jobId);
+    if(job&&terminal.has(job.state))return{snapshot,job};
+    if(job?.state==="queued")Promise.resolve(engine.run(jobId)).catch(error=>console.warn("Could not advance Director rerun job",error));
+    if(Date.now()-started>=timeoutMs)throw new Error("AI rerun is still running. Its job remains active in the AI console.");
+    await aiDirectorRerunDelay(250);
+  }
+}
+
+async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysis=false,reactionRerunSources=null,descriptionRerun=null,themeRerun=null}={}){
   const requested=[...new Set((components||[]).filter(component=>AI_RERUN_COMPONENTS.includes(component)))];
   if(!requested.length)throw new Error("No AI rerun component was selected.");
   if(aiRerunInFlight)throw new Error("An AI rerun is already in progress.");
@@ -2215,11 +2696,29 @@ async function runCurrentAiRerun(components,{analysisGuidance="",themeUseAnalysi
   const guidance=String(analysisGuidance||"").trim().slice(0,6000);
   aiRerunInFlight=true;syncTabletAiRerunControls();
   try{
-    const job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null});
+    const explicitReactionRerun=Boolean(reactionRerunSources)&&requested.length===1&&requested[0]==="reactions";
+    let job=null;
+    for(let attempt=0;attempt<3;attempt++){
+      if(explicitReactionRerun)await waitForDirectorRerunImageIdle(engine,imageId);
+      job=await engine.createJob({target:"selected",imageIds:[imageId],quantityMode:"all",quantity:1,order:"queue",components:componentConfig,skipFailed:false,analysisGuidance:guidance,themeUseAnalysis:Boolean(themeUseAnalysis),reactionRerunSources:reactionRerunSources?{image:reactionRerunSources.image!==false,description:Boolean(reactionRerunSources.description)}:null,descriptionRerun:descriptionRerun?cloneDescriptionRerun(descriptionRerun):null,themeRerun:themeRerun?structuredClone(themeRerun):null});
+      if(job?.id&&job.total)break;
+      if(!explicitReactionRerun||job?.message!=="No eligible images")break;
+      const raceSnapshot=await engine.snapshot?.(),raced=(raceSnapshot?.items||[]).some(item=>String(item.imageId)===String(imageId)&&["queued","processing"].includes(item.state));
+      if(!raced)break;
+    }
     if(!job?.id||!job.total)throw new Error(job?.message||"AI rerun could not be queued.");
-    await engine.run(job.id);
-    const snapshot=await engine.snapshot?.(),finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
-    if(finalJob.state!=="completed")throw new Error(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`);
+    let snapshot,finalJob;
+    if(explicitReactionRerun){
+      Promise.resolve(engine.run(job.id)).catch(error=>console.warn("Director Reaction rerun runner failed",error));
+      const terminal=await waitForDirectorRerunJob(engine,job.id);snapshot=terminal.snapshot;finalJob=terminal.job;
+    }else{
+      await engine.run(job.id);
+      snapshot=await engine.snapshot?.();finalJob=snapshot?.jobs?.find(row=>row.id===job.id)||job;
+    }
+    if(finalJob.state!=="completed"){
+      const itemErrors=(snapshot?.items||[]).filter(row=>row.jobId===job.id&&row.state==="failed").map(row=>String(row.error||"").trim()).filter(Boolean);
+      throw new Error(itemErrors.length?[...new Set(itemErrors)].join(" | "):(finalJob.message||`AI rerun ended in ${finalJob.state||"an unknown state"}.`));
+    }
     // v0.9.39.95 — a completed Reaction rerun is itself a request to inspect
     // the new scores. Make them visible before repainting Judgment so the
     // completed rerun cannot appear to have produced no percentages.
@@ -2240,7 +2739,7 @@ $("rerunAiBtn").addEventListener("click",async()=>{
   try{
     const guidance=$("aiReanalysisGuidance")?.value?.trim()||"";
     await runCurrentAiRerun(AI_RERUN_COMPONENTS,{analysisGuidance:guidance});
-    setDirectorStatus("AI reactions, themes, and description rerun complete.");
+    setDirectorStatus("AI Themes and Description rerun complete. Reactions recalculated 100% from Themes; no Reaction scan was run.");
   }catch(error){
     const message=String(error?.message||error);
     console.error("AI rerun failed",error);
@@ -2399,6 +2898,97 @@ function verifyLandscapeFeedIntegrity(){
 window.genreactrixLandscapeFeedDiagnostics=landscapeFeedDiagnostics;
 window.genreactrixMaintenanceEngine?.registerChecker?.("inbox-feed",verifyLandscapeFeedIntegrity,{quick:true,label:"Inbox feed"});
 function activeInboxBundles(){return window.genreactrixBundleEngine?.activeBundles?.()||[];}
+const landscapeThumbnailPickerState={objectUrls:[]};
+function clearLandscapeThumbnailPickerUrls(){
+  while(landscapeThumbnailPickerState.objectUrls.length){
+    const url=landscapeThumbnailPickerState.objectUrls.pop();
+    try{URL.revokeObjectURL(url);}catch{}
+  }
+}
+function closeLandscapeThumbnailPicker(){
+  clearLandscapeThumbnailPickerUrls();
+  $("landscapeThumbnailPickerDialog")?.close();
+}
+async function thumbnailUrlForLandscapeRecord(record){
+  const engine=window.genreactrixImagesEngine;
+  const thumbKey=record?.storage?.thumbnailKey||record?.id;
+  if(engine?.thumbnailBlobGet&&thumbKey){
+    const thumb=await engine.thumbnailBlobGet(thumbKey).catch(()=>null);
+    if(thumb){
+      const url=URL.createObjectURL(thumb);
+      landscapeThumbnailPickerState.objectUrls.push(url);
+      return url;
+    }
+  }
+  const active=state.files.find(file=>String(file?.id||'')===String(record?.id||''));
+  if(active?.url&&!active.isHydratingAsset&&!active.isMissingAsset)return active.url;
+  return landscapeLoadingPlaceholder(record);
+}
+async function jumpToLandscapeRecord(imageId){
+  const id=String(imageId||'');
+  if(!id)return false;
+  const liveIndex=state.files.findIndex(file=>String(file?.id||'')===id);
+  if(liveIndex>=0){
+    goToImageIndex(liveIndex);
+    requestCurrentLandscapeAsset();
+    renderAll();
+    return true;
+  }
+  const records=filteredLandscapeRecords();
+  const preferredIndex=records.findIndex(record=>String(record.id)===id);
+  await rehydrateLandscapeFeed({preserveId:id,preferredIndex:preferredIndex>=0?preferredIndex:0});
+  requestCurrentLandscapeAsset();
+  renderAll();
+  return true;
+}
+async function openLandscapeThumbnailPicker(){
+  const dialog=$("landscapeThumbnailPickerDialog"),grid=$("landscapeThumbnailPickerGrid"),status=$("landscapeThumbnailPickerStatus");
+  if(!dialog||!grid)return;
+  clearLandscapeThumbnailPickerUrls();
+  const records=filteredLandscapeRecords();
+  const currentId=String(currentKey?.()||'');
+  if(status)status.textContent=`${records.length} image${records.length===1?'':'s'} in current Inbox view`;
+  grid.innerHTML='';
+  if(!records.length){
+    const empty=document.createElement('p');
+    empty.className='thumbnail-picker-empty';
+    empty.textContent='No images match the current filter.';
+    grid.appendChild(empty);
+    dialog.showModal();
+    return;
+  }
+  const rows=records.map((record,index)=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='thumbnail-picker-item';
+    button.dataset.imageId=String(record.id);
+    if(String(record.id)===currentId)button.classList.add('is-current');
+
+    const thumb=document.createElement('span');
+    thumb.className='thumbnail-picker-thumb';
+    const img=document.createElement('img');
+    img.alt=record.name||record.source?.originalFilename||`Inbox image ${index+1}`;
+    img.loading='lazy';
+    img.src=landscapeLoadingPlaceholder({name:'Loading thumbnail…'});
+    thumb.appendChild(img);
+
+    const meta=document.createElement('span');
+    meta.className='thumbnail-picker-meta';
+    const strong=document.createElement('strong');
+    strong.textContent=`${index+1}`;
+    const small=document.createElement('small');
+    small.textContent=record.source?.originalFilename||record.name||String(record.id);
+    meta.append(strong,small);
+
+    button.append(thumb,meta);
+    grid.appendChild(button);
+    return {record,img};
+  });
+  dialog.showModal();
+  await Promise.all(rows.map(async row=>{
+    row.img.src=await thumbnailUrlForLandscapeRecord(row.record);
+  }));
+}
 function renderPortraitInboxControls(){
   const bundles=activeInboxBundles(),staged=window.genreactrixBundleEngine?.stagedRecords?.()||[],failedCount=currentAiFailureRecords().length;
   const count=$("portraitInboxPackCount");if(count)count.textContent=String(bundles.length);
@@ -2416,7 +3006,7 @@ async function openBundlePicker(){
 }
 // Legacy entry point retained so older callers do not auto-push AI Output into Inbox.
 window.genreactrixAutoPushAiOutputToInbox=async function(){
-  await window.genreactrixBundleEngine?.maybeAutoBundle?.();
+  // v0.9.40.190: Bundling is an intentional, trackable manual boundary.
   renderPortraitInboxControls();
   return null;
 };
@@ -2790,16 +3380,36 @@ FILTER_CATEGORIES.forEach(key=>{
 });
 $("landscapeFilterPackSelect")?.addEventListener("click",()=>openBundlePicker());
 $("landscapeFilterSort")?.addEventListener("change",async e=>{const next=SORT_MODES.has(e.target.value)?e.target.value:"bundle";if(next==="random"&&landscapeFilter.sort!=="random")landscapeFilter.randomSeed=Date.now();landscapeFilter.sort=next;await applyLandscapeFilter();});
-
-$("tabletDepotBtn")?.addEventListener("click",async()=>{
-  if(state.feedEmpty)return;const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return;
-  const next=!Boolean(record.attributes?.depot);
-  const updated=await window.genreactrixImagesEngine.setDepot(id,next);
-  state.flagged=Boolean(updated?.attributes?.flagged);
-  landscapeFeedDirty=true;
-  renderFlag();renderTabletWorkbench();
-  setDirectorStatus(next?"Image sent to Depot. It will leave Feed when you navigate away.":"Depot turned off.");
+$("landscapeThumbnailViewBtn")?.addEventListener("click",async()=>{
+  $("landscapeFilterDialog")?.close();
+  await openLandscapeThumbnailPicker();
 });
+$("landscapeThumbnailPickerClose")?.addEventListener("click",()=>closeLandscapeThumbnailPicker());
+$("landscapeThumbnailPickerDialog")?.addEventListener("close",()=>clearLandscapeThumbnailPickerUrls());
+$("landscapeThumbnailPickerGrid")?.addEventListener("click",async e=>{
+  const button=e.target?.closest?.('.thumbnail-picker-item');
+  if(!button)return;
+  const imageId=button.dataset.imageId||'';
+  closeLandscapeThumbnailPicker();
+  await jumpToLandscapeRecord(imageId);
+});
+
+let depotToggleInFlight=false;
+async function toggleCurrentDepot(){
+  if(depotToggleInFlight||state.feedEmpty)return null;
+  const id=currentKey(),record=window.genreactrixImagesEngine?.recordById?.(id);if(!record)return null;
+  depotToggleInFlight=true;
+  try{
+    const next=!Boolean(record.attributes?.depot);
+    const updated=await window.genreactrixImagesEngine.setDepot(id,next);
+    state.flagged=Boolean(updated?.attributes?.flagged);
+    landscapeFeedDirty=true;
+    renderFlag();renderTabletWorkbench();renderLandscapeImageView();
+    setDirectorStatus(next?"Image sent to Depot. It will leave Feed when you navigate away.":"Depot turned off.");
+    return updated;
+  }finally{depotToggleInFlight=false;}
+}
+$("tabletDepotBtn")?.addEventListener("click",()=>toggleCurrentDepot());
 
 document.getElementById("tabletWorkspaceFlipBtn")?.addEventListener("click",()=>{tabletLandscapeView.face=tabletLandscapeView.face==="matrix"?"judgment":"matrix";if(tabletLandscapeView.face==="matrix")tabletLandscapeView.customs=false;renderTabletWorkbench();});
 document.getElementById("tabletAiReactionsBtn")?.addEventListener("click",()=>{tabletLandscapeView.aiReactions=!tabletLandscapeView.aiReactions;renderTabletWorkbench();});
@@ -2876,7 +3486,11 @@ async function createComponentAiRerun(component){
   }
 }
 $("tabletAiRerunLockBtn")?.addEventListener("click",()=>{tabletAiRerunLocked=!tabletAiRerunLocked;localStorage.setItem(AI_RERUN_LOCK_KEY,tabletAiRerunLocked?"1":"0");syncTabletAiRerunControls();});
-$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>createComponentAiRerun("reactions"));
+$("reactionRerunUseImage")?.addEventListener("change",event=>{if(!reactionRerunWorkspace.active)return;reactionRerunWorkspace.useImage=event.target.checked;renderReactionRerunChrome();});
+$("reactionRerunUseDescription")?.addEventListener("change",event=>{if(!reactionRerunWorkspace.active)return;reactionRerunWorkspace.useDescription=event.target.checked;renderReactionRerunChrome();});
+$("reactionRerunSubmitBtn")?.addEventListener("click",()=>submitReactionRerun());
+$("reactionRerunReturnBtn")?.addEventListener("click",()=>closeReactionRerunWorkspace());
+$("tabletAiRerunReactionsBtn")?.addEventListener("click",()=>rerunCurrentAiSafety());
 $("tabletAiRerunThemesBtn")?.addEventListener("click",()=>openThemeRerunWorkspace().catch(error=>{console.error("Theme rerun workspace could not open",error);alert(error.message||String(error));}));
 $("tabletAiRerunDescriptionBtn")?.addEventListener("click",()=>openDescriptionRerunWorkspace().catch(error=>{console.error("Description rerun workspace could not open",error);alert(error.message||String(error));}));
 syncTabletAiRerunControls();
@@ -2884,11 +3498,11 @@ syncTabletAiRerunControls();
 // AI Theme rerun shell + PrimPicker controls.
 for(let slot=1;slot<=3;slot++){
   const cell=$("tabletWorkbenchAiTheme"+slot)?.closest(".tablet-theme-cell");
-  cell?.addEventListener("click",event=>{if(!themeRerunWorkspace.active)return;event.preventDefault();requestThemeRerunThemeState(slot);});
-  cell?.addEventListener("keydown",event=>{if(!themeRerunWorkspace.active||!["Enter"," "].includes(event.key))return;event.preventDefault();requestThemeRerunThemeState(slot);});
+  cell?.addEventListener("click",event=>{if(themeRerunWorkspace.active){event.preventDefault();requestThemeRerunThemeState(slot);return;}if(descriptionRerunWorkspace.active||reactionRerunWorkspace.active)return;if(themeChangeReasoningForDisplaySlot(slot)){event.preventDefault();openThemeChangeReasoningForDisplaySlot(slot).catch(error=>console.warn("Theme change reasoning could not open",error));}});
+  cell?.addEventListener("keydown",event=>{if(!["Enter"," "].includes(event.key))return;if(themeRerunWorkspace.active){event.preventDefault();requestThemeRerunThemeState(slot);return;}if(descriptionRerunWorkspace.active||reactionRerunWorkspace.active)return;if(themeChangeReasoningForDisplaySlot(slot)){event.preventDefault();openThemeChangeReasoningForDisplaySlot(slot).catch(error=>console.warn("Theme change reasoning could not open",error));}});
 }
 $("themeRerunPrimPickerBtn")?.addEventListener("click",()=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.pickerOpen=!themeRerunWorkspace.pickerOpen;renderThemeRerunChrome();});
-$("themeRerunClearBtn")?.addEventListener("click",()=>clearThemeRerunPrimData());
+$("themeRerunClearBtn")?.addEventListener("click",()=>clearThemeRerunSelections());
 $("themeRerunReturnBtn")?.addEventListener("click",()=>closeThemeRerunWorkspace());
 $("themeRerunScopeConfirmCancel")?.addEventListener("click",()=>cancelPendingThemeRerunScopeChange());
 $("themeRerunScopeConfirmApply")?.addEventListener("click",()=>applyPendingThemeRerunScopeChange());
@@ -2899,8 +3513,29 @@ $("themeRerunExclusionsSearch")?.addEventListener("input",event=>{themeRerunWork
 $("themeRerunExclusionsList")?.addEventListener("click",event=>{const button=event.target.closest("[data-pfm-code]");if(button)themeRerunToggleExclusion(button.dataset.pfmCode);});
 $("themeRerunPreviewBtn")?.addEventListener("click",()=>{if(!themeRerunWorkspace.active)return;try{const spec=buildThemeRerunPreviewSpec();$("themeRerunPreviewBody").textContent=previewThemeRerunRequest(spec);$("themeRerunPreviewDialog")?.showModal();}catch(error){alert(error.message||String(error));}});
 $("themeRerunHistoryBtn")?.addEventListener("click",()=>openThemeRerunHistory().catch(error=>{console.error("Theme History could not open",error);$("themeRerunHistoryDialog")?.close();alert(error.message||String(error));}));
-$("themeRerunSubmitBtn")?.addEventListener("click",()=>setDirectorStatus("Theme Rerun Submit is reserved for the next bounded pass."));
+$("themeChangeReasoningClose")?.addEventListener("click",()=>$("themeChangeReasoningDialog")?.close());
+$("themeRerunSubmitBtn")?.addEventListener("click",()=>submitThemeRerun());
 $("themeRerunPopulatedIncludeCheck")?.addEventListener("change",event=>{const item=themeRerunDisplayedDescriptionItem();if(item)toggleThemeRerunIncludedDescription(item.id,event.target.checked);});
+$("themeRerunExplainChangesCheck")?.addEventListener("change",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.current.explainChanges=Boolean(event.target.checked);saveThemeRerunCurrent();renderThemeRerunChrome();});
+// v0.9.40.132 — Theme adversarial decision pipeline / .130 AMA stack retained / Tuned / SLOP Director diagnostics.
+$("landscapeTunedBtn")?.addEventListener("click",()=>openTunedHistory());
+$("tunedHistoryClose")?.addEventListener("click",()=>$("tunedHistoryDialog")?.close());
+$("landscapeSlopBtn")?.addEventListener("click",()=>openSlopDecision());
+document.querySelectorAll(".content-rating-director[data-axis]").forEach(control=>control.addEventListener("change",()=>{try{setDirectorContentRating(control.dataset.axis,control.value)}catch(error){console.error("Director content rating update failed",error);renderContentRatings();alert(error?.message||String(error));}}));
+document.querySelectorAll(".content-rating-ai[data-axis]").forEach(control=>control.addEventListener("click",()=>openAiContentRatingReason(control.dataset.axis)));
+$('contentRatingReasonClose')?.addEventListener('click',()=>$('contentRatingReasonDialog')?.close());
+$("slopClose")?.addEventListener("click",()=>$("slopDialog")?.close());
+document.querySelectorAll("[data-slop-action]").forEach(button=>button.addEventListener("click",()=>applySlopDecision(button.dataset.slopAction).catch(error=>{console.error("SLOP Director disposition failed",error);alert(error?.message||String(error));})));
+$("themeRerunAmaBtn")?.addEventListener("click",()=>openAmaMenu().catch(error=>console.warn("AI AMA menu failed",error)));
+$("amaMenuClose")?.addEventListener("click",()=>$("amaMenuDialog")?.close());
+$("amaRunBtn")?.addEventListener("click",()=>runAmaCurrent().catch(error=>{console.error("AI AMA failed",error);setDirectorStatus(`AI AMA failed: ${error?.message||error}`);alert(`AI AMA failed: ${error?.message||error}`);}));
+$("amaHistoryBtn")?.addEventListener("click",()=>{renderAmaHistory().then(()=>{$("amaMenuDialog")?.close();safelyShowDialog($("amaHistoryDialog"));}).catch(error=>{console.error("AMA History failed",error);alert(error?.message||String(error));})});
+$("amaHistoryClose")?.addEventListener("click",()=>$("amaHistoryDialog")?.close());
+$("amaReportClose")?.addEventListener("click",()=>$("amaReportDialog")?.close());
+$("amaFollowupAskBtn")?.addEventListener("click",()=>askAmaFollowup());
+$("amaPrintBtn")?.addEventListener("click",async()=>{const win=window.open("","_blank");if(!win){alert("Print window could not be opened.");return}try{win.opener=null;win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Genreactrix AI AMA</title></head><body><p>Preparing AI AMA for print…</p></body></html>');win.document.close();const bundle=await currentAmaBundle();if(!bundle){win.close();return}const html=await amaReportHtml(bundle,{standalone:true});win.document.open();win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`);win.document.close();win.focus();const printNow=()=>{try{win.focus();win.print()}catch(error){console.warn("AI AMA print failed",error)}};if(win.document.fonts?.ready)win.document.fonts.ready.catch(()=>{}).finally(()=>setTimeout(printNow,120));else setTimeout(printNow,180)}catch(error){try{win.close()}catch{}alert(`Print/Save PDF could not be prepared: ${error?.message||error}`)}});
+$("amaSaveHtmlBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;const html=await amaReportHtml(bundle,{standalone:true}),doc=`<!doctype html><html><head><meta charset="utf-8"><title>${amaEsc(bundle.report.title)}</title></head><body>${html}</body></html>`;amaDownloadText(doc,`Genreactrix_AI_AMA_${bundle.report.sequence}_${bundle.report.imageId}.html`,"text/html;charset=utf-8");});
+$("amaExportJsonBtn")?.addEventListener("click",async()=>{const bundle=await currentAmaBundle();if(!bundle)return;amaDownloadText(JSON.stringify(bundle,null,2),`Genreactrix_AI_AMA_${bundle.report.sequence}_${bundle.report.imageId}.json`,"application/json;charset=utf-8");});
 const themeDescriptionsButton=$("themeRerunDescriptionsBtn");
 themeDescriptionsButton?.addEventListener("pointerdown",event=>{if(!themeRerunWorkspace.active)return;themeRerunWorkspace.descriptionsLongPress=false;clearTimeout(themeRerunWorkspace.descriptionsTimer);themeDescriptionsButton.setPointerCapture?.(event.pointerId);themeRerunWorkspace.descriptionsTimer=setTimeout(()=>{themeRerunWorkspace.descriptionsLongPress=true;renderThemeRerunDescriptionsDialog();$("themeRerunDescriptionsDialog")?.showModal();},520);});
 themeDescriptionsButton?.addEventListener("pointerup",()=>{if(!themeRerunWorkspace.active)return;clearTimeout(themeRerunWorkspace.descriptionsTimer);if(!themeRerunWorkspace.descriptionsLongPress){const prior=themeRerunWorkspace.descriptionCatalog.find(item=>!item.current)||themeRerunWorkspace.descriptionCatalog[0];if(prior)populateThemeRerunDescription(prior.id);}themeRerunWorkspace.descriptionsLongPress=false;});
@@ -3092,11 +3727,12 @@ function renderLandscapeImageView(){
     primRoot.innerHTML="";
     const field=document.createElement("div");field.className="landscape-image-view-reaction-field";primRoot.appendChild(field);
     const points=[];
-    const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🎟️","🌀","🤬"];
+    const order=["🧸","✨","😭","🤣","🌶️","🎉","🧠","💥","👻","🤢","🌌","🌀","🤬"];
     order.forEach((symbol,displayIndex)=>{
-      const index=PRIMITIVES.findIndex(item=>item.symbol===symbol);const primitive=PRIMITIVES[index];if(!primitive)return;
+      const primitive=PRIMITIVES.find(item=>item.symbol===symbol);if(!primitive)return;
+      const selectionToken=primitiveSelectionToken(primitive);
       const point=landscapeImageViewCenter(displayIndex,false);points.push(point);
-      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(index)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(index)?", selected":""}`);
+      const item=document.createElement("div");item.className="landscape-image-view-prim"+(landscapeImageViewReactionSelected(selectionToken)?" selected":"");item.title=primitive.name;item.setAttribute("aria-label",`${primitive.name}${landscapeImageViewReactionSelected(selectionToken)?", selected":""}`);
       item.innerHTML=`<span class="reaction-core" aria-hidden="true"><span class="reaction-ring"></span><span class="symbol">${primitive.symbol}</span></span>`;
       placeLandscapeImageReaction(item,point);field.appendChild(item);
     });
@@ -3114,7 +3750,10 @@ function renderLandscapeImageView(){
       const row=document.createElement("div");row.className="landscape-image-view-theme";row.innerHTML=`<b>${i+1}</b><strong>${themeLabel(state.themes[i])}</strong>`;themeRoot.appendChild(row);
     }
   }
-  applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),state.feedEmpty?"none":flagSeverityForRecord(currentImageRecord()));
+  const record=currentImageRecord();
+  applyFlagButtonSeverity($("landscapeImageViewFlagBtn"),state.feedEmpty?"none":flagSeverityForRecord(record));
+  $("landscapeImageViewSaveBtn")?.setAttribute("aria-pressed",String(Boolean(record)&&state.retention==="keep"));
+  $("landscapeImageViewDepotBtn")?.setAttribute("aria-pressed",String(Boolean(record?.attributes?.depot)));
 }
 function openLandscapeImageView(){
   landscapeImageViewState.open=true;
@@ -3196,6 +3835,7 @@ $("hotMagentaRejectAction")?.addEventListener("click",async()=>{
   setDirectorStatus("Reject selected. It will leave Feed when you navigate away.");renderFlag();renderLandscapeImageView();
 });
 $("landscapeImageViewSaveBtn")?.addEventListener("click",e=>{e.stopPropagation();$("tabletSaveBtn")?.click();renderLandscapeImageView()});
+$("landscapeImageViewDepotBtn")?.addEventListener("click",e=>{e.stopPropagation();toggleCurrentDepot()});
 const landscapeImageCanvas=$("landscapeImageViewCanvas");
 landscapeImageCanvas?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();},{capture:true});
 function landscapePointerDistance(){const p=[...landscapeImageViewState.pointers.values()];if(p.length<2)return 0;return Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y)}
@@ -3655,7 +4295,8 @@ function createImageRecordEngine(){
   }
   function migrateScope(){const pid=window.genreactrixProjectRuntimeEngine?.projectId?.()||'',rid=window.genreactrixProjectRuntimeEngine?.runtimeId?.()||null;let changed=0;for(const record of records){if(!record.projectId&&pid){record.projectId=pid;changed++}if(record.schemaVersion<IMAGE_RECORD_SCHEMA_VERSION){record.schemaVersion=IMAGE_RECORD_SCHEMA_VERSION;changed++}if(!record.runtime)record.runtime={createdRuntimeId:null,lastProcessedRuntimeId:null};if(!record.runtime.lastProcessedRuntimeId&&rid&&record.createdAt===record.updatedAt){/* creation runtime for legacy records is unknowable; do not fabricate it */}}if(changed)persist();return{projectId:pid,runtimeId:rid,updated:changed};}
   function all(){return records.map(clone);}
-  return {create,get,update,setStage,setAttribute,setComponent,attachAI,attachDirector,setLocked,query,integrity,migrateScope,all,_mutable:mutable};
+  function clearAllInMemory(){const count=records.length;records.length=0;return count;}
+  return {create,get,update,setStage,setAttribute,setComponent,attachAI,attachDirector,setLocked,query,integrity,migrateScope,all,clearAllInMemory,_mutable:mutable};
 }
 window.genreactrixImageRecordEngine=createImageRecordEngine();
 
@@ -3663,6 +4304,7 @@ function createImagesEngine(){
   const records=window.genreactrixImageRecordEngine;
   let activeSessionIds=[];
   let objectUrls=new Map();
+  const linkedDisplayInFlight=new Map();
   const now=()=>new Date().toISOString();
   const clone=value=>value==null?value:structuredClone(value);
   function revokeObjectUrls(){objectUrls.forEach(url=>URL.revokeObjectURL(url));objectUrls.clear();}
@@ -3752,7 +4394,11 @@ function createImagesEngine(){
   }
   async function fileForRecord(record){
     if(!record)return null;
-    if(record.storage.mode==="linked"&&!record.attributes.saved)return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record,thumbnailKey:record.storage.thumbnailKey||record.id};
+    if(record.storage.mode==="linked"&&!record.attributes.saved){
+      const cachedUrl=objectUrls.get(record.id);
+      if(cachedUrl)return{id:record.id,name:record.name,url:cachedUrl,imageRecord:record,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:record.storage.hyperlink||record.source.originalUrl,thumbnailKey:record.storage.thumbnailKey||record.id};
+      return{id:record.id,name:record.name,url:record.storage.hyperlink||record.source.originalUrl,imageRecord:record,thumbnailKey:record.storage.thumbnailKey||record.id};
+    }
     let blob=await imageBlobGet(record.id).catch(()=>null);if(!blob&&record.storage.mode==="kept")blob=await keptBlobGet(record.id).catch(()=>null);
     if(!blob&&["temporary","reference"].includes(record.storage.mode))blob=await recoverKnownSource(record,{attempts:3,context:"working-copy-missing"});
     if(!blob){
@@ -3773,14 +4419,37 @@ function createImagesEngine(){
     const cachedUrl=reuseCached?objectUrls.get(record?.id):null;
     return cachedUrl?{id:record.id,name:record.name,url:cachedUrl,imageRecord:record,isCachedDisplay:true,isThumbnail:Boolean(record.storage?.missingReference)}:null;
   }
+  async function resolveLinkedDisplayForRecord(record,{failedSrc=""}={}){
+    if(!record)throw new Error("Linked Image Record is unavailable");
+    const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
+    if(!/^https:\/\//i.test(remote))throw new Error("Linked source URL is unavailable");
+    const cached=cachedDisplayForRecord(record,true);
+    if(cached)return{...cached,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:remote};
+    const key=String(record.id||remote);
+    if(linkedDisplayInFlight.has(key))return linkedDisplayInFlight.get(key);
+    const task=(async()=>{
+      const cloudApi=/** @type {any} */(window).GenreactrixCloudApi;
+      if(!cloudApi?.isConfigured?.()||!cloudApi?.getKey?.())throw new Error("AI Worker image proxy is not configured");
+      const blob=await cloudApi.fetchImage(remote);
+      if(!blob?.type?.startsWith("image/"))throw new Error("Worker image proxy did not return image bytes");
+      const prior=objectUrls.get(record.id);if(prior)try{URL.revokeObjectURL(prior)}catch{}
+      const url=URL.createObjectURL(blob);objectUrls.set(record.id,url);
+      return{id:record.id,name:record.name,url,imageRecord:record,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:remote,isThumbnail:false};
+    })().finally(()=>linkedDisplayInFlight.delete(key));
+    linkedDisplayInFlight.set(key,task);
+    return task;
+  }
   async function displayFileForRecord(record,{allowRecovery=false,reuseCached=true}={}){
     if(!record)return null;
+    const cached=cachedDisplayForRecord(record,reuseCached);
+    if(cached){
+      if(record.storage?.mode==="linked"&&!record.attributes?.saved)return{...cached,isRemoteSource:true,isResolvedRemoteSource:true,sourceUrl:record.storage?.hyperlink||record.source?.originalUrl||""};
+      return cached;
+    }
     if(record.storage?.mode==="linked"&&!record.attributes?.saved){
       const remote=record.storage?.hyperlink||record.source?.originalUrl||"";
       return remote?{id:record.id,name:record.name,url:remote,imageRecord:record,isRemoteSource:true}:missingAssetPlaceholder(record,'Linked source URL is unavailable.');
     }
-    const cached=cachedDisplayForRecord(record,reuseCached);
-    if(cached)return cached;
     // Director display must never block on network source recovery. Resolve the
     // runtime-local working/kept asset first, then the permanent thumbnail, then
     // a direct recorded URL. Source recovery remains an explicit/Housekeeping job.
@@ -4050,7 +4719,7 @@ function createImagesEngine(){
   function allRecords(){return records.all();}
   async function keptIdRecords(){return imageStoreGetAll(IMAGE_ENGINE_KEPT_ID_STORE);}
   async function exclusionRecords(category){return imageStoreGetAll(category==="red"?IMAGE_ENGINE_RED_FLAG_STORE:IMAGE_ENGINE_HOT_MAGENTA_FLAG_STORE);}
-  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,displayFile,missingAssetPlaceholder,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
+  return{snapshot,importFiles,prefetchUrls,importUrls,admitOriginCandidate,admitOriginGate,reevaluateOriginRepeat,retryOriginGate,makeOriginThumbnail,fullBlobForOriginCheck,workingFiles,displayFile,resolveLinkedDisplay:(id,options={})=>resolveLinkedDisplayForRecord(records.get(id,{touch:false}),options),missingAssetPlaceholder,setLifecycle,setFlagged,setDepot,setRejectionFlagged,setFlagSeverity,setSeen,setKeep,saveReference,commitKeptAsset,writeExclusionRecord,finalizeDefective,finalizePostProcessingPlan,cleanupProcessed,moveToRecycle,moveAiFailureToRecycle,rejectImage,restoreFromRecycle,purgeRecycle,purgeExpired,backfillMissingThumbnails,backfillRuntimeAssetLocations,verifyStorage,allRecords,recordById:id=>records.get(id,{touch:false}),thumbnailBlobGet,keptBlobGet,keptIdGet,keptIdRecords,exclusionRecordGet,exclusionRecords,revokeObjectUrls};
 }
 window.genreactrixImagesEngine=createImagesEngine();
 window.genreactrixProjectRuntimeEngine?.ready?.then(()=>{window.genreactrixImageRecordEngine?.migrateScope?.();return window.genreactrixImagesEngine?.backfillRuntimeAssetLocations?.()}).catch(error=>console.warn('Project/runtime image migration could not complete',error));
@@ -4061,7 +4730,7 @@ window.genreactrixImagesStartupReady.then(()=>rehydrateLandscapeFeed()).catch(er
 window.addEventListener('genreactrix:housekeeping',()=>{rehydrateLandscapeFeed().catch(console.warn);renderPortraitControlStation();});
 window.addEventListener("genreactrix:image-record",event=>{
   const type=event.detail?.type||"external-refresh";
-  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported","defective-finalized"].includes(type))scheduleLandscapeRehydrate();
+  if(["created","flag-changed","rejection-flag-changed","flag-severity-changed","depot-changed","keep-changed","red-flag-recorded","hot-magenta-flag-recorded","recycled","recycle-restored","recycle-purged","external-refresh","inbox-pack-pushed","ai-failure-exported","defective-finalized"].includes(type)||type.startsWith("theme-rerun-lifecycle-"))scheduleLandscapeRehydrate();
   if(type==="ai-attached"&&String(event.detail?.imageId||"")===String(currentKey())){
     delete state.aiRuns[String(event.detail.imageId)];
     renderTabletWorkbench();
